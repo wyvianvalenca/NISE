@@ -40,12 +40,14 @@ nise/
 
 ## 3. Rodando localmente
 
-> Comandos a confirmar quando o esqueleto estiver pronto (Sprint 0).
+Pré-requisitos: Git, Docker, uv e pnpm
 
-1. Copie `.env.example` para `.env` e preencha com valores de desenvolvimento.
-2. Suba o ambiente: `docker compose up`.
-3. Instale os hooks: `pre-commit install` (uma vez por máquina).
-4. Popule o banco com dados fictícios: script em `backend/scripts/` (a criar).
+1. Copie as variáveis: `cp .env.example .env`
+1. Instale os hooks (uma vez por máquina): `uv tool install pre-commit` e `pre-commit install`
+1. Suba o ambiente: `docker compose up -d`.
+4. Confira a conexão: `docker compose exec db psql -U nise -d nise -c "select 1"`
+
+Para parar: `docker compose down`. Para apagar também os dados do banco: `docker compose down -v`
 
 **Nunca use dados reais de meninas fora da produção.**
 
