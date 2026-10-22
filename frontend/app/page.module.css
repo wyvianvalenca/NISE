@@ -1,0 +1,30 @@
+.main {
+  margin: 0 auto;
+  padding: 48px 24px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.subtitle {
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  border-radius: 8px;
+}
+
+.health h2 {
+  font-size: 1rem;
+}
+
+.health p {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875rem;
+}
