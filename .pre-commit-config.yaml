@@ -1,0 +1,71 @@
+# Hooks do pre-commit da NISE.
+# Instalação (uma vez por máquina, na raiz do repositório):
+#   uv tool install pre-commit
+#   pre-commit install
+# Rodar em todos os arquivos: pre-commit run --all-files
+# Atualizar versões dos repositórios externos: pre-commit autoupdate
+
+# Instala os dois ganchos: pre-commit (lint, formatação, tipos) e pre-push (testes)
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  # Verificações gerais
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: detect-private-key # barra chaves privadas commitadas por engano
+
+  # Usa as versões instaladas no projeto (uv e pnpm), as mesmas do CI
+  - repo: local
+    hooks:
+      # Back-end
+      - id: ruff-format
+        name: ruff format (back)
+        entry: bash -c 'cd backend && uv run ruff format .'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: ruff-check
+        name: ruff check (back)
+        entry: bash -c 'cd backend && uv run ruff check --fix .'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy (back)
+        entry: bash -c 'cd backend && uv run mypy .'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      # Front-end
+      - id: eslint
+        name: eslint (front)
+        entry: bash -c 'cd frontend && pnpm lint'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+      - id: tsc
+        name: tsc (front)
+        entry: bash -c 'cd frontend && pnpm tsc --noEmit'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      # Testes do back: só no push, para o commit continuar rápido
+      - id: pytest?
+        name: pytest (back)
+        entry: bash -c 'cd backend && uv run pytest -q'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+        stages: [pre-push]
