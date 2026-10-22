@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.pnpm-store/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Variáveis de ambiente (o exemplo entra no repositório)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.idea/
