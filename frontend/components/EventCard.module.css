@@ -1,0 +1,45 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--nise-tealSoft);
+}
+
+.texts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group {
+  color: var(--nise-teal);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.details {
+  color: var(--nise-muted);
+  font-size: 13px;
+}

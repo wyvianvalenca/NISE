@@ -1,0 +1,46 @@
+.wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Some da tela, mas o leitor de tela lê. */
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 11px 8px 11px 4px;
+  border-bottom: 1px solid var(--nise-track);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  color: var(--nise-muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.table td {
+  color: var(--nise-muted);
+  font-size: 14px;
+  /* Sem quebra: em tela estreita a tabela rola de lado em vez de espremer. */
+  white-space: nowrap;
+}
+
+.table td.emphasis {
+  color: var(--nise-ink);
+  font-weight: 500;
+}

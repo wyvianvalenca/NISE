@@ -1,0 +1,46 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.icon {
+  margin-top: 1px;
+}
+
+.text {
+  flex: 1;
+}
+
+.text strong {
+  font-weight: 700;
+}
+
+.plain {
+  gap: 8px;
+  color: var(--nise-muted);
+}
+
+.teal {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+.teal .icon {
+  color: var(--nise-teal);
+}
+
+.pink {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--nise-pinkTint);
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.pink .icon {
+  color: var(--nise-pink);
+}
