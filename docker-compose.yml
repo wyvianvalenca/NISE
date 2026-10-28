@@ -1,0 +1,23 @@
+# Ambiente local da NISE.
+#
+# Os serviços `db` (Postgres) e `backend` entram pelas issues #39 e #41.
+# Quando o `backend` existir, acrescente `depends_on: [backend]` aqui embaixo.
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Dentro da rede do compose o FastAPI atende pelo nome do serviço.
+      BACKEND_URL: http://backend:8000
+    volumes:
+      # Monta o código para o next dev recarregar ao salvar; node_modules e
+      # .next ficam em volumes próprios para não brigarem com os da máquina.
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+
+volumes:
+  frontend_node_modules:
+  frontend_next:
