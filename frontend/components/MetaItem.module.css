@@ -1,0 +1,8 @@
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--nise-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}

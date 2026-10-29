@@ -1,0 +1,46 @@
+.bar {
+  display: flex;
+  width: 100%;
+  padding: 12px 0 14px;
+  /* Respeita a barra de gestos do celular. */
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--nise-border);
+  background: var(--nise-surface);
+}
+
+.tab {
+  flex: 1 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  /* Alvo de toque de pelo menos 44px. */
+  min-height: 44px;
+  color: var(--nise-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tab[aria-current="page"] {
+  color: var(--nise-teal);
+}
+
+/* Versão da coordenação: texto menor, para caber "Acompanhamento". */
+.compact {
+  padding: 10px 4px 14px;
+}
+
+.compact .tab {
+  font-size: 11px;
+}
+
+.compact .tab[aria-current="page"] {
+  font-weight: 500;
+}
+
+@media (min-width: 768px) {
+  .mobileOnly {
+    display: none;
+  }
+}

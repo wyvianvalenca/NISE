@@ -1,0 +1,12 @@
+.hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--nise-ink);
+  cursor: help;
+  vertical-align: middle;
+}

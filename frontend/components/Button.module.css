@@ -1,0 +1,52 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--nise-teal);
+}
+
+.secondary {
+  height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--nise-ink);
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font-size: 15px;
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--nise-tealSoft);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 0;
+}
+
+/* Carregando continua com a cor cheia; só o desabilitado fica apagado. */
+.button:disabled {
+  cursor: not-allowed;
+}
+
+.button:disabled:not([aria-busy]) {
+  opacity: 0.45;
+}
+
+.button[aria-busy] {
+  cursor: progress;
+}

@@ -1,0 +1,141 @@
+.tracker {
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+.lg {
+  gap: 16px;
+  padding: 18px 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+  overflow-x: auto;
+}
+
+.sm {
+  gap: 10px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* As etapas depois da primeira esticam para o trilho ocupar o espaço. */
+.lg .step:not(:first-child) {
+  flex: 1;
+}
+
+.sm .step {
+  gap: 8px;
+}
+
+.rail {
+  flex: 1;
+  min-width: 24px;
+  height: 3px;
+  margin-right: 4px;
+  border-radius: 2px;
+  background: var(--nise-track);
+}
+
+.sm .rail {
+  flex: none;
+  width: 40px;
+  margin-right: 2px;
+}
+
+.railDone {
+  background: var(--nise-teal);
+}
+
+.marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1.5px dashed var(--nise-borderStrong);
+  border-radius: var(--radius-8);
+  color: var(--nise-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sm .marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+.done .marker {
+  border: none;
+  background: var(--nise-teal);
+  color: var(--nise-onPrimary);
+}
+
+.current .marker {
+  border: 2px solid var(--nise-teal);
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+}
+
+.texts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.label {
+  color: var(--nise-muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sm .label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.done .label {
+  color: var(--nise-ink);
+}
+
+.current .label {
+  color: var(--nise-teal);
+}
+
+.description {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+/* No celular as etapas grandes ficam uma embaixo da outra, sem trilho. */
+@media (max-width: 639px) {
+  .lg {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .lg .rail {
+    display: none;
+  }
+
+  .lg .texts {
+    white-space: normal;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
