@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { useId } from "react";
+import { Icon } from "./Icon";
 import styles from "./RatingScale.module.css";
 
 // Texto de cada nota. O Figma só mostra "4 · Curti bastante!" e os extremos;
@@ -38,7 +38,7 @@ export function RatingScale({ label, value, onChange }: RatingScaleProps) {
                 aria-label={`${score} · ${text}`}
               />
               <span className={styles.face} aria-hidden="true">
-                <Image src={`/icons/face-${score}.svg`} alt="" width={32} height={32} unoptimized />
+                <Icon name={`face-${score}` as `face-${1 | 2 | 3 | 4 | 5}`} />
               </span>
               <span className={styles.number} aria-hidden="true">
                 {score}
