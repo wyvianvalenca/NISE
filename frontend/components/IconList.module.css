@@ -1,0 +1,27 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.item strong {
+  font-weight: 700;
+}
+
+.icon {
+  margin-top: 2px;
+  color: var(--nise-teal);
+}
