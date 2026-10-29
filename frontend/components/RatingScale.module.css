@@ -55,13 +55,15 @@
   display: flex;
   width: 32px;
   height: 32px;
+  color: var(--nise-ink);
 }
 
-.face img {
+/* A carinha fica por cima do círculo rosa da nota escolhida. */
+.face > span {
   position: relative;
 }
 
-/* Na nota escolhida, um círculo rosa atrás da carinha, como a nota 4 do Figma. */
+/* Na nota escolhida, um círculo rosa dentro da carinha, como a nota 4 do Figma. */
 .option:has(.input:checked) .face::before {
   content: "";
   position: absolute;
