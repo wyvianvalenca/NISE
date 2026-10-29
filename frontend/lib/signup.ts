@@ -44,6 +44,8 @@ type MockState = {
   questionnaireNoticeSeenAt: string | null;
   /** As Etapas 1 a 3 do consentimento terminaram; o front não mostra elas de novo. */
   consentCompleted: boolean;
+  /** Avaliações enviadas, por ação. Uma só por ação (#58). */
+  ratings: Record<string, { score: number; comment: string }>;
 };
 
 const EMPTY_STATE: MockState = {
@@ -51,6 +53,7 @@ const EMPTY_STATE: MockState = {
   opportunityEmails: null,
   questionnaireNoticeSeenAt: null,
   consentCompleted: false,
+  ratings: {},
 };
 
 function readState(): MockState {
@@ -108,6 +111,49 @@ export async function setOpportunityEmails(enabled: boolean): Promise<void> {
  */
 export async function confirmQuestionnaireNotice(): Promise<void> {
   saveState({ questionnaireNoticeSeenAt: new Date().toISOString(), consentCompleted: true });
+}
+
+/** Ação que a menina pode avaliar: participou, teve presença registrada e ainda não avaliou. */
+export type PendingRating = {
+  actionId: string;
+  groupName: string;
+  actionTitle: string;
+  /** Data e cidade, ex.: "Sáb, 11 de out · Maceió". */
+  details: string;
+};
+
+// Ação fictícia do fluxo M1 (convite das Rendeiras do Código).
+const MOCK_ACTION: PendingRating = {
+  actionId: "acao-introducao-robotica",
+  groupName: "Rendeiras do Código",
+  actionTitle: "Introdução à robótica",
+  details: "Sáb, 11 de out · Maceió",
+};
+
+/**
+ * Ação para avaliar (#58). No M2 ela não tem participação, então não há nada
+ * para avaliar e a resposta é null.
+ */
+export async function getPendingRating(): Promise<PendingRating | null> {
+  if (mockOrigin().kind === "self") return null;
+  return readState().ratings[MOCK_ACTION.actionId] ? null : MOCK_ACTION;
+}
+
+/** Salva a nota de 1 a 5 e o comentário opcional (#58). Uma segunda avaliação é recusada. */
+export async function submitRating(actionId: string, score: number, comment: string): Promise<void> {
+  if (!Number.isInteger(score) || score < 1 || score > 5) {
+    throw new Error("Escolha uma nota de 1 a 5.");
+  }
+  const { ratings } = readState();
+  if (ratings[actionId]) {
+    throw new Error("Você já avaliou esta ação.");
+  }
+  saveState({ ratings: { ...ratings, [actionId]: { score, comment: comment.trim() } } });
+}
+
+/** Próxima tela depois do consentimento: a avaliação no M1 (se houver), senão os interesses. */
+export async function pathAfterConsent(): Promise<string> {
+  return (await getPendingRating()) ? SIGNUP_PATHS.rating : SIGNUP_PATHS.interests;
 }
 
 /** Versão atual dos termos, para a página "Ler os termos completos". */
