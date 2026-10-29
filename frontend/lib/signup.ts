@@ -46,6 +46,8 @@ type MockState = {
   consentCompleted: boolean;
   /** Avaliações enviadas, por ação. Uma só por ação (#58). */
   ratings: Record<string, { score: number; comment: string }>;
+  /** Temas e etapa de estudo do perfil (#56); null enquanto ela não respondeu. */
+  interests: InterestsChoice | null;
 };
 
 const EMPTY_STATE: MockState = {
@@ -54,6 +56,7 @@ const EMPTY_STATE: MockState = {
   questionnaireNoticeSeenAt: null,
   consentCompleted: false,
   ratings: {},
+  interests: null,
 };
 
 function readState(): MockState {
@@ -149,6 +152,71 @@ export async function submitRating(actionId: string, score: number, comment: str
     throw new Error("Você já avaliou esta ação.");
   }
   saveState({ ratings: { ...ratings, [actionId]: { score, comment: comment.trim() } } });
+}
+
+/** Opção de uma lista fechada: o código é o que vai para o back e para as sugestões. */
+export type Option = { code: string; label: string };
+
+export type InterestOptions = { topics: Option[]; stages: Option[] };
+
+export type InterestsChoice = {
+  /** Códigos dos temas; vazio quando ela escolhe "me mostra de tudo" ou pula. */
+  topics: string[];
+  /** "Ainda não sei, me mostra de tudo". Não vem junto com temas. */
+  everything: boolean;
+  /** Código da etapa de estudo; null quando ela pula (M2). */
+  stage: string | null;
+};
+
+// No back, estas listas virão de uma rota, para o front e as sugestões usarem os mesmos códigos.
+const INTEREST_OPTIONS: InterestOptions = {
+  topics: [
+    { code: "programacao", label: "Programação" },
+    { code: "robotica", label: "Robótica" },
+    { code: "ia", label: "Inteligência artificial" },
+    { code: "dados", label: "Dados" },
+    { code: "ciberseguranca", label: "Cibersegurança" },
+    { code: "jogos", label: "Jogos" },
+    { code: "sites", label: "Sites e apps" },
+    { code: "design", label: "Design e criação" },
+  ],
+  stages: [
+    { code: "fundamental", label: "Ensino fundamental" },
+    { code: "medio", label: "Ensino médio" },
+    { code: "tecnico", label: "Curso técnico" },
+    { code: "graduacao", label: "Graduação" },
+    { code: "formada", label: "Já me formei" },
+  ],
+};
+
+/** Listas fechadas de temas e etapas de estudo (#56). */
+export async function getInterestOptions(): Promise<InterestOptions> {
+  return INTEREST_OPTIONS;
+}
+
+/** Fluxo da menina: M1 (convite de grupo) ou M2 (chegou sozinha). Decide o "Pular por agora". */
+export async function getOrigin(): Promise<Origin> {
+  return mockOrigin();
+}
+
+/**
+ * Salva temas e etapa no perfil (#56). Recusa códigos fora das listas e
+ * "me mostra de tudo" junto com temas. Pular (M2) salva sem temas nem etapa,
+ * e as sugestões tratam como "me mostra de tudo".
+ */
+export async function saveInterests(choice: InterestsChoice): Promise<void> {
+  const topicCodes = INTEREST_OPTIONS.topics.map((topic) => topic.code);
+  const stageCodes = INTEREST_OPTIONS.stages.map((stage) => stage.code);
+  if (choice.topics.some((code) => !topicCodes.includes(code))) {
+    throw new Error("Tema desconhecido.");
+  }
+  if (choice.stage !== null && !stageCodes.includes(choice.stage)) {
+    throw new Error("Etapa de estudo desconhecida.");
+  }
+  if (choice.everything && choice.topics.length > 0) {
+    throw new Error("Escolha temas ou \"me mostra de tudo\", não os dois.");
+  }
+  saveState({ interests: choice });
 }
 
 /** Próxima tela depois do consentimento: a avaliação no M1 (se houver), senão os interesses. */

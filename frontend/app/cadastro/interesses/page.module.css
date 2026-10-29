@@ -1,0 +1,58 @@
+/* A05 tem respiro de 12px entre os blocos, como no Figma. */
+.interests {
+  gap: 12px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+/* Dois temas por linha. */
+.topics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stageTitle {
+  margin-top: 4px;
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.skip {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.skip:hover {
+  text-decoration: underline;
+}
