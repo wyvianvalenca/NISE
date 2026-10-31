@@ -1,0 +1,39 @@
+/* A02c "Ainda não dá (menos de 13)" (Figma 511:593). */
+
+.simbolo {
+  margin-top: 36px;
+}
+
+.title {
+  margin-top: 28px;
+  color: var(--nise-ink);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.lista {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.item {
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.acoes {
+  margin-top: 32px;
+  height: 48px;
+}
