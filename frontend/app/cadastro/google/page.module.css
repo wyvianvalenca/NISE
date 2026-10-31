@@ -1,0 +1,64 @@
+/* A02b "Só mais um passo" (Figma 511:550). */
+
+.title {
+  margin-top: 18px;
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* Cartão com a conta que veio do Google. */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.identidade {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nome,
+.email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nome {
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.email {
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.campos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.outraConta {
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}

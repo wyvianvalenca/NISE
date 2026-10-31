@@ -1,0 +1,10 @@
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+  font-weight: 700;
+}
