@@ -1,13 +1,17 @@
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# O .env fica na raiz do repositório, junto do .env.example.
+ROOT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
 
 class AppSettings(BaseSettings):
-    # pyrefly: ignore[no-matching-overload]
-    database_url: str = Field(..., env="DATABASE_URL")
-    debug_mode: bool = False
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, env_file_encoding="utf-8")
 
-settings = AppSettings()
+    # Lido da variável de ambiente DATABASE_URL.
+    database_url: str
+    debug_mode: bool = False
+
+
+settings = AppSettings()  # type: ignore[call-arg]
