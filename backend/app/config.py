@@ -7,11 +7,15 @@ ROOT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class AppSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, env_file_encoding="utf-8")
+    # extra="ignore": o .env da raiz também tem variáveis do Docker (POSTGRES_*)
+    # que o back não usa.
+    model_config = SettingsConfigDict(
+        env_file=ROOT_ENV_FILE, env_file_encoding="utf-8", extra="ignore"
+    )
 
     # Lido da variável de ambiente DATABASE_URL.
     database_url: str
     debug_mode: bool = False
 
 
-settings = AppSettings()  # type: ignore[call-arg]
+settings = AppSettings()

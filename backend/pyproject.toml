@@ -21,6 +21,7 @@ dev = [
     "httpx>=0.28.1",
     "mypy>=2.4.1",
     "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
     "ruff>=0.17.3",
 ]
 
@@ -31,3 +32,13 @@ target-version = "py312"
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+# Testes `async def` rodam sem precisar do decorador @pytest.mark.asyncio.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
