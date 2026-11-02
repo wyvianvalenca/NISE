@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
@@ -5,7 +6,7 @@ from fastapi import Cookie, Depends, HTTPException, Response, status
 from app.auth.utils import decode_access_token
 from app.config import settings
 from app.db.engine import AsyncSessionDep
-from app.users.models import User
+from app.users.models import Role, User
 
 SESSION_COOKIE = "nise_session"
 
@@ -58,3 +59,24 @@ def clear_session_cookie(response: Response) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
     )
+
+
+# Cada rota lista os papeis aceitos.
+def require_role(*roles: Role) -> Callable[[User], Awaitable[User]]:
+    if not roles:
+        raise ValueError("Informe ao menos um papel")
+
+    async def check_role(user: CurrentUserDep) -> User:
+        if user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão"
+            )
+        return user
+
+    return check_role
+
+
+# Atalhos
+CoordinatorDep = Annotated[User, Depends(require_role(Role.COORDINATOR))]
+GirlDep = Annotated[User, Depends(require_role(Role.GIRL))]
+NiseTeamDep = Annotated[User, Depends(require_role(Role.NISE_TEAM))]
