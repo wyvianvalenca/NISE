@@ -5,3 +5,4 @@ import os
 os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://teste:teste@localhost:5432/teste"
 )
+os.environ.setdefault("JWT_SECRET", "segredo-ficticio-para-testes-32b")

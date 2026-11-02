@@ -2,9 +2,11 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.auth.routes import router as auth_router
 from app.db.engine import AsyncSessionDep
 
 router = APIRouter()
+router.include_router(auth_router)
 
 
 @router.get("/health", tags=["Health"])
