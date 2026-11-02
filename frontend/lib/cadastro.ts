@@ -122,3 +122,109 @@ export async function completarCadastro(dados: {
 export async function descartarCadastro(): Promise<void> {
   await fetch("/api/auth/cadastro/descartar", { method: "POST" });
 }
+
+// ---------------------------------------------------------------------------
+// Cadastro por e-mail e senha (H1, #51)
+// ---------------------------------------------------------------------------
+
+/** Tamanho mínimo da senha, checado de novo no servidor. */
+export const SENHA_MINIMA = 8;
+
+/** O que o convite de um grupo devolve para montar a A01b. */
+export type Convite = {
+  /** Nome do grupo, como aparece no chip e no texto ("Rendeiras"). */
+  grupoNome: string;
+  /**
+   * E-mail que já veio numa planilha importada por esse grupo, quando houver.
+   * A tela preenche o campo para ela não criar conta duplicada (RF-F2.02, RN-29).
+   */
+  emailImportado?: string;
+};
+
+export type DadosCadastroEmail = {
+  nome: string;
+  email: string;
+  senha: string;
+  dataNascimento: string;
+  cidadeId: string;
+  /** Código do convite, quando ela veio por um; decide a origem da conta. */
+  convite?: string;
+};
+
+export type ResultadoCadastroEmail =
+  | { ok: true; proximoPasso: "termos" }
+  | {
+      ok: false;
+      motivo:
+        | "menor_de_13"
+        | "email_invalido"
+        | "conta_existente"
+        | "cidade_invalida"
+        | "senha_curta"
+        | "falha";
+    };
+
+/**
+ * Dados públicos de um código de convite, para a A01b (#51).
+ * Devolve `null` quando o código não existe ou expirou — a tela cai na A01.
+ */
+export async function buscarConvite(
+  codigo: string,
+  signal?: AbortSignal,
+): Promise<Convite | null> {
+  const resposta = await fetch(
+    `/api/convites/${encodeURIComponent(codigo)}`,
+    { signal },
+  );
+
+  if (resposta.status === 404 || resposta.status === 410) {
+    return null;
+  }
+  if (!resposta.ok) {
+    throw new Error(`convite: ${resposta.status}`);
+  }
+
+  return (await resposta.json()) as Convite;
+}
+
+/**
+ * Cria a conta com e-mail e senha (#51). A resposta já abre a sessão e o
+ * próximo passo é sempre os termos (H3).
+ */
+export async function criarContaComEmail(
+  dados: DadosCadastroEmail,
+): Promise<ResultadoCadastroEmail> {
+  const resposta = await fetch("/api/auth/cadastro/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dados),
+  });
+
+  if (resposta.ok) {
+    return { ok: true, proximoPasso: "termos" };
+  }
+
+  if (resposta.status === 409) {
+    return { ok: false, motivo: "conta_existente" };
+  }
+
+  // O servidor refaz idade, formato do e-mail, senha e cidade (RNF-G.03).
+  if (resposta.status === 422) {
+    const corpo = (await resposta.json().catch(() => null)) as {
+      erro?: string;
+    } | null;
+
+    const conhecidos: Record<string, ResultadoCadastroEmail> = {
+      under_13: { ok: false, motivo: "menor_de_13" },
+      email_invalido: { ok: false, motivo: "email_invalido" },
+      cidade_invalida: { ok: false, motivo: "cidade_invalida" },
+      senha_curta: { ok: false, motivo: "senha_curta" },
+    };
+    const conhecido = corpo?.erro ? conhecidos[corpo.erro] : undefined;
+    if (conhecido) {
+      return conhecido;
+    }
+  }
+
+  return { ok: false, motivo: "falha" };
+}
