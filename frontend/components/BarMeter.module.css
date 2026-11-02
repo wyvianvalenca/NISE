@@ -1,0 +1,64 @@
+.meter {
+  display: grid;
+  align-items: center;
+  color: var(--nise-ink);
+}
+
+.stacked {
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "label value"
+    "track track";
+  row-gap: 6px;
+  font-size: 14px;
+}
+
+.inline {
+  grid-template-columns: 120px 1fr 48px;
+  grid-template-areas: "label track value";
+  column-gap: 12px;
+  font-size: 13px;
+}
+
+.label {
+  grid-area: label;
+}
+
+.value {
+  grid-area: value;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.track {
+  grid-area: track;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--nise-track);
+  overflow: hidden;
+}
+
+.inline .track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--nise-divider);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.pink {
+  background: var(--nise-pink);
+}
+
+.teal {
+  background: var(--nise-teal);
+}
+
+.muted {
+  background: var(--nise-borderStrong);
+}
