@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -37,3 +38,7 @@ def decode_access_token(token: str) -> int | None:
         return int(payload["sub"])
     except (jwt.InvalidTokenError, ValueError):
         return None
+
+
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()

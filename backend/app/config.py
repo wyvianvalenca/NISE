@@ -22,5 +22,7 @@ class AppSettings(BaseSettings):
     # True em produção, False em desenvolvimento.
     cookie_secure: bool = True
 
+    password_reset_expire_minutes: int = 60
+
 
 settings = AppSettings()

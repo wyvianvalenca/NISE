@@ -7,6 +7,7 @@ from app.auth.utils import (
     create_access_token,
     decode_access_token,
     hash_password,
+    hash_reset_token,
     verify_password,
 )
 from app.config import settings
@@ -113,3 +114,19 @@ def test_token_leva_so_o_id_e_a_validade() -> None:
     conteudo = jwt.decode(token, options={"verify_signature": False})
 
     assert set(conteudo) == {"sub", "exp"}
+
+
+def test_hash_do_token_e_sempre_o_mesmo() -> None:
+    # A busca no banco é pelo hash: o mesmo token precisa gerar o mesmo hash.
+    assert hash_reset_token("token-ficticio") == hash_reset_token("token-ficticio")
+
+
+def test_tokens_diferentes_tem_hashes_diferentes() -> None:
+    assert hash_reset_token("token-ficticio-1") != hash_reset_token("token-ficticio-2")
+
+
+def test_hash_do_token_nao_contem_o_token() -> None:
+    token_hash = hash_reset_token("token-ficticio")
+
+    assert len(token_hash) == 64
+    assert "token-ficticio" not in token_hash
