@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 from app.config import settings
 from app.db.base import Base
+from app.users.models import OAuthAccount, User  # noqa: F401 (registra as tabelas para o autogenerate)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
