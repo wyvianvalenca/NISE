@@ -1,0 +1,107 @@
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--nise-ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.label {
+  flex: 1;
+}
+
+/* Links dentro do texto, como "Termos de uso". */
+.label a {
+  color: var(--nise-teal);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.card {
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--nise-border);
+  border-radius: 12px;
+  background: var(--nise-surface);
+  font-size: 15px;
+}
+
+/* A linha inteira fica verde quando a caixa está marcada. */
+.card:has(input:checked) {
+  padding: 9px 11px;
+  border: 2px solid var(--nise-teal);
+  background: var(--nise-tealSoft);
+}
+
+.card:has(input:focus-visible) {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
+}
+
+.card input:focus-visible {
+  outline: none;
+}
+
+/* Caixa desenhada com CSS; o ✓ é o ícone check do Figma, em branco. */
+.box {
+  display: grid;
+  place-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--nise-borderStrong);
+  border-radius: 4px;
+  background: var(--nise-surface);
+  appearance: none;
+  cursor: pointer;
+}
+
+.box:checked {
+  border: none;
+  border-radius: 5px;
+  background: var(--nise-teal);
+}
+
+/* O ✓ é o ícone check do Figma usado como máscara, pintado de claro. */
+.box:checked::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: var(--nise-onPrimary);
+  mask: url(/icons/check.svg) center / contain no-repeat;
+}
+
+.radio {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--nise-borderStrong);
+  border-radius: 50%;
+  appearance: none;
+  cursor: pointer;
+}
+
+.radio:checked {
+  border: 5px solid var(--nise-teal);
+  background: var(--nise-surface);
+}
+
+.texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.description {
+  color: var(--nise-muted);
+  font-size: 12px;
+}

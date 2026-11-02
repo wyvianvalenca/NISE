@@ -1,14 +1,72 @@
+/*
+ * Tokens da NISE, copiados das variáveis do Figma
+ * ("NISE | Jornadas Alana e Kátia"). Use sempre as variáveis,
+ * nunca a cor solta, para o tema escuro poder entrar depois.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Cores */
+  --nise-primary: #0a3b48;
+  --nise-ink: #0a3b48;
+  --nise-paper: #f5e8d6;
+  --nise-surface: #fcf6ec;
+  --nise-onPrimary: #fcf6ec;
+  --nise-teal: #087a7b;
+  --nise-tealSoft: #d4e9e3;
+  --nise-pink: #a42c5d;
+  --nise-pinkSoft: #f3c5d3;
+  --nise-muted: #496a70;
+  --nise-border: #c9bbaa;
+  /* Cores soltas no Figma (sem variável), reunidas aqui com nome. */
+  --nise-track: #e3d5c2; /* fundo de barras e divisórias */
+  --nise-divider: #eadfcf; /* linhas de tabela dentro de cards */
+  --nise-borderStrong: #9d8f80; /* checkbox vazio, etapa futura */
+  --nise-tealLight: #9fe0dc; /* ações sobre fundo escuro (Desfazer) */
+  --nise-pinkLight: #f4a3c1; /* número em destaque sobre fundo escuro */
+  --nise-pinkTint: #fbeff3; /* caixa "Por que pra você" */
+  --nise-shadow: rgba(10, 59, 72, 0.25);
+  --nise-veil: rgba(10, 59, 72, 0.38); /* fundo atrás de modais */
+
+  /* Gráficos */
+  --nise-chart-1: #087a7b;
+  --nise-chart-2: #b0682f;
+  --nise-chart-3: #b8326a;
+  --nise-chart-yes: var(--nise-teal);
+  --nise-chart-no: #c9b79f;
+  --nise-chart-noAnswer: #e3d5c2;
+  --nise-chart-pending: #b7c4c7;
+  --nise-chart-pendingStripe: #5e7479;
+  --nise-chart-bg: #efe3d2;
+  --nise-chart-axis: #9d8f80;
+  --nise-chart-highlight: #d6efec; /* coluna destacada no gráfico de linhas */
+  /* Funil: do mais claro (primeira etapa) ao mais escuro (última). */
+  --nise-funnel-1: #d4e9e3;
+  --nise-funnel-2: #a9d6ce;
+  --nise-funnel-3: #6fb8b1;
+  --nise-funnel-4: #2e9590;
+  --nise-funnel-5: #087a7b;
+  --nise-funnel-6: #0a3b48;
+
+  /* Cor de cada tipo de ação (Funil por ação) */
+  --nise-type-oficina: #087a7b;
+  --nise-type-acolhimento: #a42c5d;
+  --nise-type-palestra: #5b8fa0;
+  --nise-type-hackathon: #e0a030;
+
+  /* Raios */
+  --radius-8: 8px;
+  --radius-16: 16px;
+  --radius-pill: 999px;
+
+  /* Fontes (as variáveis --font-* vêm do next/font no layout) */
+  --nise-font-sans: var(--font-dm-sans), Arial, Helvetica, sans-serif;
+  --nise-font-mono: var(--font-ibm-plex-mono), monospace;
+
+  --background: var(--nise-paper);
+  --foreground: var(--nise-ink);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Tema escuro está "fora do escopo agora" no Figma, então não há bloco
+ * prefers-color-scheme: dark por enquanto. */
 
 html {
   height: 100%;
@@ -26,7 +84,8 @@ body {
   flex-direction: column;
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--nise-font-sans);
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +101,8 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* Foco visível em tudo que é clicável (pedido no "Leia primeiro" do Figma). */
+:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
 }
