@@ -549,20 +549,20 @@ Um requisito (RF ou RNF) só está pronto quando cumpre todos os critérios abai
 
 | ID | Data | Quem decidiu | Decisão | Itens afetados |
 | --- | --- | --- | --- | --- |
-| D-01 | 20/10/2026 | Claudinha | O consentimento segue o Figma: bloqueio para menores de 13 e aceite único a partir dos 13. Pendências: escrever os Termos de uso e a Política de privacidade e consultar o Comitê de Ética (ou semelhante). | F7, RN-01, RN-03, RN-04 |
-| D-02 | 20/10/2026 | Claudinha | A F31 é essencial (pedido de um professor e principal inovação). A busca automática é o objetivo (Plano A), a importação manual é o Plano B e a autodeclaração é o Plano C. *A ordem de construção (B antes de A) e o gatilho (fim da Sprint 4) são proposta do Claude, a confirmar.* | F31, F6 |
-| D-03 | 20/10/2026 | Claudinha | Exportar os dados de toda a NISE foi levantado na última reunião e será considerado. Entra como Could, a explorar e discutir com a equipe. A exportação do próprio grupo continua Must. | F24, F16, RN-07 |
-| D-04 | 20/10/2026 | Claudinha | Raça/cor sai do painel, que ainda está em ajustes. | F5, RN-31 |
-| D-05 | 20/10/2026 | Claudinha | Os lembretes (F9) entram como parte da F4. | F4, RN-30 |
-| D-06 | 20/10/2026 | Claudinha | O convite vai só depois da presença, por e-mail. Falta analisar a deduplicação da menina que vai a eventos de dois grupos. | F1, F4, RN-29 |
-| D-11 | 20/10/2026 | Claudinha | Um convite por menina. Se ela já tem conta, o segundo grupo só liga a participação e envia a avaliação. A equipe ainda valida a deduplicação. | RN-29, RF-F4.02 |
-| D-12 | 20/10/2026 | Claudinha | A ação pode ser excluída até a presença, mesmo com inscritas, com modal de confirmação. | RF-F30.12, RN-15 |
-| D-13 | 20/10/2026 | Claudinha | A própria equipe monta a curadoria do filé. Isso entra como task da história correspondente. | RF-F11.06 |
-| D-14 | 20/10/2026 | Claudinha | A seção 3 é dividida por persona (Menina, Coordenadora, Sistema e curadoria), com cada RF numa só, pela regra "quem age". Não existe "base comum". | Seção 3 |
-| D-07 | 20/10/2026 | Claudinha | Os fluxos do Figma viram épicos; cada história é um objetivo da usuária e cita os RFs que cumpre. | Histórias, seção 8 |
-| D-08 | 20/10/2026 | Claudinha *(a confirmar)* | Sprints semanais de segunda a sexta: Sprint 0 de 20 a 23/10, Sprints 1 a 5 de funcionalidade, Sprint 6 de estabilização. | Seção 8 |
-| D-09 | 20/10/2026 | Claudinha | Testes automatizados no back-end para todo critério de aceite, gerados por agente e conferidos na revisão; testes de tela só nos caminhos principais (D-17). | Seção 9 |
-| D-10 | 20/10/2026 | Claudinha | Itens do Figma em revisão entram como estão, marcados "a validar". | Coluna Status |
+| D-01 | 20/10/2026 | Wyvian | O consentimento segue o Figma: bloqueio para menores de 13 e aceite único a partir dos 13. Pendências: escrever os Termos de uso e a Política de privacidade e consultar o Comitê de Ética (ou semelhante). | F7, RN-01, RN-03, RN-04 |
+| D-02 | 20/10/2026 | Wyvian | A F31 é essencial (pedido de um professor e principal inovação). A busca automática é o objetivo (Plano A), a importação manual é o Plano B e a autodeclaração é o Plano C. *A ordem de construção (B antes de A) e o gatilho (fim da Sprint 4) são proposta do Claude, a confirmar.* | F31, F6 |
+| D-03 | 20/10/2026 | Wyvian | Exportar os dados de toda a NISE foi levantado na última reunião e será considerado. Entra como Could, a explorar e discutir com a equipe. A exportação do próprio grupo continua Must. | F24, F16, RN-07 |
+| D-04 | 20/10/2026 | Wyvian | Raça/cor sai do painel, que ainda está em ajustes. | F5, RN-31 |
+| D-05 | 20/10/2026 | Wyvian | Os lembretes (F9) entram como parte da F4. | F4, RN-30 |
+| D-06 | 20/10/2026 | Wyvian | O convite vai só depois da presença, por e-mail. Falta analisar a deduplicação da menina que vai a eventos de dois grupos. | F1, F4, RN-29 |
+| D-11 | 20/10/2026 | Wyvian | Um convite por menina. Se ela já tem conta, o segundo grupo só liga a participação e envia a avaliação. A equipe ainda valida a deduplicação. | RN-29, RF-F4.02 |
+| D-12 | 20/10/2026 | Wyvian | A ação pode ser excluída até a presença, mesmo com inscritas, com modal de confirmação. | RF-F30.12, RN-15 |
+| D-13 | 20/10/2026 | Wyvian | A própria equipe monta a curadoria do filé. Isso entra como task da história correspondente. | RF-F11.06 |
+| D-14 | 20/10/2026 | Wyvian | A seção 3 é dividida por persona (Menina, Coordenadora, Sistema e curadoria), com cada RF numa só, pela regra "quem age". Não existe "base comum". | Seção 3 |
+| D-07 | 20/10/2026 | Wyvian | Os fluxos do Figma viram épicos; cada história é um objetivo da usuária e cita os RFs que cumpre. | Histórias, seção 8 |
+| D-08 | 20/10/2026 | Wyvian *(a confirmar)* | Sprints semanais de segunda a sexta: Sprint 0 de 20 a 23/10, Sprints 1 a 5 de funcionalidade, Sprint 6 de estabilização. | Seção 8 |
+| D-09 | 20/10/2026 | Wyvian | Testes automatizados no back-end para todo critério de aceite, gerados por agente e conferidos na revisão; testes de tela só nos caminhos principais (D-17). | Seção 9 |
+| D-10 | 20/10/2026 | Wyvian | Itens do Figma em revisão entram como estão, marcados "a validar". | Coluna Status |
 | D-15 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Todas as meninas recebem os e-mails de questionário, sem opção de recusar. A etapa 3 do cadastro só informa. | RF-F7.07, RF-F7.08, RF-F4.06, RN-30 |
 | D-16 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Os lembretes de datas importantes também são sempre enviados, e a menina é avisada numa tela nova, logo depois do aviso de questionários (a desenhar no Figma). | RF-F4.11a, RF-F7.10, RN-30 |
 | D-17 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Os testes de ponta a ponta usam Playwright e cobrem só os caminhos principais de cada épico. Substitui o "poucos ou nenhum teste de tela" da D-09. | Seção 9, D-09 |
