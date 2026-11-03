@@ -104,6 +104,10 @@ Não há meta de cobertura de testes, mas toda história tem testes de back para
 - 1 aprovação obrigatória de outra pessoa, que não seja quem abriu o PR. Configurar na proteção das branches `main` e `develop` do GitHub.
 - Toda mudança de modelo vem com a migração no mesmo PR.
 
+### Mudança depois de começar
+
+Quando o requisito ou o desenho muda depois que uma história foi feita ou já está em revisão, não reescreva a issue original. Abra uma issue nova com o label `type:change`, como filha do mesmo épico, com o título `Change: …` e a linha `Changes: #<issue original>`. Cite a decisão (D-xx) e liste o que muda no front e no back. Correção de texto que só alinha a issue ao documento de requisitos pode ser feita na própria issue.
+
 ## 8. Regras do domínio que valem para todo código
 
 - **Permissões no servidor:** uma coordenadora nunca vê ações nem meninas de outro grupo, nem por requisição direta (RNF-G.03).
