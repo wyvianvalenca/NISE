@@ -12,6 +12,7 @@ Versão: 0.2 (rascunho) · Data: 20/10/2026 · Status: em revisão
 | 0.1 | 07/10/2026 | Wyvian Valença | Criação do documento |
 | 0.1.1 | 09/10/2026 | Felipe Lira | Introdução |
 | 0.2 | 20/10/2026 | Claudinha (com Claude) | Revisão de RFs, RNFs e RNs pelo Figma e pelo doc vivo; nova numeração; rastreabilidade; registro de decisões |
+| 0.3 | 03/11/2026 | Wyvian Valença (com Claude) | Alinhamento com as histórias do épico 1: sem opt-out nos questionários, lembretes sempre enviados, E2E com Playwright, fim do login Microsoft, deduplicação, regra do convite e novas decisões D-15 a D-23 |
 
 ---
 
@@ -29,8 +30,10 @@ Origem  →  RF / RNF / RN  →  História de usuário  →  Sprint
 - **Para frente** ("isso vai ser feito? quando?"): a seção 8 mostra, para cada RF/RNF, as histórias que o cobrem e a sprint.
 
 Duas consequências práticas:
-- Uma tela ou task que não aponta para nenhum RF é **aumento de escopo**.
+- Uma tela do Figma que não aponta para nenhum RF, RN ou RNF precisa virar um deles ou sair do escopo. Enquanto isso, é **aumento de escopo**.
 - Um Must que não aponta para nenhuma história está **esquecido**.
+
+Onde cada coisa mora: o que a menina ou o sistema faz é RF; a política que vale para várias telas é RN; a qualidade que se pode medir é RNF. O detalhe que só afeta uma tela fica nos critérios de aceite da história.
 
 ### 0.2 Códigos de origem
 
@@ -83,10 +86,11 @@ Segue o Figma (D-01). Pendências que não travam o desenvolvimento, mas travam 
 | RF-F7.03 | O sistema deve mostrar, antes do aceite, um resumo do que é coletado e para quê, com o link para os termos completos. | Figma A04·1 | Menina | Must | Confirmado | Dado a etapa 1 de 3, quando Alana a lê, então vê "O que coletamos" e "Pra que usamos" e o link "Ler os termos completos". |
 | RF-F7.04 | O sistema deve mostrar a versão do resumo conforme a origem da menina: quem veio de evento lê que a liderança daquele grupo vê o filé, as respostas e as avaliações dela; quem chegou sozinha lê que os grupos cadastrados só vêem os números agregados. | Figma A04·1 (grupo e NISE), Doc vivo §7 | Menina | Must | Confirmado | Dado que Belana chegou sozinha, quando lê a etapa 1, então lê "Os grupos só veem números gerais, sem identificar você". |
 | RF-F7.05 (RF-07.06) | O sistema deve registrar cada aceite com data, hora e versão do termo, sem permitir edição. | F7, LGPD | Sistema | Must | Confirmado | Dado que Alana aceitou a versão 1, quando a equipe consulta o histórico, então encontra o registro com data, hora e versão. |
-| RF-F7.06 | O sistema deve perguntar, se a menina quer receber oportunidades por e-mail (no máximo 2 por mês). | Figma A04·2 | Menina | Should | Confirmado | Dado a etapa 2 de 3, quando Alana toca "Não, obrigada", então conclui o cadastro e não recebe e-mails de oportunidades. |
-| RF-F7.07 | O sistema deve informar que a menina será avisada sobre questionários via e-mail. | Figma A04·3 | Menina | Must | Confirmado | Dado a etapa 3 de 3, quando Alana finaliza, então passa a receber os avisos da F4 por e-mail. |
-| RF-F7.08 | O sistema deve permitir mudar a preferência definida na RF-F7.06 pelo perfil, a qualquer momento. | Figma A10, A04·2, A04·3 | Menina | Must | Confirmado | Dado que Alana aceitou o aviso, quando os desliga no perfil, então deixa de recebê-lo.|
+| RF-F7.06 | O sistema deve perguntar, se a menina quer receber oportunidades por e-mail (no máximo 2 por mês). | Figma A04·2 | Menina | Should | Confirmado | Dado a etapa 2 de 3, quando Alana toca "Não, obrigada", então segue para a etapa 3 de 3 e não recebe e-mails de oportunidades. |
+| RF-F7.07 | O sistema deve informar que a menina será avisada sobre questionários via e-mail, sem opção de recusar, e que responder é sempre opcional. | Figma A04·3, D-15 | Menina | Must | Confirmado | Dado a etapa 3 de 3, quando Alana segue, então passa a receber os avisos da F4 por e-mail, e a tela não oferece como recusá-los. |
+| RF-F7.08 | O sistema deve permitir mudar a preferência definida na RF-F7.06 pelo perfil, a qualquer momento. | Figma A10, A04·2 | Menina | Must | Confirmado | Dado que Alana aceitou o aviso, quando os desliga no perfil, então deixa de recebê-lo.|
 | RF-F7.09 (RF-07.09) | O sistema deve permitir que a menina peça, pelo perfil, a exclusão da conta e dos dados. | F7, LGPD art. 18 | Menina | Must | Confirmado | Dado que Ana pede a exclusão, quando confirma, então os dados identificáveis dela são apagados, ela sai do painel individual e das exportações seguintes, e o pedido fica registrado com data. |
+| RF-F7.10 | O sistema deve informar, numa tela logo depois do aviso de questionários (RF-F7.07), que a menina receberá por e-mail os lembretes das datas importantes (RF-F4.11a), sem opção de recusar. | D-16, Figma (tela nova, a desenhar) | Menina | Must | **A validar** | Dado que Alana viu o aviso de questionários, quando segue, então vê o aviso dos lembretes de datas importantes e, ao continuar, conclui o cadastro. *A tela ainda não existe no Figma. A numeração das etapas ("de 3") muda com ela.* |
 
 #### S2 · Cadastro e entrada (M1, M2, S2)
 
@@ -95,6 +99,7 @@ Segue o Figma (D-01). Pendências que não travam o desenvolvimento, mas travam 
 | RF-S2.02 | O sistema deve pedir data de nascimento e cidade logo depois do cadastro com Google. | Figma A02b | Menina | Must | Confirmado | Dado um cadastro pelo Google, quando Alana informa a data e a cidade, então segue para os termos (A04·1). |
 | RF-S2.03 | O sistema deve validar o e-mail no cadastro e mostrar como corrigi-lo. | Figma E01 | Sistema | Must | Confirmado | Dado "alana@gmail", quando Alana tenta continuar, então vê "Inclua o domínio, como nome@exemplo.com". |
 | RF-S2.05 | O sistema deve guardar o que a menina já preencheu se a conexão cair no cadastro. | Figma E04 | Sistema | Should | Confirmado | Dado que a conexão caiu no passo dos termos, quando Alana volta, então vê "Seu cadastro está salvo" e continua de onde parou. |
+| RF-S2.07 | O sistema deve mostrar, a quem entra pelo link de convite do grupo, o nome do grupo antes do cadastro, e levar à tela de boas-vindas se o convite for inválido ou vencido. | Figma A01b, RN-32, D-22 | Menina | Must | **A validar** | Dado o link do convite das Rendeiras, quando Alana o abre, então vê "Convite · Rendeiras" e o nome do grupo. Dado um código inválido, então vê a tela de boas-vindas. |
 
 Entrar e recuperar o acesso valem igual para menina e coordenadora e estão em 3.3 (Acesso).
 
@@ -102,7 +107,7 @@ Entrar e recuperar o acesso valem igual para menina e coordenadora e estão em 3
 
 | ID | Requisito | Origem | Perfil | Prior. | Status | Critério de aceite |
 | --- | --- | --- | --- | --- | --- | --- |
-| RF-F10.01 (RF-10.01) | O sistema deve pedir à menina, no cadastro, os temas de interesse (um ou mais, ou "Ainda não sei, me mostra de tudo") e a escolaridade, para todas as meninas. | F10, M1, M2, Figma A05, Doc vivo §6 | Menina | Must | Confirmado | Dado que Alana termina o cadastro, quando escolhe "Robótica" e "Ensino médio", então as escolhas ficam no perfil e o filé começa a ser tecido (E03). |
+| RF-F10.01 (RF-10.01) | O sistema deve pedir à menina, no cadastro, os temas de interesse (um ou mais, ou "Ainda não sei, me mostra de tudo") e a escolaridade, para todas as meninas, sem opção de pular. | F10, M1, M2, Figma A05, D-19, Doc vivo §6 | Menina | Must | Confirmado | Dado que Alana termina o cadastro, quando escolhe "Robótica" e "Ensino médio", então as escolhas ficam no perfil e o filé começa a ser tecido (E03). |
 | RF-F10.02 | O sistema deve explicar o que é o filé na primeira vez, e deixar a explicação acessível depois pelo ícone "?" ao lado de "Seu filé". | Figma A06·0, A06·3 | Menina | Should | Confirmado | Dado que Alana abre o filé pela primeira vez, quando chega ao início, então vê antes a tela "Por que filé?". Depois, o "?" leva de volta a ela. |
 | RF-F10.03 | O sistema deve organizar as sugestões em 5 faixas de esforço, mostrando quantas sugestões há em cada uma: Primeiros passos (até 15 min), Uma tarde (até 1 dia, sozinha), No meu ritmo (vários dias, sozinha), Rolê com a galera (até 1 dia, em grupo) e Grande desafio (em grupo, mais tempo). | Figma A06·1, decisão de 19/10 | Menina | Must | Confirmado | Dado que há 8 sugestões de "Uma tarde", quando Alana abre o início, então vê o cartão "Uma tarde" com "8 sugestões". |
 | RF-F10.04 (RF-10.06) | O sistema deve mostrar as sugestões de uma faixa, uma de cada vez, com as opções "Quero fazer" (entra no filé), "Talvez depois" (vai para Ver depois) e "Não é pra mim" (com motivo opcional). | Figma A06·2, 2a | Menina | Must | Confirmado | Dado uma sugestão, quando Alana toca "Não é pra mim" e escolhe "Muito difícil", então a sugestão some e o motivo fica registrado. |
@@ -131,8 +136,8 @@ Entrar e recuperar o acesso valem igual para menina e coordenadora e estão em 3
 | ID | Requisito | Origem | Perfil | Prior. | Status | Critério de aceite |
 | --- | --- | --- | --- | --- | --- | --- |
 | RF-F4.03a | O sistema deve pedir a avaliação do evento com nota de 1 a 5 e um comentário opcional. | F4, M1, Figma A03 | Menina | Must | Confirmado | Dado que Alana abre a avaliação, quando dá nota 4, então a avaliação fica registrada. |
-| RF-F4.03b | A menina deve poder pular a avaliação do evento. | F4, M1, Figma A03 | Menina | Must | Confirmado | Dado que Alana abre a avaliação, toca "Pular", então a avaliação não é registrada. |
-| RF-F4.11a (F9) | O sistema deve avisar a menina, por e-mail, das datas importantes (ENEM, IFAL, SISU, início do ano letivo), cadastradas pela equipe NISE. | D-05, Figma A14, A14b, Doc vivo §11 | Menina | Must | Confirmado | Dado que a equipe cadastrou "ENEM · 1º dia" em 08/11, quando chega a véspera, então Alana, com avisos ativos, recebe o lembrete.|
+| RF-F4.03b | A menina deve poder pular a avaliação do evento, que fica pendente. | F4, M1, Figma A03, D-20 | Menina | Must | Confirmado | Dado que Alana abre a avaliação, toca "Agora não", então a avaliação não é registrada e continua pendente, e ela pode abri-la de novo pela agenda (RF-F4.11b) ou pelo link do e-mail. |
+| RF-F4.11a (F9) | O sistema deve avisar a menina, por e-mail, das datas importantes (ENEM, IFAL, SISU, início do ano letivo), cadastradas pela equipe NISE. | D-05, Figma A14, A14b, Doc vivo §11 | Menina | Must | Confirmado | Dado que a equipe cadastrou "ENEM · 1º dia" em 08/11, quando chega a véspera, então Alana recebe o lembrete, como todas as meninas com conta (D-16).|
 | RF-F4.11b (F9) | O sistema deve mostrar as datas importantes num calendário dela junto com os questionários. | D-05, Figma A14, A14b, Doc vivo §11 | Menina | Should | Confirmado | Dado que a equipe cadastrou "ENEM · 1º dia" em 08/11, então o evento aparece no calendário para a menina. |
 | RF-F4.13 | O sistema deve mostrar à menina o questionário de acompanhamento identificado pela ação e pelo grupo, com as 4 perguntas padrão (caminho de 1 a 5, se começou curso de TI, o que ajudaria agora e um comentário opcional), que ela pode pular. | F4, M5, Figma A18 | Menina | Must | Confirmado | Dado o questionário de 3 meses do Hackathon Rendeiras, quando Alana abre o link, então vê as 4 perguntas e responde ou pula. |
 
@@ -319,7 +324,7 @@ Vale igual para menina e coordenadora.
 | --- | --- | --- | --- | --- | --- | --- |
 | RF-F4.01 (RF-01.02, RF-04.02) | O sistema deve enviar o convite para criar conta por e-mail só às presentes, depois que a coordenadora registra a presença, junto com a avaliação do evento. | F4, D-06, Figma K04, K11 concluída | Sistema | Must | Confirmado | Dado 17 presentes, 12 delas com e-mail válido, quando Kátia registra a presença, então as 12 recebem o e-mail com o convite e a avaliação, e as faltantes não recebem nada. |
 | RF-F4.02 | O sistema não deve enviar um novo convite a quem já tem conta. A nova participação é ligada ao cadastro dela, e ela recebe só a avaliação desse evento. | D-06, RN-29, Doc vivo §13 | Sistema | Must | **A validar** | Dado que Alana já tem conta e foi a uma ação de outro grupo, quando a presença é registrada, então ela recebe só a avaliação, e o histórico mostra as duas ações. |
-| RF-F4.06 (RF-04.03, RF-04.04) | O sistema deve enviar os questionários nas datas aprovadas, por e-mail e aviso no app, só para quem aceitou os avisos (RF-F7.07), sem nova ação da coordenadora. | F4, Figma K05e, A04·3 | Sistema | Must | Confirmado | Dado um calendário aprovado, quando chega a data do questionário de 3 meses, então as meninas com aviso ativo recebem o e-mail e o aviso. |
+| RF-F4.06 (RF-04.03, RF-04.04) | O sistema deve enviar os questionários nas datas aprovadas, por e-mail e aviso no app, para todas as meninas com conta (RF-F7.07, D-15), sem nova ação da coordenadora. | F4, Figma K05e, A04·3 | Sistema | Must | Confirmado | Dado um calendário aprovado, quando chega a data do questionário de 3 meses, então todas as meninas com conta recebem o e-mail e o aviso. |
 | RF-F4.07 (RF-04.06) | O sistema deve registrar as respostas ligadas à menina, à ação e à etapa (avaliação, 3 meses, 6 meses). | F4 | Sistema | Must | Confirmado | Dado que Alana responde o questionário de 3 meses, quando envia, então a resposta fica ligada à ação e à etapa "3 meses". |
 | RF-F4.08 | O sistema deve ter perguntas fechadas para interesse e ingresso (escala de 1 a 5, sim/ainda não, múltipla escolha) e só uma pergunta aberta opcional. | Figma K05e, A18, A11, pendência da v0.1 (RN-11) | Sistema | Must | **A validar** | Dado o questionário padrão, quando Kátia o revisa, então vê 3 perguntas fechadas e 1 aberta opcional. |
 
@@ -332,8 +337,8 @@ A própria equipe monta a curadoria (D-13).
 | ID | Requisito | Origem | Perfil | Prior. | Status | Critério de aceite |
 | --- | --- | --- | --- | --- | --- | --- |
 | RF-F11.01 (RF-11.01) | O sistema deve sugerir apenas itens das duas fontes do filé: ações cadastradas pelos grupos (F30) e itens da curadoria da equipe NISE. | F11, Doc vivo §6 | Sistema | Must | Confirmado | Dado que a base tem 50 itens, quando o filé de Ana é montado, então todos os itens sugeridos existem na base, nenhum inventado pela LLM. |
-| RF-F11.02 (RF-11.03) | O sistema deve montar as sugestões por regras (temas, momento de estudo, cidade e faixa de esforço) quando a LLM não estiver disponível. | F11, Doc vivo §6 ("O filé funciona sem a LLM") | Sistema | Must | Confirmado | Dado que a LLM não respondeu, quando Ana abre o filé, então vê sugestões por regras, sem mensagem de erro. |
-| RF-F11.03 (RF-11.02) | O sistema deve enviar à LLM apenas temas, momento de estudo, cidade, tags das ações de que a menina participou e as escolhas no filé, nunca nome, e-mail, telefone ou data de nascimento. | F11, LGPD | Sistema | Must | Confirmado | Dado um perfil completo, quando o sistema pede sugestões à LLM, então a requisição não tem nenhum identificador. |
+| RF-F11.02 (RF-11.03) | O sistema deve montar as sugestões por regras (temas, escolaridade, cidade e faixa de esforço) quando a LLM não estiver disponível. | F11, Doc vivo §6 ("O filé funciona sem a LLM") | Sistema | Must | Confirmado | Dado que a LLM não respondeu, quando Ana abre o filé, então vê sugestões por regras, sem mensagem de erro. |
+| RF-F11.03 (RF-11.02) | O sistema deve enviar à LLM apenas temas, escolaridade, cidade, tags das ações de que a menina participou e as escolhas no filé, nunca nome, e-mail, telefone ou data de nascimento. | F11, LGPD | Sistema | Must | Confirmado | Dado um perfil completo, quando o sistema pede sugestões à LLM, então a requisição não tem nenhum identificador. |
 | RF-F11.05 | O sistema deve usar as escolhas da menina ("Não é pra mim" com motivo, "Quero fazer", avaliação e "sugestões parecidas") nas próximas sugestões. | Figma A06·2a, A06·5 | Sistema | Should | Confirmado | Dado que Alana dispensou dois cursos como "Muito difícil", quando novas sugestões são montadas, então itens do mesmo nível ficam por último. |
 | RF-F11.07 (RF-11.06) | O sistema deve esconder das sugestões os itens vencidos. | F11 | Sistema | Must | Confirmado | Dado um evento que aconteceu ontem, quando o filé é montado hoje, então ele não aparece. |
 | RF-F11.06 (RF-11.05) | O sistema deve permitir que a curadoria cadastre, edite e desative itens, com tipo, faixa de esforço, tags, cidade, link, idade mínima, custo e validade. | F11, Doc vivo §6 | Curadoria | Must | **A validar** | Dado que a curadoria cadastra um curso com a tag "Robótica", quando salva, então o curso pode ser sugerido. *A própria equipe monta a curadoria (D-13). A tela ainda não existe no Figma; a montagem inicial da base entra como task da história do filé.* |
@@ -388,7 +393,7 @@ Políticas que valem para várias telas. Os RFs apontam para elas pelo ID.
 | --- | --- | --- | --- |
 | RN-01 | A liderança do grupo que convidou a menina vê os dados individuais dela (filé, respostas e avaliações) ligados às ações desse grupo. Outros grupos veem só números agregados. | Doc vivo §7, Figma A04·1, D-01 | RF-F2.04, RF-F7.04, RF-F5.05 |
 | RN-02 | Os questionários de acompanhamento saem 3 e 6 meses depois do evento, nas datas do calendário aprovado pela coordenadora. *A validar (C4).* | F4 | RF-F4.04, RF-F4.06 |
-| RN-03 | Menores de 13 anos não criam conta, e os dados preenchidos não são guardados. A partir dos 13, a menina aceita os termos sozinha. | D-01, Doc vivo §7, Figma A02c | RF-F7.01, RF-F7.02 |
+| RN-03 | Menores de 13 anos não criam conta, e os dados preenchidos não são guardados. A partir dos 13, a menina aceita os termos sozinha. A idade é calculada na data de hoje, no fuso de Maceió: quem faz 13 anos hoje já pode criar a conta. | D-01, D-23, Doc vivo §7, Figma A02c | RF-F7.01, RF-F7.02 |
 | RN-04 | Quem chegou sozinha aparece para os grupos sempre de forma anonimizada e agregada. Os grupos não sabem o nome dela nem o que ela tem no filé. | Doc vivo §7, Figma A04·1 (NISE) | RF-F7.04, RF-F16.02 |
 | RN-06 | Um valor agregado com menos de 5 meninas não é mostrado. Aparece como "dados insuficientes". | Figma K07, K09 | RF-F16.05, RF-F24.14 |
 | RN-07 | Só a coordenadora do grupo exporta dados. A exportação é sempre anonimizada, e cada uma fica registrada. Por padrão, inclui só o próprio grupo; toda a rede é a validar (D-03). | F24, LGPD, D-03 | RF-F24.06, RF-F24.07, RF-F24.13 |
@@ -403,8 +408,8 @@ Políticas que valem para várias telas. Os RFs apontam para elas pelo ID.
 | RN-23 | A lista oficial é usada só para o cruzamento. Linhas de quem não é usuária são descartadas, e modalidade de concorrência, nota e inscrição no ENEM nunca são guardadas. | F31, LGPD art. 11 | RF-F31.05 |
 | RN-24 | Só a curadoria importa listas oficiais, e ela vê só contagens, nunca quais meninas foram encontradas. | F31 | RF-F31.01 |
 | RN-25 | Entram só listas oficiais da UFAL, do IFAL ou da COPEVE, e só as linhas de cursos-alvo. | F31 | RF-F31.01, RF-F31.02 |
-| RN-29 *(nova)* | Cada menina recebe um único convite para criar conta. Novas participações são ligadas ao cadastro existente pelo e-mail. *A validar com a equipe (deduplicação, D-06).* | D-06, F2 | RF-F4.01, RF-F4.02, RF-F2.01 |
-| RN-30 *(nova)* | A menina só recebe e-mails de questionários, lembretes e oportunidades se tiver aceitado cada tipo, e pode desligar a qualquer momento. | Figma A04·2, A04·3, A10 | RF-F7.06 a RF-F7.08, RF-F4.06, RF-F4.11 |
+| RN-29 *(nova)* | Cada menina tem um único cadastro, não importa a quantos eventos ela vá nem de quantos grupos participe. Novas participações são ligadas ao cadastro existente pelo e-mail, cada grupo conta a menina uma vez, e ela recebe um único convite para criar conta. *A validar com a equipe: os casos de borda (e-mails diferentes, RF-F2.05).* | D-06, D-21, F2 | RF-F4.01, RF-F4.02, RF-F2.01, RF-F2.03 |
+| RN-30 *(nova)* | A menina sempre recebe os e-mails de questionários, de recuperação de acesso e de lembretes de datas importantes, e é avisada disso no cadastro, sem opção de recusar. Oportunidades e o lembrete de evento só são enviados se ela tiver aceitado cada tipo, e ela pode desligar a qualquer momento. | Figma A04·2, A04·3, A10, D-15, D-16 | RF-F7.06 a RF-F7.08, RF-F7.10, RF-F4.06, RF-F4.11a, RF-F4.12 |
 | RN-31 *(nova)* | Raça/cor, renda e deficiência não são coletadas nem mostradas. | D-04, seção 6 da v0.1 | RF-F1.13, RF-F5.08 |
 | RN-14 | Cada ação pertence a um único grupo. Só as coordenadoras desse grupo criam, editam, finalizam ou excluem a ação. | F30, P8 | RF-F30.01, RF-F30.11, RF-F30.12, RF-F1.10 |
 | RN-15 | Uma ação pode ser excluída, com confirmação, até a presença ser registrada; como a importação não cria contas, nada se perde além das inscrições daquela ação. Depois da presença, não pode ser excluída. | F30, nota no Figma (C2), D-12 | RF-F30.12 |
@@ -415,6 +420,9 @@ Políticas que valem para várias telas. Os RFs apontam para elas pelo ID.
 | RN-27 *(nova)* | A importação de inscritas nunca cria contas nem envia mensagens. | Figma K03 | RF-F1.11 |
 | RN-28 *(nova)* | O filé não tem barra de progresso nem comparação entre meninas. Concluir pinta o quadradinho; avaliar é sempre opcional. | Doc vivo §8 e §11 | RF-F10.07, RF-F10.09 |
 | RN-05 | As sugestões usam só itens das duas fontes do filé, e a LLM nunca recebe dados que identifiquem a menina. | F11 | RF-F11.01, RF-F11.03 |
+| RN-32 *(nova)* | O convite do grupo é um link com um código que identifica o grupo e, quando houver, o registro importado da menina. Quem se cadastra pelo link tem como origem esse grupo; quem se cadastra sem o link tem como origem "chegou sozinha". A origem é fixada no cadastro e define a versão do resumo dos termos (RF-F7.04). Código inválido ou vencido leva à tela de boas-vindas. *A validar: a validade do código e o caso de quem chegou sozinha e depois vai a uma ação de grupo (RN-01 e RN-04).* | D-22, Figma A01b | RF-S2.07, RF-F7.04, RF-F2.02, RF-F4.01 |
+| RN-33 *(nova)* | A senha tem no mínimo 8 caracteres, no cadastro e na recuperação de acesso, e é guardada só como hash. | D-23 | RF-S2.01, RF-S2.04 |
+| RN-34 *(nova)* | Enquanto a menina não aceitar a versão atual dos termos, ela só alcança a tela de termos: o filé e o perfil ficam bloqueados no servidor. | D-23 | RF-F7.02, RF-F7.05, RF-F10.02 |
 
 ---
 
@@ -435,6 +443,7 @@ Cada RNF tem um número, um limite ou um teste. As 6 linhas-modelo vazias da v0.
 | RNF-F11.01 (RNF-11.01) | Confiabilidade | Se a LLM não responder em até 10 segundos, o filé mostra as sugestões por regras, sem erro. | Simular a LLM fora do ar. | Must | RF-F11.02 |
 | RNF-F11.02 (RNF-11.02) | Segurança | As requisições à LLM não contêm identificadores. | Inspecionar as requisições em ambiente de teste com dados fictícios. | Must | RF-F11.03 |
 | RNF-G.04 | Custo | A hospedagem e a LLM usam apenas planos gratuitos ou créditos acadêmicos. | Conferir a fatura do mês: R$ 0. | Must | Restrição 2.3 |
+| RNF-G.05 | Segurança | O login limita as tentativas por e-mail e por IP (valor inicial: 5 a cada 15 minutos) e responde igual quando o e-mail existe e quando não existe. | Errar a senha 6 vezes seguidas em 15 minutos: a 6ª tentativa é bloqueada. Com um e-mail inexistente, a mensagem é a mesma. | Must | D-23, RF-S2.01 |
 | RNF-F7.01 (RNF-07.01) | Segurança | Um registro de aceite não pode ser editado nem apagado. Uma mudança só acontece com um novo registro. | Tentar alterar um aceite pela interface e por requisição direta: negado, histórico intacto. | Must | RF-F7.05 |
 | RNF-F7.02 (RNF-07.02) | Usabilidade | O resumo "Como usamos seus dados" é compreensível para uma estudante de 8º ano. | Teste com 3 meninas: as 3 explicam com as próprias palavras quem vê os dados delas. | Must | Figma A04·1 |
 | RNF-F4.01 (RNF-04.01) | Confiabilidade | Nunca há envio duplicado para a mesma menina, ação, etapa e canal. | Rodar o mesmo agendamento 3 vezes, inclusive em paralelo: um envio só por combinação. | Must | F4 |
@@ -512,7 +521,7 @@ Um requisito (RF ou RNF) só está pronto quando cumpre todos os critérios abai
 - O PR foi revisado e aprovado por outra pessoa da equipe antes de entrar na branch principal.
 - Cada critério de aceite do back-end tem um teste automatizado. Os testes podem ser gerados por agente, e quem revisa confere se cada critério tem o seu teste.
 - Os fluxos com risco têm testes de integração (API com banco de teste, sem simular cliques): importação, permissões e exportação.
-- Testes de ponta a ponta, que simulam cliques, ficam fora. O front-end é coberto por uma passada manual de visual, textos e celular, registrada como checklist no PR.
+- Testes de ponta a ponta, que simulam cliques, usam Playwright e cobrem só os caminhos principais de cada épico (uma tarefa "E2E" por épico, D-17). O restante do front-end é coberto por uma passada manual de visual, textos e celular, registrada como checklist no PR.
 - Os testes passam no CI do PR, e nenhum teste existente quebrou.
 - Não há senhas, chaves de API ou tokens no repositório.
 
@@ -552,5 +561,14 @@ Um requisito (RF ou RNF) só está pronto quando cumpre todos os critérios abai
 | D-14 | 20/10/2026 | Claudinha | A seção 3 é dividida por persona (Menina, Coordenadora, Sistema e curadoria), com cada RF numa só, pela regra "quem age". Não existe "base comum". | Seção 3 |
 | D-07 | 20/10/2026 | Claudinha | Os fluxos do Figma viram épicos; cada história é um objetivo da usuária e cita os RFs que cumpre. | Histórias, seção 8 |
 | D-08 | 20/10/2026 | Claudinha *(a confirmar)* | Sprints semanais de segunda a sexta: Sprint 0 de 20 a 23/10, Sprints 1 a 5 de funcionalidade, Sprint 6 de estabilização. | Seção 8 |
-| D-09 | 20/10/2026 | Claudinha | Testes automatizados no back-end para todo critério de aceite, gerados por agente e conferidos na revisão; poucos ou nenhum teste de tela. | Seção 9 |
+| D-09 | 20/10/2026 | Claudinha | Testes automatizados no back-end para todo critério de aceite, gerados por agente e conferidos na revisão; testes de tela só nos caminhos principais (D-17). | Seção 9 |
 | D-10 | 20/10/2026 | Claudinha | Itens do Figma em revisão entram como estão, marcados "a validar". | Coluna Status |
+| D-15 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Todas as meninas recebem os e-mails de questionário, sem opção de recusar. A etapa 3 do cadastro só informa. | RF-F7.07, RF-F7.08, RF-F4.06, RN-30 |
+| D-16 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Os lembretes de datas importantes também são sempre enviados, e a menina é avisada numa tela nova, logo depois do aviso de questionários (a desenhar no Figma). | RF-F4.11a, RF-F7.10, RN-30 |
+| D-17 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Os testes de ponta a ponta usam Playwright e cobrem só os caminhos principais de cada épico. Substitui o "poucos ou nenhum teste de tela" da D-09. | Seção 9, D-09 |
+| D-18 | 03/11/2026 | Wyvian *(a ratificar no PR)* | O login é só com Google e com e-mail e senha. O login com Microsoft sai. | RF-S2.01 |
+| D-19 | 03/11/2026 | Wyvian *(a ratificar no PR)* | A pergunta de interesses e escolaridade não tem "Pular por agora", em nenhum fluxo. A tela do Figma precisa ser atualizada. | RF-F10.01 |
+| D-20 | 03/11/2026 | Wyvian *(a ratificar no PR)* | A avaliação do evento é adiada com "Agora não" e pode ser aberta de novo pela agenda ("Sua agenda") e pelo link do e-mail. | RF-F4.03b, RF-F4.11b |
+| D-21 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Cada menina tem um único cadastro, qualquer que seja o número de eventos e de grupos, e cada grupo a conta uma vez. Os casos de borda seguem a validar. | RN-29, RF-F2.01, RF-F2.03 |
+| D-22 | 03/11/2026 | Wyvian *(a ratificar no PR)* | O convite do grupo é um link com código (RN-32), e a tela do convite (A01b) ganha um RF. | RN-32, RF-S2.07 |
+| D-23 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Detalhes que as histórias trazem e o doc não tinha entram como RN, RNF ou RF. Detalhe que só afeta uma tela fica nos critérios da história. | Seção 0.1, RN-03, RN-33, RN-34, RNF-G.05 |
