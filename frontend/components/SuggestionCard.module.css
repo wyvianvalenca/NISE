@@ -1,0 +1,65 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid var(--nise-border);
+  border-radius: 22px;
+  background: var(--nise-surface);
+  box-shadow: 0 8px 24px rgba(10, 59, 71, 0.1);
+  overflow: hidden;
+}
+
+/* Fundo quadriculado (malha do filé) exportado do Figma. */
+.visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  background: var(--nise-tealSoft) url(/malha.svg) left top / 420px 200px repeat-x;
+}
+
+.kind {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.iconTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 24px;
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px 22px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.source {
+  color: var(--nise-muted);
+  font-size: 14px;
+}

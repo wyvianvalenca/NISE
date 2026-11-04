@@ -1,0 +1,42 @@
+.modal {
+  width: min(480px, calc(100vw - 32px));
+  margin: auto;
+  padding: 28px;
+  border: none;
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  box-shadow: 0 16px 40px var(--nise-shadow);
+}
+
+.modal::backdrop {
+  background: var(--nise-veil);
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--nise-muted);
+  font-size: 15px;
+}
+
+/* Trechos em destaque no texto, como "23 inscritas". */
+.body strong {
+  color: var(--nise-ink);
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+}
