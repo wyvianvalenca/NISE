@@ -39,3 +39,13 @@ máquina:
 ```bash
 pnpm exec playwright install chromium
 ```
+
+## Créditos
+
+- Ícones em `public/icons/`: [Iconoir](https://iconoir.com) (MIT), exportados do
+  Figma.
+- Carinhas da avaliação do evento (`face-1.svg` a `face-5.svg`):
+  [Font Awesome Free](https://fontawesome.com) 6.6.0 por Fonticons, Inc.,
+  licença [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Os SVGs
+  foram copiados sem alteração no desenho; o comentário de licença dentro de
+  cada arquivo deve ser mantido.

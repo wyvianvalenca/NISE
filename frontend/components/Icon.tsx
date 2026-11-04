@@ -3,7 +3,7 @@ import styles from "./Icon.module.css";
 
 // Ícones exportados do Figma (Iconoir), em public/icons/.
 // As carinhas da avaliação (face-1 a face-5) são da Font Awesome Free (CC BY 4.0);
-// o crédito fica no comentário de licença dentro de cada SVG, que deve ser mantido.
+// o crédito está no frontend/README.md e no comentário de licença de cada SVG, que deve ser mantido.
 // O número é o tamanho original de cada SVG no Figma, em px.
 const ICON_SIZES = {
   home: 22,
