@@ -105,3 +105,11 @@ test("sem tema nem \"me mostra de tudo\" não dá pra seguir", async ({ page }) 
   await everything.click();
   await expect(start).toBeDisabled();
 });
+
+test("cada tema mostra o próprio ícone", async ({ page }) => {
+  await page.goto("/cadastro/interesses");
+  await expect(topic(page, "Programação")).toBeVisible();
+
+  const icons = await page.getByRole("group", { name: "Temas" }).locator("[style*='topic-']").count();
+  expect(icons).toBe(8);
+});

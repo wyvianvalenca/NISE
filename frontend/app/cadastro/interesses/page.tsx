@@ -19,6 +19,20 @@ import {
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
 
+// Ícone de cada tema. Quando os temas vierem do back, um código sem ícone aqui
+// usa o ícone genérico, em vez de quebrar a imagem.
+const TOPIC_ICONS: Record<string, IconName> = {
+  programacao: "topic-programacao",
+  robotica: "topic-robotica",
+  ia: "topic-ia",
+  dados: "topic-dados",
+  ciberseguranca: "topic-ciberseguranca",
+  jogos: "topic-jogos",
+  sites: "topic-sites",
+  design: "topic-design",
+};
+const DEFAULT_TOPIC_ICON: IconName = "sparkle";
+
 export default function InterestsPage() {
   const router = useRouter();
   const [options, setOptions] = useState<InterestOptions | null>(null);
@@ -81,7 +95,7 @@ export default function InterestsPage() {
         {options.topics.map((topic) => (
           <TopicToggle
             key={topic.code}
-            icon={`topic-${topic.code}` as IconName}
+            icon={TOPIC_ICONS[topic.code] ?? DEFAULT_TOPIC_ICON}
             label={topic.label}
             selected={topics.includes(topic.code)}
             onClick={() => toggleTopic(topic.code)}
