@@ -12,7 +12,7 @@ Versão: 0.2 (rascunho) · Data: 20/10/2026 · Status: em revisão
 | 0.1 | 07/10/2026 | Wyvian Valença | Criação do documento |
 | 0.1.1 | 09/10/2026 | Felipe Lira | Introdução |
 | 0.2 | 20/10/2026 | Wyvian Valença (com Claude) | Revisão de RFs, RNFs e RNs pelo Figma e pelo doc vivo; nova numeração; rastreabilidade; registro de decisões |
-| 0.3 | 03/11/2026 | Wyvian Valença (com Claude) | Alinhamento com as histórias do épico 1: sem opt-out nos questionários, lembretes sempre enviados, E2E com Playwright, fim do login Microsoft, deduplicação, regra do convite e novas decisões D-15 a D-23 |
+| 0.3 | 03/11/2026 | Wyvian Valença (com Claude) | Alinhamento com as histórias do épico 1: sem opt-out nos questionários, lembretes sempre enviados, E2E com Playwright, fim do login Microsoft, deduplicação, regra do convite e novas decisões D-15 a D-24 |
 
 ---
 
@@ -440,6 +440,7 @@ Cada RNF tem um número, um limite ou um teste. As 6 linhas-modelo vazias da v0.
 | RNF-F30.02 (RNF-30.03) | Confiabilidade | Mudar a data ou cancelar uma ação e atualizar os contatos pendentes acontecem na mesma operação. | Simular uma falha no meio e verificar que tudo ou nada foi aplicado. | Must | RN-15, RN-18 |
 | RNF-F30.03 (RNF-30.04) | Desempenho | Uma ação aberta nova aparece nas sugestões em até 1 minuto; uma ação finalizada ou cancelada some em até 1 minuto. | Medir em ambiente de teste. | Should | RN-16 |
 | RNF-F10.01 (RNF-10.01) | Desempenho | O filé carrega em até 3 segundos em 95% dos acessos, numa conexão 4G. | Navegador limitado a 4G, 20 acessos. | Should | Doc vivo §3 (Alana usa o celular) |
+| RNF-F10.02 | Desempenho | A tela Descobrir e as sugestões de cada faixa carregam em até 3 segundos em 95% dos acessos, numa conexão 4G. | Navegador limitado a 4G, 20 acessos à tela Descobrir e 20 à lista de sugestões de uma faixa. | Should | RNF-F10.01, Figma A06·1, A06·2, D-24 |
 | RNF-F11.01 (RNF-11.01) | Confiabilidade | Se a LLM não responder em até 10 segundos, o filé mostra as sugestões por regras, sem erro. | Simular a LLM fora do ar. | Must | RF-F11.02 |
 | RNF-F11.02 (RNF-11.02) | Segurança | As requisições à LLM não contêm identificadores. | Inspecionar as requisições em ambiente de teste com dados fictícios. | Must | RF-F11.03 |
 | RNF-G.04 | Custo | A hospedagem e a LLM usam apenas planos gratuitos ou créditos acadêmicos. | Conferir a fatura do mês: R$ 0. | Must | Restrição 2.3 |
@@ -571,3 +572,4 @@ Um requisito (RF ou RNF) só está pronto quando cumpre todos os critérios abai
 | D-21 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Cada menina tem um único cadastro, qualquer que seja o número de eventos e de grupos, e cada grupo a conta uma vez. Os casos de borda seguem a validar. | RN-29, RF-F2.01, RF-F2.03 |
 | D-22 | 03/11/2026 | Wyvian *(a ratificar no PR)* | O convite do grupo é um link com código (RN-32), e a tela do convite (A01b) ganha um RF. | RN-32, RF-S2.07 |
 | D-23 | 03/11/2026 | Wyvian *(a ratificar no PR)* | Detalhes que as histórias trazem e o doc não tinha entram como RN, RNF ou RF. Detalhe que só afeta uma tela fica nos critérios da história. | Seção 0.1, RN-03, RN-33, RN-34 |
+| D-24 | 04/11/2026 | Wyvian *(a ratificar no PR)* | A tela Descobrir e as sugestões também têm limite de tempo de carregamento, como o filé tem na RNF-F10.01. Nova RNF-F10.02. | RNF-F10.02, RNF-F10.01 |
