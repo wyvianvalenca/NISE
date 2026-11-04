@@ -176,6 +176,32 @@ test("cidade fora da lista do IBGE não passa (RN-17)", async ({ page }) => {
   await expect(page.getByText("Escolha uma cidade da lista.")).toBeVisible();
 });
 
+test("data impossível pede correção, sem mandar para a A02c", async ({
+  page,
+}) => {
+  await mockarApi(page);
+  await page.goto("/criar-conta");
+
+  // Ano trocado: 2090 em vez de 2009.
+  await preencherFormulario(page, { nascimento: "2090-03-16" });
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
+  await expect(page).toHaveURL(/\/criar-conta/);
+});
+
+test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => {
+  await mockarApi(page);
+  await page.route("**/api/auth/cadastro/email", (rota) => rota.abort());
+
+  await page.goto("/criar-conta");
+  await preencherFormulario(page);
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page.getByText("Não deu pra criar sua conta agora.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Criar conta" })).toBeEnabled();
+});
+
 test("com 13 anos, o cadastro segue para os termos", async ({ page }) => {
   await mockarApi(page);
   await page.goto("/criar-conta");

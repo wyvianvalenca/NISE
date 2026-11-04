@@ -4,18 +4,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/Button";
+import { CityField } from "@/components/CityField";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
 import { TextLink } from "@/components/TextLink";
 import {
-  buscarCidades,
   buscarConvite,
   criarContaComEmail,
   SENHA_MINIMA,
   type Cidade,
 } from "@/lib/cadastro";
 import { emailValido, ERRO_SEM_DOMINIO } from "@/lib/email";
-import { temIdadeMinima } from "@/lib/idade";
+import { checarIdade } from "@/lib/idade";
 import styles from "./page.module.css";
 
 type Erros = {
@@ -26,6 +26,8 @@ type Erros = {
   cidade?: string;
   geral?: string;
 };
+
+const ERRO_DE_REDE = "Não deu pra criar sua conta agora. Tente de novo.";
 
 /**
  * A02 "Crie sua conta" (Figma 511:505), issue #51.
@@ -43,7 +45,7 @@ function CriarConta() {
   const [senha, setSenha] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
   const [cidadeDigitada, setCidadeDigitada] = useState("");
-  const [cidades, setCidades] = useState<Cidade[]>([]);
+  const [cidade, setCidade] = useState<Cidade | null>(null);
   const [erros, setErros] = useState<Erros>({});
   const [enviando, setEnviando] = useState(false);
 
@@ -66,28 +68,6 @@ function CriarConta() {
     return () => controle.abort();
   }, [convite]);
 
-  // Municípios do IBGE enquanto ela digita (RN-17: nada de texto livre).
-  useEffect(() => {
-    const busca = cidadeDigitada.trim();
-    const controle = new AbortController();
-    const espera = setTimeout(() => {
-      if (busca.length < 2) {
-        setCidades([]);
-        return;
-      }
-      buscarCidades(busca, controle.signal)
-        .then(setCidades)
-        .catch(() => {
-          /* Sem lista, o envio avisa que a cidade precisa vir da lista. */
-        });
-    }, 250);
-
-    return () => {
-      clearTimeout(espera);
-      controle.abort();
-    };
-  }, [cidadeDigitada]);
-
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
 
@@ -104,18 +84,15 @@ function CriarConta() {
     if (!dataNascimento) {
       novos.dataNascimento = "Preencha sua data de nascimento.";
     }
-
-    const cidade = cidades.find((item) => item.nome === cidadeDigitada.trim());
     if (!cidade) {
       novos.cidade = "Escolha uma cidade da lista.";
     }
 
-    // A idade vem antes de tudo: se ela tem menos de 13, nada é enviado e
-    // nada fica guardado — nem rascunho, nem log (RN-03, RF-F7.01).
-    if (dataNascimento && !temIdadeMinima(dataNascimento)) {
-      setEnviando(true);
-      router.replace("/cadastro/idade-minima");
-      return;
+    // Data impossível (ano trocado, 30/02) não é o mesmo que ser nova demais:
+    // aqui ela corrige o campo em vez de ser mandada para a A02c.
+    const idade = dataNascimento ? checarIdade(dataNascimento) : null;
+    if (idade === "data_invalida") {
+      novos.dataNascimento = "Confira sua data de nascimento.";
     }
 
     setErros(novos);
@@ -123,44 +100,57 @@ function CriarConta() {
       return;
     }
 
-    setEnviando(true);
-    const resultado = await criarContaComEmail({
-      nome: nome.trim(),
-      email: email.trim(),
-      senha,
-      dataNascimento,
-      cidadeId: cidade.id,
-      convite,
-    });
-
-    if (resultado.ok) {
-      router.push("/cadastro/termos");
-      return;
-    }
-
-    if (resultado.motivo === "menor_de_13") {
+    // Menos de 13: nada do que ela preencheu sai da tela (RN-03, RF-F7.01).
+    if (idade === "menor_de_13") {
+      setEnviando(true);
       router.replace("/cadastro/idade-minima");
       return;
     }
 
-    setEnviando(false);
-    switch (resultado.motivo) {
-      case "conta_existente":
-        setErros({ email: "Já existe uma conta com esse e-mail." });
-        break;
-      case "email_invalido":
-        setErros({ email: ERRO_SEM_DOMINIO });
-        break;
-      case "senha_curta":
-        setErros({
-          senha: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`,
-        });
-        break;
-      case "cidade_invalida":
-        setErros({ cidade: "Escolha uma cidade da lista." });
-        break;
-      default:
-        setErros({ geral: "Não deu pra criar sua conta agora. Tente de novo." });
+    setEnviando(true);
+    try {
+      const resultado = await criarContaComEmail({
+        nome: nome.trim(),
+        email: email.trim(),
+        senha,
+        dataNascimento,
+        cidadeId: cidade.id,
+        convite,
+      });
+
+      if (resultado.ok) {
+        router.push("/cadastro/termos");
+        return;
+      }
+
+      if (resultado.motivo === "menor_de_13") {
+        router.replace("/cadastro/idade-minima");
+        return;
+      }
+
+      setEnviando(false);
+      switch (resultado.motivo) {
+        case "conta_existente":
+          setErros({ email: "Já existe uma conta com esse e-mail." });
+          break;
+        case "email_invalido":
+          setErros({ email: ERRO_SEM_DOMINIO });
+          break;
+        case "senha_curta":
+          setErros({
+            senha: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`,
+          });
+          break;
+        case "cidade_invalida":
+          setErros({ cidade: "Escolha uma cidade da lista." });
+          break;
+        default:
+          setErros({ geral: ERRO_DE_REDE });
+      }
+    } catch {
+      // Internet caiu no meio: libera o botão e explica, em vez de travar.
+      setEnviando(false);
+      setErros({ geral: ERRO_DE_REDE });
     }
   }
 
@@ -218,21 +208,12 @@ function CriarConta() {
             error={erros.dataNascimento}
             required
           />
-          <Field
-            label="Cidade"
-            list="cidades-ibge"
-            placeholder="Comece a digitar"
-            autoComplete="off"
+          <CityField
             value={cidadeDigitada}
-            onChange={(evento) => setCidadeDigitada(evento.target.value)}
+            onChange={setCidadeDigitada}
+            onSelect={setCidade}
             error={erros.cidade}
-            required
           />
-          <datalist id="cidades-ibge">
-            {cidades.map((cidade) => (
-              <option key={cidade.id} value={cidade.nome} />
-            ))}
-          </datalist>
 
           {erros.geral && (
             <p className={styles.erro} role="alert">
