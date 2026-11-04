@@ -48,3 +48,20 @@ test("a página dos termos mostra a versão atual", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Termos de uso e Política de privacidade" })).toBeVisible();
   await expect(page.getByText(/^Versão /)).toBeVisible();
 });
+
+test("marcar Li e concordo antes de a página carregar não se perde", async ({ page }) => {
+  // Atrasa o JavaScript, como num celular lento, para o clique vir antes da hidratação.
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto("/cadastro/termos", { waitUntil: "commit" });
+
+  const box = page.getByRole("checkbox", { name: /Li e concordo/ });
+  await box.click();
+
+  // O resumo dos termos só aparece depois que o React carrega.
+  await expect(page.getByText("A liderança do grupo")).toBeVisible({ timeout: 15000 });
+  await expect(box).toBeChecked();
+  await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
+});
