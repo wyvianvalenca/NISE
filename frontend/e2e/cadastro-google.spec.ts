@@ -77,7 +77,6 @@ async function mockarApi(page: Page, mocks: Mocks = {}) {
     rota.fulfill({ status: 204, body: "" }),
   );
 
-  // A tela de termos é da #53; aqui só confirmamos que o fluxo chega nela.
   await page.route("**/cadastro/termos", (rota) =>
     rota.fulfill({
       contentType: "text/html",
@@ -89,7 +88,6 @@ async function mockarApi(page: Page, mocks: Mocks = {}) {
 async function preencher(page: Page, dataNascimento: string, cidade: string) {
   await page.getByLabel("Data de nascimento").fill(dataNascimento);
   await page.getByLabel("Cidade").fill(cidade);
-  // Espera a lista do IBGE chegar antes de enviar.
   await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
 }
 
@@ -125,7 +123,6 @@ test("faltando um dia para os 13, vai para a A02c e descarta a sessão", async (
     return rota.fulfill({ status: 204, body: "" });
   });
 
-  // Se a idade passasse batido, o completar seria chamado — queremos que não.
   let completou = false;
   await page.route("**/api/auth/cadastro/completar", (rota) => {
     completou = true;
@@ -209,13 +206,11 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
   });
 
   await page.goto("/cadastro/google");
-  // Ano trocado: 2090 em vez de 2009. Não é ser nova demais, é erro de digitação.
   await preencher(page, "2090-03-16", "Maceió, AL");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
   await expect(page).toHaveURL(/\/cadastro\/google$/);
-  // A sessão do Google dela não pode ser jogada fora por causa de um typo.
   expect(descartou).toBe(false);
 });
 

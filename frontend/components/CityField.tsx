@@ -31,7 +31,6 @@ function comparavel(texto: string): string {
 export function CityField({ value, onChange, onSelect, error }: CityFieldProps) {
   const [cidades, setCidades] = useState<Cidade[]>([]);
 
-  // Busca enquanto ela digita, esperando ela parar um pouco.
   useEffect(() => {
     const busca = value.trim();
     const controle = new AbortController();
@@ -53,7 +52,6 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
     };
   }, [value]);
 
-  // Avisa a tela assim que o que ela digitou casa com um município.
   useEffect(() => {
     const alvo = comparavel(value);
     onSelect(cidades.find((cidade) => comparavel(cidade.nome) === alvo) ?? null);

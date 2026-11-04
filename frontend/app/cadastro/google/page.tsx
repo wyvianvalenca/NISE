@@ -57,7 +57,6 @@ export default function ContaGoogle() {
     try {
       await descartarCadastro();
     } catch {
-      // Mesmo sem conseguir avisar o servidor, ela não pode seguir adiante.
     }
     router.replace("/cadastro/idade-minima");
   }, [router]);
@@ -75,14 +74,11 @@ export default function ContaGoogle() {
 
     const idade = checarIdade(dataNascimento);
 
-    // Data impossível (ano trocado, 30/02) não é o mesmo que ser nova demais:
-    // aqui ela corrige o campo, sem perder a sessão do Google.
     if (idade === "data_invalida") {
       setErroData("Confira sua data de nascimento.");
       return;
     }
 
-    // Menos de 13: nada do que ela preencheu sai da tela (RN-03).
     if (idade === "menor_de_13") {
       setEnviando(true);
       await recusarPorIdade();
@@ -118,7 +114,6 @@ export default function ContaGoogle() {
         setErroGeral(ERRO_DE_REDE);
       }
     } catch {
-      // Internet caiu no meio: libera o botão e explica, em vez de travar.
       setEnviando(false);
       setErroGeral(ERRO_DE_REDE);
     }
@@ -145,7 +140,6 @@ export default function ContaGoogle() {
     );
   }
 
-  // Sem sessão do Google não há o que completar: ela recomeça por aqui mesmo.
   if (conta === "nenhuma") {
     return (
       <div className={styles.screen}>
