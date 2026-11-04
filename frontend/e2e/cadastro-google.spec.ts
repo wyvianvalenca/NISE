@@ -197,6 +197,54 @@ test("'Usar outra conta' descarta a sessão e volta ao Google", async ({
   expect(descartou).toBe(true);
 });
 
+test("data impossível pede correção, sem mandar para a A02c", async ({
+  page,
+}) => {
+  await mockarApi(page);
+
+  let descartou = false;
+  await page.route("**/api/auth/cadastro/descartar", (rota) => {
+    descartou = true;
+    return rota.fulfill({ status: 204, body: "" });
+  });
+
+  await page.goto("/cadastro/google");
+  // Ano trocado: 2090 em vez de 2009. Não é ser nova demais, é erro de digitação.
+  await preencher(page, "2090-03-16", "Maceió, AL");
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro\/google$/);
+  // A sessão do Google dela não pode ser jogada fora por causa de um typo.
+  expect(descartou).toBe(false);
+});
+
+test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => {
+  await mockarApi(page);
+  await page.route("**/api/auth/cadastro/completar", (rota) => rota.abort());
+
+  await page.goto("/cadastro/google");
+  await preencher(page, fazTrezeHoje(), "Maceió, AL");
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page.getByText("Não deu pra concluir agora.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Concluir cadastro" }),
+  ).toBeEnabled();
+});
+
+test("cidade escrita sem acento e em minúscula também vale", async ({
+  page,
+}) => {
+  await mockarApi(page);
+  await page.goto("/cadastro/google");
+
+  await preencher(page, fazTrezeHoje(), "maceio, al");
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+});
+
 test("sem sessão do Google, oferece entrar de novo", async ({ page }) => {
   await mockarApi(page, { pendente: null });
   await page.goto("/cadastro/google");

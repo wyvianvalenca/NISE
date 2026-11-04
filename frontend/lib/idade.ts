@@ -67,11 +67,24 @@ export function idadeEm(
   return anoHoje - anoNasceu - (aindaNaoFezAniversario ? 1 : 0);
 }
 
-/** `true` só quando a data é válida e ela já tem 13 anos (RN-03). */
-export function temIdadeMinima(
+/**
+ * O que fazer com a data que ela digitou.
+ *
+ * São três respostas, e não duas, de propósito: um booleano juntaria "data
+ * errada" com "menor de 13", e quem digitasse 2090 no lugar de 2009 seria
+ * mandada para a A02c como se fosse criança — perdendo a sessão no caminho.
+ */
+export type ChecagemIdade = "ok" | "menor_de_13" | "data_invalida";
+
+/** Decide entre seguir, barrar por idade (RN-03) ou pedir a data de novo. */
+export function checarIdade(
   nascimento: string,
   referencia: string = hojeEmMaceio(),
-): boolean {
+): ChecagemIdade {
   const idade = idadeEm(nascimento, referencia);
-  return idade !== null && idade >= IDADE_MINIMA;
+
+  if (idade === null) {
+    return "data_invalida";
+  }
+  return idade >= IDADE_MINIMA ? "ok" : "menor_de_13";
 }
