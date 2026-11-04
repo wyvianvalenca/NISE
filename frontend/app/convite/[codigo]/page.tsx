@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Suspense, use, useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { Button } from "@/components/Button";
+import { LinkButton } from "@/components/Button";
 import { FileIllustration } from "@/components/FileIllustration";
 import { TextLink } from "@/components/TextLink";
 import { buscarConvite, type Convite } from "@/lib/cadastro";
@@ -88,14 +88,12 @@ function Conteudo({ params }: { params: Params }) {
 
       <div className={styles.spacer} />
 
-      <Button
+      <LinkButton
+        href={`/criar-conta?convite=${encodeURIComponent(codigo)}`}
         className={styles.fullWidth}
-        onClick={() =>
-          router.push(`/criar-conta?convite=${encodeURIComponent(codigo)}`)
-        }
       >
         Aceitar convite e criar conta
-      </Button>
+      </LinkButton>
     </main>
   );
 }

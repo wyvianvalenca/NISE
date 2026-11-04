@@ -1,8 +1,5 @@
-"use client";
-
-import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
-import { Button } from "@/components/Button";
+import { LinkButton } from "@/components/Button";
 import { FileIllustration } from "@/components/FileIllustration";
 import { TextLink } from "@/components/TextLink";
 import styles from "./page.module.css";
@@ -10,10 +7,11 @@ import styles from "./page.module.css";
 /**
  * A01 "Boas-vindas" (Figma 511:15325): a porta de entrada de quem chega
  * sozinha, sem convite de grupo (fluxo M2, issue #51).
+ *
+ * Fica no servidor: não há estado nem busca aqui, e "Criar conta" é
+ * navegação, então é link e não botão com `router.push`.
  */
 export default function Home() {
-  const router = useRouter();
-
   return (
     <div className={styles.page}>
       <AppHeader>
@@ -33,12 +31,9 @@ export default function Home() {
 
         <div className={styles.spacer} />
 
-        <Button
-          className={styles.fullWidth}
-          onClick={() => router.push("/criar-conta")}
-        >
+        <LinkButton href="/criar-conta" className={styles.fullWidth}>
           Criar conta
-        </Button>
+        </LinkButton>
       </main>
     </div>
   );

@@ -128,15 +128,19 @@ export async function descartarCadastro(): Promise<void> {
 /** Tamanho mínimo da senha, checado de novo no servidor. */
 export const SENHA_MINIMA = 8;
 
-/** O que o convite de um grupo devolve para montar a A01b. */
+/**
+ * O que o convite de um grupo devolve para montar a A01b.
+ *
+ * Só o nome do grupo, de propósito. A descrição da #51 previa devolver aqui
+ * o e-mail do registro importado, para preencher o campo — mas esta rota é
+ * pública, e código de convite adivinhado viraria uma forma de colher e-mail
+ * de menina menor de idade. A ligação com o registro importado acontece no
+ * servidor, pelo e-mail que ela mesma digitar (RF-F2.02, RN-29), sem a rota
+ * pública precisar expor nada. A decidir com a #68 antes do back ser escrito.
+ */
 export type Convite = {
   /** Nome do grupo, como aparece no chip e no texto ("Rendeiras"). */
   grupoNome: string;
-  /**
-   * E-mail que já veio numa planilha importada por esse grupo, quando houver.
-   * A tela preenche o campo para ela não criar conta duplicada (RF-F2.02, RN-29).
-   */
-  emailImportado?: string;
 };
 
 export type DadosCadastroEmail = {

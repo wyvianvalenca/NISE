@@ -1,19 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/Button";
 import { CityField } from "@/components/CityField";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
 import { TextLink } from "@/components/TextLink";
-import {
-  buscarConvite,
-  criarContaComEmail,
-  SENHA_MINIMA,
-  type Cidade,
-} from "@/lib/cadastro";
+import { criarContaComEmail, SENHA_MINIMA, type Cidade } from "@/lib/cadastro";
 import { emailValido, ERRO_SEM_DOMINIO } from "@/lib/email";
 import { checarIdade } from "@/lib/idade";
 import styles from "./page.module.css";
@@ -36,9 +31,10 @@ const ERRO_DE_REDE = "Não deu pra criar sua conta agora. Tente de novo.";
  * O código do convite segue junto para o servidor, porque é ele que decide a
  * origem da conta e, mais adiante, o texto dos termos (RN-29, H3).
  *
- * Quando o grupo já importou o e-mail dela numa planilha, o campo chega
- * preenchido, para a conta ativar aquele registro em vez de criar outro
- * (RF-F2.02).
+ * O e-mail não vem preenchido pelo convite: a rota do convite é pública, e
+ * devolver o e-mail do registro importado ali deixaria qualquer código
+ * adivinhado colher e-mail de menina menor de idade. Quem liga a conta ao
+ * registro importado é o servidor, pelo e-mail que ela digitar (RF-F2.02).
  */
 function CriarConta() {
   const router = useRouter();
@@ -52,23 +48,6 @@ function CriarConta() {
   const [cidade, setCidade] = useState<Cidade | null>(null);
   const [erros, setErros] = useState<Erros>({});
   const [enviando, setEnviando] = useState(false);
-
-  useEffect(() => {
-    if (!convite) return;
-    const controle = new AbortController();
-
-    buscarConvite(convite, controle.signal)
-      .then((dados) => {
-        if (!controle.signal.aborted && dados?.emailImportado) {
-          setEmail(dados.emailImportado);
-        }
-      })
-      .catch(() => {
-        /* Sem o convite, o cadastro segue como se ela tivesse vindo sozinha. */
-      });
-
-    return () => controle.abort();
-  }, [convite]);
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();

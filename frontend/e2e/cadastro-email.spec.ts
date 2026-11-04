@@ -50,7 +50,7 @@ function fazTrezeAmanha() {
 }
 
 type Mocks = {
-  convite?: typeof CONVITE & { emailImportado?: string };
+  convite?: typeof CONVITE;
   conviteStatus?: number;
   cadastro?: { status: number; corpo?: unknown };
 };
@@ -101,7 +101,7 @@ test("A01: a home mostra as boas-vindas sem grupo", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText(/Convite ·/)).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Criar conta" }).click();
+  await page.getByRole("link", { name: "Criar conta" }).click();
   await expect(page).toHaveURL(/\/criar-conta$/);
 });
 
@@ -117,7 +117,7 @@ test("A01b: o convite mostra o nome do grupo e leva o código adiante", async ({
   ).toBeVisible();
 
   await page
-    .getByRole("button", { name: "Aceitar convite e criar conta" })
+    .getByRole("link", { name: "Aceitar convite e criar conta" })
     .click();
   await expect(page).toHaveURL(/\/criar-conta\?convite=rendeiras-2026$/);
 });
@@ -256,17 +256,22 @@ test("e-mail que já tem conta avisa sem criar outra", async ({ page }) => {
   await expect(page).toHaveURL(/\/criar-conta/);
 });
 
-test("e-mail vindo de importação já vem preenchido (RF-F2.02)", async ({
+test("a rota pública do convite não devolve e-mail de ninguém", async ({
   page,
 }) => {
-  await mockarApi(page, {
-    convite: { ...CONVITE, emailImportado: "alana.importada@exemplo.com" },
+  let resposta: unknown;
+  await page.route("**/api/convites/**", async (rota) => {
+    await rota.fulfill({ json: CONVITE });
   });
-  await page.goto("/criar-conta?convite=rendeiras-2026");
+  page.on("response", async (r) => {
+    if (r.url().includes("/api/convites/")) resposta = await r.json();
+  });
 
-  await expect(page.getByLabel("E-mail")).toHaveValue(
-    "alana.importada@exemplo.com",
-  );
+  await page.goto("/convite/rendeiras-2026");
+  await expect(page.getByText("Convite · Rendeiras")).toBeVisible();
+
+  expect(JSON.stringify(resposta ?? {})).not.toContain("@");
+  await expect(page.getByLabel("E-mail")).toHaveCount(0);
 });
 
 test("o código do convite segue no envio, para a origem sair certa (RN-29)", async ({
