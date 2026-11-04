@@ -160,12 +160,12 @@ export type Option = { code: string; label: string };
 export type InterestOptions = { topics: Option[]; stages: Option[] };
 
 export type InterestsChoice = {
-  /** Códigos dos temas; vazio quando ela escolhe "me mostra de tudo" ou pula. */
+  /** Códigos dos temas; vazio quando ela escolhe "me mostra de tudo". */
   topics: string[];
   /** "Ainda não sei, me mostra de tudo". Não vem junto com temas. */
   everything: boolean;
-  /** Código da etapa de estudo; null quando ela pula (M2). */
-  stage: string | null;
+  /** Código da etapa de estudo. */
+  stage: string;
 };
 
 // No back, estas listas virão de uma rota, para o front e as sugestões usarem os mesmos códigos.
@@ -194,15 +194,9 @@ export async function getInterestOptions(): Promise<InterestOptions> {
   return INTEREST_OPTIONS;
 }
 
-/** Fluxo da menina: M1 (convite de grupo) ou M2 (chegou sozinha). Decide o "Pular por agora". */
-export async function getOrigin(): Promise<Origin> {
-  return mockOrigin();
-}
-
 /**
- * Salva temas e etapa no perfil (#56). Recusa códigos fora das listas e
- * "me mostra de tudo" junto com temas. Pular (M2) salva sem temas nem etapa,
- * e as sugestões tratam como "me mostra de tudo".
+ * Salva temas e etapa no perfil (#56). Recusa códigos fora das listas,
+ * "me mostra de tudo" junto com temas e perfil sem temas (não há pular, D-19 / #76).
  */
 export async function saveInterests(choice: InterestsChoice): Promise<void> {
   const topicCodes = INTEREST_OPTIONS.topics.map((topic) => topic.code);
@@ -210,7 +204,10 @@ export async function saveInterests(choice: InterestsChoice): Promise<void> {
   if (choice.topics.some((code) => !topicCodes.includes(code))) {
     throw new Error("Tema desconhecido.");
   }
-  if (choice.stage !== null && !stageCodes.includes(choice.stage)) {
+  if (choice.topics.length === 0 && !choice.everything) {
+    throw new Error("Escolha pelo menos um tema ou \"me mostra de tudo\".");
+  }
+  if (!stageCodes.includes(choice.stage)) {
     throw new Error("Etapa de estudo desconhecida.");
   }
   if (choice.everything && choice.topics.length > 0) {

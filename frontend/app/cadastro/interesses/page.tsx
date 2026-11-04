@@ -1,7 +1,7 @@
 "use client";
 
 // A05 · O que te interessa? Última tela do cadastro, antes de "Por que filé?".
-// Atende RF-F10.01 (issue #56).
+// Atende RF-F10.01 (issues #56 e #76).
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,12 +11,10 @@ import type { IconName } from "@/components/Icon";
 import { TopicToggle } from "@/components/TopicToggle";
 import {
   getInterestOptions,
-  getOrigin,
   saveInterests,
   SIGNUP_PATHS,
   type InterestOptions,
   type InterestsChoice,
-  type Origin,
 } from "@/lib/signup";
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
@@ -24,7 +22,6 @@ import styles from "./page.module.css";
 export default function InterestsPage() {
   const router = useRouter();
   const [options, setOptions] = useState<InterestOptions | null>(null);
-  const [origin, setOrigin] = useState<Origin | null>(null);
   const [topics, setTopics] = useState<string[]>([]);
   const [everything, setEverything] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
@@ -33,10 +30,8 @@ export default function InterestsPage() {
 
   useEffect(() => {
     let current = true;
-    Promise.all([getInterestOptions(), getOrigin()]).then(([lists, from]) => {
-      if (!current) return;
-      setOptions(lists);
-      setOrigin(from);
+    getInterestOptions().then((lists) => {
+      if (current) setOptions(lists);
     });
     return () => {
       current = false;
@@ -66,7 +61,7 @@ export default function InterestsPage() {
     }
   }
 
-  if (!options || !origin) {
+  if (!options) {
     return (
       <p className={shared.status} aria-live="polite">
         Carregando…
@@ -74,6 +69,7 @@ export default function InterestsPage() {
     );
   }
 
+  // Não há "Pular por agora" (D-19): ela escolhe um tema ou "me mostra de tudo", e a etapa.
   const canStart = (topics.length > 0 || everything) && stage !== null;
 
   return (
@@ -119,21 +115,10 @@ export default function InterestsPage() {
           className={shared.fullWidth}
           disabled={!canStart}
           loading={saving}
-          onClick={() => save({ topics, everything, stage })}
+          onClick={() => stage && save({ topics, everything, stage })}
         >
           Começar meu filé
         </Button>
-        {/* "Pular por agora" só existe no M2 (a confirmar com o design se a diferença é de propósito). */}
-        {origin.kind === "self" && (
-          <button
-            type="button"
-            className={styles.skip}
-            disabled={saving}
-            onClick={() => save({ topics: [], everything: false, stage: null })}
-          >
-            Pular por agora
-          </button>
-        )}
       </div>
       {error && (
         <p className={shared.error} role="alert">

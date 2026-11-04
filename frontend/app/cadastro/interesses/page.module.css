@@ -41,18 +41,3 @@
   margin-top: 1px;
 }
 
-.skip {
-  min-height: 44px;
-  border: none;
-  border-radius: var(--radius-8);
-  background: none;
-  color: var(--nise-teal);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.skip:hover {
-  text-decoration: underline;
-}

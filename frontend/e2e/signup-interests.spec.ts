@@ -81,21 +81,27 @@ test("me mostra de tudo salva sem temas", async ({ page }) => {
   expect(await savedInterests(page)).toEqual({ topics: [], everything: true, stage: "tecnico" });
 });
 
-test("no M1 não tem Pular por agora", async ({ page }) => {
+test("não tem Pular por agora, nem no M1 nem no M2", async ({ page }) => {
   await page.goto("/cadastro/interesses");
-
   await expect(topic(page, "Começar meu filé")).toBeVisible();
   await expect(page.getByRole("button", { name: "Pular por agora" })).toHaveCount(0);
-});
 
-test("no M2, Pular por agora salva o perfil sem temas e segue", async ({ page }) => {
   await page.addInitScript(() => {
     globalThis.__NISE_MOCK__ = { origin: "self" };
   });
   await page.goto("/cadastro/interesses");
+  await expect(topic(page, "Começar meu filé")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pular por agora" })).toHaveCount(0);
+});
 
-  await page.getByRole("button", { name: "Pular por agora" }).click();
+test("sem tema nem \"me mostra de tudo\" não dá pra seguir", async ({ page }) => {
+  await page.goto("/cadastro/interesses");
+  const start = page.getByRole("button", { name: "Começar meu filé" });
+  const everything = topic(page, "Ainda não sei, me mostra de tudo");
 
-  await expect(page).toHaveURL(/\/file$/);
-  expect(await savedInterests(page)).toEqual({ topics: [], everything: false, stage: null });
+  await topic(page, "Graduação").click();
+  await everything.click();
+  await expect(start).toBeEnabled();
+  await everything.click();
+  await expect(start).toBeDisabled();
 });
