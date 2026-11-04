@@ -71,7 +71,6 @@ async function mockarApi(page: Page, mocks: Mocks = {}) {
     }),
   );
 
-  // Telas de outras histórias; aqui só confirmamos que o fluxo chega nelas.
   await page.route("**/cadastro/termos", (rota) =>
     rota.fulfill({
       contentType: "text/html",
@@ -182,7 +181,6 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
   await mockarApi(page);
   await page.goto("/criar-conta");
 
-  // Ano trocado: 2090 em vez de 2009.
   await preencherFormulario(page, { nascimento: "2090-03-16" });
   await page.getByRole("button", { name: "Criar conta" }).click();
 
@@ -228,7 +226,6 @@ test("faltando um dia para os 13, vai para a A02c sem enviar nada", async ({
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/idade-minima$/);
-  // RN-03: nada do que ela preencheu pode sair da tela.
   expect(enviou).toBe(false);
 });
 

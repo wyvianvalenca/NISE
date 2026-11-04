@@ -49,7 +49,6 @@ function Conteudo({ params }: { params: Params }) {
     buscarConvite(codigo, controle.signal)
       .then((dados) => {
         if (controle.signal.aborted) return;
-        // Convite inválido ou vencido: ela segue pela porta sem grupo.
         if (dados) setConvite(dados);
         else router.replace("/");
       })

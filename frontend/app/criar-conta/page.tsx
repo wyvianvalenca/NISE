@@ -35,6 +35,10 @@ const ERRO_DE_REDE = "Não deu pra criar sua conta agora. Tente de novo.";
  * Serve aos dois fluxos: com convite (M1, `?convite=<codigo>`) e sem (M2).
  * O código do convite segue junto para o servidor, porque é ele que decide a
  * origem da conta e, mais adiante, o texto dos termos (RN-29, H3).
+ *
+ * Quando o grupo já importou o e-mail dela numa planilha, o campo chega
+ * preenchido, para a conta ativar aquele registro em vez de criar outro
+ * (RF-F2.02).
  */
 function CriarConta() {
   const router = useRouter();
@@ -49,8 +53,6 @@ function CriarConta() {
   const [erros, setErros] = useState<Erros>({});
   const [enviando, setEnviando] = useState(false);
 
-  // Se o grupo já importou o e-mail dela numa planilha, o campo vem pronto,
-  // para a conta ativar aquele registro em vez de criar outro (RF-F2.02).
   useEffect(() => {
     if (!convite) return;
     const controle = new AbortController();
@@ -88,8 +90,6 @@ function CriarConta() {
       novos.cidade = "Escolha uma cidade da lista.";
     }
 
-    // Data impossível (ano trocado, 30/02) não é o mesmo que ser nova demais:
-    // aqui ela corrige o campo em vez de ser mandada para a A02c.
     const idade = dataNascimento ? checarIdade(dataNascimento) : null;
     if (idade === "data_invalida") {
       novos.dataNascimento = "Confira sua data de nascimento.";
@@ -100,7 +100,6 @@ function CriarConta() {
       return;
     }
 
-    // Menos de 13: nada do que ela preencheu sai da tela (RN-03, RF-F7.01).
     if (idade === "menor_de_13") {
       setEnviando(true);
       router.replace("/cadastro/idade-minima");
@@ -148,7 +147,6 @@ function CriarConta() {
           setErros({ geral: ERRO_DE_REDE });
       }
     } catch {
-      // Internet caiu no meio: libera o botão e explica, em vez de travar.
       setEnviando(false);
       setErros({ geral: ERRO_DE_REDE });
     }
@@ -230,9 +228,11 @@ function CriarConta() {
   );
 }
 
+/**
+ * Envelope da A02. O `useSearchParams` lá dentro só pode rodar sob um limite
+ * de Suspense; sem ele, a página inteira deixa de ser gerada estaticamente.
+ */
 export default function CriarContaPage() {
-  // useSearchParams precisa de um limite de Suspense para a página poder
-  // ser gerada estaticamente.
   return (
     <Suspense>
       <CriarConta />
