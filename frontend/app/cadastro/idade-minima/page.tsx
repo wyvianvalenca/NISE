@@ -13,11 +13,15 @@ export const metadata: Metadata = {
  *
  * A tela não recebe nem mostra nada que ela preencheu: quem manda para cá já
  * descartou a sessão incompleta, e nada do que veio do Google fica guardado.
+ *
+ * O símbolo de 84px é colorido, então entra como imagem; o `Icon` viraria
+ * máscara e perderia as cores. O espaço vazio no fim é o nó "Ações / A02c" do
+ * Figma, que reserva 48px e não tem conteúdo nas versões M1 nem M2 — fica
+ * assim até a equipe decidir o que entra ali.
  */
 export default function IdadeMinima() {
   return (
     <div className={styles.screen}>
-      {/* Símbolo grande: é colorido, então é imagem, não o Icon (que vira máscara). */}
       <Image
         className={styles.simbolo}
         src="/icons/simbolo-nise-lg.svg"
@@ -40,9 +44,6 @@ export default function IdadeMinima() {
         <p className={styles.item}>Não guardamos os dados que você preencheu.</p>
       </div>
 
-      {/* O Figma reserva 48px de ações aqui (nó "Ações / A02c") e deixa o
-          espaço vazio nas duas versões, M1 e M2. Mantido como está até a
-          equipe decidir o que entra. */}
       <div className={styles.acoes} />
     </div>
   );

@@ -42,7 +42,6 @@ export function urlInicioGoogle(
     busca.set("convite", opcoes.convite);
   }
   if (opcoes.trocarConta) {
-    // Faz o Google abrir o seletor de contas em vez de repetir a última.
     busca.set("trocar_conta", "1");
   }
 
@@ -98,7 +97,6 @@ export async function completarCadastro(dados: {
     return { ok: true, proximoPasso: "termos" };
   }
 
-  // O servidor refaz a regra de idade e a checagem da cidade (RNF-G.03).
   if (resposta.status === 422) {
     const corpo = (await resposta.json().catch(() => null)) as {
       erro?: string;
