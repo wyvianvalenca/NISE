@@ -1,26 +1,26 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
-import { Avatar } from "@/components/Avatar";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { AccountCard } from "@/components/AccountCard";
 import { Button } from "@/components/Button";
+import { CityField } from "@/components/CityField";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
 import {
   buscarCadastroPendente,
-  buscarCidades,
   completarCadastro,
   descartarCadastro,
   urlInicioGoogle,
   type CadastroPendente,
   type Cidade,
 } from "@/lib/cadastro";
-import { temIdadeMinima } from "@/lib/idade";
-import comum from "../cadastro.module.css";
+import { checarIdade } from "@/lib/idade";
 import styles from "./page.module.css";
 
 type Conta = CadastroPendente | "carregando" | "nenhuma";
+
+const ERRO_DE_REDE = "Não deu pra concluir agora. Tente de novo.";
 
 /**
  * A02b "Só mais um passo" (#52): depois de autorizar o Google, ela confirma
@@ -32,7 +32,7 @@ export default function ContaGoogle() {
   const [conta, setConta] = useState<Conta>("carregando");
   const [dataNascimento, setDataNascimento] = useState("");
   const [cidadeDigitada, setCidadeDigitada] = useState("");
-  const [cidades, setCidades] = useState<Cidade[]>([]);
+  const [cidade, setCidade] = useState<Cidade | null>(null);
   const [erroData, setErroData] = useState<string>();
   const [erroCidade, setErroCidade] = useState<string>();
   const [erroGeral, setErroGeral] = useState<string>();
@@ -43,44 +43,24 @@ export default function ContaGoogle() {
 
     buscarCadastroPendente(controle.signal)
       .then((pendente) => setConta(pendente ?? "nenhuma"))
-      .catch((erro: unknown) => {
+      .catch(() => {
         if (!controle.signal.aborted) {
           setConta("nenhuma");
-          void erro;
         }
       });
 
     return () => controle.abort();
   }, []);
 
-  // Busca os municípios enquanto ela digita, esperando ela parar um pouco.
-  useEffect(() => {
-    const busca = cidadeDigitada.trim();
-    const controle = new AbortController();
-    const espera = setTimeout(() => {
-      if (busca.length < 2) {
-        setCidades([]);
-        return;
-      }
-
-      buscarCidades(busca, controle.signal)
-        .then(setCidades)
-        .catch(() => {
-          /* Sem lista, o envio avisa que a cidade precisa vir da lista. */
-        });
-    }, 250);
-
-    return () => {
-      clearTimeout(espera);
-      controle.abort();
-    };
-  }, [cidadeDigitada]);
-
   /** Descarta a sessão incompleta e manda para a A02c (RN-03). */
-  async function recusarPorIdade() {
-    await descartarCadastro();
+  const recusarPorIdade = useCallback(async () => {
+    try {
+      await descartarCadastro();
+    } catch {
+      // Mesmo sem conseguir avisar o servidor, ela não pode seguir adiante.
+    }
     router.replace("/cadastro/idade-minima");
-  }
+  }, [router]);
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -93,52 +73,74 @@ export default function ContaGoogle() {
       return;
     }
 
-    // Antes de mandar: se ela tem menos de 13, nada sai da tela (RN-03).
-    if (!temIdadeMinima(dataNascimento)) {
+    const idade = checarIdade(dataNascimento);
+
+    // Data impossível (ano trocado, 30/02) não é o mesmo que ser nova demais:
+    // aqui ela corrige o campo, sem perder a sessão do Google.
+    if (idade === "data_invalida") {
+      setErroData("Confira sua data de nascimento.");
+      return;
+    }
+
+    // Menos de 13: nada do que ela preencheu sai da tela (RN-03).
+    if (idade === "menor_de_13") {
       setEnviando(true);
       await recusarPorIdade();
       return;
     }
 
-    const cidade = cidades.find((item) => item.nome === cidadeDigitada.trim());
     if (!cidade) {
       setErroCidade("Escolha uma cidade da lista.");
       return;
     }
 
     setEnviando(true);
-    const resultado = await completarCadastro({
-      dataNascimento,
-      cidadeId: cidade.id,
-    });
+    try {
+      const resultado = await completarCadastro({
+        dataNascimento,
+        cidadeId: cidade.id,
+      });
 
-    if (resultado.ok) {
-      router.push("/cadastro/termos");
-      return;
-    }
+      if (resultado.ok) {
+        router.push("/cadastro/termos");
+        return;
+      }
 
-    if (resultado.motivo === "menor_de_13") {
-      await recusarPorIdade();
-      return;
-    }
+      if (resultado.motivo === "menor_de_13") {
+        await recusarPorIdade();
+        return;
+      }
 
-    setEnviando(false);
-    if (resultado.motivo === "cidade_invalida") {
-      setErroCidade("Escolha uma cidade da lista.");
-    } else {
-      setErroGeral("Não deu pra concluir agora. Tente de novo.");
+      setEnviando(false);
+      if (resultado.motivo === "cidade_invalida") {
+        setErroCidade("Escolha uma cidade da lista.");
+      } else {
+        setErroGeral(ERRO_DE_REDE);
+      }
+    } catch {
+      // Internet caiu no meio: libera o botão e explica, em vez de travar.
+      setEnviando(false);
+      setErroGeral(ERRO_DE_REDE);
     }
   }
 
   async function usarOutraConta() {
-    await descartarCadastro();
+    setErroGeral(undefined);
+    setEnviando(true);
+    try {
+      await descartarCadastro();
+    } catch {
+      setEnviando(false);
+      setErroGeral(ERRO_DE_REDE);
+      return;
+    }
     window.location.href = urlInicioGoogle({ trocarConta: true });
   }
 
   if (conta === "carregando") {
     return (
-      <div className={comum.screen}>
-        <p className={comum.status}>Carregando...</p>
+      <div className={styles.screen}>
+        <p className={styles.status}>Carregando...</p>
       </div>
     );
   }
@@ -146,14 +148,14 @@ export default function ContaGoogle() {
   // Sem sessão do Google não há o que completar: ela recomeça por aqui mesmo.
   if (conta === "nenhuma") {
     return (
-      <div className={comum.screen}>
+      <div className={styles.screen}>
         <h1 className={styles.title}>Vamos de novo?</h1>
-        <p className={comum.lead}>
+        <p className={styles.lead}>
           Sua conta do Google não ficou conectada. Entre de novo para continuar
           o cadastro.
         </p>
-        <div className={comum.spacer} />
-        <div className={comum.actions}>
+        <div className={styles.spacer} />
+        <div className={styles.actions}>
           <GoogleButton label="Entrar com o Google" />
         </div>
       </div>
@@ -161,26 +163,15 @@ export default function ContaGoogle() {
   }
 
   return (
-    <form className={comum.screen} onSubmit={enviar} noValidate>
+    <form className={styles.screen} onSubmit={enviar} noValidate>
       <h1 className={styles.title}>Só mais um passo</h1>
-      <p className={comum.lead}>
+      <p className={styles.lead}>
         Com sua data de nascimento e cidade, mostramos oportunidades certas para
         você.
       </p>
 
       <div className={styles.card}>
-        <Avatar name={conta.nome} />
-        <span className={styles.identidade}>
-          <span className={styles.nome}>{conta.nome}</span>
-          <span className={styles.email}>{conta.email}</span>
-        </span>
-        <Image
-          src="/icons/google.svg"
-          alt="Conta do Google"
-          width={20}
-          height={20}
-          unoptimized
-        />
+        <AccountCard name={conta.nome} email={conta.email} provider="google" />
       </div>
 
       <div className={styles.campos}>
@@ -192,34 +183,30 @@ export default function ContaGoogle() {
           error={erroData}
           required
         />
-        <Field
-          label="Cidade"
-          list="cidades-ibge"
-          placeholder="Comece a digitar"
-          autoComplete="off"
+        <CityField
           value={cidadeDigitada}
-          onChange={(evento) => setCidadeDigitada(evento.target.value)}
+          onChange={setCidadeDigitada}
+          onSelect={setCidade}
           error={erroCidade}
-          required
         />
-        <datalist id="cidades-ibge">
-          {cidades.map((cidade) => (
-            <option key={cidade.id} value={cidade.nome} />
-          ))}
-        </datalist>
       </div>
 
-      {erroGeral && <p className={comum.error}>{erroGeral}</p>}
+      {erroGeral && (
+        <p className={styles.erro} role="alert">
+          {erroGeral}
+        </p>
+      )}
 
-      <div className={comum.spacer} />
+      <div className={styles.spacer} />
 
-      <div className={comum.actions}>
-        <Button type="submit" loading={enviando} className={comum.fullWidth}>
+      <div className={styles.actions}>
+        <Button type="submit" loading={enviando} className={styles.fullWidth}>
           Concluir cadastro
         </Button>
         <button
           type="button"
           className={styles.outraConta}
+          disabled={enviando}
           onClick={usarOutraConta}
         >
           Usar outra conta

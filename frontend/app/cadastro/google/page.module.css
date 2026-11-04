@@ -1,4 +1,14 @@
-/* A02b "Só mais um passo" (Figma 511:550). */
+/* A02b "Só mais um passo" (Figma 511:550).
+ *
+ * As medidas de moldura ficam aqui, e não no cadastro.module.css do #61, para
+ * esta tela não disputar aquele arquivo com os PRs #62 a #65.
+ */
+
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
 
 .title {
   margin-top: 18px;
@@ -7,42 +17,14 @@
   font-weight: 700;
 }
 
-/* Cartão com a conta que veio do Google. */
-.card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-  padding: 12px 16px;
-  border: 1px solid var(--nise-border);
-  border-radius: var(--radius-16);
-  background: var(--nise-surface);
-}
-
-.identidade {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.nome,
-.email {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nome {
-  color: var(--nise-ink);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.email {
+.lead {
+  margin-top: 8px;
   color: var(--nise-muted);
-  font-size: 12px;
+  font-size: 16px;
+}
+
+.card {
+  margin-top: 24px;
 }
 
 .campos {
@@ -50,6 +32,34 @@
   flex-direction: column;
   gap: 16px;
   margin-top: 24px;
+}
+
+.erro {
+  margin-top: 10px;
+  color: var(--nise-pink);
+  font-size: 14px;
+}
+
+.status {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+/* Empurra os botões para o fim da tela, como no Figma. */
+.spacer {
+  flex: 1;
+  min-height: 24px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.fullWidth {
+  width: 100%;
 }
 
 .outraConta {
@@ -61,4 +71,9 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.outraConta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

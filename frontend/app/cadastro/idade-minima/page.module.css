@@ -1,4 +1,14 @@
-/* A02c "Ainda não dá (menos de 13)" (Figma 511:593). */
+/* A02c "Ainda não dá (menos de 13)" (Figma 511:593).
+ *
+ * As medidas de moldura ficam aqui, e não no cadastro.module.css do #61, para
+ * esta tela não disputar aquele arquivo com os PRs #62 a #65.
+ */
+
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
 
 .simbolo {
   margin-top: 36px;
@@ -26,6 +36,13 @@
   border: 1px solid var(--nise-border);
   border-radius: var(--radius-16);
   background: var(--nise-surface);
+}
+
+/* O Icon herda a cor do texto; no Figma este check é teal. */
+.check {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--nise-teal);
 }
 
 .item {

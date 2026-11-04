@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import comum from "../cadastro.module.css";
+import { Icon } from "@/components/Icon";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
  */
 export default function IdadeMinima() {
   return (
-    <div className={comum.screen}>
+    <div className={styles.screen}>
+      {/* Símbolo grande: é colorido, então é imagem, não o Icon (que vira máscara). */}
       <Image
         className={styles.simbolo}
         src="/icons/simbolo-nise-lg.svg"
@@ -33,7 +34,9 @@ export default function IdadeMinima() {
       </p>
 
       <div className={styles.lista}>
-        <Image src="/icons/check.svg" alt="" width={16} height={16} unoptimized />
+        <span className={styles.check}>
+          <Icon name="check" />
+        </span>
         <p className={styles.item}>Não guardamos os dados que você preencheu.</p>
       </div>
 
