@@ -1,29 +1,40 @@
 "use client";
 
-import { useEffect, useRef, type ChangeEvent, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, type ChangeEvent, type InputHTMLAttributes, type ReactNode } from "react";
 import styles from "./Checkbox.module.css";
 
-type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
+/**
+ * As caixas são não controladas: quem guarda se está marcada é o próprio input,
+ * não o React. Por isso não aceitam `checked`; use `defaultChecked` para o valor
+ * inicial e `onCheckedChange` para saber quando muda.
+ *
+ * Motivo: num celular lento a menina pode marcar a caixa antes de o React
+ * terminar de carregar (hidratação). Com `checked`, o React volta a caixa para
+ * o valor do estado e o clique some sem aviso (review do #61).
+ */
+type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "checked"> & {
+  onCheckedChange?: (checked: boolean) => void;
+};
 
 /**
- * Num celular lento, a menina pode marcar a caixa antes de o React carregar.
- * Quando a caixa é controlada (`checked`), o React desfaz esse clique sem aviso.
- * Ao montar, se a caixa na tela já difere de `checked`, avisamos o `onChange`
- * para a tela guardar o clique que ela já deu.
+ * Avisa `onCheckedChange` a cada mudança e, ao montar, também quando a caixa
+ * já mudou antes da hidratação (o input na tela difere do HTML que veio do servidor).
  */
-function useKeepClickBeforeHydration(checked: InputProps["checked"], onChange: InputProps["onChange"]) {
+function useCheckedChange(onChange: InputProps["onChange"], onCheckedChange: InputProps["onCheckedChange"]) {
   const ref = useRef<HTMLInputElement>(null);
-  const firstRender = useRef({ checked, onChange });
+  const report = useEffectEvent((checked: boolean) => onCheckedChange?.(checked));
 
   useEffect(() => {
     const input = ref.current;
-    const { checked, onChange } = firstRender.current;
-    if (input && checked !== undefined && onChange && input.checked !== checked) {
-      onChange({ target: input, currentTarget: input } as ChangeEvent<HTMLInputElement>);
-    }
+    if (input && input.checked !== input.defaultChecked) report(input.checked);
   }, []);
 
-  return ref;
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    onChange?.(event);
+    onCheckedChange?.(event.target.checked);
+  }
+
+  return { ref, onChange: handleChange };
 }
 
 type CheckboxProps = InputProps & {
@@ -36,11 +47,11 @@ type CheckboxProps = InputProps & {
 };
 
 /** Caixa de marcar (Figma: Checkbox, Checkbox marcado, Participante / ...). */
-export function Checkbox({ children, variant = "plain", className, ...rest }: CheckboxProps) {
-  const ref = useKeepClickBeforeHydration(rest.checked, rest.onChange);
+export function Checkbox({ children, variant = "plain", className, onChange, onCheckedChange, ...rest }: CheckboxProps) {
+  const input = useCheckedChange(onChange, onCheckedChange);
   return (
     <label className={[styles.option, styles[variant], className].filter(Boolean).join(" ")}>
-      <input {...rest} ref={ref} type="checkbox" className={styles.box} />
+      <input {...rest} {...input} type="checkbox" className={styles.box} />
       <span className={styles.label}>{children}</span>
     </label>
   );
@@ -55,11 +66,11 @@ type RadioCardProps = InputProps & {
  * Opção grande de escolha única (Figma: Opção / Feed, Opção / Story).
  * Use o mesmo `name` em todas as opções do grupo.
  */
-export function RadioCard({ title, description, className, ...rest }: RadioCardProps) {
-  const ref = useKeepClickBeforeHydration(rest.checked, rest.onChange);
+export function RadioCard({ title, description, className, onChange, onCheckedChange, ...rest }: RadioCardProps) {
+  const input = useCheckedChange(onChange, onCheckedChange);
   return (
     <label className={[styles.option, styles.card, className].filter(Boolean).join(" ")}>
-      <input {...rest} ref={ref} type="radio" className={styles.radio} />
+      <input {...rest} {...input} type="radio" className={styles.radio} />
       <span className={styles.texts}>
         <span className={styles.title}>{title}</span>
         {description && <span className={styles.description}>{description}</span>}
