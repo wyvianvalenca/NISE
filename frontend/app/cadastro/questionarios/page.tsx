@@ -11,7 +11,7 @@ import { Icon } from "@/components/Icon";
 import { IconList } from "@/components/IconList";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
-import { confirmQuestionnaireNotice, SIGNUP_PATHS } from "@/lib/signup";
+import { confirmQuestionnaireNotice, pathAfterConsent, SIGNUP_PATHS } from "@/lib/signup";
 import styles from "../cadastro.module.css";
 
 export default function QuestionnairesPage() {
@@ -24,7 +24,8 @@ export default function QuestionnairesPage() {
     setError(null);
     try {
       await confirmQuestionnaireNotice();
-      router.push(SIGNUP_PATHS.interests);
+      // M1 vai para a avaliação do evento; M2 vai direto para os interesses.
+      router.push(await pathAfterConsent());
     } catch {
       setError("Não deu pra salvar. Tente de novo.");
       setSaving(false);

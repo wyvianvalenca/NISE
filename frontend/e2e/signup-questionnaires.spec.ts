@@ -44,7 +44,8 @@ test("terminar a Etapa 3 conclui o consentimento", async ({ page }) => {
 
   await page.getByRole("button", { name: "Entendi, continuar" }).click();
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  // No M1 a próxima tela é a avaliação do evento (#58).
+  await expect(page).toHaveURL(/\/cadastro\/avaliacao$/);
   const state = await savedState(page);
   expect(state.consentCompleted).toBe(true);
   expect(state.questionnaireNoticeSeenAt).toBeTruthy();
