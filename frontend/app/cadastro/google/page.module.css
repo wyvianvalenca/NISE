@@ -1,0 +1,79 @@
+/* A02b "Só mais um passo" (Figma 511:550).
+ *
+ * As medidas de moldura ficam aqui, e não no cadastro.module.css do #61, para
+ * esta tela não disputar aquele arquivo com os PRs #62 a #65.
+ */
+
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.title {
+  margin-top: 18px;
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 8px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.card {
+  margin-top: 24px;
+}
+
+.campos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.erro {
+  margin-top: 10px;
+  color: var(--nise-pink);
+  font-size: 14px;
+}
+
+.status {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+/* Empurra os botões para o fim da tela, como no Figma. */
+.spacer {
+  flex: 1;
+  min-height: 24px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.outraConta {
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.outraConta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
