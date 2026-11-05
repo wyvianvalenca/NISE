@@ -95,7 +95,12 @@ export default function TermsPage() {
 
       <div className={styles.spacer} />
 
-      <Checkbox checked={agreed} onChange={(event) => setAgreed(event.target.checked)}>
+      {/*
+        Só libera depois que o resumo carrega: ela precisa ler quem vê os dados dela (RN-01, RN-04)
+        antes de concordar. Isso também evita perder o toque: o resumo empurra a caixa para baixo
+        quando aparece, e um toque dado nesse instante cairia fora dela.
+      */}
+      <Checkbox disabled={!summary} onCheckedChange={setAgreed}>
         Li e concordo com os{" "}
         <a href="/termos#uso" target="_blank" rel="noopener noreferrer">
           Termos de uso

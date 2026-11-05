@@ -49,19 +49,35 @@ test("a página dos termos mostra a versão atual", async ({ page }) => {
   await expect(page.getByText(/^Versão /)).toBeVisible();
 });
 
-test("marcar Li e concordo antes de a página carregar não se perde", async ({ page }) => {
-  // Atrasa o JavaScript, como num celular lento, para o clique vir antes da hidratação.
+test("Li e concordo só libera depois que o resumo dos termos aparece", async ({ page }) => {
+  // Atrasa o JavaScript, como num celular lento.
   await page.route("**/_next/static/**/*.js", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue();
   });
   await page.goto("/cadastro/termos", { waitUntil: "commit" });
 
+  // Já vem desabilitada no HTML do servidor, antes de o React carregar.
   const box = page.getByRole("checkbox", { name: /Li e concordo/ });
-  await box.click();
+  await expect(box).toBeDisabled();
 
-  // O resumo dos termos só aparece depois que o React carrega.
   await expect(page.getByText("A liderança do grupo")).toBeVisible({ timeout: 15000 });
+  await expect(box).toBeEnabled();
+  await box.click();
   await expect(box).toBeChecked();
   await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
+});
+
+test("marcar Li e concordo logo que a página abre não se perde", async ({ page }) => {
+  // Sem atrasar o JavaScript: o clique vem logo depois do goto, enquanto a página
+  // ainda hidrata e o resumo carrega. Um só clique pode escapar dessa janela, então repetimos.
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    await page.goto("/cadastro/termos");
+
+    const box = page.getByRole("checkbox", { name: /Li e concordo/ });
+    await box.click();
+
+    await expect(box, `tentativa ${attempt}`).toBeChecked();
+    await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
+  }
 });
