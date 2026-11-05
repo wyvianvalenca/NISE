@@ -24,5 +24,10 @@ class AppSettings(BaseSettings):
 
     password_reset_expire_minutes: int = 60
 
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    # Tem que ser idêntico ao cadastrado no console do Google:
+    google_redirect_uri: str = "http://localhost:3000/api/auth/google/callback"
+
 
 settings = AppSettings()
