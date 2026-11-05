@@ -1,0 +1,79 @@
+/* Estilos que as telas do cadastro (A03, A04, A05) usam em comum. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.title {
+  margin-top: 18px;
+  color: var(--nise-ink);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 8px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.sectionTitle {
+  margin: 14px 0 8px;
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.linkRow {
+  margin-top: 4px;
+}
+
+/* Empurra os botões para o fim da tela, como no Figma. */
+.spacer {
+  flex: 1;
+  min-height: 24px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.footnote {
+  margin-top: 10px;
+  color: var(--nise-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Quadrado verde com ícone grande (A04·2, A04·3). */
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  margin-top: 28px;
+  border-radius: 20px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+}
+
+.status {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.error {
+  margin-top: 10px;
+  color: var(--nise-pink);
+  font-size: 14px;
+}

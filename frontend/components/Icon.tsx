@@ -17,6 +17,8 @@ const ICON_SIZES = {
   left: 16,
   "chevron-down": 16,
   "chevron-right": 18,
+  "arrow-right": 16,
+  external: 14,
   check: 16,
   search: 16,
   sparkle: 16,
