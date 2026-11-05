@@ -30,6 +30,7 @@ const ICON_SIZES = {
   x: 20,
   code: 13,
   "code-lg": 44,
+  mail: 34,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;

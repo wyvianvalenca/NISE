@@ -30,6 +30,30 @@
   margin-top: 4px;
 }
 
+/* "Etapa anterior" acima da barra de progresso (A04·2, A04·3). */
+.backRow {
+  margin: -12px 0 0;
+}
+
+/* Título depois do quadrado com ícone: o espaço vem do próprio quadrado. */
+.titleLoose {
+  margin-top: 20px;
+  color: var(--nise-ink);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.block {
+  margin-top: 20px;
+}
+
+/* O botão secundário do Figma, nas telas do cadastro, tem 48px como o principal. */
+.fullWidthTall {
+  width: 100%;
+  height: 48px;
+  font-size: 14px;
+}
+
 /* Empurra os botões para o fim da tela, como no Figma. */
 .spacer {
   flex: 1;

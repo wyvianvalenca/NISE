@@ -27,18 +27,42 @@ export const SIGNUP_PATHS = {
 
 const TERMS_VERSION = "0.1-rascunho";
 
-// Os testes e2e escolhem o fluxo (M1 ou M2) definindo esta variável antes da página abrir.
+// Os testes e2e escolhem o fluxo (M1 ou M2) definindo __NISE_MOCK__ antes da página abrir.
 declare global {
   var __NISE_MOCK__: { origin?: "group" | "self" } | undefined;
 }
 
+// O estado de teste fica no sessionStorage: aguenta recarregar a página no meio
+// do cadastro e deixa os testes conferirem o que foi salvo.
+const STORAGE_KEY = "nise-mock-signup";
+
 type MockState = {
   acceptedVersion: string | null;
+  /** null enquanto ela não respondeu a Etapa 2. */
+  opportunityEmails: boolean | null;
 };
 
-const state: MockState = {
+const EMPTY_STATE: MockState = {
   acceptedVersion: null,
+  opportunityEmails: null,
 };
+
+function readState(): MockState {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    return saved ? { ...EMPTY_STATE, ...JSON.parse(saved) } : { ...EMPTY_STATE };
+  } catch {
+    return { ...EMPTY_STATE };
+  }
+}
+
+function saveState(changes: Partial<MockState>) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readState(), ...changes }));
+  } catch {
+    // Sem sessionStorage (aba anônima bloqueada): os dados de teste só não ficam salvos.
+  }
+}
 
 function mockOrigin(): Origin {
   return globalThis.__NISE_MOCK__?.origin === "self"
@@ -59,9 +83,17 @@ export async function acceptTerms(version: string): Promise<void> {
   if (version !== TERMS_VERSION) {
     throw new Error("Os termos mudaram. Recarregue a página para ler a versão nova.");
   }
-  if (!state.acceptedVersion) {
-    state.acceptedVersion = version;
+  if (!readState().acceptedVersion) {
+    saveState({ acceptedVersion: version });
   }
+}
+
+/**
+ * Liga ou desliga "oportunidades por e-mail" (#55). Só guarda a preferência;
+ * o envio desses e-mails não faz parte desta história.
+ */
+export async function setOpportunityEmails(enabled: boolean): Promise<void> {
+  saveState({ opportunityEmails: enabled });
 }
 
 /** Versão atual dos termos, para a página "Ler os termos completos". */
