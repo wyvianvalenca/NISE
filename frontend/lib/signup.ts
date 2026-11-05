@@ -40,11 +40,17 @@ type MockState = {
   acceptedVersion: string | null;
   /** null enquanto ela não respondeu a Etapa 2. */
   opportunityEmails: boolean | null;
+  /** Quando ela viu o aviso dos questionários (Etapa 3), como prova de que foi informada. */
+  questionnaireNoticeSeenAt: string | null;
+  /** As Etapas 1 a 3 do consentimento terminaram; o front não mostra elas de novo. */
+  consentCompleted: boolean;
 };
 
 const EMPTY_STATE: MockState = {
   acceptedVersion: null,
   opportunityEmails: null,
+  questionnaireNoticeSeenAt: null,
+  consentCompleted: false,
 };
 
 function readState(): MockState {
@@ -94,6 +100,14 @@ export async function acceptTerms(version: string): Promise<void> {
  */
 export async function setOpportunityEmails(enabled: boolean): Promise<void> {
   saveState({ opportunityEmails: enabled });
+}
+
+/**
+ * Registra que ela viu o aviso dos questionários e conclui o consentimento (#54).
+ * Os e-mails de questionário não dependem de preferência: toda menina com conta recebe.
+ */
+export async function confirmQuestionnaireNotice(): Promise<void> {
+  saveState({ questionnaireNoticeSeenAt: new Date().toISOString(), consentCompleted: true });
 }
 
 /** Versão atual dos termos, para a página "Ler os termos completos". */
