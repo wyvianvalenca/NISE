@@ -105,3 +105,13 @@
   color: var(--nise-muted);
   font-size: 12px;
 }
+
+/* Desabilitada, como enquanto a tela ainda carrega: fica apagada, igual ao Button. */
+.option:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.option input:disabled {
+  cursor: not-allowed;
+}
