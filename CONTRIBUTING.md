@@ -40,14 +40,64 @@ nise/
 
 ## 3. Rodando localmente
 
-Pré-requisitos: Git, Docker, uv e pnpm
+Pré-requisitos: Git, Docker Desktop (aberto), uv e pnpm.
 
-1. Copie as variáveis: `cp .env.example .env`
+```
+navegador ──► localhost:3000 (front) ──/api/*──► localhost:8000 (back) ──► localhost:5432 (Postgres)
+```
+
+O front repassa tudo que começa com `/api` para o back (`rewrites` no `frontend/next.config.ts`).
+
+### 3.1. Primeira vez
+
+1. Copie as variáveis: `cp .env.example .env` (PowerShell: `Copy-Item .env.example .env`)
 1. Instale os hooks (uma vez por máquina): `uv tool install pre-commit` e `pre-commit install`
-1. Suba o ambiente: `docker compose up -d`.
-4. Confira a conexão: `docker compose exec db psql -U nise -d nise -c "select 1"`
+1. Instale as dependências do back na máquina, para o editor, os testes e o pre-commit: `cd backend && uv sync`
 
-Para parar: `docker compose down`. Para apagar também os dados do banco: `docker compose down -v`
+### 3.2. Tudo no Docker (dia a dia)
+
+1. Suba o ambiente: `docker compose up -d --build`. O `--build` só é preciso na primeira vez ou quando mudar um `Dockerfile`, o `pyproject.toml` ou o `package.json`.
+1. Aplique as migrações: `docker compose exec backend uv run alembic upgrade head`
+1. Confira:
+
+| O quê | Onde |
+| --- | --- |
+| App (front) | http://localhost:3000 |
+| API (back) | http://localhost:8000/api/health |
+| Documentação da API | http://localhost:8000/docs |
+| Banco | `docker compose exec db psql -U nise -d nise -c "select 1"` |
+| Estado dos containers | `docker compose ps` |
+
+O código de `backend/` e `frontend/` fica montado nos containers: ao salvar, o back e o front recarregam sozinhos.
+
+- Logs: `docker compose logs -f backend` (ou `frontend`, `db`)
+- Nova migração depois de mudar um model: `docker compose exec backend uv run alembic revision --autogenerate -m "..."`. O arquivo aparece em `backend/alembic/versions/`; revise antes de commitar.
+- Parar: `docker compose down`. Para apagar também os dados do banco: `docker compose down -v`
+
+### 3.3. Só o banco no Docker (para depurar)
+
+Útil para usar o debugger do editor. Pare antes o ambiente da 3.2 (`docker compose down`), senão as portas 8000 e 3000 ficam ocupadas.
+
+1. Banco: `docker compose up -d db`
+1. Back: `cd backend && uv run alembic upgrade head && uv run uvicorn app.main:app --reload`. Ele lê o `DATABASE_URL` do `.env` da raiz.
+1. Front: `cd frontend && pnpm install && pnpm dev`. Sem `BACKEND_URL`, ele usa `http://localhost:8000`.
+
+### 3.4. Verificações à mão
+
+O pre-commit já roda quase tudo. Os testes do back rodam na máquina, não no container (a imagem não tem as dependências de desenvolvimento).
+
+- Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
+- Front (em `frontend/`): `pnpm lint`, `pnpm tsc --noEmit`
+
+### 3.5. Problemas comuns
+
+| Sintoma | Causa provável | Solução |
+| --- | --- | --- |
+| `error during connect ... dockerDesktopLinuxEngine` | Docker Desktop fechado | Abra o Docker Desktop e espere iniciar |
+| `port is already allocated` | Outro programa ou o modo 3.3 usando a porta | Pare o outro processo, ou troque `POSTGRES_PORT` no `.env` (e a porta do `DATABASE_URL` junto) |
+| O back não acha um pacote recém-adicionado | O container subiu antes de o `uv.lock` mudar | `docker compose restart backend` (ao iniciar, o `uv run` sincroniza a `.venv` com o `uv.lock`) |
+| `ValidationError ... database_url` ao rodar o back na máquina | Falta o `.env` na raiz | Volte à 3.1 |
+| A migração não detecta a tabela nova | O `models.py` não é importado no `alembic/env.py` | Importe o módulo do model no `env.py` |
 
 **Nunca use dados reais de meninas fora da produção.**
 

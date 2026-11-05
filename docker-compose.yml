@@ -1,9 +1,40 @@
-# Ambiente local da NISE.
-#
-# Os serviços `db` (Postgres) e `backend` entram pelas issues #39 e #41.
-# Quando o `backend` existir, acrescente `depends_on: [backend]` aqui embaixo.
+# Ambiente local da NISE: banco, back-end e front-end.
+# Subir: docker compose up -d   ·   Parar: docker compose down
 
 services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nise}
+      POSTGRES_DB: ${POSTGRES_DB:-nise}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nise -d nise"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Dentro da rede do compose o Postgres atende pelo nome do serviço (db),
+      # não por localhost, e sempre na porta interna 5432.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-nise}:${POSTGRES_PASSWORD:-nise}@db:5432/${POSTGRES_DB:-nise}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Monta o código para o uvicorn --reload recarregar ao salvar; a .venv
+      # fica em volume próprio para não brigar com a da máquina.
+      - ./backend:/app
+      - backend_venv:/app/.venv
+
   frontend:
     build: ./frontend
     ports:
@@ -11,6 +42,7 @@ services:
     environment:
       # Dentro da rede do compose o FastAPI atende pelo nome do serviço.
       BACKEND_URL: http://backend:8000
+    depends_on: [backend]
     volumes:
       # Monta o código para o next dev recarregar ao salvar; node_modules e
       # .next ficam em volumes próprios para não brigarem com os da máquina.
@@ -19,5 +51,7 @@ services:
       - frontend_next:/app/.next
 
 volumes:
+  pgdata:
+  backend_venv:
   frontend_node_modules:
   frontend_next:
