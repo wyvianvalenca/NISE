@@ -1,0 +1,40 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.label {
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.optional {
+  color: var(--nise-muted);
+  font-weight: 400;
+}
+
+.input {
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: 12px;
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font: inherit;
+  /* 16px evita o zoom automático do iOS ao focar. */
+  font-size: 16px;
+  resize: vertical;
+}
+
+.input::placeholder {
+  color: var(--nise-muted);
+}
+
+.input:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 0;
+}

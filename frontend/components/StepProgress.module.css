@@ -1,0 +1,25 @@
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.label {
+  color: var(--nise-teal);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.track {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--nise-track);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--nise-teal);
+}

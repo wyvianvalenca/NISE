@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator, Mapping
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient, Response
+from httpx2 import ASGITransport, AsyncClient, Response
 
 from app.auth.permissions import SESSION_COOKIE
 from app.db.engine import get_session

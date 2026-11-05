@@ -1,0 +1,49 @@
+/* Três linhas: números, desenho e notas. As colunas vêm do TSX. */
+.funnel {
+  display: grid;
+  column-gap: 2px;
+  row-gap: 12px;
+  min-width: 640px;
+}
+
+.wrapper {
+  overflow-x: auto;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  padding-left: 14px;
+}
+
+.value {
+  color: var(--nise-ink);
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.label {
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.chart {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 178px;
+}
+
+.firstNote,
+.rate {
+  padding: 10px 0 0 14px;
+  font-size: 13px;
+}
+
+.firstNote {
+  color: var(--nise-muted);
+}
+
+.rate {
+  color: var(--nise-teal);
+}

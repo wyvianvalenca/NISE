@@ -25,6 +25,6 @@
 }
 
 .health p {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--nise-font-mono);
   font-size: 0.875rem;
 }
