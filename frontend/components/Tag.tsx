@@ -9,8 +9,9 @@ type TagProps = {
    * "pink": destaque, como "Grátis".
    * "teal": contagem, como "n = 42 meninas".
    * "wait": etapa que ainda não dá para medir, como "em jan".
+   * "soft": marca leve em teal, como "da última vez" no Descobrir.
    */
-  variant?: "outline" | "surface" | "pink" | "teal" | "wait";
+  variant?: "outline" | "surface" | "pink" | "teal" | "wait" | "soft";
 };
 
 /** Etiqueta pequena, só para leitura (Figma: Tag, Chip das listas, Pílula). */

@@ -1,0 +1,59 @@
+/* Cabeçalho e barra inferior fixos; só o meio rola, como no Figma. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}
+
+.profile {
+  display: flex;
+  border-radius: 50%;
+}
+
+.greeting {
+  font-size: 16px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.bands {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.band {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.groupLabel {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status {
+  color: var(--nise-muted);
+}

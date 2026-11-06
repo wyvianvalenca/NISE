@@ -33,6 +33,13 @@
   font-weight: 700;
 }
 
+/* A borda transparente de .tag soma 1px; o padding desconta para bater com o Figma. */
+.soft {
+  padding: 1px 7px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+}
+
 .wait {
   padding: 1px 8px;
   background: var(--nise-paper);
