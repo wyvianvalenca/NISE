@@ -33,6 +33,17 @@
   font-weight: 700;
 }
 
+/*
+ * A borda transparente de .tag soma 1px; o padding desconta para bater com o Figma.
+ * O texto é ink e não teal como no Figma: teal sobre tealSoft dá 4,06:1, abaixo
+ * dos 4,5:1 do WCAG AA para texto de 12px.
+ */
+.soft {
+  padding: 1px 7px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
 .wait {
   padding: 1px 8px;
   background: var(--nise-paper);

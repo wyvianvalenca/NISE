@@ -1,0 +1,266 @@
+/* Cabeçalho fixo; só o meio rola, como no Descobrir. Serve ao detalhe e à celebração. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--nise-border);
+  background: var(--nise-surface);
+}
+
+/* Na celebração só há o "Fechar", à direita. */
+.headerEnd {
+  justify-content: flex-end;
+}
+
+.back,
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--nise-teal);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.back:hover,
+.close:hover {
+  text-decoration: underline;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 24px 24px;
+}
+
+.status {
+  color: var(--nise-muted);
+}
+
+/* Fundo quadriculado (malha do filé), o mesmo do cartão de sugestão. */
+.visual {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 130px;
+  border-radius: var(--radius-16);
+  background: var(--nise-tealSoft) url(/malha.svg) left top / 420px 180px repeat-x;
+  overflow: hidden;
+}
+
+.kind,
+.statusChip {
+  position: absolute;
+  top: 16px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.kind {
+  left: 16px;
+  padding: 5px 10px;
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.iconTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+}
+
+.statusChip {
+  right: 16px;
+  padding: 4px 12px;
+  border: 1.5px solid;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.next {
+  border-color: var(--nise-border);
+  background: var(--nise-surface);
+  color: var(--nise-muted);
+}
+
+/*
+ * O Figma usa texto teal sobre tealSoft (4,06:1), abaixo dos 4,5:1 do WCAG AA.
+ * O texto fica ink, como a tag "da última vez" do Descobrir; a borda segue teal.
+ */
+.in_progress {
+  border-color: var(--nise-teal);
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+.concluded {
+  border-color: var(--nise-ink);
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+}
+
+.topic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--nise-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nise-teal);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.source {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+
+.chips li {
+  display: flex;
+}
+
+/* Mesma altura da Tag "Grátis" (5px + borda de 1px). */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.description {
+  font-size: 15px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.siteButton,
+.actions .statusButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  border-radius: var(--radius-8);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.siteButton {
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+}
+
+.siteButton:hover {
+  background: var(--nise-teal);
+}
+
+/* Botão do status em teal, como no Figma; o hover inverte para ink.
+ * ".actions" vem antes para ganhar do estilo padrão do <Button>. */
+.actions .statusButton {
+  padding: 0 20px;
+  background: var(--nise-teal);
+}
+
+.actions .statusButton:hover:not(:disabled) {
+  background: var(--nise-ink);
+}
+
+.remove {
+  align-self: flex-start;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--nise-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.remove:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.remove:disabled {
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
