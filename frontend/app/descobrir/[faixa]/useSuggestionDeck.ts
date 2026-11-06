@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import type { BandCode } from "@/lib/descobrir";
-import { getSuggestions, sendChoice, type Choice, type ReasonCode, type Suggestion } from "@/lib/sugestoes";
+import { getSuggestions, sendChoice, undoChoice, type Choice, type ReasonCode, type Suggestion } from "@/lib/sugestoes";
 
 // Estado da tela de sugestões: a lista da faixa, qual está à mostra e o total do filé.
 
@@ -12,7 +12,7 @@ export type DeckState = {
   index: number;
   /** Itens no filé, para a pílula "Meu filé". */
   fileTotal: number;
-  /** true enquanto uma escolha está sendo guardada; os botões ficam bloqueados. */
+  /** true enquanto uma escolha é guardada ou desfeita; os botões ficam bloqueados. */
   pending: boolean;
   /** true quando a última escolha não foi guardada; some na próxima tentativa. */
   choiceFailed: boolean;
@@ -24,7 +24,9 @@ export type DeckAction =
   | { type: "loadFailed" }
   | { type: "choosing" }
   | { type: "chosen"; fileTotal: number }
-  | { type: "failed" };
+  | { type: "undone"; id: string; fileTotal: number }
+  | { type: "failed" }
+  | { type: "undoFailed" };
 
 export const initialDeck: DeckState = {
   status: "loading",
@@ -48,9 +50,17 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case "chosen":
       // A escolha foi guardada: passa para a próxima e usa o total que o back devolveu.
       return { ...state, index: state.index + 1, fileTotal: action.fileTotal, pending: false };
+    case "undone": {
+      // A escolha foi desfeita: a mesma sugestão volta a ser a atual (#107).
+      const index = state.items.findIndex((item) => item.id === action.id);
+      return { ...state, index: index === -1 ? state.index : index, fileTotal: action.fileTotal, pending: false };
+    }
     case "failed":
       // A sugestão continua à mostra; ela vê o aviso e pode tocar de novo.
       return { ...state, pending: false, choiceFailed: true };
+    case "undoFailed":
+      // O erro do "Desfazer" aparece no próprio aviso (UndoToast).
+      return { ...state, pending: false };
   }
 }
 
@@ -112,6 +122,18 @@ export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options
     [item, state.pending, onChoiceConfirmed],
   );
 
+  /** Desfaz a escolha sobre um item; resolve só depois da confirmação e lança erro se falhar. */
+  const undo = useCallback(async (id: string) => {
+    dispatch({ type: "choosing" });
+    try {
+      const { fileTotal } = await undoChoice(id);
+      dispatch({ type: "undone", id, fileTotal });
+    } catch (error) {
+      dispatch({ type: "undoFailed" });
+      throw error;
+    }
+  }, []);
+
   return {
     state,
     dispatch,
@@ -122,5 +144,6 @@ export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options
     total: state.items.length,
     choose,
     reload,
+    undo,
   };
 }
