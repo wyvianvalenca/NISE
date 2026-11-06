@@ -1,0 +1,199 @@
+"use client";
+
+// A06·2 · Sugestões: uma de cada vez, com "Não é pra mim", "Talvez depois" e "Quero fazer",
+// e o aviso com "Desfazer" depois de cada escolha.
+// Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107). Usa os dados de teste de lib/sugestoes.ts.
+
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon, type IconName } from "@/components/Icon";
+import { SuggestionCard } from "@/components/SuggestionCard";
+import { Tag, TagList } from "@/components/Tag";
+import { TextLink } from "@/components/TextLink";
+import { BANDS, type BandCode } from "@/lib/descobrir";
+import type { Choice, ReasonCode, Suggestion } from "@/lib/sugestoes";
+import { ReasonSheet } from "./ReasonSheet";
+import { UndoToast, type UndoNotice } from "./UndoToast";
+import { useSuggestionDeck } from "./useSuggestionDeck";
+import styles from "./SuggestionsScreen.module.css";
+
+export function SuggestionsScreen({ band }: { band: BandCode }) {
+  const title = BANDS[band].title;
+  const [notice, setNotice] = useState<UndoNotice | null>(null);
+  const noticeKey = useRef(0);
+
+  // O aviso só aparece depois que o back confirma a escolha; assim o "Desfazer" nunca vem antes.
+  const showNotice = useCallback((chosen: Suggestion, choice: Choice) => {
+    noticeKey.current += 1;
+    setNotice({ key: noticeKey.current, id: chosen.id, title: chosen.title, choice, status: "ready" });
+  }, []);
+  const hideNotice = useCallback(() => setNotice(null), []);
+
+  const { state, item, position, total, choose, undo } = useSuggestionDeck(band, { onChoiceConfirmed: showNotice });
+  const [reasonOpen, setReasonOpen] = useState(false);
+
+  // Depois de desfazer, o foco vai para o contador, que lê "Sugestão N de M: <título>".
+  const counterRef = useRef<HTMLParagraphElement>(null);
+  const [restored, setRestored] = useState(0);
+  useEffect(() => {
+    if (restored) counterRef.current?.focus();
+  }, [restored]);
+
+  /** Uma escolha nova substitui o aviso: só a última pode ser desfeita. */
+  function decide(choice: Choice, reason?: ReasonCode) {
+    setNotice(null);
+    choose(choice, reason);
+  }
+
+  function sendReason(reason?: ReasonCode) {
+    setReasonOpen(false);
+    decide("nao-e-pra-mim", reason);
+  }
+
+  async function undoLast() {
+    if (!notice || notice.status === "undoing") return;
+    setNotice({ ...notice, status: "undoing" });
+    try {
+      await undo(notice.id);
+      setNotice(null);
+      setRestored((count) => count + 1);
+    } catch {
+      // Ela vê o erro e pode tentar de novo enquanto o aviso estiver na tela.
+      setNotice({ ...notice, status: "error" });
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <TextLink href="/descobrir" back className={styles.back}>
+          {title}
+          <span className={styles.srOnly}>, voltar ao Descobrir</span>
+        </TextLink>
+        {state.status === "ready" && (
+          // A tela do filé é a #115; até ela existir, o link dá 404.
+          <Link href="/file" className={styles.filePill}>
+            <Icon name="plus" />
+            Meu filé
+            <span className={styles.fileCount}>
+              {state.fileTotal}
+              <span className={styles.srOnly}> {state.fileTotal === 1 ? "item" : "itens"}</span>
+            </span>
+          </Link>
+        )}
+      </header>
+
+      {notice && <UndoToast key={notice.key} notice={notice} onUndo={undoLast} onTimeout={hideNotice} />}
+
+      <main className={styles.main}>
+        <h1 className={styles.srOnly}>Sugestões de {title}</h1>
+        {/* Espaço do aviso no Figma; o aviso fica por cima dele (.toastArea), para não empurrar o card. */}
+        <div className={styles.noticeSlot} />
+
+        {state.status === "loading" ? (
+          // Provisório: a tela "Tecendo seu filé…" (E03) é da issue #81 e entra aqui quando existir.
+          <p className={styles.status} aria-live="polite">
+            Carregando…
+          </p>
+        ) : item ? (
+          <>
+            <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
+              Sugestão {position} de {total}
+              <span className={styles.srOnly}>: {item.title}</span>
+            </p>
+            <Deck item={item} behind={Math.min(total - position, 2)} />
+            <Actions
+              disabled={state.pending}
+              onChoose={(choice) => {
+                if (choice === "nao-e-pra-mim") setReasonOpen(true);
+                else decide(choice);
+              }}
+            />
+          </>
+        ) : (
+          <End title={title} empty={total === 0} />
+        )}
+      </main>
+
+      <ReasonSheet open={reasonOpen} onSubmit={sendReason} onCancel={() => setReasonOpen(false)} />
+    </div>
+  );
+}
+
+/** O card da sugestão com até dois cards tortos atrás, quando ainda há mais (Figma: Baralho). */
+function Deck({ item, behind }: { item: Suggestion; behind: number }) {
+  return (
+    <div className={styles.deck}>
+      {behind >= 2 && <div className={`${styles.backCard} ${styles.backLeft}`} aria-hidden="true" />}
+      {behind >= 1 && <div className={`${styles.backCard} ${styles.backRight}`} aria-hidden="true" />}
+      <div className={styles.front}>
+        <SuggestionCard
+          // A chave nova a cada sugestão faz o leitor de tela tratar o card como conteúdo novo.
+          key={item.id}
+          kind={item.kind}
+          title={item.title}
+          source={item.source}
+          reason={item.why}
+          tags={
+            <TagList>
+              <Tag variant="chip">{item.format}</Tag>
+              <Tag variant="chip">{item.duration}</Tag>
+              <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>{item.cost}</Tag>
+              <Tag variant="chip">
+                {item.minAge}+<span className={styles.srOnly}> anos</span>
+              </Tag>
+            </TagList>
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+const ACTIONS: { choice: Choice; label: string; icon: IconName }[] = [
+  { choice: "nao-e-pra-mim", label: "Não é pra mim", icon: "x" },
+  { choice: "talvez-depois", label: "Talvez depois", icon: "bookmark" },
+  { choice: "quero-fazer", label: "Quero fazer", icon: "plus" },
+];
+
+function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice: Choice) => void }) {
+  return (
+    <div className={styles.actions}>
+      {ACTIONS.map((action) => {
+        const main = action.choice === "quero-fazer";
+        return (
+          <button
+            key={action.choice}
+            type="button"
+            className={`${styles.action} ${main ? styles.actionMain : ""}`}
+            disabled={disabled}
+            onClick={() => onChoose(action.choice)}
+          >
+            <span className={styles.actionCircle}>
+              <Icon name={action.icon} size={main ? 30 : 24} />
+            </span>
+            {action.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Depois da última sugestão (ou faixa sem nenhuma). PROVISÓRIO: o Figma ainda não tem
+ * essa tela; o destino será confirmado com o design (#102).
+ */
+function End({ title, empty }: { title: string; empty: boolean }) {
+  return (
+    <div className={styles.end}>
+      <h2 className={styles.endTitle}>
+        {empty ? "Por enquanto, nada marcado." : `Você viu todas as sugestões de ${title}.`}
+      </h2>
+      <p className={styles.endText}>Escolha outra faixa ou volte mais tarde para ver novidades.</p>
+      <TextLink href="/descobrir" back>
+        Voltar ao Descobrir
+      </TextLink>
+    </div>
+  );
+}
