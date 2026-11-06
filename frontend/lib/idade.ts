@@ -74,7 +74,7 @@ export function idadeEm(
  * errada" com "menor de 13", e quem digitasse 2090 no lugar de 2009 seria
  * mandada para a A02c como se fosse criança — perdendo a sessão no caminho.
  */
-export type ChecagemIdade = "ok" | "menor_de_13" | "data_invalida";
+export type ChecagemIdade = "ok" | "under_13" | "invalid_date";
 
 /** Decide entre seguir, barrar por idade (RN-03) ou pedir a data de novo. */
 export function checarIdade(
@@ -84,7 +84,7 @@ export function checarIdade(
   const idade = idadeEm(nascimento, referencia);
 
   if (idade === null) {
-    return "data_invalida";
+    return "invalid_date";
   }
-  return idade >= IDADE_MINIMA ? "ok" : "menor_de_13";
+  return idade >= IDADE_MINIMA ? "ok" : "under_13";
 }

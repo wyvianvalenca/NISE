@@ -12,7 +12,7 @@
 
 /** O que o Google devolveu e o back guardou na sessão incompleta. */
 export type CadastroPendente = {
-  nome: string;
+  name: string;
   email: string;
 };
 
@@ -21,12 +21,12 @@ export type Cidade = {
   /** Código do município no IBGE. */
   id: string;
   /** Como aparece na tela, ex.: "Maceió, AL". */
-  nome: string;
+  name: string;
 };
 
 export type ResultadoCompletar =
   | { ok: true; proximoPasso: "termos" }
-  | { ok: false; motivo: "menor_de_13" | "cidade_invalida" | "falha" };
+  | { ok: false; motivo: "under_13" | "invalid_city" | "failed" };
 
 /**
  * Para onde mandar a menina ao clicar em "Criar conta com o Google".
@@ -39,21 +39,21 @@ export function urlInicioGoogle(
   const busca = new URLSearchParams();
 
   if (opcoes.convite) {
-    busca.set("convite", opcoes.convite);
+    busca.set("invite", opcoes.convite);
   }
   if (opcoes.trocarConta) {
-    busca.set("trocar_conta", "1");
+    busca.set("switch_account", "1");
   }
 
   const query = busca.toString();
-  return query ? `/api/auth/google/inicio?${query}` : "/api/auth/google/inicio";
+  return query ? `/api/auth/google/start?${query}` : "/api/auth/google/start";
 }
 
 /** Nome e e-mail da sessão incompleta, ou `null` quando não há nenhuma. */
 export async function buscarCadastroPendente(
   signal?: AbortSignal,
 ): Promise<CadastroPendente | null> {
-  const resposta = await fetch("/api/auth/cadastro/pendente", { signal });
+  const resposta = await fetch("/api/auth/signup/pending", { signal });
 
   if (resposta.status === 404) {
     return null;
@@ -71,7 +71,7 @@ export async function buscarCidades(
   signal?: AbortSignal,
 ): Promise<Cidade[]> {
   const resposta = await fetch(
-    `/api/cidades?busca=${encodeURIComponent(busca)}`,
+    `/api/cities?search=${encodeURIComponent(busca)}`,
     { signal },
   );
 
@@ -84,10 +84,10 @@ export async function buscarCidades(
 
 /** Completa o perfil e devolve o próximo passo do cadastro. */
 export async function completarCadastro(dados: {
-  dataNascimento: string;
-  cidadeId: string;
+  birthDate: string;
+  cityId: string;
 }): Promise<ResultadoCompletar> {
-  const resposta = await fetch("/api/auth/cadastro/completar", {
+  const resposta = await fetch("/api/auth/signup/complete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dados),
@@ -99,18 +99,18 @@ export async function completarCadastro(dados: {
 
   if (resposta.status === 422) {
     const corpo = (await resposta.json().catch(() => null)) as {
-      erro?: string;
+      error?: string;
     } | null;
 
-    if (corpo?.erro === "under_13") {
-      return { ok: false, motivo: "menor_de_13" };
+    if (corpo?.error === "under_13") {
+      return { ok: false, motivo: "under_13" };
     }
-    if (corpo?.erro === "cidade_invalida") {
-      return { ok: false, motivo: "cidade_invalida" };
+    if (corpo?.error === "invalid_city") {
+      return { ok: false, motivo: "invalid_city" };
     }
   }
 
-  return { ok: false, motivo: "falha" };
+  return { ok: false, motivo: "failed" };
 }
 
 /**
@@ -118,5 +118,115 @@ export async function completarCadastro(dados: {
  * Usado no "Usar outra conta" e quando ela tem menos de 13 (RN-03).
  */
 export async function descartarCadastro(): Promise<void> {
-  await fetch("/api/auth/cadastro/descartar", { method: "POST" });
+  await fetch("/api/auth/signup/discard", { method: "POST" });
+}
+
+// ---------------------------------------------------------------------------
+// Cadastro por e-mail e senha (H1, #51)
+// ---------------------------------------------------------------------------
+
+/** Tamanho mínimo da senha, checado de novo no servidor. */
+export const SENHA_MINIMA = 8;
+
+/**
+ * O que o convite de um grupo devolve para montar a A01b.
+ *
+ * Só o nome do grupo, de propósito. A descrição da #51 previa devolver aqui
+ * o e-mail do registro importado, para preencher o campo — mas esta rota é
+ * pública, e código de convite adivinhado viraria uma forma de colher e-mail
+ * de menina menor de idade. A ligação com o registro importado acontece no
+ * servidor, pelo e-mail que ela mesma digitar (RF-F2.02, RN-29), sem a rota
+ * pública precisar expor nada. A decidir com a #68 antes do back ser escrito.
+ */
+export type Convite = {
+  /** Nome do grupo, como aparece no chip e no texto ("Rendeiras"). */
+  groupName: string;
+};
+
+export type DadosCadastroEmail = {
+  name: string;
+  email: string;
+  password: string;
+  birthDate: string;
+  cityId: string;
+  /** Código do convite, quando ela veio por um; decide a origem da conta. */
+  invite?: string;
+};
+
+export type ResultadoCadastroEmail =
+  | { ok: true; proximoPasso: "termos" }
+  | {
+      ok: false;
+      motivo:
+        | "under_13"
+        | "invalid_email"
+        | "account_exists"
+        | "invalid_city"
+        | "password_too_short"
+        | "failed";
+    };
+
+/**
+ * Dados públicos de um código de convite, para a A01b (#51).
+ * Devolve `null` quando o código não existe ou expirou — a tela cai na A01.
+ */
+export async function buscarConvite(
+  codigo: string,
+  signal?: AbortSignal,
+): Promise<Convite | null> {
+  const resposta = await fetch(
+    `/api/invites/${encodeURIComponent(codigo)}`,
+    { signal },
+  );
+
+  if (resposta.status === 404 || resposta.status === 410) {
+    return null;
+  }
+  if (!resposta.ok) {
+    throw new Error(`convite: ${resposta.status}`);
+  }
+
+  return (await resposta.json()) as Convite;
+}
+
+/**
+ * Cria a conta com e-mail e senha (#51). A resposta já abre a sessão e o
+ * próximo passo é sempre os termos (H3).
+ */
+export async function criarContaComEmail(
+  dados: DadosCadastroEmail,
+): Promise<ResultadoCadastroEmail> {
+  const resposta = await fetch("/api/auth/signup/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dados),
+  });
+
+  if (resposta.ok) {
+    return { ok: true, proximoPasso: "termos" };
+  }
+
+  if (resposta.status === 409) {
+    return { ok: false, motivo: "account_exists" };
+  }
+
+  // O servidor refaz idade, formato do e-mail, senha e cidade (RNF-G.03).
+  if (resposta.status === 422) {
+    const corpo = (await resposta.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+
+    const conhecidos: Record<string, ResultadoCadastroEmail> = {
+      under_13: { ok: false, motivo: "under_13" },
+      invalid_email: { ok: false, motivo: "invalid_email" },
+      invalid_city: { ok: false, motivo: "invalid_city" },
+      password_too_short: { ok: false, motivo: "password_too_short" },
+    };
+    const conhecido = corpo?.error ? conhecidos[corpo.error] : undefined;
+    if (conhecido) {
+      return conhecido;
+    }
+  }
+
+  return { ok: false, motivo: "failed" };
 }
