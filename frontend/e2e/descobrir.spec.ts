@@ -63,6 +63,13 @@ test("sem faixa da última vez, nenhuma tag aparece", async ({ page }) => {
   await expect(page.getByText("da última vez")).toHaveCount(0);
 });
 
+test("a faixa da última vez sem sugestões não mostra a tag", async ({ page }) => {
+  await openWith(page, { counts: { "uma-tarde": 0 }, lastBand: "uma-tarde" });
+
+  await expect(page.getByText("Por enquanto, nada marcado.")).toBeVisible();
+  await expect(page.getByText("da última vez")).toHaveCount(0);
+});
+
 test("tocar numa faixa abre as sugestões dela", async ({ page }) => {
   await page.goto("/descobrir");
 
