@@ -50,6 +50,21 @@
   font-weight: 400;
 }
 
+/* Filtro de lista (Ver depois): o escolhido fica em ink, sem a borda de 2px. */
+.filter.chip[aria-pressed="true"] {
+  border: 1px solid var(--nise-ink);
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+}
+
+.filter.md[aria-pressed="true"] {
+  padding: 7px 14px;
+}
+
+.filter.lg[aria-pressed="true"] {
+  padding: 8px 16px;
+}
+
 .group {
   border: none;
 }
