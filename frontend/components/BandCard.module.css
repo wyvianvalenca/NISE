@@ -1,0 +1,75 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: 14px;
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+}
+
+a.card:hover {
+  border-color: var(--nise-teal);
+}
+
+/* Borda de 2px; o padding diminui 1px para o card não mudar de tamanho. */
+.lastUsed {
+  padding: 10px 15px;
+  border-width: 2px;
+  border-color: var(--nise-teal);
+}
+
+.empty {
+  border-style: dashed;
+  background: transparent;
+}
+
+.iconTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+}
+
+.empty .iconTile {
+  opacity: 0.45;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.description {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.count {
+  flex-shrink: 0;
+  color: var(--nise-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
