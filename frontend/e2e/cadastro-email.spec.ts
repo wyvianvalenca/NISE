@@ -8,11 +8,11 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const CIDADES = [
-  { id: "2704302", nome: "Maceió, AL" },
-  { id: "2611606", nome: "Recife, PE" },
+  { id: "2704302", name: "Maceió, AL" },
+  { id: "2611606", name: "Recife, PE" },
 ];
 
-const CONVITE = { grupoNome: "Rendeiras" };
+const CONVITE = { groupName: "Rendeiras" };
 
 /** Hoje em Maceió, para montar datas que não dependem do relógio da máquina. */
 function hojeEmMaceio() {
@@ -56,15 +56,15 @@ type Mocks = {
 };
 
 async function mockarApi(page: Page, mocks: Mocks = {}) {
-  await page.route("**/api/cidades**", (rota) => rota.fulfill({ json: CIDADES }));
+  await page.route("**/api/cities**", (rota) => rota.fulfill({ json: CIDADES }));
 
-  await page.route("**/api/convites/**", (rota) =>
+  await page.route("**/api/invites/**", (rota) =>
     mocks.conviteStatus
       ? rota.fulfill({ status: mocks.conviteStatus, json: {} })
       : rota.fulfill({ json: mocks.convite ?? CONVITE }),
   );
 
-  await page.route("**/api/auth/cadastro/email", (rota) =>
+  await page.route("**/api/auth/signup/email", (rota) =>
     rota.fulfill({
       status: mocks.cadastro?.status ?? 200,
       json: mocks.cadastro?.corpo ?? {},
@@ -136,7 +136,7 @@ test("e-mail sem domínio não passa (RF-S2.03)", async ({ page }) => {
   await mockarApi(page);
 
   let enviou = false;
-  await page.route("**/api/auth/cadastro/email", (rota) => {
+  await page.route("**/api/auth/signup/email", (rota) => {
     enviou = true;
     return rota.fulfill({ status: 200, json: {} });
   });
@@ -220,7 +220,7 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
 
 test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => {
   await mockarApi(page);
-  await page.route("**/api/auth/cadastro/email", (rota) => rota.abort());
+  await page.route("**/api/auth/signup/email", (rota) => rota.abort());
 
   await page.goto("/criar-conta");
   await preencherFormulario(page);
@@ -246,7 +246,7 @@ test("faltando um dia para os 13, vai para a A02c sem enviar nada", async ({
   await mockarApi(page);
 
   let enviou = false;
-  await page.route("**/api/auth/cadastro/email", (rota) => {
+  await page.route("**/api/auth/signup/email", (rota) => {
     enviou = true;
     return rota.fulfill({ status: 200, json: {} });
   });
@@ -263,7 +263,7 @@ test("se o servidor recusar por idade, também vai para a A02c", async ({
   page,
 }) => {
   await mockarApi(page, {
-    cadastro: { status: 422, corpo: { erro: "under_13" } },
+    cadastro: { status: 422, corpo: { error: "under_13" } },
   });
   await page.goto("/criar-conta");
 
@@ -290,11 +290,11 @@ test("a rota pública do convite não devolve e-mail de ninguém", async ({
   page,
 }) => {
   let resposta: unknown;
-  await page.route("**/api/convites/**", async (rota) => {
+  await page.route("**/api/invites/**", async (rota) => {
     await rota.fulfill({ json: CONVITE });
   });
   page.on("response", async (r) => {
-    if (r.url().includes("/api/convites/")) resposta = await r.json();
+    if (r.url().includes("/api/invites/")) resposta = await r.json();
   });
 
   await page.goto("/convite/rendeiras-2026");
@@ -310,7 +310,7 @@ test("o código do convite segue no envio, para a origem sair certa (RN-29)", as
   await mockarApi(page);
 
   let corpoEnviado: Record<string, unknown> = {};
-  await page.route("**/api/auth/cadastro/email", (rota) => {
+  await page.route("**/api/auth/signup/email", (rota) => {
     corpoEnviado = rota.request().postDataJSON();
     return rota.fulfill({ status: 200, json: {} });
   });
@@ -320,7 +320,7 @@ test("o código do convite segue no envio, para a origem sair certa (RN-29)", as
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
-  expect(corpoEnviado.convite).toBe("rendeiras-2026");
+  expect(corpoEnviado.invite).toBe("rendeiras-2026");
 });
 
 test("sem convite, o envio não manda origem de grupo nenhum", async ({
@@ -329,7 +329,7 @@ test("sem convite, o envio não manda origem de grupo nenhum", async ({
   await mockarApi(page);
 
   let corpoEnviado: Record<string, unknown> = {};
-  await page.route("**/api/auth/cadastro/email", (rota) => {
+  await page.route("**/api/auth/signup/email", (rota) => {
     corpoEnviado = rota.request().postDataJSON();
     return rota.fulfill({ status: 200, json: {} });
   });
@@ -339,5 +339,5 @@ test("sem convite, o envio não manda origem de grupo nenhum", async ({
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
-  expect(corpoEnviado.convite).toBeUndefined();
+  expect(corpoEnviado.invite).toBeUndefined();
 });

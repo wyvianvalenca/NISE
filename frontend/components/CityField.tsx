@@ -54,7 +54,7 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
 
   useEffect(() => {
     const alvo = comparavel(value);
-    onSelect(cidades.find((cidade) => comparavel(cidade.nome) === alvo) ?? null);
+    onSelect(cidades.find((cidade) => comparavel(cidade.name) === alvo) ?? null);
   }, [value, cidades, onSelect]);
 
   return (
@@ -70,7 +70,7 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
       />
       <datalist id="cidades-ibge">
         {cidades.map((cidade) => (
-          <option key={cidade.id} value={cidade.nome} />
+          <option key={cidade.id} value={cidade.name} />
         ))}
       </datalist>
     </>

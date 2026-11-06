@@ -70,7 +70,7 @@ function CriarConta() {
     }
 
     const idade = dataNascimento ? checarIdade(dataNascimento) : null;
-    if (idade === "data_invalida") {
+    if (idade === "invalid_date") {
       novos.dataNascimento = "Confira sua data de nascimento.";
     }
 
@@ -79,7 +79,7 @@ function CriarConta() {
       return;
     }
 
-    if (idade === "menor_de_13") {
+    if (idade === "under_13") {
       setEnviando(true);
       router.replace("/cadastro/idade-minima");
       return;
@@ -88,12 +88,12 @@ function CriarConta() {
     setEnviando(true);
     try {
       const resultado = await criarContaComEmail({
-        nome: nome.trim(),
+        name: nome.trim(),
         email: email.trim(),
-        senha,
-        dataNascimento,
-        cidadeId: cidade.id,
-        convite,
+        password: senha,
+        birthDate: dataNascimento,
+        cityId: cidade.id,
+        invite: convite,
       });
 
       if (resultado.ok) {
@@ -101,25 +101,25 @@ function CriarConta() {
         return;
       }
 
-      if (resultado.motivo === "menor_de_13") {
+      if (resultado.motivo === "under_13") {
         router.replace("/cadastro/idade-minima");
         return;
       }
 
       setEnviando(false);
       switch (resultado.motivo) {
-        case "conta_existente":
+        case "account_exists":
           setErros({ email: "Já existe uma conta com esse e-mail." });
           break;
-        case "email_invalido":
+        case "invalid_email":
           setErros({ email: ERRO_SEM_DOMINIO });
           break;
-        case "senha_curta":
+        case "password_too_short":
           setErros({
             senha: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`,
           });
           break;
-        case "cidade_invalida":
+        case "invalid_city":
           setErros({ cidade: "Escolha uma cidade da lista." });
           break;
         default:

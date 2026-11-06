@@ -7,10 +7,10 @@ import { expect, test, type Page } from "@playwright/test";
  * Os dados são fictícios, como manda o CONTRIBUTING: nada de menina real.
  */
 
-const CONTA = { nome: "Alana Oliveira", email: "alana@exemplo.com" };
+const CONTA = { name: "Alana Oliveira", email: "alana@exemplo.com" };
 const CIDADES = [
-  { id: "2704302", nome: "Maceió, AL" },
-  { id: "2611606", nome: "Recife, PE" },
+  { id: "2704302", name: "Maceió, AL" },
+  { id: "2611606", name: "Recife, PE" },
 ];
 
 /** Hoje em Maceió, para montar datas de nascimento que não dependem do relógio. */
@@ -58,22 +58,22 @@ type Mocks = {
 async function mockarApi(page: Page, mocks: Mocks = {}) {
   const pendente = mocks.pendente === undefined ? CONTA : mocks.pendente;
 
-  await page.route("**/api/auth/cadastro/pendente", (rota) =>
+  await page.route("**/api/auth/signup/pending", (rota) =>
     pendente
       ? rota.fulfill({ json: pendente })
       : rota.fulfill({ status: 404, json: {} }),
   );
 
-  await page.route("**/api/cidades**", (rota) => rota.fulfill({ json: CIDADES }));
+  await page.route("**/api/cities**", (rota) => rota.fulfill({ json: CIDADES }));
 
-  await page.route("**/api/auth/cadastro/completar", (rota) =>
+  await page.route("**/api/auth/signup/complete", (rota) =>
     rota.fulfill({
       status: mocks.completar?.status ?? 200,
       json: mocks.completar?.corpo ?? {},
     }),
   );
 
-  await page.route("**/api/auth/cadastro/descartar", (rota) =>
+  await page.route("**/api/auth/signup/discard", (rota) =>
     rota.fulfill({ status: 204, body: "" }),
   );
 
@@ -98,7 +98,7 @@ test("mostra o nome e o e-mail que vieram do Google", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Só mais um passo" }),
   ).toBeVisible();
-  await expect(page.getByText(CONTA.nome)).toBeVisible();
+  await expect(page.getByText(CONTA.name)).toBeVisible();
   await expect(page.getByText(CONTA.email)).toBeVisible();
 });
 
@@ -118,13 +118,13 @@ test("faltando um dia para os 13, vai para a A02c e descarta a sessão", async (
   await mockarApi(page);
 
   let descartou = false;
-  await page.route("**/api/auth/cadastro/descartar", (rota) => {
+  await page.route("**/api/auth/signup/discard", (rota) => {
     descartou = true;
     return rota.fulfill({ status: 204, body: "" });
   });
 
   let completou = false;
-  await page.route("**/api/auth/cadastro/completar", (rota) => {
+  await page.route("**/api/auth/signup/complete", (rota) => {
     completou = true;
     return rota.fulfill({ status: 200, json: {} });
   });
@@ -145,7 +145,7 @@ test("se o servidor recusar por idade, também vai para a A02c", async ({
   page,
 }) => {
   await mockarApi(page, {
-    completar: { status: 422, corpo: { erro: "under_13" } },
+    completar: { status: 422, corpo: { error: "under_13" } },
   });
   await page.goto("/cadastro/google");
 
@@ -173,13 +173,13 @@ test("'Usar outra conta' descarta a sessão e volta ao Google", async ({
   await mockarApi(page);
 
   let descartou = false;
-  await page.route("**/api/auth/cadastro/descartar", (rota) => {
+  await page.route("**/api/auth/signup/discard", (rota) => {
     descartou = true;
     return rota.fulfill({ status: 204, body: "" });
   });
 
   let inicioGoogle: string | undefined;
-  await page.route("**/api/auth/google/inicio**", (rota) => {
+  await page.route("**/api/auth/google/start**", (rota) => {
     inicioGoogle = rota.request().url();
     return rota.fulfill({
       contentType: "text/html",
@@ -190,7 +190,7 @@ test("'Usar outra conta' descarta a sessão e volta ao Google", async ({
   await page.goto("/cadastro/google");
   await page.getByRole("button", { name: "Usar outra conta" }).click();
 
-  await expect.poll(() => inicioGoogle).toContain("trocar_conta=1");
+  await expect.poll(() => inicioGoogle).toContain("switch_account=1");
   expect(descartou).toBe(true);
 });
 
@@ -200,7 +200,7 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
   await mockarApi(page);
 
   let descartou = false;
-  await page.route("**/api/auth/cadastro/descartar", (rota) => {
+  await page.route("**/api/auth/signup/discard", (rota) => {
     descartou = true;
     return rota.fulfill({ status: 204, body: "" });
   });
@@ -216,7 +216,7 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
 
 test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => {
   await mockarApi(page);
-  await page.route("**/api/auth/cadastro/completar", (rota) => rota.abort());
+  await page.route("**/api/auth/signup/complete", (rota) => rota.abort());
 
   await page.goto("/cadastro/google");
   await preencher(page, fazTrezeHoje(), "Maceió, AL");

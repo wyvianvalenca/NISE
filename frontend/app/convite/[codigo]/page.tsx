@@ -71,10 +71,10 @@ function Conteudo({ params }: { params: Params }) {
 
   return (
     <main className={styles.main}>
-      <p className={styles.chip}>Convite · {convite.grupoNome}</p>
+      <p className={styles.chip}>Convite · {convite.groupName}</p>
       <h1 className={styles.title}>Que bom ter você aqui!</h1>
       <p className={styles.lead}>
-        O grupo {convite.grupoNome} faz parte da NISE. Crie sua conta para
+        O grupo {convite.groupName} faz parte da NISE. Crie sua conta para
         acompanhar o grupo e descobrir novas oportunidades.
       </p>
 
