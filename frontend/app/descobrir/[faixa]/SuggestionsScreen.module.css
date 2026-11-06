@@ -1,6 +1,7 @@
 /* Cabeçalho fixo; só o meio rola, como no Descobrir. */
 .page {
   display: flex;
+  position: relative;
   flex-direction: column;
   height: 100dvh;
 }
@@ -73,6 +74,19 @@
   flex-shrink: 0;
   width: 100%;
   height: clamp(0px, calc(100dvh - 780px), 64px);
+}
+
+/*
+ * Aviso "Desfazer" (#107): por cima do espaço do aviso, logo abaixo do cabeçalho,
+ * na mesma largura do card (Figma: Aviso / Sugestão salva, 342 × 64).
+ */
+.toastArea {
+  position: absolute;
+  top: calc(68px + 14px);
+  left: 50%;
+  z-index: 1;
+  width: min(100% - 48px, 342px);
+  transform: translateX(-50%);
 }
 
 .counter {
