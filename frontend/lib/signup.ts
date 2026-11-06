@@ -21,8 +21,9 @@ export const SIGNUP_PATHS = {
   questionnaires: "/cadastro/questionarios",
   rating: "/cadastro/avaliacao",
   interests: "/cadastro/interesses",
-  // "Por que filé?" (A06·0) ainda não existe; é de outra história.
-  done: "/file",
+  // "Por que filé?" (A06·0), a porta do filé: na primeira vez explica, depois
+  // manda direto para o Descobrir (#83).
+  done: "/por-que-file",
 } as const;
 
 const TERMS_VERSION = "0.1-rascunho";
