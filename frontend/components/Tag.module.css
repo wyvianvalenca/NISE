@@ -44,6 +44,13 @@
   color: var(--nise-ink);
 }
 
+/* Mesmo tamanho do "pink", para ficarem lado a lado no card de sugestão. */
+.chip {
+  padding: 5px 12px;
+  border-color: var(--nise-border);
+  font-size: 13px;
+}
+
 .wait {
   padding: 1px 8px;
   background: var(--nise-paper);
