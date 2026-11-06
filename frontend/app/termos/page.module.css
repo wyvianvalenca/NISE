@@ -1,0 +1,40 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--nise-ink);
+  font-size: 16px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.version {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.draft {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--nise-pinkTint);
+  font-size: 14px;
+}
+
+.heading {
+  margin-top: 12px;
+  font-size: 20px;
+  font-weight: 700;
+}

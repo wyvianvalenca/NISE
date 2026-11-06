@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import styles from "./Icon.module.css";
 
 // Ícones exportados do Figma (Iconoir), em public/icons/.
+// As carinhas da avaliação (face-1 a face-5) são da Font Awesome Free (CC BY 4.0);
+// o crédito está no frontend/README.md e no comentário de licença de cada SVG, que deve ser mantido.
 // O número é o tamanho original de cada SVG no Figma, em px.
 const ICON_SIZES = {
   home: 22,
@@ -17,6 +19,8 @@ const ICON_SIZES = {
   left: 16,
   "chevron-down": 16,
   "chevron-right": 18,
+  "arrow-right": 16,
+  external: 14,
   check: 16,
   search: 16,
   sparkle: 16,
@@ -28,6 +32,23 @@ const ICON_SIZES = {
   x: 20,
   code: 13,
   "code-lg": 44,
+  mail: 34,
+  "face-1": 32,
+  "face-2": 32,
+  "face-3": 32,
+  "face-4": 32,
+  "face-5": 32,
+  clipboard: 34,
+  compass: 20,
+  "check-sm": 12,
+  "topic-programacao": 22,
+  "topic-robotica": 22,
+  "topic-ia": 22,
+  "topic-dados": 22,
+  "topic-ciberseguranca": 22,
+  "topic-jogos": 22,
+  "topic-sites": 22,
+  "topic-design": 22,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;
