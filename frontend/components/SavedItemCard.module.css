@@ -1,0 +1,108 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.iconTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.teal {
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+}
+
+.pink {
+  background: var(--nise-pinkSoft);
+  color: var(--nise-pink);
+}
+
+.texts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.meta {
+  color: var(--nise-teal);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.details {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.deadline {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-8);
+  background: var(--nise-pinkTint);
+  color: var(--nise-pink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* O divisor do Figma vira a borda de cima das ações. */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--nise-border);
+}
+
+/* Só texto, mas com alvo de toque de 44px. */
+.remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.remove:hover:not(:disabled) {
+  color: var(--nise-ink);
+}
+
+.remove:disabled {
+  cursor: not-allowed;
+}
