@@ -9,6 +9,7 @@ from app.db.engine import AsyncSessionDep
 from app.users.models import Role, User
 
 SESSION_COOKIE = "nise_session"
+PENDING_SIGNUP_COOKIE = "nise_cadastro_pendente"
 
 
 async def get_current_user(
@@ -54,6 +55,28 @@ def set_session_cookie(response: Response, token: str) -> None:
 def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(
         key=SESSION_COOKIE,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+
+
+def set_pending_signup_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=PENDING_SIGNUP_COOKIE,
+        value=token,
+        max_age=settings.pending_signup_expire_minutes * 60,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+
+
+def clear_pending_signup_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=PENDING_SIGNUP_COOKIE,
         path="/",
         httponly=True,
         secure=settings.cookie_secure,

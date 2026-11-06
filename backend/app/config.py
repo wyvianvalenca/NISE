@@ -29,5 +29,7 @@ class AppSettings(BaseSettings):
     # Tem que ser idêntico ao cadastrado no console do Google:
     google_redirect_uri: str = "http://localhost:3000/api/auth/google/callback"
 
+    pending_signup_expire_minutes: int = 30
+
 
 settings = AppSettings()
