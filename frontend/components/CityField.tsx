@@ -5,7 +5,7 @@ import { Field } from "./Field";
 import { buscarCidades, type Cidade } from "@/lib/cadastro";
 
 type CityFieldProps = {
-  /** O que ela digitou. */
+  /** O que ela digitou. O input é dono do texto; isto é só o espelho. */
   value: string;
   onChange: (texto: string) => void;
   /** Avisa qual município da lista casou, ou `null` enquanto nenhum casa. */
@@ -64,8 +64,7 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
         list="cidades-ibge"
         placeholder="Comece a digitar"
         autoComplete="off"
-        value={value}
-        onChange={(evento) => onChange(evento.target.value)}
+        onValueChange={onChange}
         error={error}
         required
       />

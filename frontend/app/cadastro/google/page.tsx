@@ -172,8 +172,7 @@ export default function ContaGoogle() {
         <Field
           label="Data de nascimento"
           type="date"
-          value={dataNascimento}
-          onChange={(evento) => setDataNascimento(evento.target.value)}
+          onValueChange={setDataNascimento}
           error={erroData}
           required
         />

@@ -175,6 +175,36 @@ test("cidade fora da lista do IBGE não passa (RN-17)", async ({ page }) => {
   await expect(page.getByText("Escolha uma cidade da lista.")).toBeVisible();
 });
 
+test("o que ela digita antes de a página carregar não se perde", async ({
+  page,
+}) => {
+  await mockarApi(page);
+  await page.route("**/_next/static/**/*.js", async (rota) => {
+    await new Promise((ok) => setTimeout(ok, 1500));
+    await rota.continue();
+  });
+
+  await page.goto("/criar-conta", { waitUntil: "commit" });
+  await page.getByLabel("Nome completo").fill("Alana Oliveira");
+  await page.getByLabel("E-mail").fill("alana@exemplo.com");
+
+  // O botão só responde depois que o React assume a tela.
+  await expect(page.getByRole("button", { name: "Criar conta" })).toBeEnabled({
+    timeout: 15000,
+  });
+  await expect(page.getByLabel("Nome completo")).toHaveValue("Alana Oliveira");
+  await expect(page.getByLabel("E-mail")).toHaveValue("alana@exemplo.com");
+
+  // E o que ela digitou antes vale no envio, não só na tela.
+  await page.getByLabel("Senha").fill("senhaforte123");
+  await page.getByLabel("Data de nascimento").fill(fazTrezeHoje());
+  await page.getByLabel("Cidade").fill("Maceió, AL");
+  await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+});
+
 test("data impossível pede correção, sem mandar para a A02c", async ({
   page,
 }) => {

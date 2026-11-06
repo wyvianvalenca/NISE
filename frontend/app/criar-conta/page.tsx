@@ -154,8 +154,7 @@ function CriarConta() {
           <Field
             label="Nome completo"
             autoComplete="name"
-            value={nome}
-            onChange={(evento) => setNome(evento.target.value)}
+            onValueChange={setNome}
             error={erros.nome}
             required
           />
@@ -163,8 +162,7 @@ function CriarConta() {
             label="E-mail"
             type="email"
             autoComplete="email"
-            value={email}
-            onChange={(evento) => setEmail(evento.target.value)}
+            onValueChange={setEmail}
             error={erros.email}
             required
           />
@@ -172,16 +170,14 @@ function CriarConta() {
             label="Senha"
             type="password"
             autoComplete="new-password"
-            value={senha}
-            onChange={(evento) => setSenha(evento.target.value)}
+            onValueChange={setSenha}
             error={erros.senha}
             required
           />
           <Field
             label="Data de nascimento"
             type="date"
-            value={dataNascimento}
-            onChange={(evento) => setDataNascimento(evento.target.value)}
+            onValueChange={setDataNascimento}
             error={erros.dataNascimento}
             required
           />
