@@ -1,0 +1,70 @@
+/* A02 "Crie sua conta" (Figma 511:505). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.google {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* "ou preencha seus dados" com uma linha de cada lado. */
+.divisor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.divisor::before,
+.divisor::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--nise-border);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.erro {
+  color: var(--nise-pink);
+  font-size: 14px;
+}
+
+.fullWidth {
+  width: 100%;
+  margin-top: 8px;
+}
