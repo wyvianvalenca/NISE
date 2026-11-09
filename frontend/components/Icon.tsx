@@ -40,6 +40,8 @@ const ICON_SIZES = {
   "face-5": 32,
   clipboard: 34,
   compass: 20,
+  "compass-lg": 22,
+  agenda: 22,
   "check-sm": 12,
   "topic-programacao": 22,
   "topic-robotica": 22,
@@ -49,6 +51,11 @@ const ICON_SIZES = {
   "topic-jogos": 22,
   "topic-sites": 22,
   "topic-design": 22,
+  "band-primeiros-passos": 22,
+  "band-uma-tarde": 22,
+  "band-no-meu-ritmo": 22,
+  "band-role-com-a-galera": 22,
+  "band-grande-desafio": 22,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;
