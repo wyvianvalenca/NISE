@@ -17,5 +17,12 @@ class AppSettings(BaseSettings):
     database_url: str
     debug_mode: bool = False
 
+    jwt_secret: str
+    jwt_expire_minutes: int = 60 * 24 * 7
+    # True em produção, False em desenvolvimento.
+    cookie_secure: bool = True
+
+    password_reset_expire_minutes: int = 60
+
 
 settings = AppSettings()
