@@ -111,6 +111,12 @@
   font-size: 14px;
 }
 
+.erro {
+  color: var(--nise-pink);
+  font-size: 14px;
+  text-align: center;
+}
+
 .fullWidth {
   width: 100%;
 }

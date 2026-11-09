@@ -28,6 +28,7 @@ function PorQueFile() {
   /** `null` enquanto a resposta não chegou. */
   const [vista, setVista] = useState<boolean | null>(null);
   const [saindo, setSaindo] = useState(false);
+  const [erro, setErro] = useState<string>();
 
   useEffect(() => {
     if (rever) return;
@@ -48,10 +49,23 @@ function PorQueFile() {
     }
   }, [rever, vista, router]);
 
+  /**
+   * `replace` e não `push`: a explicação é porta de entrada, não um passo do
+   * histórico. Com `push`, o "voltar" do navegador traria ela de novo, ela
+   * redirecionaria para o Descobrir na hora, e a menina precisaria apertar
+   * voltar duas vezes para sair.
+   */
   async function comecar() {
     setSaindo(true);
-    await marcarIntroVista();
-    router.push(FILE_PATHS.discover);
+    setErro(undefined);
+    try {
+      await marcarIntroVista();
+    } catch {
+      setSaindo(false);
+      setErro("Não deu pra continuar agora. Tente de novo.");
+      return;
+    }
+    router.replace(FILE_PATHS.discover);
   }
 
   const mostrando = rever || vista === false;
@@ -110,6 +124,11 @@ function PorQueFile() {
           <br />
           do seu jeito.
         </p>
+        {erro && (
+          <p className={styles.erro} role="alert">
+            {erro}
+          </p>
+        )}
         <Button
           className={styles.fullWidth}
           loading={saindo}
@@ -122,13 +141,34 @@ function PorQueFile() {
   );
 }
 
+/** O cabeçalho e a moldura, que não dependem de JavaScript nem da query. */
+function Moldura({ children }: { children: React.ReactNode }) {
+  return (
+    <div className={styles.page}>
+      <AppHeader />
+      <main className={styles.main}>{children}</main>
+    </div>
+  );
+}
+
 /**
  * Envelope da A06·0. O `useSearchParams` lá dentro só roda sob um limite de
  * Suspense; sem ele, a página inteira deixa de ser gerada estaticamente.
+ *
+ * O fallback desenha a moldura, e não uma tela em branco: enquanto o
+ * JavaScript não chega, a menina já vê a marca e sabe que a página é a certa.
  */
 export default function PorQueFilePage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <Moldura>
+          <p className={styles.status} aria-live="polite">
+            Carregando...
+          </p>
+        </Moldura>
+      }
+    >
       <PorQueFile />
     </Suspense>
   );
