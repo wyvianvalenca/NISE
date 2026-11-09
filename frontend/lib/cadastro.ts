@@ -46,7 +46,7 @@ export function urlInicioGoogle(
   }
 
   const query = busca.toString();
-  return query ? `/api/auth/google/start?${query}` : "/api/auth/google/start";
+  return query ? `/api/auth/google/login?${query}` : "/api/auth/google/login";
 }
 
 /** Nome e e-mail da sessão incompleta, ou `null` quando não há nenhuma. */

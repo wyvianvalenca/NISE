@@ -5,11 +5,12 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.google import GoogleProfile
 from app.auth.models import PasswordResetToken
 from app.auth.schemas import LoginIn, RegisterIn
 from app.auth.utils import hash_password, hash_reset_token, verify_password
 from app.config import settings
-from app.users.models import Role, User
+from app.users.models import OAuthAccount, Provider, Role, User
 from app.users.service import get_user_by_email, normalize_email
 
 # hash falso para que os três casos tenham o mesmo tempo de execução
@@ -116,5 +117,78 @@ async def reset_password(
     await _invalidate_open_tokens(session, user.id, now)
 
     await session.commit()
+
+    return user
+
+
+async def _get_user_by_google_subject(
+    session: AsyncSession, subject: str
+) -> User | None:
+    stmt = (
+        select(User)
+        .join(OAuthAccount, OAuthAccount.user_id == User.id)
+        .where(OAuthAccount.provider_user_id == subject)
+    )
+
+    user = await session.scalar(stmt)
+
+    return user
+
+
+async def find_oauth_user(session: AsyncSession, profile: GoogleProfile) -> User | None:
+
+    user = await _get_user_by_google_subject(session, profile.subject)
+    if user is not None:
+        return user
+
+    user = await get_user_by_email(session, profile.email)
+    if user is None:
+        return None
+
+    # Caso tenha conta cadastrada, não mudamos a senha, mas isso depende de verificação de email, que fica pendente (abrir issue para isso)!
+    session.add(
+        OAuthAccount(
+            user_id=user.id, provider=Provider.GOOGLE, provider_user_id=profile.subject
+        )
+    )
+
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        return await _get_user_by_google_subject(session, profile.subject)
+
+    return user
+
+
+async def create_oauth_user(
+    session: AsyncSession, profile: GoogleProfile
+) -> User | None:
+    user = await find_oauth_user(session, profile)
+
+    if user is not None:
+        return None
+
+    user = User(
+        name=profile.name,
+        password_hash=None,
+        email=normalize_email(profile.email),
+        role=Role.GIRL,
+    )
+    session.add(user)
+
+    try:
+        await session.flush()
+
+        account = OAuthAccount(
+            user_id=user.id, provider=Provider.GOOGLE, provider_user_id=profile.subject
+        )
+
+        session.add(account)
+
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        return None
 
     return user

@@ -9,6 +9,12 @@ from app.db.engine import AsyncSessionDep
 from app.users.models import Role, User
 
 SESSION_COOKIE = "nise_session"
+PENDING_SIGNUP_COOKIE = "nise_cadastro_pendente"
+GOOGLE_STATE_COOKIE = "nise_google_state"
+GOOGLE_VERIFIER_COOKIE = "nise_google_verifier"
+GOOGLE_COOKIE_PATH = "/api/auth/google"
+
+GOOGLE_COOKIE_MAX_AGE = 10 * 60
 
 
 async def get_current_user(
@@ -59,6 +65,57 @@ def clear_session_cookie(response: Response) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
     )
+
+
+def set_pending_signup_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=PENDING_SIGNUP_COOKIE,
+        value=token,
+        max_age=settings.pending_signup_expire_minutes * 60,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+
+
+def clear_pending_signup_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=PENDING_SIGNUP_COOKIE,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+
+
+def set_google_oauth_cookies(
+    response: Response, state: str, code_verifier: str
+) -> None:
+    for key, value in (
+        (GOOGLE_STATE_COOKIE, state),
+        (GOOGLE_VERIFIER_COOKIE, code_verifier),
+    ):
+        response.set_cookie(
+            key=key,
+            value=value,
+            max_age=GOOGLE_COOKIE_MAX_AGE,
+            path=GOOGLE_COOKIE_PATH,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite="lax",
+        )
+
+
+def clear_google_oauth_cookies(response: Response) -> None:
+    for key in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE):
+        response.delete_cookie(
+            key=key,
+            path=GOOGLE_COOKIE_PATH,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite="lax",
+        )
 
 
 # Cada rota lista os papeis aceitos.
