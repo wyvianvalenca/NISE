@@ -1,0 +1,60 @@
+/* A01b "Convite do grupo" (Figma 511:352). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 24px;
+}
+
+/* Chip do convite: não é o Chip clicável do design system, é só um selo. */
+.chip {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+  font-size: 12px;
+}
+
+.title {
+  margin-top: 12px;
+  color: var(--nise-ink);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.assinatura {
+  color: var(--nise-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.status {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.spacer {
+  flex: 1;
+  min-height: 24px;
+}
+
+.fullWidth {
+  width: 100%;
+}

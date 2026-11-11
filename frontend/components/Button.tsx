@@ -1,12 +1,15 @@
-import type { ButtonHTMLAttributes } from "react";
+import Link, { type LinkProps } from "next/link";
+import type { ComponentProps, ReactNode } from "react";
 import styles from "./Button.module.css";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ComponentProps<"button"> & {
   /** Mostra "Enviando…" e bloqueia o clique enquanto algo é salvo. */
   loading?: boolean;
   loadingLabel?: string;
   /** "primary": fundo escuro. "secondary": contorno, para a ação menos importante. */
   variant?: "primary" | "secondary";
+  /** "sm": 44px de altura, para ações dentro de cartões ("+ Quero fazer"). */
+  size?: "md" | "sm";
 };
 
 /**
@@ -22,6 +25,7 @@ export function Button({
   children,
   type = "button",
   variant = "primary",
+  size = "md",
   ...rest
 }: ButtonProps) {
   return (
@@ -30,9 +34,46 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={[styles.button, styles[variant], className].filter(Boolean).join(" ")}
+      className={[
+        styles.button,
+        styles[variant],
+        size === "sm" && styles.sm,
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {loading ? loadingLabel : children}
     </button>
+  );
+}
+
+type LinkButtonProps = LinkProps & {
+  children: ReactNode;
+  className?: string;
+  variant?: "primary" | "secondary";
+};
+
+/**
+ * Link com a cara do `Button`, para ação que é navegação (Figma: Action / ...).
+ *
+ * Existe para a tela não virar client component só por causa de um
+ * `router.push`, e para a menina poder abrir em outra aba, como todo link.
+ */
+export function LinkButton({
+  className,
+  variant = "primary",
+  children,
+  ...rest
+}: LinkButtonProps) {
+  return (
+    <Link
+      {...rest}
+      className={[styles.button, styles[variant], className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </Link>
   );
 }

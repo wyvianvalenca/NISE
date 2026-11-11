@@ -23,6 +23,7 @@ const ICON_SIZES = {
   "arrow-right": 16,
   external: 14,
   check: 16,
+  plus: 16,
   search: 16,
   sparkle: 16,
   pin: 14,
@@ -59,6 +60,10 @@ const ICON_SIZES = {
   "band-grande-desafio": 22,
   question: 24,
   "rocket-sm": 20,
+  rocket: 22,
+  play: 22,
+  trash: 16,
+  "calendar-sm": 14,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;

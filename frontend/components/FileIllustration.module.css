@@ -1,0 +1,39 @@
+.wrap {
+  position: relative;
+  width: 100%;
+  /* O quadro da ilustração no Figma: 396 x 342, mais o respiro da malha. */
+  aspect-ratio: 396 / 396;
+  max-height: 396px;
+  overflow: hidden;
+}
+
+/* Grade de 18px em 18px, do rosa da marca, apagando nas pontas. */
+.malha {
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      rgba(164, 44, 93, 0.17) 0 1px,
+      transparent 1px 18px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(164, 44, 93, 0.17) 0 1px,
+      transparent 1px 18px
+    );
+  mask-image:
+    linear-gradient(to right, transparent, #000 30%, #000 70%, transparent),
+    linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+.motivos {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: auto;
+  transform: translate(-50%, -50%);
+}
