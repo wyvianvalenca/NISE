@@ -133,7 +133,7 @@ test("depois da última sugestão ainda dá para desfazer", async ({ page }) => 
   await open(page, { count: 1 });
 
   await button(page, "Quero fazer").click();
-  await expect(page.getByRole("heading", { name: "Você viu todas as sugestões de Uma tarde." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Você viu todas as sugestões de Uma tarde" })).toBeVisible();
 
   await undoButton(page).click();
   await expect(page.getByText("Sugestão 1 de 1")).toBeVisible();

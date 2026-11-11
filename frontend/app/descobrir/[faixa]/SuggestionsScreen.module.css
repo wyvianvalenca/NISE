@@ -223,11 +223,69 @@
   font-size: 22px;
   font-weight: 700;
   line-height: 1.25;
+  text-wrap: balance;
 }
 
 .endText {
   color: var(--nise-muted);
   font-size: 15px;
+}
+
+/* Fim da faixa (#166): ilustração, título e as duas saídas em largura total. */
+.endArt {
+  margin-top: 40px;
+  margin-bottom: 4px;
+  color: var(--nise-muted);
+}
+
+.endTitle:focus {
+  outline: none;
+}
+
+.endActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 36px;
+}
+
+.endMain,
+.endSecondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.endMain {
+  min-height: 54px;
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+  font-size: 16px;
+}
+
+.endMain:hover {
+  background: var(--nise-teal);
+}
+
+.endSecondary {
+  min-height: 51px;
+  border: 1.5px solid var(--nise-teal);
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+}
+
+.endSecondary:hover {
+  background: var(--nise-tealSoft);
+}
+
+.endMain:focus-visible,
+.endSecondary:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
 }
 
 .srOnly {
