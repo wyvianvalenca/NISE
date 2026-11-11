@@ -1,7 +1,7 @@
-// Sugestões de uma faixa, uma de cada vez (A06·2), e o motivo do "Não é pra mim" (A06·2a).
-// Atende RF-F10.04 e RF-F11.04 (issues #102 e #103).
+// Sugestões de uma faixa, uma de cada vez (A06·2), o motivo do "Não é pra mim" (A06·2a)
+// e o "Desfazer" da última escolha. Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107).
 //
-// TEMPORÁRIO: getSuggestions() e sendChoice() usam dados de teste. Os tipos seguem as rotas
+// TEMPORÁRIO: getSuggestions(), sendChoice() e undoChoice() usam dados de teste. Os tipos seguem as rotas
 // descritas na #102 e serão trocados pelos tipos gerados do OpenAPI quando o back existir.
 // Os dados são fictícios; nada sai do navegador.
 
@@ -68,6 +68,8 @@ declare global {
         failLoad?: boolean;
         /** Quantas vezes seguidas guardar a escolha falha, para testar o erro. */
         choiceFailures?: number;
+        /** Quantas vezes seguidas o "Desfazer" falha, para testar o erro. */
+        undoFailures?: number;
       }
     | undefined;
   var __NISE_ESCOLHAS__: { id: string; choice: Choice; reason?: ReasonCode }[] | undefined;
@@ -167,5 +169,23 @@ export async function sendChoice(id: string, choice: Choice, reason?: ReasonCode
   }
   globalThis.__NISE_ESCOLHAS__ = [...(globalThis.__NISE_ESCOLHAS__ ?? []), { id, choice, reason }];
   if (choice === "quero-fazer") mockFileTotal += 1;
+  return { fileTotal: mockFileTotal };
+}
+
+/**
+ * Desfaz a escolha dela sobre um item (#106): apaga a escolha guardada (e o motivo, se houver)
+ * e devolve o novo total do filé. Para um item sem escolha, não faz nada.
+ */
+export async function undoChoice(id: string): Promise<ChoiceResponse> {
+  const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
+  await wait(mock.delayMs);
+  if (mock.undoFailures) {
+    mock.undoFailures -= 1;
+    throw new Error("Não foi possível desfazer a escolha.");
+  }
+  const saved = globalThis.__NISE_ESCOLHAS__ ?? [];
+  const removed = saved.find((entry) => entry.id === id);
+  globalThis.__NISE_ESCOLHAS__ = saved.filter((entry) => entry.id !== id);
+  if (removed?.choice === "quero-fazer") mockFileTotal -= 1;
   return { fileTotal: mockFileTotal };
 }

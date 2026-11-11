@@ -1,10 +1,11 @@
 "use client";
 
-// A06·2 · Sugestões: uma de cada vez, com "Não é pra mim", "Talvez depois" e "Quero fazer".
-// Atende RF-F10.04 e RF-F11.04 (issues #102 e #103). Usa os dados de teste de lib/sugestoes.ts.
+// A06·2 · Sugestões: uma de cada vez, com "Não é pra mim", "Talvez depois" e "Quero fazer",
+// e o aviso com "Desfazer" depois de cada escolha.
+// Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107). Usa os dados de teste de lib/sugestoes.ts.
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Icon, type IconName } from "@/components/Icon";
 import { SuggestionCard } from "@/components/SuggestionCard";
@@ -13,17 +14,54 @@ import { TextLink } from "@/components/TextLink";
 import { BANDS, type BandCode } from "@/lib/descobrir";
 import type { Choice, ReasonCode, Suggestion } from "@/lib/sugestoes";
 import { ReasonSheet } from "./ReasonSheet";
+import { UndoToast, type UndoNotice } from "./UndoToast";
 import { useSuggestionDeck } from "./useSuggestionDeck";
 import styles from "./SuggestionsScreen.module.css";
 
 export function SuggestionsScreen({ band }: { band: BandCode }) {
   const title = BANDS[band].title;
-  const { state, item, position, total, choose, reload } = useSuggestionDeck(band);
+  const [notice, setNotice] = useState<UndoNotice | null>(null);
+  const noticeKey = useRef(0);
+
+  // O aviso só aparece depois que o back confirma a escolha; assim o "Desfazer" nunca vem antes.
+  const showNotice = useCallback((chosen: Suggestion, choice: Choice) => {
+    noticeKey.current += 1;
+    setNotice({ key: noticeKey.current, id: chosen.id, title: chosen.title, choice, status: "ready" });
+  }, []);
+  const hideNotice = useCallback(() => setNotice(null), []);
+
+  const { state, item, position, total, choose, undo, reload } = useSuggestionDeck(band, { onChoiceConfirmed: showNotice });
   const [reasonOpen, setReasonOpen] = useState(false);
+
+  // Depois de desfazer, o foco vai para o contador, que lê "Sugestão N de M: <título>".
+  const counterRef = useRef<HTMLParagraphElement>(null);
+  const [restored, setRestored] = useState(0);
+  useEffect(() => {
+    if (restored) counterRef.current?.focus();
+  }, [restored]);
+
+  /** Uma escolha nova substitui o aviso: só a última pode ser desfeita. */
+  function decide(choice: Choice, reason?: ReasonCode) {
+    setNotice(null);
+    choose(choice, reason);
+  }
 
   function sendReason(reason?: ReasonCode) {
     setReasonOpen(false);
-    choose("nao-e-pra-mim", reason);
+    decide("nao-e-pra-mim", reason);
+  }
+
+  async function undoLast() {
+    if (!notice || notice.status === "undoing") return;
+    setNotice({ ...notice, status: "undoing" });
+    try {
+      await undo(notice.id);
+      setNotice(null);
+      setRestored((count) => count + 1);
+    } catch {
+      // Ela vê o erro e pode tentar de novo enquanto o aviso estiver na tela.
+      setNotice({ ...notice, status: "error" });
+    }
   }
 
   return (
@@ -46,9 +84,11 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
         )}
       </header>
 
+      {notice && <UndoToast key={notice.key} notice={notice} onUndo={undoLast} onTimeout={hideNotice} />}
+
       <main className={styles.main}>
         <h1 className={styles.srOnly}>Sugestões de {title}</h1>
-        {/* Espaço do aviso no Figma: o "Desfazer" da #107 aparece aqui. */}
+        {/* Espaço do aviso no Figma; o aviso fica por cima dele (.toastArea), para não empurrar o card. */}
         <div className={styles.noticeSlot} />
 
         {state.status === "loading" ? (
@@ -65,7 +105,7 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
                 Não deu pra guardar. Tente de novo.
               </p>
             )}
-            <p className={styles.counter} aria-live="polite">
+            <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
               Sugestão {position} de {total}
               <span className={styles.srOnly}>: {item.title}</span>
             </p>
@@ -74,7 +114,7 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
               disabled={state.pending}
               onChoose={(choice) => {
                 if (choice === "nao-e-pra-mim") setReasonOpen(true);
-                else choose(choice);
+                else decide(choice);
               }}
             />
           </>
