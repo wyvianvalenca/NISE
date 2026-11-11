@@ -136,22 +136,30 @@ test("fechar a folha pelo X ou pelo Esc não guarda nada e volta o foco ao botã
   expect(await choices(page)).toEqual([]);
 });
 
-test("depois da última sugestão mostra o fim da faixa com a volta ao Descobrir", async ({ page }) => {
+test("depois da última sugestão mostra o fim da faixa com as duas saídas", async ({ page }) => {
   await open(page, "uma-tarde", { count: 2 });
 
   await button(page, "Quero fazer").click();
   await expect(page.getByText("Sugestão 2 de 2")).toBeVisible();
   await button(page, "Talvez depois").click();
 
-  await expect(page.getByRole("heading", { name: "Você viu todas as sugestões de Uma tarde." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Voltar ao Descobrir", exact: true })).toHaveAttribute("href", "/descobrir");
+  const heading = page.getByRole("heading", { name: "Você viu todas as sugestões de Uma tarde" });
+  await expect(heading).toBeVisible();
+  await expect(heading).toBeFocused();
+  await expect(page.getByText("Por enquanto, é isso por aqui.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Quero fazer" })).toHaveCount(0);
+
+  await expect(page.getByRole("link", { name: "Ver o que salvei pra depois" })).toHaveAttribute("href", "/ver-depois");
+  await page.getByRole("link", { name: "Escolher outra categoria" }).click();
+  await expect(page).toHaveURL("/descobrir");
 });
 
 test("faixa sem sugestões mostra \"Por enquanto, nada marcado.\"", async ({ page }) => {
   await open(page, "grande-desafio", { count: 0 });
 
   await expect(page.getByRole("heading", { name: "Por enquanto, nada marcado." })).toBeVisible();
+  await expect(page.getByText("Por enquanto, é isso por aqui.")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Escolher outra categoria" })).toHaveAttribute("href", "/descobrir");
 });
 
 test("mostra o carregamento enquanto as sugestões chegam", async ({ page }) => {

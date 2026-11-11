@@ -205,19 +205,42 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
 }
 
 /**
- * Depois da última sugestão (ou faixa sem nenhuma). PROVISÓRIO: o Figma ainda não tem
- * essa tela; o destino será confirmado com o design (#102).
+ * Depois da última sugestão (A06·2 · Sugestões acabaram, #166) ou faixa sem nenhuma.
+ * O foco vai para o título, porque os botões de escolha saíram da tela.
  */
 function End({ title, empty }: { title: string; empty: boolean }) {
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => titleRef.current?.focus(), []);
+
   return (
     <div className={styles.end}>
-      <h2 className={styles.endTitle}>
-        {empty ? "Por enquanto, nada marcado." : `Você viu todas as sugestões de ${title}.`}
+      <EmptyDeck />
+      <h2 ref={titleRef} tabIndex={-1} className={styles.endTitle}>
+        {empty ? "Por enquanto, nada marcado." : `Você viu todas as sugestões de ${title}`}
       </h2>
-      <p className={styles.endText}>Escolha outra faixa ou volte mais tarde para ver novidades.</p>
-      <TextLink href="/descobrir" back>
-        Voltar ao Descobrir
-      </TextLink>
+      {!empty && <p className={styles.endText}>Por enquanto, é isso por aqui.</p>}
+      <div className={styles.endActions}>
+        <Link href="/descobrir" className={styles.endMain}>
+          Escolher outra categoria
+        </Link>
+        {/* A tela Ver depois é a #111; até ela entrar, o link dá 404. */}
+        <Link href="/ver-depois" className={styles.endSecondary}>
+          Ver o que salvei pra depois
+        </Link>
+      </div>
     </div>
+  );
+}
+
+/** Dois cards tracejados, sem nada dentro (Figma: Card / Acabaram as sugestões · Ícone). */
+function EmptyDeck() {
+  return (
+    <svg className={styles.endArt} width="130" height="110" viewBox="0 0 130 110" fill="none" aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="2" strokeDasharray="5 4">
+        <rect x="22" y="14" width="44" height="78" rx="5" transform="rotate(-8 44 53)" />
+        <rect x="64" y="14" width="44" height="78" rx="5" transform="rotate(8 86 53)" />
+        <rect x="43" y="10" width="44" height="78" rx="5" transform="rotate(-3 65 49)" />
+      </g>
+    </svg>
   );
 }
