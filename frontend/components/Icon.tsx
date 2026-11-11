@@ -57,6 +57,10 @@ const ICON_SIZES = {
   "band-no-meu-ritmo": 22,
   "band-role-com-a-galera": 22,
   "band-grande-desafio": 22,
+  rocket: 22,
+  play: 22,
+  trash: 16,
+  "calendar-sm": 14,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;
