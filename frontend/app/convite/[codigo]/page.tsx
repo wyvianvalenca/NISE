@@ -6,17 +6,17 @@ import { AppHeader } from "@/components/AppHeader";
 import { LinkButton } from "@/components/Button";
 import { FileIllustration } from "@/components/FileIllustration";
 import { TextLink } from "@/components/TextLink";
-import { buscarConvite, type Convite } from "@/lib/cadastro";
+import { getInvite, type Invite } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
 type Params = PageProps<"/convite/[codigo]">["params"];
 
 /**
- * A01b "Convite do grupo" (Figma 511:352): entrada de quem chegou pelo link
- * de um grupo (fluxo M1, issue #51).
+ * A01b "Convite do grupo" (Figma 511:352): the door for whoever arrived
+ * through a group's link (flow M1, issue #51).
  *
- * Código inválido ou vencido cai na A01, como manda a issue — e não numa tela
- * de erro, para ela não ficar presa.
+ * An invalid or expired code falls back to A01, as the issue asks — and not
+ * to an error screen, so she is never stuck.
  */
 export default function ConvitePage({ params }: PageProps<"/convite/[codigo]">) {
   return (
@@ -32,34 +32,34 @@ export default function ConvitePage({ params }: PageProps<"/convite/[codigo]">) 
           </main>
         }
       >
-        <Conteudo params={params} />
+        <Content params={params} />
       </Suspense>
     </div>
   );
 }
 
-function Conteudo({ params }: { params: Params }) {
+function Content({ params }: { params: Params }) {
   const { codigo } = use(params);
   const router = useRouter();
-  const [convite, setConvite] = useState<Convite | null>(null);
+  const [invite, setInvite] = useState<Invite | null>(null);
 
   useEffect(() => {
-    const controle = new AbortController();
+    const controller = new AbortController();
 
-    buscarConvite(codigo, controle.signal)
-      .then((dados) => {
-        if (controle.signal.aborted) return;
-        if (dados) setConvite(dados);
+    getInvite(codigo, controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        if (data) setInvite(data);
         else router.replace("/");
       })
       .catch(() => {
-        if (!controle.signal.aborted) router.replace("/");
+        if (!controller.signal.aborted) router.replace("/");
       });
 
-    return () => controle.abort();
+    return () => controller.abort();
   }, [codigo, router]);
 
-  if (!convite) {
+  if (!invite) {
     return (
       <main className={styles.main}>
         <p className={styles.status} aria-live="polite">
@@ -71,16 +71,16 @@ function Conteudo({ params }: { params: Params }) {
 
   return (
     <main className={styles.main}>
-      <p className={styles.chip}>Convite · {convite.groupName}</p>
+      <p className={styles.chip}>Convite · {invite.groupName}</p>
       <h1 className={styles.title}>Que bom ter você aqui!</h1>
       <p className={styles.lead}>
-        O grupo {convite.groupName} faz parte da NISE. Crie sua conta para
+        O grupo {invite.groupName} faz parte da NISE. Crie sua conta para
         acompanhar o grupo e descobrir novas oportunidades.
       </p>
 
       <FileIllustration />
 
-      <p className={styles.assinatura}>
+      <p className={styles.signature}>
         Núcleo de Incentivo e Suporte
         <br />
         às Egressas e Estudantes

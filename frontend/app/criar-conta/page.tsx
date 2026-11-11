@@ -8,126 +8,135 @@ import { CityField } from "@/components/CityField";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
 import { TextLink } from "@/components/TextLink";
-import { criarContaComEmail, SENHA_MINIMA, type Cidade } from "@/lib/cadastro";
-import { emailValido, ERRO_SEM_DOMINIO } from "@/lib/email";
-import { checarIdade } from "@/lib/idade";
+import {
+  createEmailAccount,
+  MINIMUM_PASSWORD_LENGTH,
+  type City,
+} from "@/lib/signup-api";
+import { isValidEmail, MISSING_DOMAIN_ERROR } from "@/lib/email";
+import { checkAge } from "@/lib/age";
 import styles from "./page.module.css";
 
-type Erros = {
-  nome?: string;
+type Errors = {
+  name?: string;
   email?: string;
-  senha?: string;
-  dataNascimento?: string;
-  cidade?: string;
-  geral?: string;
+  password?: string;
+  birthDate?: string;
+  city?: string;
+  general?: string;
 };
 
-const ERRO_DE_REDE = "Não deu pra criar sua conta agora. Tente de novo.";
+const NETWORK_ERROR = "Não deu pra criar sua conta agora. Tente de novo.";
 
 /**
  * A02 "Crie sua conta" (Figma 511:505), issue #51.
  *
- * Serve aos dois fluxos: com convite (M1, `?convite=<codigo>`) e sem (M2).
- * O código do convite segue junto para o servidor, porque é ele que decide a
- * origem da conta e, mais adiante, o texto dos termos (RN-29, H3).
+ * It serves both flows: with an invite (M1, `?convite=<code>`) and without
+ * one (M2). The invite code travels to the server because it decides the
+ * account's origin and, later on, the wording of the terms (RN-29, H3).
  *
- * O e-mail não vem preenchido pelo convite: a rota do convite é pública, e
- * devolver o e-mail do registro importado ali deixaria qualquer código
- * adivinhado colher e-mail de menina menor de idade. Quem liga a conta ao
- * registro importado é o servidor, pelo e-mail que ela digitar (RF-F2.02).
+ * The email does not arrive prefilled from the invite: that route is public,
+ * and returning the imported record's email there would let any guessed code
+ * harvest the email of an underage girl. Linking the account to the imported
+ * record is the server's job, through the email she types (RF-F2.02).
  */
-function CriarConta() {
+function CreateAccount() {
   const router = useRouter();
-  const convite = useSearchParams().get("convite") ?? undefined;
+  const invite = useSearchParams().get("convite") ?? undefined;
 
-  const [nome, setNome] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [dataNascimento, setDataNascimento] = useState("");
-  const [cidadeDigitada, setCidadeDigitada] = useState("");
-  const [cidade, setCidade] = useState<Cidade | null>(null);
-  const [erros, setErros] = useState<Erros>({});
-  const [enviando, setEnviando] = useState(false);
+  const [password, setPassword] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [cityText, setCityText] = useState("");
+  const [city, setCity] = useState<City | null>(null);
+  const [errors, setErrors] = useState<Errors>({});
+  const [sending, setSending] = useState(false);
 
-  async function enviar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    const novos: Erros = {};
-    if (!nome.trim()) {
-      novos.nome = "Preencha seu nome completo.";
+    const found: Errors = {};
+    if (!name.trim()) {
+      found.name = "Preencha seu nome completo.";
     }
-    if (!emailValido(email)) {
-      novos.email = ERRO_SEM_DOMINIO;
+    if (!isValidEmail(email)) {
+      found.email = MISSING_DOMAIN_ERROR;
     }
-    if (senha.length < SENHA_MINIMA) {
-      novos.senha = `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`;
+    if (password.length < MINIMUM_PASSWORD_LENGTH) {
+      found.password = `A senha precisa de pelo menos ${MINIMUM_PASSWORD_LENGTH} caracteres.`;
     }
-    if (!dataNascimento) {
-      novos.dataNascimento = "Preencha sua data de nascimento.";
+    if (!birthDate) {
+      found.birthDate = "Preencha sua data de nascimento.";
     }
-    if (!cidade) {
-      novos.cidade = "Escolha uma cidade da lista.";
-    }
-
-    const idade = dataNascimento ? checarIdade(dataNascimento) : null;
-    if (idade === "invalid_date") {
-      novos.dataNascimento = "Confira sua data de nascimento.";
+    if (!city) {
+      found.city = "Escolha uma cidade da lista.";
     }
 
-    setErros(novos);
-    if (Object.keys(novos).length > 0 || !cidade) {
+    // An impossible date (wrong year, 30/02) is not the same as being too
+    // young: here she fixes the field instead of being sent to A02c.
+    const age = birthDate ? checkAge(birthDate) : null;
+    if (age === "invalid_date") {
+      found.birthDate = "Confira sua data de nascimento.";
+    }
+
+    setErrors(found);
+    if (Object.keys(found).length > 0 || !city) {
       return;
     }
 
-    if (idade === "under_13") {
-      setEnviando(true);
+    // Under 13: nothing she filled in leaves the screen (RN-03, RF-F7.01).
+    if (age === "under_13") {
+      setSending(true);
       router.replace("/cadastro/idade-minima");
       return;
     }
 
-    setEnviando(true);
+    setSending(true);
     try {
-      const resultado = await criarContaComEmail({
-        name: nome.trim(),
+      const result = await createEmailAccount({
+        name: name.trim(),
         email: email.trim(),
-        password: senha,
-        birthDate: dataNascimento,
-        cityId: cidade.id,
-        invite: convite,
+        password,
+        birthDate,
+        cityId: city.id,
+        invite,
       });
 
-      if (resultado.ok) {
+      if (result.ok) {
         router.push("/cadastro/termos");
         return;
       }
 
-      if (resultado.motivo === "under_13") {
+      if (result.reason === "under_13") {
         router.replace("/cadastro/idade-minima");
         return;
       }
 
-      setEnviando(false);
-      switch (resultado.motivo) {
+      setSending(false);
+      switch (result.reason) {
         case "account_exists":
-          setErros({ email: "Já existe uma conta com esse e-mail." });
+          setErrors({ email: "Já existe uma conta com esse e-mail." });
           break;
         case "invalid_email":
-          setErros({ email: ERRO_SEM_DOMINIO });
+          setErrors({ email: MISSING_DOMAIN_ERROR });
           break;
         case "password_too_short":
-          setErros({
-            senha: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`,
+          setErrors({
+            password: `A senha precisa de pelo menos ${MINIMUM_PASSWORD_LENGTH} caracteres.`,
           });
           break;
         case "invalid_city":
-          setErros({ cidade: "Escolha uma cidade da lista." });
+          setErrors({ city: "Escolha uma cidade da lista." });
           break;
         default:
-          setErros({ geral: ERRO_DE_REDE });
+          setErrors({ general: NETWORK_ERROR });
       }
     } catch {
-      setEnviando(false);
-      setErros({ geral: ERRO_DE_REDE });
+      // The connection dropped midway: free the button and explain, rather
+      // than leaving it stuck.
+      setSending(false);
+      setErrors({ general: NETWORK_ERROR });
     }
   }
 
@@ -144,18 +153,18 @@ function CriarConta() {
         </p>
 
         <div className={styles.google}>
-          <GoogleButton convite={convite} />
-          <p className={styles.divisor}>
+          <GoogleButton invite={invite} />
+          <p className={styles.divider}>
             <span>ou preencha seus dados</span>
           </p>
         </div>
 
-        <form className={styles.form} onSubmit={enviar} noValidate>
+        <form className={styles.form} onSubmit={submit} noValidate>
           <Field
             label="Nome completo"
             autoComplete="name"
-            onValueChange={setNome}
-            error={erros.nome}
+            onValueChange={setName}
+            error={errors.name}
             required
           />
           <Field
@@ -163,38 +172,38 @@ function CriarConta() {
             type="email"
             autoComplete="email"
             onValueChange={setEmail}
-            error={erros.email}
+            error={errors.email}
             required
           />
           <Field
             label="Senha"
             type="password"
             autoComplete="new-password"
-            onValueChange={setSenha}
-            error={erros.senha}
+            onValueChange={setPassword}
+            error={errors.password}
             required
           />
           <Field
             label="Data de nascimento"
             type="date"
-            onValueChange={setDataNascimento}
-            error={erros.dataNascimento}
+            onValueChange={setBirthDate}
+            error={errors.birthDate}
             required
           />
           <CityField
-            value={cidadeDigitada}
-            onChange={setCidadeDigitada}
-            onSelect={setCidade}
-            error={erros.cidade}
+            value={cityText}
+            onChange={setCityText}
+            onSelect={setCity}
+            error={errors.city}
           />
 
-          {erros.geral && (
-            <p className={styles.erro} role="alert">
-              {erros.geral}
+          {errors.general && (
+            <p className={styles.error} role="alert">
+              {errors.general}
             </p>
           )}
 
-          <Button type="submit" loading={enviando} className={styles.fullWidth}>
+          <Button type="submit" loading={sending} className={styles.fullWidth}>
             Criar conta
           </Button>
         </form>
@@ -204,13 +213,13 @@ function CriarConta() {
 }
 
 /**
- * Envelope da A02. O `useSearchParams` lá dentro só pode rodar sob um limite
- * de Suspense; sem ele, a página inteira deixa de ser gerada estaticamente.
+ * A02's wrapper. The `useSearchParams` inside only runs under a Suspense
+ * boundary; without one, the whole page stops being statically generated.
  */
-export default function CriarContaPage() {
+export default function CreateAccountPage() {
   return (
     <Suspense>
-      <CriarConta />
+      <CreateAccount />
     </Suspense>
   );
 }

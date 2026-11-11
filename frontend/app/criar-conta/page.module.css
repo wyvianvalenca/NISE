@@ -35,8 +35,8 @@
   margin-top: 16px;
 }
 
-/* "ou preencha seus dados" com uma linha de cada lado. */
-.divisor {
+/* "ou preencha seus dados" with a rule on each side. */
+.divider {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -44,8 +44,8 @@
   font-size: 12px;
 }
 
-.divisor::before,
-.divisor::after {
+.divider::before,
+.divider::after {
   content: "";
   flex: 1;
   height: 1px;
@@ -59,7 +59,7 @@
   margin-top: 16px;
 }
 
-.erro {
+.error {
   color: var(--nise-pink);
   font-size: 14px;
 }

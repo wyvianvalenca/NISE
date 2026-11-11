@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * A06·0 "Por que filé?" (#83). Usa os dados de teste de lib/file.ts.
- * Dados fictícios, como manda o CONTRIBUTING.
+ * A06·0 "Por que filé?" (#83). Uses the test data in lib/file-intro.ts.
+ * Fictional data, as CONTRIBUTING requires.
  */
 
 test("na primeira vez, explica a metáfora do filé", async ({ page }) => {
@@ -32,7 +32,7 @@ test("depois de vista, não aparece de novo: vai direto para o Descobrir", async
   await page.getByRole("button", { name: "Começar meu filé" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
 
-  // Volta à porta do filé: agora ela não deve mais ver a explicação.
+  // Back to the filé door: she should not see the explanation again.
   await page.goto("/por-que-file");
 
   await expect(page).toHaveURL(/\/descobrir$/);
@@ -59,8 +59,8 @@ test("depois de começar, o voltar sai do filé de uma vez só", async ({
   await page.getByRole("button", { name: "Começar meu filé" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
 
-  // Um único voltar precisa tirar ela do Descobrir. Com `push`, a explicação
-  // voltaria e redirecionaria de novo, exigindo dois toques.
+  // A single Back must take her out of Descobrir. With `push`, the
+  // explanation would come back and redirect again, needing two presses.
   await page.goBack();
   await expect(page).not.toHaveURL(/\/descobrir$/);
 });
@@ -119,6 +119,6 @@ test("o fim do cadastro cai na porta do filé, não num 404", async ({ page }) =
   await page.getByRole("button", { name: "Ensino médio" }).click();
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
-  // Primeira vez: a explicação abre em vez de dar 404.
+  // First time: the explanation opens instead of a 404.
   await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
 });

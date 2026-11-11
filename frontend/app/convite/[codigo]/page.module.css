@@ -16,7 +16,7 @@
   padding: 28px 24px;
 }
 
-/* Chip do convite: não é o Chip clicável do design system, é só um selo. */
+/* The invite chip: not the design system's clickable Chip, just a badge. */
 .chip {
   align-self: flex-start;
   padding: 5px 10px;
@@ -39,7 +39,7 @@
   font-size: 16px;
 }
 
-.assinatura {
+.signature {
   color: var(--nise-muted);
   font-size: 12px;
   text-align: center;

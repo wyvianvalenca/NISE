@@ -45,10 +45,11 @@ type LinkButtonProps = LinkProps & {
 };
 
 /**
- * Link com a cara do `Button`, para ação que é navegação (Figma: Action / ...).
+ * A link wearing the `Button` look, for an action that is navigation
+ * (Figma: Action / ...).
  *
- * Existe para a tela não virar client component só por causa de um
- * `router.push`, e para a menina poder abrir em outra aba, como todo link.
+ * It exists so a screen does not become a client component just for a
+ * `router.push`, and so she can open it in another tab, like any link.
  */
 export function LinkButton({
   className,

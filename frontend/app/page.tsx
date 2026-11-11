@@ -5,11 +5,11 @@ import { TextLink } from "@/components/TextLink";
 import styles from "./page.module.css";
 
 /**
- * A01 "Boas-vindas" (Figma 511:15325): a porta de entrada de quem chega
- * sozinha, sem convite de grupo (fluxo M2, issue #51).
+ * A01 "Boas-vindas" (Figma 511:15325): the door for whoever arrives on her
+ * own, with no group invite (flow M2, issue #51).
  *
- * Fica no servidor: não há estado nem busca aqui, e "Criar conta" é
- * navegação, então é link e não botão com `router.push`.
+ * It stays on the server: there is no state and no fetching here, and "Criar
+ * conta" is navigation, so it is a link and not a button with `router.push`.
  */
 export default function Home() {
   return (

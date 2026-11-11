@@ -1,85 +1,83 @@
 "use client";
 
-// A06·0 · Por que filé?: a explicação da metáfora, antes de ela começar.
-// Atende RF-F10.02 (issues #82 e #83). Usa os dados de teste de lib/file.ts até a #85.
+// A06·0 · Por que filé?: the metaphor explained, before she starts.
+// Covers RF-F10.02 (issues #82 and #83). Uses the test data in lib/file-intro.ts
+// until #85.
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/Button";
 import {
   FILE_PATHS,
-  introJaVista,
-  marcarIntroVista,
-  PASSOS,
-  REVER,
-} from "@/lib/file";
+  FILE_STEPS,
+  introAlreadySeen,
+  markIntroSeen,
+  REVIEW_PARAM,
+} from "@/lib/file-intro";
 import styles from "./page.module.css";
 
 /**
- * Sem `?rever=1`, a tela só aparece na primeira vez: quem já viu segue direto
- * para o Descobrir. Com `?rever=1` ela sempre abre, que é como o "?" ao lado
- * de "Seu filé" (#114) traz a explicação de volta.
+ * Without `?rever=1` the screen only shows the first time: whoever has seen
+ * it goes straight to Descobrir. With `?rever=1` it always opens, which is how
+ * the "?" next to "Seu filé" (#114) brings the explanation back.
  */
-function PorQueFile() {
+function FileIntro() {
   const router = useRouter();
-  const rever = useSearchParams().get(REVER) === "1";
-  /** `null` enquanto a resposta não chegou. */
-  const [vista, setVista] = useState<boolean | null>(null);
-  const [saindo, setSaindo] = useState(false);
-  const [erro, setErro] = useState<string>();
+  const review = useSearchParams().get(REVIEW_PARAM) === "1";
+  /** `null` while the answer has not arrived. */
+  const [seen, setSeen] = useState<boolean | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [error, setError] = useState<string>();
 
   useEffect(() => {
-    if (rever) return;
+    if (review) return;
 
-    let atual = true;
-    introJaVista().then((resposta) => {
-      if (atual) setVista(resposta);
+    let current = true;
+    introAlreadySeen().then((answer) => {
+      if (current) setSeen(answer);
     });
 
     return () => {
-      atual = false;
+      current = false;
     };
-  }, [rever]);
+  }, [review]);
 
   useEffect(() => {
-    if (!rever && vista === true) {
+    if (!review && seen === true) {
       router.replace(FILE_PATHS.discover);
     }
-  }, [rever, vista, router]);
+  }, [review, seen, router]);
 
   /**
-   * `replace` e não `push`: a explicação é porta de entrada, não um passo do
-   * histórico. Com `push`, o "voltar" do navegador traria ela de novo, ela
-   * redirecionaria para o Descobrir na hora, e a menina precisaria apertar
-   * voltar duas vezes para sair.
+   * `replace` and not `push`: the explanation is a doorway, not a step in the
+   * history. With `push`, the browser's Back would bring it up again, it would
+   * redirect to Descobrir right away, and she would have to press Back twice
+   * to leave.
    */
-  async function comecar() {
-    setSaindo(true);
-    setErro(undefined);
+  async function start() {
+    setLeaving(true);
+    setError(undefined);
     try {
-      await marcarIntroVista();
+      await markIntroSeen();
     } catch {
-      setSaindo(false);
-      setErro("Não deu pra continuar agora. Tente de novo.");
+      setLeaving(false);
+      setError("Não deu pra continuar agora. Tente de novo.");
       return;
     }
     router.replace(FILE_PATHS.discover);
   }
 
-  const mostrando = rever || vista === false;
+  const showing = review || seen === false;
 
-  if (!mostrando) {
+  if (!showing) {
     return (
-      <div className={styles.page}>
-        <AppHeader />
-        <main className={styles.main}>
-          <p className={styles.status} aria-live="polite">
-            Carregando...
-          </p>
-        </main>
-      </div>
+      <Frame>
+        <p className={styles.status} aria-live="polite">
+          Carregando...
+        </p>
+      </Frame>
     );
   }
 
@@ -88,52 +86,48 @@ function PorQueFile() {
       <AppHeader />
 
       <main className={styles.main}>
-        <p className={styles.antes}>Antes de começar</p>
+        <p className={styles.before}>Antes de começar</p>
         <h1 className={styles.title}>Por que filé?</h1>
         <p className={styles.lead}>
           Nas lagoas Mundaú e Manguaba, mulheres tecem o filé há gerações, e{" "}
-          <strong className={styles.destaque}>uma ensina a outra</strong>. A NISE
-          se inspira nelas.
+          <strong className={styles.highlight}>uma ensina a outra</strong>. A
+          NISE se inspira nelas.
         </p>
 
-        <ol className={styles.passos}>
-          {PASSOS.map((passo, indice) => (
-            <li key={passo.imagem} className={styles.passo}>
+        <ol className={styles.steps}>
+          {FILE_STEPS.map((step, index) => (
+            <li key={step.image} className={styles.step}>
               <Image
-                src={`/file/${passo.imagem}.svg`}
+                src={`/file/${step.image}.svg`}
                 alt=""
                 width={100}
                 height={100}
                 unoptimized
               />
-              <span className={styles.texto}>
-                <span className={styles.passoTitulo}>{passo.titulo}</span>
-                <span className={styles.passoDetalhe}>{passo.texto}</span>
+              <span className={styles.text}>
+                <span className={styles.stepTitle}>{step.title}</span>
+                <span className={styles.stepDetail}>{step.text}</span>
               </span>
-              {indice < PASSOS.length - 1 && (
-                <span className={styles.fio} aria-hidden="true" />
+              {index < FILE_STEPS.length - 1 && (
+                <span className={styles.thread} aria-hidden="true" />
               )}
             </li>
           ))}
         </ol>
       </main>
 
-      <footer className={styles.rodape}>
-        <p className={styles.lema}>
+      <footer className={styles.footer}>
+        <p className={styles.motto}>
           Sem ordem certa e sem pressa,
           <br />
           do seu jeito.
         </p>
-        {erro && (
-          <p className={styles.erro} role="alert">
-            {erro}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
           </p>
         )}
-        <Button
-          className={styles.fullWidth}
-          loading={saindo}
-          onClick={comecar}
-        >
+        <Button className={styles.fullWidth} loading={leaving} onClick={start}>
           Começar meu filé
         </Button>
       </footer>
@@ -141,8 +135,8 @@ function PorQueFile() {
   );
 }
 
-/** O cabeçalho e a moldura, que não dependem de JavaScript nem da query. */
-function Moldura({ children }: { children: React.ReactNode }) {
+/** The header and the shell, which need neither JavaScript nor the query. */
+function Frame({ children }: { children: ReactNode }) {
   return (
     <div className={styles.page}>
       <AppHeader />
@@ -152,24 +146,25 @@ function Moldura({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Envelope da A06·0. O `useSearchParams` lá dentro só roda sob um limite de
- * Suspense; sem ele, a página inteira deixa de ser gerada estaticamente.
+ * A06·0's wrapper. The `useSearchParams` inside only runs under a Suspense
+ * boundary; without one, the whole page stops being statically generated.
  *
- * O fallback desenha a moldura, e não uma tela em branco: enquanto o
- * JavaScript não chega, a menina já vê a marca e sabe que a página é a certa.
+ * The fallback draws the shell rather than a blank page: while the JavaScript
+ * has not arrived, she already sees the brand and knows she is in the right
+ * place.
  */
-export default function PorQueFilePage() {
+export default function FileIntroPage() {
   return (
     <Suspense
       fallback={
-        <Moldura>
+        <Frame>
           <p className={styles.status} aria-live="polite">
             Carregando...
           </p>
-        </Moldura>
+        </Frame>
       }
     >
-      <PorQueFile />
+      <FileIntro />
     </Suspense>
   );
 }

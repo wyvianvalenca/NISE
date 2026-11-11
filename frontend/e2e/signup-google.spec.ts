@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * A02b/A02c do cadastro com o Google (#52).
+ * A02b/A02c of the Google sign-up (#52).
  *
- * O back-end ainda não existe (#47 e #50), então as rotas vêm mockadas aqui.
- * Os dados são fictícios, como manda o CONTRIBUTING: nada de menina real.
+ * The back-end does not exist yet (#68 and #50), so the routes are mocked.
+ * Fictional data, as CONTRIBUTING requires: no real girl.
  */
 
 const CONTA = { name: "Alana Oliveira", email: "alana@exemplo.com" };
@@ -13,8 +13,8 @@ const CIDADES = [
   { id: "2611606", name: "Recife, PE" },
 ];
 
-/** Hoje em Maceió, para montar datas de nascimento que não dependem do relógio. */
-function hojeEmMaceio(): { ano: number; mes: number; dia: number } {
+/** Today in Maceió, to build birth dates that do not depend on the clock. */
+function todayInMaceio(): { ano: number; mes: number; dia: number } {
   const [ano, mes, dia] = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Maceio",
     year: "numeric",
@@ -32,15 +32,15 @@ function iso(ano: number, mes: number, dia: number): string {
   return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
-/** Data de nascimento de quem faz exatamente 13 anos hoje. */
-function fazTrezeHoje(): string {
-  const { ano, mes, dia } = hojeEmMaceio();
+/** Birth date of someone turning exactly 13 today. */
+function turnsThirteenToday(): string {
+  const { ano, mes, dia } = todayInMaceio();
   return iso(ano - 13, mes, dia);
 }
 
-/** Data de nascimento de quem faz 13 anos amanhã (12 anos e 364 dias). */
-function fazTrezeAmanha(): string {
-  const { ano, mes, dia } = hojeEmMaceio();
+/** Birth date of someone turning 13 tomorrow (12 years and 364 days). */
+function turnsThirteenTomorrow(): string {
+  const { ano, mes, dia } = todayInMaceio();
   const amanha = new Date(Date.UTC(ano, mes - 1, dia + 1));
   return iso(
     amanha.getUTCFullYear() - 13,
@@ -50,49 +50,49 @@ function fazTrezeAmanha(): string {
 }
 
 type Mocks = {
-  /** `null` simula não haver sessão incompleta do Google. */
+  /** `null` simulates having no incomplete Google session. */
   pendente?: typeof CONTA | null;
   completar?: { status: number; corpo?: unknown };
 };
 
-async function mockarApi(page: Page, mocks: Mocks = {}) {
+async function mockApi(page: Page, mocks: Mocks = {}) {
   const pendente = mocks.pendente === undefined ? CONTA : mocks.pendente;
 
-  await page.route("**/api/auth/signup/pending", (rota) =>
+  await page.route("**/api/auth/signup/pending", (route) =>
     pendente
-      ? rota.fulfill({ json: pendente })
-      : rota.fulfill({ status: 404, json: {} }),
+      ? route.fulfill({ json: pendente })
+      : route.fulfill({ status: 404, json: {} }),
   );
 
-  await page.route("**/api/cities**", (rota) => rota.fulfill({ json: CIDADES }));
+  await page.route("**/api/cities**", (route) => route.fulfill({ json: CIDADES }));
 
-  await page.route("**/api/auth/signup/complete", (rota) =>
-    rota.fulfill({
+  await page.route("**/api/auth/signup/complete", (route) =>
+    route.fulfill({
       status: mocks.completar?.status ?? 200,
       json: mocks.completar?.corpo ?? {},
     }),
   );
 
-  await page.route("**/api/auth/signup/discard", (rota) =>
-    rota.fulfill({ status: 204, body: "" }),
+  await page.route("**/api/auth/signup/discard", (route) =>
+    route.fulfill({ status: 204, body: "" }),
   );
 
-  await page.route("**/cadastro/termos", (rota) =>
-    rota.fulfill({
+  await page.route("**/cadastro/termos", (route) =>
+    route.fulfill({
       contentType: "text/html",
       body: "<html lang='pt-BR'><body><h1>Termos</h1></body></html>",
     }),
   );
 }
 
-async function preencher(page: Page, dataNascimento: string, cidade: string) {
+async function fill(page: Page, dataNascimento: string, cidade: string) {
   await page.getByLabel("Data de nascimento").fill(dataNascimento);
   await page.getByLabel("Cidade").fill(cidade);
   await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
 }
 
 test("mostra o nome e o e-mail que vieram do Google", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/cadastro/google");
 
   await expect(
@@ -103,10 +103,10 @@ test("mostra o nome e o e-mail que vieram do Google", async ({ page }) => {
 });
 
 test("com 13 anos, segue para os termos", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/cadastro/google");
 
-  await preencher(page, fazTrezeHoje(), "Maceió, AL");
+  await fill(page, turnsThirteenToday(), "Maceió, AL");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
@@ -115,22 +115,22 @@ test("com 13 anos, segue para os termos", async ({ page }) => {
 test("faltando um dia para os 13, vai para a A02c e descarta a sessão", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let descartou = false;
-  await page.route("**/api/auth/signup/discard", (rota) => {
+  await page.route("**/api/auth/signup/discard", (route) => {
     descartou = true;
-    return rota.fulfill({ status: 204, body: "" });
+    return route.fulfill({ status: 204, body: "" });
   });
 
   let completou = false;
-  await page.route("**/api/auth/signup/complete", (rota) => {
+  await page.route("**/api/auth/signup/complete", (route) => {
     completou = true;
-    return rota.fulfill({ status: 200, json: {} });
+    return route.fulfill({ status: 200, json: {} });
   });
 
   await page.goto("/cadastro/google");
-  await preencher(page, fazTrezeAmanha(), "Maceió, AL");
+  await fill(page, turnsThirteenTomorrow(), "Maceió, AL");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/idade-minima$/);
@@ -144,22 +144,22 @@ test("faltando um dia para os 13, vai para a A02c e descarta a sessão", async (
 test("se o servidor recusar por idade, também vai para a A02c", async ({
   page,
 }) => {
-  await mockarApi(page, {
+  await mockApi(page, {
     completar: { status: 422, corpo: { error: "under_13" } },
   });
   await page.goto("/cadastro/google");
 
-  await preencher(page, fazTrezeHoje(), "Maceió, AL");
+  await fill(page, turnsThirteenToday(), "Maceió, AL");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/idade-minima$/);
 });
 
 test("cidade fora da lista do IBGE não passa", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/cadastro/google");
 
-  await page.getByLabel("Data de nascimento").fill(fazTrezeHoje());
+  await page.getByLabel("Data de nascimento").fill(turnsThirteenToday());
   await page.getByLabel("Cidade").fill("Cidade Inventada");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
@@ -170,18 +170,18 @@ test("cidade fora da lista do IBGE não passa", async ({ page }) => {
 test("'Usar outra conta' descarta a sessão e volta ao Google", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let descartou = false;
-  await page.route("**/api/auth/signup/discard", (rota) => {
+  await page.route("**/api/auth/signup/discard", (route) => {
     descartou = true;
-    return rota.fulfill({ status: 204, body: "" });
+    return route.fulfill({ status: 204, body: "" });
   });
 
   let inicioGoogle: string | undefined;
-  await page.route("**/api/auth/google/start**", (rota) => {
-    inicioGoogle = rota.request().url();
-    return rota.fulfill({
+  await page.route("**/api/auth/google/start**", (route) => {
+    inicioGoogle = route.request().url();
+    return route.fulfill({
       contentType: "text/html",
       body: "<html lang='pt-BR'><body><h1>Google</h1></body></html>",
     });
@@ -197,16 +197,16 @@ test("'Usar outra conta' descarta a sessão e volta ao Google", async ({
 test("data impossível pede correção, sem mandar para a A02c", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let descartou = false;
-  await page.route("**/api/auth/signup/discard", (rota) => {
+  await page.route("**/api/auth/signup/discard", (route) => {
     descartou = true;
-    return rota.fulfill({ status: 204, body: "" });
+    return route.fulfill({ status: 204, body: "" });
   });
 
   await page.goto("/cadastro/google");
-  await preencher(page, "2090-03-16", "Maceió, AL");
+  await fill(page, "2090-03-16", "Maceió, AL");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
@@ -215,11 +215,11 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
 });
 
 test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => {
-  await mockarApi(page);
-  await page.route("**/api/auth/signup/complete", (rota) => rota.abort());
+  await mockApi(page);
+  await page.route("**/api/auth/signup/complete", (route) => route.abort());
 
   await page.goto("/cadastro/google");
-  await preencher(page, fazTrezeHoje(), "Maceió, AL");
+  await fill(page, turnsThirteenToday(), "Maceió, AL");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page.getByText("Não deu pra concluir agora.")).toBeVisible();
@@ -231,17 +231,17 @@ test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => 
 test("cidade escrita sem acento e em minúscula também vale", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/cadastro/google");
 
-  await preencher(page, fazTrezeHoje(), "maceio, al");
+  await fill(page, turnsThirteenToday(), "maceio, al");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
 
 test("sem sessão do Google, oferece entrar de novo", async ({ page }) => {
-  await mockarApi(page, { pendente: null });
+  await mockApi(page, { pendente: null });
   await page.goto("/cadastro/google");
 
   await expect(
