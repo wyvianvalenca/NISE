@@ -112,14 +112,37 @@ test("os botões ficam bloqueados enquanto a escolha é salva", async ({ page })
   await expect(item).toHaveCount(0);
 });
 
-test("a dica aparece com itens e com a lista vazia", async ({ page }) => {
+test("sem nada guardado mostra o estado vazio, sem filtros nem dica", async ({ page }) => {
+  await openWith(page, { items: [] });
+
+  await expect(page.getByRole("heading", { level: 1, name: "Ver depois" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nada guardado por enquanto" })).toBeVisible();
+  await expect(
+    page.getByText("Quando uma sugestão parecer legal mas não for a hora, toque em “Talvez depois” e ela fica aqui."),
+  ).toBeVisible();
+  await expect(page.getByRole("group", { name: "Filtrar por faixa" })).toHaveCount(0);
+  await expect(page.getByText(HINT)).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Ver sugestões" }).click();
+  await expect(page).toHaveURL("/descobrir");
+});
+
+test("com itens mostra a lista e a dica; ao decidir o último, aparece o estado vazio", async ({ page }) => {
   await page.goto("/ver-depois");
+  await expect(page.getByRole("article")).toHaveCount(4);
   await expect(page.getByText(HINT)).toBeVisible();
 
-  await openWith(page, { items: [] });
-  await expect(page.getByRole("heading", { level: 1, name: "Ver depois" })).toBeVisible();
-  await expect(page.getByRole("article")).toHaveCount(0);
-  await expect(page.getByText(HINT)).toBeVisible();
+  for (const title of [
+    "Hackathon Meninas na Tecnologia",
+    "Robótica com Arduino para iniciantes",
+    "Lógica de programação com Python",
+    "Oficina: seu primeiro site",
+  ]) {
+    await card(page, title).getByRole("button", { name: "Remover" }).click();
+    await expect(card(page, title)).toHaveCount(0);
+  }
+  await expect(page.getByRole("heading", { name: "Nada guardado por enquanto" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Ver depois" })).toBeFocused();
 });
 
 test("mostra o carregamento enquanto os itens chegam", async ({ page }) => {
