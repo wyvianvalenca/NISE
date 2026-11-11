@@ -74,12 +74,12 @@ export default function ContaGoogle() {
 
     const idade = checarIdade(dataNascimento);
 
-    if (idade === "data_invalida") {
+    if (idade === "invalid_date") {
       setErroData("Confira sua data de nascimento.");
       return;
     }
 
-    if (idade === "menor_de_13") {
+    if (idade === "under_13") {
       setEnviando(true);
       await recusarPorIdade();
       return;
@@ -93,8 +93,8 @@ export default function ContaGoogle() {
     setEnviando(true);
     try {
       const resultado = await completarCadastro({
-        dataNascimento,
-        cidadeId: cidade.id,
+        birthDate: dataNascimento,
+        cityId: cidade.id,
       });
 
       if (resultado.ok) {
@@ -102,13 +102,13 @@ export default function ContaGoogle() {
         return;
       }
 
-      if (resultado.motivo === "menor_de_13") {
+      if (resultado.motivo === "under_13") {
         await recusarPorIdade();
         return;
       }
 
       setEnviando(false);
-      if (resultado.motivo === "cidade_invalida") {
+      if (resultado.motivo === "invalid_city") {
         setErroCidade("Escolha uma cidade da lista.");
       } else {
         setErroGeral(ERRO_DE_REDE);
@@ -165,15 +165,14 @@ export default function ContaGoogle() {
       </p>
 
       <div className={styles.card}>
-        <AccountCard name={conta.nome} email={conta.email} provider="google" />
+        <AccountCard name={conta.name} email={conta.email} provider="google" />
       </div>
 
       <div className={styles.campos}>
         <Field
           label="Data de nascimento"
           type="date"
-          value={dataNascimento}
-          onChange={(evento) => setDataNascimento(evento.target.value)}
+          onValueChange={setDataNascimento}
           error={erroData}
           required
         />

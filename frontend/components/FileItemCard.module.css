@@ -1,0 +1,102 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: 14px;
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+}
+
+/* Borda de 2px; o padding diminui 1px para o card não mudar de tamanho. */
+.inProgress {
+  padding: 13px;
+  border-width: 2px;
+  border-color: var(--nise-teal);
+}
+
+.iconTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--nise-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  /* Centrada na primeira linha, mesmo quando o texto quebra. */
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.details {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+.deadline {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--nise-pinkTint);
+  color: var(--nise-pink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Botão contornado; "Continuar" é o primário ink. Alvo de 44px (RNF-G.02). */
+.action {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--nise-ink);
+  border-radius: var(--radius-8);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.action:hover {
+  background: var(--nise-tealSoft);
+}
+
+.primary {
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+}
+
+.primary:hover {
+  background: var(--nise-teal);
+  border-color: var(--nise-teal);
+}
