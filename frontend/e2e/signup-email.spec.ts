@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * A01 / A01b / A02 do cadastro por e-mail (#51).
+ * A01 / A01b / A02 of the email sign-up (#51).
  *
- * O back-end ainda não existe (#48, #50, #68), então as rotas vêm mockadas.
- * Dados fictícios, como manda o CONTRIBUTING: nada de menina real.
+ * The back-end does not exist yet (#48, #50, #68), so the routes are mocked.
+ * Fictional data, as CONTRIBUTING requires: no real girl.
  */
 
 const CIDADES = [
@@ -14,8 +14,8 @@ const CIDADES = [
 
 const CONVITE = { groupName: "Rendeiras" };
 
-/** Hoje em Maceió, para montar datas que não dependem do relógio da máquina. */
-function hojeEmMaceio() {
+/** Today in Maceió, to build dates that do not depend on the machine clock. */
+function todayInMaceio() {
   const [ano, mes, dia] = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Maceio",
     year: "numeric",
@@ -32,15 +32,15 @@ function iso(ano: number, mes: number, dia: number) {
   return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
-/** Quem faz exatamente 13 anos hoje: passa (RN-03). */
-function fazTrezeHoje() {
-  const { ano, mes, dia } = hojeEmMaceio();
+/** Turning exactly 13 today: passes (RN-03). */
+function turnsThirteenToday() {
+  const { ano, mes, dia } = todayInMaceio();
   return iso(ano - 13, mes, dia);
 }
 
-/** Quem faz 13 amanhã: 12 anos e 364 dias, não passa. */
-function fazTrezeAmanha() {
-  const { ano, mes, dia } = hojeEmMaceio();
+/** Turning 13 tomorrow: 12 years and 364 days, does not pass. */
+function turnsThirteenTomorrow() {
+  const { ano, mes, dia } = todayInMaceio();
   const amanha = new Date(Date.UTC(ano, mes - 1, dia + 1));
   return iso(
     amanha.getUTCFullYear() - 13,
@@ -55,31 +55,31 @@ type Mocks = {
   cadastro?: { status: number; corpo?: unknown };
 };
 
-async function mockarApi(page: Page, mocks: Mocks = {}) {
-  await page.route("**/api/cities**", (rota) => rota.fulfill({ json: CIDADES }));
+async function mockApi(page: Page, mocks: Mocks = {}) {
+  await page.route("**/api/cities**", (route) => route.fulfill({ json: CIDADES }));
 
-  await page.route("**/api/invites/**", (rota) =>
+  await page.route("**/api/invites/**", (route) =>
     mocks.conviteStatus
-      ? rota.fulfill({ status: mocks.conviteStatus, json: {} })
-      : rota.fulfill({ json: mocks.convite ?? CONVITE }),
+      ? route.fulfill({ status: mocks.conviteStatus, json: {} })
+      : route.fulfill({ json: mocks.convite ?? CONVITE }),
   );
 
-  await page.route("**/api/auth/signup/email", (rota) =>
-    rota.fulfill({
+  await page.route("**/api/auth/signup/email", (route) =>
+    route.fulfill({
       status: mocks.cadastro?.status ?? 200,
       json: mocks.cadastro?.corpo ?? {},
     }),
   );
 
-  await page.route("**/cadastro/termos", (rota) =>
-    rota.fulfill({
+  await page.route("**/cadastro/termos", (route) =>
+    route.fulfill({
       contentType: "text/html",
       body: "<html lang='pt-BR'><body><h1>Termos</h1></body></html>",
     }),
   );
 }
 
-async function preencherFormulario(
+async function fillForm(
   page: Page,
   dados: { email?: string; senha?: string; nascimento?: string } = {},
 ) {
@@ -88,7 +88,7 @@ async function preencherFormulario(
   await page.getByLabel("Senha").fill(dados.senha ?? "senhaforte123");
   await page
     .getByLabel("Data de nascimento")
-    .fill(dados.nascimento ?? fazTrezeHoje());
+    .fill(dados.nascimento ?? turnsThirteenToday());
   await page.getByLabel("Cidade").fill("Maceió, AL");
   await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
 }
@@ -108,7 +108,7 @@ test("A01: a home mostra as boas-vindas sem grupo", async ({ page }) => {
 test("A01b: o convite mostra o nome do grupo e leva o código adiante", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/convite/rendeiras-2026");
 
   await expect(page.getByText("Convite · Rendeiras")).toBeVisible();
@@ -123,7 +123,7 @@ test("A01b: o convite mostra o nome do grupo e leva o código adiante", async ({
 });
 
 test("A01b: convite inválido cai na A01", async ({ page }) => {
-  await mockarApi(page, { conviteStatus: 404 });
+  await mockApi(page, { conviteStatus: 404 });
   await page.goto("/convite/nao-existe");
 
   await expect(page).toHaveURL(/\/$/);
@@ -133,16 +133,16 @@ test("A01b: convite inválido cai na A01", async ({ page }) => {
 });
 
 test("e-mail sem domínio não passa (RF-S2.03)", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let enviou = false;
-  await page.route("**/api/auth/signup/email", (rota) => {
+  await page.route("**/api/auth/signup/email", (route) => {
     enviou = true;
-    return rota.fulfill({ status: 200, json: {} });
+    return route.fulfill({ status: 200, json: {} });
   });
 
   await page.goto("/criar-conta");
-  await preencherFormulario(page, { email: "alana@gmail" });
+  await fillForm(page, { email: "alana@gmail" });
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(
@@ -152,23 +152,23 @@ test("e-mail sem domínio não passa (RF-S2.03)", async ({ page }) => {
 });
 
 test("senha curta não passa", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/criar-conta");
 
-  await preencherFormulario(page, { senha: "1234" });
+  await fillForm(page, { senha: "1234" });
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page.getByText(/pelo menos 8 caracteres/)).toBeVisible();
 });
 
 test("cidade fora da lista do IBGE não passa (RN-17)", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/criar-conta");
 
   await page.getByLabel("Nome completo").fill("Alana Oliveira");
   await page.getByLabel("E-mail").fill("alana@exemplo.com");
   await page.getByLabel("Senha").fill("senhaforte123");
-  await page.getByLabel("Data de nascimento").fill(fazTrezeHoje());
+  await page.getByLabel("Data de nascimento").fill(turnsThirteenToday());
   await page.getByLabel("Cidade").fill("Cidade Inventada");
   await page.getByRole("button", { name: "Criar conta" }).click();
 
@@ -178,26 +178,26 @@ test("cidade fora da lista do IBGE não passa (RN-17)", async ({ page }) => {
 test("o que ela digita antes de a página carregar não se perde", async ({
   page,
 }) => {
-  await mockarApi(page);
-  await page.route("**/_next/static/**/*.js", async (rota) => {
+  await mockApi(page);
+  await page.route("**/_next/static/**/*.js", async (route) => {
     await new Promise((ok) => setTimeout(ok, 1500));
-    await rota.continue();
+    await route.continue();
   });
 
   await page.goto("/criar-conta", { waitUntil: "commit" });
   await page.getByLabel("Nome completo").fill("Alana Oliveira");
   await page.getByLabel("E-mail").fill("alana@exemplo.com");
 
-  // O botão só responde depois que o React assume a tela.
+  // The button only answers once React has taken over the screen.
   await expect(page.getByRole("button", { name: "Criar conta" })).toBeEnabled({
     timeout: 15000,
   });
   await expect(page.getByLabel("Nome completo")).toHaveValue("Alana Oliveira");
   await expect(page.getByLabel("E-mail")).toHaveValue("alana@exemplo.com");
 
-  // E o que ela digitou antes vale no envio, não só na tela.
+  // And what she typed earlier counts on submit, not just on screen.
   await page.getByLabel("Senha").fill("senhaforte123");
-  await page.getByLabel("Data de nascimento").fill(fazTrezeHoje());
+  await page.getByLabel("Data de nascimento").fill(turnsThirteenToday());
   await page.getByLabel("Cidade").fill("Maceió, AL");
   await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
   await page.getByRole("button", { name: "Criar conta" }).click();
@@ -208,10 +208,10 @@ test("o que ela digita antes de a página carregar não se perde", async ({
 test("data impossível pede correção, sem mandar para a A02c", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/criar-conta");
 
-  await preencherFormulario(page, { nascimento: "2090-03-16" });
+  await fillForm(page, { nascimento: "2090-03-16" });
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
@@ -219,11 +219,11 @@ test("data impossível pede correção, sem mandar para a A02c", async ({
 });
 
 test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => {
-  await mockarApi(page);
-  await page.route("**/api/auth/signup/email", (rota) => rota.abort());
+  await mockApi(page);
+  await page.route("**/api/auth/signup/email", (route) => route.abort());
 
   await page.goto("/criar-conta");
-  await preencherFormulario(page);
+  await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page.getByText("Não deu pra criar sua conta agora.")).toBeVisible();
@@ -231,10 +231,10 @@ test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => 
 });
 
 test("com 13 anos, o cadastro segue para os termos", async ({ page }) => {
-  await mockarApi(page);
+  await mockApi(page);
   await page.goto("/criar-conta");
 
-  await preencherFormulario(page);
+  await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
@@ -243,16 +243,16 @@ test("com 13 anos, o cadastro segue para os termos", async ({ page }) => {
 test("faltando um dia para os 13, vai para a A02c sem enviar nada", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let enviou = false;
-  await page.route("**/api/auth/signup/email", (rota) => {
+  await page.route("**/api/auth/signup/email", (route) => {
     enviou = true;
-    return rota.fulfill({ status: 200, json: {} });
+    return route.fulfill({ status: 200, json: {} });
   });
 
   await page.goto("/criar-conta");
-  await preencherFormulario(page, { nascimento: fazTrezeAmanha() });
+  await fillForm(page, { nascimento: turnsThirteenTomorrow() });
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/idade-minima$/);
@@ -262,22 +262,22 @@ test("faltando um dia para os 13, vai para a A02c sem enviar nada", async ({
 test("se o servidor recusar por idade, também vai para a A02c", async ({
   page,
 }) => {
-  await mockarApi(page, {
+  await mockApi(page, {
     cadastro: { status: 422, corpo: { error: "under_13" } },
   });
   await page.goto("/criar-conta");
 
-  await preencherFormulario(page);
+  await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/idade-minima$/);
 });
 
 test("e-mail que já tem conta avisa sem criar outra", async ({ page }) => {
-  await mockarApi(page, { cadastro: { status: 409 } });
+  await mockApi(page, { cadastro: { status: 409 } });
   await page.goto("/criar-conta");
 
-  await preencherFormulario(page);
+  await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(
@@ -290,8 +290,8 @@ test("a rota pública do convite não devolve e-mail de ninguém", async ({
   page,
 }) => {
   let resposta: unknown;
-  await page.route("**/api/invites/**", async (rota) => {
-    await rota.fulfill({ json: CONVITE });
+  await page.route("**/api/invites/**", async (route) => {
+    await route.fulfill({ json: CONVITE });
   });
   page.on("response", async (r) => {
     if (r.url().includes("/api/invites/")) resposta = await r.json();
@@ -307,16 +307,16 @@ test("a rota pública do convite não devolve e-mail de ninguém", async ({
 test("o código do convite segue no envio, para a origem sair certa (RN-29)", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let corpoEnviado: Record<string, unknown> = {};
-  await page.route("**/api/auth/signup/email", (rota) => {
-    corpoEnviado = rota.request().postDataJSON();
-    return rota.fulfill({ status: 200, json: {} });
+  await page.route("**/api/auth/signup/email", (route) => {
+    corpoEnviado = route.request().postDataJSON();
+    return route.fulfill({ status: 200, json: {} });
   });
 
   await page.goto("/criar-conta?convite=rendeiras-2026");
-  await preencherFormulario(page);
+  await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
@@ -326,16 +326,16 @@ test("o código do convite segue no envio, para a origem sair certa (RN-29)", as
 test("sem convite, o envio não manda origem de grupo nenhum", async ({
   page,
 }) => {
-  await mockarApi(page);
+  await mockApi(page);
 
   let corpoEnviado: Record<string, unknown> = {};
-  await page.route("**/api/auth/signup/email", (rota) => {
-    corpoEnviado = rota.request().postDataJSON();
-    return rota.fulfill({ status: 200, json: {} });
+  await page.route("**/api/auth/signup/email", (route) => {
+    corpoEnviado = route.request().postDataJSON();
+    return route.fulfill({ status: 200, json: {} });
   });
 
   await page.goto("/criar-conta");
-  await preencherFormulario(page);
+  await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);

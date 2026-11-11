@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import styles from "./page.module.css";
 
 /**
- * Página de serviço: diz se o back-end responde.
+ * Service page: tells whether the back-end answers.
  *
- * Nasceu como a home do esqueleto (#42) e veio para cá quando a A01 assumiu
- * a raiz (#51). Serve de conferência rápida depois de um `docker compose up`.
+ * It started as the skeleton's home (#42) and moved here when A01 took the
+ * root (#51). It is the quick check after a `docker compose up`.
  */
 
 type Health =
-  | { state: "carregando" }
+  | { state: "loading" }
   | { state: "ok"; status: string }
-  | { state: "erro"; motivo: string };
+  | { state: "error"; reason: string };
 
 async function fetchHealth(): Promise<string> {
   const response = await fetch("/api/health");
@@ -28,17 +28,17 @@ async function fetchHealth(): Promise<string> {
 
 function describe(health: Health): string {
   switch (health.state) {
-    case "carregando":
+    case "loading":
       return "consultando o back-end...";
     case "ok":
       return `back-end respondeu: ${health.status}`;
-    case "erro":
-      return `back-end fora do ar (${health.motivo})`;
+    case "error":
+      return `back-end fora do ar (${health.reason})`;
   }
 }
 
 export default function Status() {
-  const [health, setHealth] = useState<Health>({ state: "carregando" });
+  const [health, setHealth] = useState<Health>({ state: "loading" });
 
   useEffect(() => {
     let currentRequest = true;
@@ -51,9 +51,9 @@ export default function Status() {
       })
       .catch((error: unknown) => {
         if (currentRequest) {
-          const motivo =
+          const reason =
             error instanceof Error ? error.message : "erro desconhecido";
-          setHealth({ state: "erro", motivo });
+          setHealth({ state: "error", reason });
         }
       });
 

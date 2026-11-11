@@ -6,7 +6,7 @@
   min-height: 100dvh;
 }
 
-/* No computador a tela continua estreita, como no celular do Figma. */
+/* On a desktop the screen stays narrow, like the phone in Figma. */
 .main {
   display: flex;
   flex: 1;
@@ -29,7 +29,7 @@
   font-size: 16px;
 }
 
-/* Empurra a ação para o fim da tela, como no Figma. */
+/* Pushes the action to the bottom, as in Figma. */
 .spacer {
   flex: 1;
   min-height: 24px;
