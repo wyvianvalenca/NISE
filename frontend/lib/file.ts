@@ -88,7 +88,7 @@ export const THEMES: Record<ThemeCode, ThemeInfo> = {
 
 /** Ícone do item: o do tema, com exceção de tipos que têm ícone próprio no Figma. */
 export function itemIcon(item: FileItem): IconName {
-  if (item.type === "Hackathon") return "rocket";
+  if (item.type === "Hackathon") return "rocket-sm";
   return THEMES[item.theme].icon;
 }
 

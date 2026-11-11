@@ -58,7 +58,7 @@ const ICON_SIZES = {
   "band-role-com-a-galera": 22,
   "band-grande-desafio": 22,
   question: 24,
-  rocket: 20,
+  "rocket-sm": 20,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;
