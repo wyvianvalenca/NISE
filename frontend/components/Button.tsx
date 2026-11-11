@@ -1,4 +1,5 @@
-import type { ComponentProps } from "react";
+import Link, { type LinkProps } from "next/link";
+import type { ComponentProps, ReactNode } from "react";
 import styles from "./Button.module.css";
 
 type ButtonProps = ComponentProps<"button"> & {
@@ -33,9 +34,46 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={[styles.button, styles[variant], size === "sm" && styles.sm, className].filter(Boolean).join(" ")}
+      className={[
+        styles.button,
+        styles[variant],
+        size === "sm" && styles.sm,
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {loading ? loadingLabel : children}
     </button>
+  );
+}
+
+type LinkButtonProps = LinkProps & {
+  children: ReactNode;
+  className?: string;
+  variant?: "primary" | "secondary";
+};
+
+/**
+ * Link com a cara do `Button`, para ação que é navegação (Figma: Action / ...).
+ *
+ * Existe para a tela não virar client component só por causa de um
+ * `router.push`, e para a menina poder abrir em outra aba, como todo link.
+ */
+export function LinkButton({
+  className,
+  variant = "primary",
+  children,
+  ...rest
+}: LinkButtonProps) {
+  return (
+    <Link
+      {...rest}
+      className={[styles.button, styles[variant], className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </Link>
   );
 }

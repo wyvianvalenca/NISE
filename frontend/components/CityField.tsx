@@ -5,7 +5,7 @@ import { Field } from "./Field";
 import { buscarCidades, type Cidade } from "@/lib/cadastro";
 
 type CityFieldProps = {
-  /** O que ela digitou. */
+  /** O que ela digitou. O input é dono do texto; isto é só o espelho. */
   value: string;
   onChange: (texto: string) => void;
   /** Avisa qual município da lista casou, ou `null` enquanto nenhum casa. */
@@ -54,7 +54,7 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
 
   useEffect(() => {
     const alvo = comparavel(value);
-    onSelect(cidades.find((cidade) => comparavel(cidade.nome) === alvo) ?? null);
+    onSelect(cidades.find((cidade) => comparavel(cidade.name) === alvo) ?? null);
   }, [value, cidades, onSelect]);
 
   return (
@@ -64,14 +64,13 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
         list="cidades-ibge"
         placeholder="Comece a digitar"
         autoComplete="off"
-        value={value}
-        onChange={(evento) => onChange(evento.target.value)}
+        onValueChange={onChange}
         error={error}
         required
       />
       <datalist id="cidades-ibge">
         {cidades.map((cidade) => (
-          <option key={cidade.id} value={cidade.nome} />
+          <option key={cidade.id} value={cidade.name} />
         ))}
       </datalist>
     </>

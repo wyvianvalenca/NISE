@@ -1,0 +1,216 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { AppHeader } from "@/components/AppHeader";
+import { Button } from "@/components/Button";
+import { CityField } from "@/components/CityField";
+import { Field } from "@/components/Field";
+import { GoogleButton } from "@/components/GoogleButton";
+import { TextLink } from "@/components/TextLink";
+import { criarContaComEmail, SENHA_MINIMA, type Cidade } from "@/lib/cadastro";
+import { emailValido, ERRO_SEM_DOMINIO } from "@/lib/email";
+import { checarIdade } from "@/lib/idade";
+import styles from "./page.module.css";
+
+type Erros = {
+  nome?: string;
+  email?: string;
+  senha?: string;
+  dataNascimento?: string;
+  cidade?: string;
+  geral?: string;
+};
+
+const ERRO_DE_REDE = "Não deu pra criar sua conta agora. Tente de novo.";
+
+/**
+ * A02 "Crie sua conta" (Figma 511:505), issue #51.
+ *
+ * Serve aos dois fluxos: com convite (M1, `?convite=<codigo>`) e sem (M2).
+ * O código do convite segue junto para o servidor, porque é ele que decide a
+ * origem da conta e, mais adiante, o texto dos termos (RN-29, H3).
+ *
+ * O e-mail não vem preenchido pelo convite: a rota do convite é pública, e
+ * devolver o e-mail do registro importado ali deixaria qualquer código
+ * adivinhado colher e-mail de menina menor de idade. Quem liga a conta ao
+ * registro importado é o servidor, pelo e-mail que ela digitar (RF-F2.02).
+ */
+function CriarConta() {
+  const router = useRouter();
+  const convite = useSearchParams().get("convite") ?? undefined;
+
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [cidadeDigitada, setCidadeDigitada] = useState("");
+  const [cidade, setCidade] = useState<Cidade | null>(null);
+  const [erros, setErros] = useState<Erros>({});
+  const [enviando, setEnviando] = useState(false);
+
+  async function enviar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+
+    const novos: Erros = {};
+    if (!nome.trim()) {
+      novos.nome = "Preencha seu nome completo.";
+    }
+    if (!emailValido(email)) {
+      novos.email = ERRO_SEM_DOMINIO;
+    }
+    if (senha.length < SENHA_MINIMA) {
+      novos.senha = `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`;
+    }
+    if (!dataNascimento) {
+      novos.dataNascimento = "Preencha sua data de nascimento.";
+    }
+    if (!cidade) {
+      novos.cidade = "Escolha uma cidade da lista.";
+    }
+
+    const idade = dataNascimento ? checarIdade(dataNascimento) : null;
+    if (idade === "invalid_date") {
+      novos.dataNascimento = "Confira sua data de nascimento.";
+    }
+
+    setErros(novos);
+    if (Object.keys(novos).length > 0 || !cidade) {
+      return;
+    }
+
+    if (idade === "under_13") {
+      setEnviando(true);
+      router.replace("/cadastro/idade-minima");
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      const resultado = await criarContaComEmail({
+        name: nome.trim(),
+        email: email.trim(),
+        password: senha,
+        birthDate: dataNascimento,
+        cityId: cidade.id,
+        invite: convite,
+      });
+
+      if (resultado.ok) {
+        router.push("/cadastro/termos");
+        return;
+      }
+
+      if (resultado.motivo === "under_13") {
+        router.replace("/cadastro/idade-minima");
+        return;
+      }
+
+      setEnviando(false);
+      switch (resultado.motivo) {
+        case "account_exists":
+          setErros({ email: "Já existe uma conta com esse e-mail." });
+          break;
+        case "invalid_email":
+          setErros({ email: ERRO_SEM_DOMINIO });
+          break;
+        case "password_too_short":
+          setErros({
+            senha: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.`,
+          });
+          break;
+        case "invalid_city":
+          setErros({ cidade: "Escolha uma cidade da lista." });
+          break;
+        default:
+          setErros({ geral: ERRO_DE_REDE });
+      }
+    } catch {
+      setEnviando(false);
+      setErros({ geral: ERRO_DE_REDE });
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <AppHeader>
+        <TextLink href="/entrar">Já tenho conta</TextLink>
+      </AppHeader>
+
+      <main className={styles.main}>
+        <h1 className={styles.title}>Crie sua conta</h1>
+        <p className={styles.lead}>
+          Um cadastro para acompanhar todo o seu percurso.
+        </p>
+
+        <div className={styles.google}>
+          <GoogleButton convite={convite} />
+          <p className={styles.divisor}>
+            <span>ou preencha seus dados</span>
+          </p>
+        </div>
+
+        <form className={styles.form} onSubmit={enviar} noValidate>
+          <Field
+            label="Nome completo"
+            autoComplete="name"
+            onValueChange={setNome}
+            error={erros.nome}
+            required
+          />
+          <Field
+            label="E-mail"
+            type="email"
+            autoComplete="email"
+            onValueChange={setEmail}
+            error={erros.email}
+            required
+          />
+          <Field
+            label="Senha"
+            type="password"
+            autoComplete="new-password"
+            onValueChange={setSenha}
+            error={erros.senha}
+            required
+          />
+          <Field
+            label="Data de nascimento"
+            type="date"
+            onValueChange={setDataNascimento}
+            error={erros.dataNascimento}
+            required
+          />
+          <CityField
+            value={cidadeDigitada}
+            onChange={setCidadeDigitada}
+            onSelect={setCidade}
+            error={erros.cidade}
+          />
+
+          {erros.geral && (
+            <p className={styles.erro} role="alert">
+              {erros.geral}
+            </p>
+          )}
+
+          <Button type="submit" loading={enviando} className={styles.fullWidth}>
+            Criar conta
+          </Button>
+        </form>
+      </main>
+    </div>
+  );
+}
+
+/**
+ * Envelope da A02. O `useSearchParams` lá dentro só pode rodar sob um limite
+ * de Suspense; sem ele, a página inteira deixa de ser gerada estaticamente.
+ */
+export default function CriarContaPage() {
+  return (
+    <Suspense>
+      <CriarConta />
+    </Suspense>
+  );
+}
