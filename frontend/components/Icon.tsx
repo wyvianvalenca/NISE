@@ -18,10 +18,14 @@ const ICON_SIZES = {
   users: 15,
   left: 16,
   "chevron-down": 16,
+  "chevron-up": 16,
   "chevron-right": 18,
   "arrow-right": 16,
   external: 14,
   check: 16,
+  "check-lg": 20,
+  "play-sm": 18,
+  plus: 16,
   search: 16,
   sparkle: 16,
   pin: 14,
@@ -56,6 +60,12 @@ const ICON_SIZES = {
   "band-no-meu-ritmo": 22,
   "band-role-com-a-galera": 22,
   "band-grande-desafio": 22,
+  question: 24,
+  "rocket-sm": 20,
+  rocket: 22,
+  play: 22,
+  trash: 16,
+  "calendar-sm": 14,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;

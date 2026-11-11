@@ -1,13 +1,15 @@
 import Link, { type LinkProps } from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import styles from "./Button.module.css";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ComponentProps<"button"> & {
   /** Mostra "Enviando…" e bloqueia o clique enquanto algo é salvo. */
   loading?: boolean;
   loadingLabel?: string;
   /** "primary": fundo escuro. "secondary": contorno, para a ação menos importante. */
   variant?: "primary" | "secondary";
+  /** "sm": 44px de altura, para ações dentro de cartões ("+ Quero fazer"). */
+  size?: "md" | "sm";
 };
 
 /**
@@ -23,6 +25,7 @@ export function Button({
   children,
   type = "button",
   variant = "primary",
+  size = "md",
   ...rest
 }: ButtonProps) {
   return (
@@ -31,7 +34,14 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={[styles.button, styles[variant], className].filter(Boolean).join(" ")}
+      className={[
+        styles.button,
+        styles[variant],
+        size === "sm" && styles.sm,
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {loading ? loadingLabel : children}
     </button>
@@ -59,7 +69,9 @@ export function LinkButton({
   return (
     <Link
       {...rest}
-      className={[styles.button, styles[variant], className].filter(Boolean).join(" ")}
+      className={[styles.button, styles[variant], className]
+        .filter(Boolean)
+        .join(" ")}
     >
       {children}
     </Link>
