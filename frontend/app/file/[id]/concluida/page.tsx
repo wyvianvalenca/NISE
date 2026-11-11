@@ -1,15 +1,16 @@
 "use client";
 
 // A06·5 · Concluído, a parte da celebração ("Mais um passo dado").
-// Atende RF-F10.08 (issues #119 e #120). A parte de avaliação é da #124 (história #123).
+// Atende RF-F10.08 (issues #119 e #120). A parte de avaliação, logo abaixo, é da #124.
 //
 // Fora daqui de propósito: a linha "Outras meninas da NISE também fizeram esse curso."
 // do Figma, porque a RN-28 diz que o filé não compara meninas (a decidir com o design).
 
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { ActivityFeedback } from "@/components/ActivityFeedback";
 import { getActivity, getFirstName, type ActivityDetail } from "@/lib/atividade";
 import styles from "../atividade.module.css";
 import celebration from "./concluida.module.css";
@@ -46,6 +47,7 @@ function Loading() {
 
 function Celebration() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [activity, setActivity] = useState<ActivityDetail | null | undefined>(undefined);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -82,7 +84,10 @@ function Celebration() {
       </h1>
       <p className={celebration.activity}>{activity.title}</p>
 
-      {/* A parte de avaliação (#124) entra aqui. */}
+      <div className={celebration.feedback}>
+        {/* replace: voltar depois de "Pular" ou "Enviar" não reabre o formulário vazio. */}
+        <ActivityFeedback activityId={activity.id} onDone={() => router.replace(FILE_PATH)} />
+      </div>
     </>
   );
 }
