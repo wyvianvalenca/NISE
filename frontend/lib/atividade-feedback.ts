@@ -58,7 +58,8 @@ export async function sendActivityFeedback(activityId: string, feedback: Activit
     await new Promise((resolve) => setTimeout(resolve, mock.delayMs));
   }
   if (mock.fail) {
-    throw new Error("Não deu pra enviar. Tente de novo.");
+    // Como um erro de rede de verdade: texto técnico, que a tela não deve mostrar.
+    throw new TypeError("Failed to fetch");
   }
 
   try {

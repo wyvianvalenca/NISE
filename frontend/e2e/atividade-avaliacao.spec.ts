@@ -82,6 +82,21 @@ test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({ p
   expect(await savedFeedback(page)).toEqual({});
 });
 
+for (const action of ["Enviar", "Pular"]) {
+  test(`depois de ${action}, voltar não reabre o formulário`, async ({ page }) => {
+    // Ela chega à celebração a partir do detalhe da atividade.
+    await page.goto(`/file/${ACTIVITY_ID}`);
+    await page.goto(PAGE);
+
+    await page.getByRole("radio", { name: /^4 · / }).check();
+    await page.getByRole("button", { name: action }).click();
+    await expect(page).toHaveURL(/\/file$/);
+
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/file/${ACTIVITY_ID}$`));
+  });
+}
+
 test("se o envio falhar, avisa e deixa tentar de novo", async ({ page }) => {
   await page.addInitScript(() => {
     globalThis.__NISE_MOCK_FEEDBACK__ = { fail: true };
@@ -92,6 +107,8 @@ test("se o envio falhar, avisa e deixa tentar de novo", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar" }).click();
 
   await expect(page.getByRole("alert").filter({ hasText: "Não deu pra enviar. Tente de novo." })).toBeVisible();
+  // O detalhe técnico do erro fica só no console.
+  await expect(page.getByRole("main").getByText("Failed to fetch")).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
   await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled();
 });

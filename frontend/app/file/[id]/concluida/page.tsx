@@ -85,7 +85,8 @@ function Celebration() {
       <p className={celebration.activity}>{activity.title}</p>
 
       <div className={celebration.feedback}>
-        <ActivityFeedback activityId={activity.id} onDone={() => router.push(FILE_PATH)} />
+        {/* replace: voltar depois de "Pular" ou "Enviar" não reabre o formulário vazio. */}
+        <ActivityFeedback activityId={activity.id} onDone={() => router.replace(FILE_PATH)} />
       </div>
     </>
   );

@@ -36,7 +36,9 @@ export function ActivityFeedback({ activityId, onDone }: ActivityFeedbackProps) 
       await sendActivityFeedback(activityId, { score, similar });
       onDone();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não deu pra enviar. Tente de novo.");
+      // A mensagem é sempre a mesma; o detalhe (às vezes técnico) fica só no console.
+      console.warn("Não foi possível enviar a avaliação.", caught);
+      setError("Não deu pra enviar. Tente de novo.");
       setSending(false);
     }
   }
