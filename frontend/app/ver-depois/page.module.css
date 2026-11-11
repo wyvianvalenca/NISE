@@ -72,6 +72,44 @@
   color: var(--nise-muted);
 }
 
+/* V01 · Ver depois vazio (#167): cartão tracejado com o símbolo, o texto e a volta às sugestões. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px 28px;
+  border: 1.5px dashed var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+  text-align: center;
+}
+
+.emptyArt {
+  color: var(--nise-muted);
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.emptyText {
+  color: var(--nise-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Contorno teal, como as ações de apoio do Figma. */
+.empty .emptyAction {
+  width: 100%;
+  height: 50px;
+  border: 1.5px solid var(--nise-teal);
+  color: var(--nise-teal);
+  font-weight: 700;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
