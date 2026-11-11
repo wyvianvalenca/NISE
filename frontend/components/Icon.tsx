@@ -23,6 +23,8 @@ const ICON_SIZES = {
   "arrow-right": 16,
   external: 14,
   check: 16,
+  "check-lg": 20,
+  "play-sm": 18,
   plus: 16,
   search: 16,
   sparkle: 16,

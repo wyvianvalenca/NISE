@@ -1,0 +1,33 @@
+.main {
+  gap: 8px;
+  padding-top: 12px;
+  padding-bottom: 20px;
+  text-align: center;
+}
+
+.art {
+  align-self: center;
+}
+
+/*
+ * O Figma usa teal sobre paper (4,26:1), abaixo dos 4,5:1 do WCAG AA para 14px.
+ * O texto fica ink.
+ */
+.kicker {
+  font-size: 14px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.activity {
+  color: var(--nise-muted);
+  font-size: 17px;
+  font-weight: 700;
+}
