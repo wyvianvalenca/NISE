@@ -1,0 +1,57 @@
+.legend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--nise-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.swatch {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+.start {
+  background: var(--nise-ink);
+}
+
+/* Metade rosa, metade teal: "a cor do tema". */
+.done {
+  background: linear-gradient(to right, var(--nise-theme-robotica) 50%, var(--nise-theme-programacao) 50%);
+}
+
+.next,
+.inProgress {
+  border: 1.5px solid var(--nise-teal);
+  background: var(--nise-surface);
+}
+
+/* Triângulo teal embaixo à direita, como o quadradinho em andamento. */
+.inProgress {
+  background: linear-gradient(to bottom right, var(--nise-surface) 50%, var(--nise-teal) 50%);
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}

@@ -1,30 +1,40 @@
+/* A01 "Boas-vindas" (Figma 511:15325). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
 .main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
   margin: 0 auto;
-  padding: 48px 24px;
-  max-width: 640px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+  padding: 28px 24px;
 }
 
-.subtitle {
-  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+.title {
+  color: var(--nise-ink);
+  font-size: 22px;
+  font-weight: 700;
 }
 
-.health {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
-  border-radius: 8px;
+.lead {
+  margin-top: 16px;
+  color: var(--nise-muted);
+  font-size: 16px;
 }
 
-.health h2 {
-  font-size: 1rem;
+/* Empurra a ação para o fim da tela, como no Figma. */
+.spacer {
+  flex: 1;
+  min-height: 24px;
 }
 
-.health p {
-  font-family: var(--nise-font-mono);
-  font-size: 0.875rem;
+.fullWidth {
+  width: 100%;
 }
