@@ -179,7 +179,7 @@ test("'Usar outra conta' descarta a sessão e volta ao Google", async ({
   });
 
   let inicioGoogle: string | undefined;
-  await page.route("**/api/auth/google/start**", (route) => {
+  await page.route("**/api/auth/google/login**", (route) => {
     inicioGoogle = route.request().url();
     return route.fulfill({
       contentType: "text/html",

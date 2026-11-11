@@ -46,7 +46,7 @@ export function googleStartUrl(
   }
 
   const search = query.toString();
-  return search ? `/api/auth/google/start?${search}` : "/api/auth/google/start";
+  return search ? `/api/auth/google/login?${search}` : "/api/auth/google/login";
 }
 
 /** Name and email from the incomplete session, or `null` when there is none. */
