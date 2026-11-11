@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 // #103 · A06·2 Sugestões e A06·2a Não é pra mim (motivo). Usa os dados de teste de lib/sugestoes.ts.
 
-type Mock = { count?: number; fileTotal?: number; delayMs?: number };
+type Mock = NonNullable<typeof globalThis.__NISE_MOCK_SUGESTOES__>;
 
 async function open(page: Page, band = "uma-tarde", mock: Mock = {}) {
   await page.addInitScript((value) => {
@@ -16,6 +16,8 @@ function choices(page: Page) {
 }
 
 const pill = (page: Page) => page.getByRole("link", { name: /^Meu filé/ });
+// O Next tem um anunciador de rota com role="alert"; os avisos da tela ficam dentro do <main>.
+const alert = (page: Page) => page.getByRole("main").getByRole("alert");
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 
 test("mostra o cabeçalho, o contador e o card da sugestão", async ({ page }) => {
@@ -169,6 +171,55 @@ test("os botões ficam bloqueados enquanto a escolha é guardada", async ({ page
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
   await expect(button(page, "Talvez depois")).toBeEnabled();
   expect(await choices(page)).toHaveLength(1);
+});
+
+test("se a busca falha, avisa e \"Tentar de novo\" carrega as sugestões", async ({ page }) => {
+  await open(page, "uma-tarde", { failLoad: true });
+
+  await expect(alert(page)).toContainText("Não foi possível carregar as sugestões.");
+  await expect(page.getByText("Carregando…")).toHaveCount(0);
+  await expect(button(page, "Quero fazer")).toHaveCount(0);
+
+  // A conexão volta.
+  await page.evaluate(() => {
+    globalThis.__NISE_MOCK_SUGESTOES__ = { ...globalThis.__NISE_MOCK_SUGESTOES__, failLoad: false };
+  });
+  await button(page, "Tentar de novo").click();
+  await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
+  await expect(alert(page)).toHaveCount(0);
+  await expect(pill(page)).toContainText("5");
+});
+
+test("se guardar a escolha falha, avisa, mantém a sugestão e deixa tentar de novo", async ({ page }) => {
+  await open(page, "uma-tarde", { choiceFailures: 1 });
+  await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
+
+  await button(page, "Quero fazer").click();
+  await expect(alert(page)).toHaveText("Não deu pra guardar. Tente de novo.");
+  await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
+  await expect(button(page, "Quero fazer")).toBeEnabled();
+  await expect(pill(page)).toContainText("5");
+  expect(await choices(page)).toEqual([]);
+
+  // A segunda tentativa funciona, e o aviso some.
+  await button(page, "Quero fazer").click();
+  await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
+  await expect(alert(page)).toHaveCount(0);
+  await expect(pill(page)).toContainText("6");
+  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "quero-fazer" }]);
+});
+
+test("se guardar o \"Não é pra mim\" falha, a folha fecha e o aviso aparece", async ({ page }) => {
+  await open(page, "uma-tarde", { choiceFailures: 1 });
+
+  await button(page, "Não é pra mim").click();
+  await page.getByRole("button", { name: "Muito fácil" }).click();
+  await page.getByRole("button", { name: "Enviar" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(alert(page)).toHaveText("Não deu pra guardar. Tente de novo.");
+  await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
+  expect(await choices(page)).toEqual([]);
 });
 
 test("tocar numa faixa do Descobrir abre as sugestões dela", async ({ page }) => {

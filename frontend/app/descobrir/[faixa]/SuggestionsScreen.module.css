@@ -85,6 +85,17 @@
   color: var(--nise-muted);
 }
 
+/* Escolha que não foi guardada: aparece acima do contador, sem tirar o card do lugar. */
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+  text-align: center;
+}
+
+.retry {
+  margin-top: 8px;
+}
+
 /* Baralho: o card da frente e até dois cards tortos atrás. */
 .deck {
   position: relative;

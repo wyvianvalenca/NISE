@@ -61,6 +61,13 @@ declare global {
         fileTotal?: number;
         /** Atraso das respostas, em ms, para testar o carregamento. */
         delayMs?: number;
+        /**
+         * Enquanto true, a busca da faixa falha, para testar o erro. É uma chave (e não um
+         * contador) porque no dev o React roda o efeito duas vezes e gastaria a falha.
+         */
+        failLoad?: boolean;
+        /** Quantas vezes seguidas guardar a escolha falha, para testar o erro. */
+        choiceFailures?: number;
       }
     | undefined;
   var __NISE_ESCOLHAS__: { id: string; choice: Choice; reason?: ReasonCode }[] | undefined;
@@ -139,6 +146,9 @@ let mockFileTotal = 5;
 export async function getSuggestions(band: BandCode): Promise<SuggestionsData> {
   const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
   await wait(mock.delayMs);
+  if (mock.failLoad) {
+    throw new Error("Não foi possível carregar as sugestões.");
+  }
   if (mock.fileTotal !== undefined) mockFileTotal = mock.fileTotal;
   const items = MOCK_ITEMS[band].slice(0, mock.count).map((item, index) => ({
     ...item,
@@ -149,7 +159,12 @@ export async function getSuggestions(band: BandCode): Promise<SuggestionsData> {
 
 /** Guarda a escolha dela sobre um item, com o motivo opcional do "Não é pra mim" (#102). */
 export async function sendChoice(id: string, choice: Choice, reason?: ReasonCode): Promise<ChoiceResponse> {
-  await wait(globalThis.__NISE_MOCK_SUGESTOES__?.delayMs);
+  const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
+  await wait(mock.delayMs);
+  if (mock.choiceFailures) {
+    mock.choiceFailures -= 1;
+    throw new Error("Não foi possível guardar a escolha.");
+  }
   globalThis.__NISE_ESCOLHAS__ = [...(globalThis.__NISE_ESCOLHAS__ ?? []), { id, choice, reason }];
   if (choice === "quero-fazer") mockFileTotal += 1;
   return { fileTotal: mockFileTotal };

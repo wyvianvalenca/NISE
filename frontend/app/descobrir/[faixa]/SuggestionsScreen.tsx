@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Button } from "@/components/Button";
 import { Icon, type IconName } from "@/components/Icon";
 import { SuggestionCard } from "@/components/SuggestionCard";
 import { Tag, TagList } from "@/components/Tag";
@@ -17,7 +18,7 @@ import styles from "./SuggestionsScreen.module.css";
 
 export function SuggestionsScreen({ band }: { band: BandCode }) {
   const title = BANDS[band].title;
-  const { state, item, position, total, choose } = useSuggestionDeck(band);
+  const { state, item, position, total, choose, reload } = useSuggestionDeck(band);
   const [reasonOpen, setReasonOpen] = useState(false);
 
   function sendReason(reason?: ReasonCode) {
@@ -55,8 +56,15 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
           <p className={styles.status} aria-live="polite">
             Carregando…
           </p>
+        ) : state.status === "error" ? (
+          <LoadError onRetry={reload} />
         ) : item ? (
           <>
+            {state.choiceFailed && (
+              <p className={styles.error} role="alert">
+                Não deu pra guardar. Tente de novo.
+              </p>
+            )}
             <p className={styles.counter} aria-live="polite">
               Sugestão {position} de {total}
               <span className={styles.srOnly}>: {item.title}</span>
@@ -136,6 +144,22 @@ function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice:
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * A busca da faixa falhou. PROVISÓRIO: quando a #81 entrar, a E04 "Não foi possível carregar"
+ * ocupa este lugar, com o mesmo "Tentar de novo".
+ */
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className={styles.end} role="alert">
+      <h2 className={styles.endTitle}>Não foi possível carregar as sugestões.</h2>
+      <p className={styles.endText}>Confira sua conexão e tente de novo.</p>
+      <Button onClick={onRetry} className={styles.retry}>
+        Tentar de novo
+      </Button>
     </div>
   );
 }
