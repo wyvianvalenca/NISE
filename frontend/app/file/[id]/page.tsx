@@ -197,7 +197,7 @@ function Detail({ activity, onChange }: DetailProps) {
             loadingLabel="Salvando…"
             disabled={saving !== null}
           >
-            <Icon name="play" />
+            <Icon name="play-sm" />
             Marcar como iniciada
           </Button>
         )}
