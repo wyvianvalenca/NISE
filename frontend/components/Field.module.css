@@ -16,6 +16,11 @@
   font-weight: 400;
 }
 
+/* Âncora do que vem junto do campo, como a lista de sugestões da cidade. */
+.control {
+  position: relative;
+}
+
 .input {
   width: 100%;
   height: 48px;
