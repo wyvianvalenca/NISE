@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from app.auth.models import PasswordResetToken  # noqa: F401
+from app.cities.models import City  # noqa: F401
 from app.config import settings
 from app.db.base import Base
 from app.users.models import OAuthAccount, User  # noqa: F401 (registra as tabelas para o autogenerate)
