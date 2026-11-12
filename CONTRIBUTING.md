@@ -15,7 +15,7 @@ Guia para quem desenvolve no repositório. Agentes de IA seguem o [AGENTS.md](AG
 | Banco | PostgreSQL (Supabase em produção, região São Paulo) |
 | Acesso ao banco | SQLAlchemy **assíncrono** (asyncpg) |
 | Migrações | Alembic (modelo assíncrono) |
-| Login | Google, Microsoft (OAuth) e e-mail e senha; sessão por JWT em cookie `httpOnly` |
+| Login | Google (OAuth) e e-mail e senha; sessão por JWT em cookie `httpOnly` |
 | Contrato front/back | Tipos TypeScript gerados do OpenAPI do FastAPI |
 | E-mails automáticos | Conta Google (Gmail) da equipe |
 | Rotinas | Cron jobs da Vercel (e-mails da F4, contatos programados; busca na COPEVE da F31, ingresso por listas oficiais) |
@@ -143,7 +143,7 @@ Rodam no **pre-commit** (na sua máquina) e no **CI** (no PR). O PR só entra co
 | Front | Lint | ESLint |
 | Front | Tipos | `tsc --noEmit` |
 | Front | Contrato com o back | Tipos do OpenAPI regenerados e commitados |
-| Front | E2E | Ferramenta a definir (sugestão: Playwright), só nos caminhos principais |
+| Front | E2E | Playwright, só nos caminhos principais de cada épico |
 
 Não há meta de cobertura de testes, mas toda história tem testes de back para os critérios de aceite.
 
@@ -153,6 +153,10 @@ Não há meta de cobertura de testes, mas toda história tem testes de back para
 - Descrição com: história e RFs cobertos (ex.: RF-F1.01), como testar, prints no celular quando houver tela.
 - 1 aprovação obrigatória de outra pessoa, que não seja quem abriu o PR. Configurar na proteção das branches `main` e `develop` do GitHub.
 - Toda mudança de modelo vem com a migração no mesmo PR.
+
+### Mudança depois de começar
+
+Quando o requisito ou o desenho muda depois que uma história foi feita ou já está em revisão, não reescreva a issue original. Abra uma issue nova com o label `type:change`, como filha do mesmo épico, com o título `Change: …` e a linha `Changes: #<issue original>`. Cite a decisão (D-xx) e liste o que muda no front e no back. Correção de texto que só alinha a issue ao documento de requisitos pode ser feita na própria issue.
 
 ## 8. Regras do domínio que valem para todo código
 
@@ -165,5 +169,5 @@ Não há meta de cobertura de testes, mas toda história tem testes de back para
 ## 9. Ainda em aberto
 
 - Fornecedor da LLM do filé.
-- Ferramenta de E2E e caminhos testados.
-- Responsáveis pelas contas da equipe (Gmail, Google Cloud, Microsoft Entra, Vercel, Supabase).
+- Caminhos testados no E2E de cada épico.
+- Responsáveis pelas contas da equipe (Gmail, Google Cloud, Vercel, Supabase).
