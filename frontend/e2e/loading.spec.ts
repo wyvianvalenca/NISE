@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * E03 "Tecendo seu filé…" e E04 "Não foi possível carregar" (#81).
- * Dirige o hook useLongWait pela bancada /dev-wait, com tempos curtos.
+ * E03 "Tecendo seu filé…" and E04 "Não foi possível carregar" (#81).
+ * Drives the useLongWait hook through the /dev-wait bench, with short times.
  */
 
 type Mock = {
@@ -21,28 +21,28 @@ async function openWith(page: Page, mock: Mock) {
   await page.goto("/dev-wait");
 }
 
-const tecendo = (page: Page) =>
+const weaving = (page: Page) =>
   page.getByRole("heading", { name: "Tecendo seu filé…" });
 const failed = (page: Page) =>
   page.getByRole("heading", { name: "Não foi possível carregar" });
 
 /**
- * Espera fixa de propósito: o que se prova aqui é que a E03 **não** aparece, e
- * para isso é preciso deixar o limiar passar. Não há evento para aguardar.
+ * A fixed wait on purpose: what this proves is that E03 does **not** appear,
+ * and for that the threshold has to go by. There is no event to wait for.
  */
-test("espera curta vai direto para o resultado, sem mostrar a E03", async ({ page }) => {
+test("a short wait goes straight to the result, without showing E03", async ({ page }) => {
   await openWith(page, { delaysMs: [100], threshold: 500 });
 
   await expect(page.getByTestId("ready")).toBeVisible();
   await page.waitForTimeout(700);
-  await expect(tecendo(page)).toHaveCount(0);
+  await expect(weaving(page)).toHaveCount(0);
   await expect(page.getByTestId("ready")).toBeVisible();
 });
 
-test("espera longa mostra a E03 com o nome e o texto do Figma", async ({ page }) => {
+test("a long wait shows E03 with the name and the Figma text", async ({ page }) => {
   await openWith(page, { delaysMs: [3000], threshold: 200, maximum: 10000 });
 
-  await expect(tecendo(page)).toBeVisible();
+  await expect(weaving(page)).toBeVisible();
   await expect(page.getByText("Quase lá, Alana")).toBeVisible();
   await expect(
     page.getByText(
@@ -51,17 +51,17 @@ test("espera longa mostra a E03 com o nome e o texto do Figma", async ({ page })
   ).toBeVisible();
 });
 
-test("a E03 não pisca: uma vez visível, fica pelo menos o tempo mínimo", async ({ page }) => {
+test("E03 does not flash: once visible it stays for at least the minimum", async ({ page }) => {
   await openWith(page, { delaysMs: [400], threshold: 300, minimum: 900 });
 
-  await expect(tecendo(page)).toBeVisible();
+  await expect(weaving(page)).toBeVisible();
   const visibleAt = Date.now();
   await expect(page.getByTestId("ready")).toBeVisible();
 
   expect(Date.now() - visibleAt).toBeGreaterThanOrEqual(700);
 });
 
-test("estourar o tempo máximo mostra a E04 sem o bloco do cadastro", async ({ page }) => {
+test("going past the maximum shows E04 without the sign-up block", async ({ page }) => {
   await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 800 });
 
   await expect(failed(page)).toBeVisible();
@@ -73,7 +73,7 @@ test("estourar o tempo máximo mostra a E04 sem o bloco do cadastro", async ({ p
   await expect(page.getByText("Você não precisa preencher seus dados outra vez.")).toHaveCount(0);
 });
 
-test("com o bloco opcional, a E04 fica como o nó 5:437 do Figma", async ({ page }) => {
+test("with the optional block, E04 matches Figma node 5:437", async ({ page }) => {
   await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 800, reassurance: true });
 
   await expect(failed(page)).toBeVisible();
@@ -81,7 +81,7 @@ test("com o bloco opcional, a E04 fica como o nó 5:437 do Figma", async ({ page
   await expect(page.getByText("Você não precisa preencher seus dados outra vez.")).toBeVisible();
 });
 
-test("\"Tentar novamente\" refaz a busca e entrega o resultado", async ({ page }) => {
+test("\"Tentar novamente\" runs the fetch again and delivers the result", async ({ page }) => {
   await openWith(page, { delaysMs: [60000, 0], threshold: 100, maximum: 800 });
 
   await expect(failed(page)).toBeVisible();
@@ -91,38 +91,38 @@ test("\"Tentar novamente\" refaz a busca e entrega o resultado", async ({ page }
   await expect(failed(page)).toHaveCount(0);
 });
 
-test("\"Tentar novamente\" mostra a E03 na hora, sem passar por tela em branco", async ({ page }) => {
+test("\"Tentar novamente\" shows E03 at once, with no blank screen in between", async ({ page }) => {
   await openWith(page, { delaysMs: [60000], threshold: 5000, maximum: 3000 });
 
   await expect(failed(page)).toBeVisible();
   await page.getByRole("button", { name: "Tentar novamente" }).click();
 
-  // Limiar de 5 s: se o retry voltasse para "early", aqui não teria nada na tela.
-  await expect(tecendo(page)).toBeVisible({ timeout: 1500 });
+  // Threshold of 5 s: were retry to go back to "early", the screen would be empty here.
+  await expect(weaving(page)).toBeVisible({ timeout: 1500 });
 });
 
 /**
- * O mínimo é folgado de propósito: a marca de tempo é tirada quando o Playwright
- * *vê* a E03, que pode ser bem depois de ela entrar. Com 4 s de mínimo, esse
- * atraso de observação não chega perto do limite medido; com um mínimo curto,
- * ele seria a maior parte da conta e o teste oscilaria.
+ * The minimum is generous on purpose: the timestamp is taken when Playwright
+ * *sees* E03, which can be well after it appears. At a 4 s minimum that
+ * observation lag stays far from the bound being measured; at a short minimum
+ * it would be most of the sum, and the test would wobble.
  */
-test("busca que falha mostra a E04, e a E03 não pisca antes", async ({ page }) => {
+test("a failed fetch shows E04, and E03 does not flash first", async ({ page }) => {
   await openWith(page, { delaysMs: [500], fail: true, threshold: 200, minimum: 4000, maximum: 30000 });
 
-  await expect(tecendo(page)).toBeVisible();
+  await expect(weaving(page)).toBeVisible();
   const visibleAt = Date.now();
   await expect(failed(page)).toBeVisible();
 
   expect(Date.now() - visibleAt).toBeGreaterThanOrEqual(2000);
 });
 
-test("a E04 se usa só com o teclado, com foco visível, e não prende o foco", async ({ page }) => {
+test("E04 works with the keyboard alone, with visible focus, and does not trap it", async ({ page }) => {
   await openWith(page, { delaysMs: [60000, 0], threshold: 100, maximum: 800 });
   await expect(failed(page)).toBeVisible();
 
   const retry = page.getByRole("button", { name: "Tentar novamente" });
-  // No modo dev o portal do Next vem antes do botão na ordem do Tab.
+  // In dev mode the Next portal comes before the button in tab order.
   for (let i = 0; i < 3 && !(await retry.evaluate((el) => el === document.activeElement)); i++) {
     await page.keyboard.press("Tab");
   }
@@ -139,9 +139,9 @@ test("a E04 se usa só com o teclado, com foco visível, e não prende o foco", 
   await expect(page.getByTestId("ready")).toBeVisible();
 });
 
-test("a E03 não tem nada focável, então não prende o foco", async ({ page }) => {
+test("E03 has nothing focusable, so it does not trap focus", async ({ page }) => {
   await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 5000 });
-  await expect(tecendo(page)).toBeVisible();
+  await expect(weaving(page)).toBeVisible();
 
   const focusable = await page
     .getByRole("main")
@@ -151,11 +151,11 @@ test("a E03 não tem nada focável, então não prende o foco", async ({ page })
 
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
-  await expect(tecendo(page)).toBeVisible();
+  await expect(weaving(page)).toBeVisible();
 });
 
 for (const width of [360, 1366]) {
-  test(`E03 e E04 cabem em ${width} px sem rolagem horizontal`, async ({ page }) => {
+  test(`E03 and E04 fit in ${width} px with no horizontal scroll`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     const overflows = () =>
       page.evaluate(
@@ -163,7 +163,7 @@ for (const width of [360, 1366]) {
       );
 
     await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 1500, reassurance: true });
-    await expect(tecendo(page)).toBeVisible();
+    await expect(weaving(page)).toBeVisible();
     expect(await overflows()).toBe(false);
 
     await expect(failed(page)).toBeVisible();
