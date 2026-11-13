@@ -11,6 +11,7 @@ type Mock = {
   minimum?: number;
   maximum?: number;
   reassurance?: boolean;
+  fail?: boolean;
 };
 
 async function openWith(page: Page, mock: Mock) {
@@ -25,6 +26,10 @@ const tecendo = (page: Page) =>
 const failed = (page: Page) =>
   page.getByRole("heading", { name: "Não foi possível carregar" });
 
+/**
+ * Espera fixa de propósito: o que se prova aqui é que a E03 **não** aparece, e
+ * para isso é preciso deixar o limiar passar. Não há evento para aguardar.
+ */
 test("espera curta vai direto para o resultado, sem mostrar a E03", async ({ page }) => {
   await openWith(page, { delaysMs: [100], threshold: 500 });
 
@@ -84,6 +89,32 @@ test("\"Tentar novamente\" refaz a busca e entrega o resultado", async ({ page }
 
   await expect(page.getByTestId("ready")).toBeVisible();
   await expect(failed(page)).toHaveCount(0);
+});
+
+test("\"Tentar novamente\" mostra a E03 na hora, sem passar por tela em branco", async ({ page }) => {
+  await openWith(page, { delaysMs: [60000], threshold: 5000, maximum: 3000 });
+
+  await expect(failed(page)).toBeVisible();
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+
+  // Limiar de 5 s: se o retry voltasse para "early", aqui não teria nada na tela.
+  await expect(tecendo(page)).toBeVisible({ timeout: 1500 });
+});
+
+/**
+ * O mínimo é folgado de propósito: a marca de tempo é tirada quando o Playwright
+ * *vê* a E03, que pode ser bem depois de ela entrar. Com 4 s de mínimo, esse
+ * atraso de observação não chega perto do limite medido; com um mínimo curto,
+ * ele seria a maior parte da conta e o teste oscilaria.
+ */
+test("busca que falha mostra a E04, e a E03 não pisca antes", async ({ page }) => {
+  await openWith(page, { delaysMs: [500], fail: true, threshold: 200, minimum: 4000, maximum: 30000 });
+
+  await expect(tecendo(page)).toBeVisible();
+  const visibleAt = Date.now();
+  await expect(failed(page)).toBeVisible();
+
+  expect(Date.now() - visibleAt).toBeGreaterThanOrEqual(2000);
 });
 
 test("a E04 se usa só com o teclado, com foco visível, e não prende o foco", async ({ page }) => {

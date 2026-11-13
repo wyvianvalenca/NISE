@@ -55,10 +55,17 @@ export function useLongWait<T>(
   const [attempt, setAttempt] = useState(0);
   const shownAt = useRef<number | null>(null);
 
+  /**
+   * Restarts the fetch for E04's "Tentar novamente".
+   *
+   * Goes straight to E03 instead of back to `early`: she has already waited
+   * once and knows this is slow, so a second blank screen would only look
+   * broken. `shownAt` starts now, so the minimum counts from this moment.
+   */
   const retry = useCallback(() => {
-    setPhase("early");
     setData(null);
-    shownAt.current = null;
+    setPhase("weaving");
+    shownAt.current = Date.now();
     setAttempt((n) => n + 1);
   }, []);
 
@@ -69,7 +76,7 @@ export function useLongWait<T>(
     timers.push(
       setTimeout(() => {
         if (!active) return;
-        shownAt.current = Date.now();
+        if (shownAt.current === null) shownAt.current = Date.now();
         setPhase((current) => (current === "early" ? "weaving" : current));
       }, threshold),
     );
@@ -80,31 +87,41 @@ export function useLongWait<T>(
       }, maximum),
     );
 
-    const deliver = (value: T) => {
+    /**
+     * Applies an outcome only once E03 has been up for the minimum.
+     *
+     * Both outcomes go through here: a result that lands too soon would make
+     * E03 flash, and so would a rejection, which is why the error path waits
+     * too. While E03 is still hidden there is nothing to protect, so it
+     * applies at once.
+     */
+    const afterMinimum = (apply: () => void) => {
       const visibleSince = shownAt.current;
       const remaining = visibleSince ? minimum - (Date.now() - visibleSince) : 0;
 
       if (remaining <= 0) {
-        setData(value);
-        setPhase((current) => (current === "error" ? current : "ready"));
+        apply();
         return;
       }
 
       timers.push(
         setTimeout(() => {
-          if (!active) return;
-          setData(value);
-          setPhase((current) => (current === "error" ? current : "ready"));
+          if (active) apply();
         }, remaining),
       );
     };
 
     fetcher()
       .then((value) => {
-        if (active) deliver(value);
+        if (!active) return;
+        afterMinimum(() => {
+          setData(value);
+          setPhase((current) => (current === "error" ? current : "ready"));
+        });
       })
       .catch(() => {
-        if (active) setPhase("error");
+        if (!active) return;
+        afterMinimum(() => setPhase("error"));
       });
 
     return () => {

@@ -24,7 +24,7 @@ export function TecendoFile({ name, cards = 5 }: TecendoFileProps) {
       <main className={styles.main} aria-busy="true">
         <p className={styles.almost}>Quase lá, {name}</p>
         <h1 className={styles.title}>Tecendo seu filé…</h1>
-        <p className={styles.lead}>
+        <p className={styles.lead} role="status">
           Juntando sugestões com base nos temas que você escolheu e na sua
           escolaridade.
         </p>

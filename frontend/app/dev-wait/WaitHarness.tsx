@@ -16,6 +16,8 @@ declare global {
         maximum?: number;
         /** Draws E04 with the sign-up reassurance block. */
         reassurance?: boolean;
+        /** Rejects the attempt, for the "connection dropped" path. */
+        fail?: boolean;
       }
     | undefined;
 }
@@ -37,6 +39,7 @@ function numberParam(params: URLSearchParams, name: string): number | undefined 
  *   /dev-wait?delay=3000          E03 while it waits, then the result
  *   /dev-wait?delay=99999&max=4000  E04 after the maximum
  *   /dev-wait?delay=99999&max=4000&reassurance=1   E04 as the sign-up draws it
+ *   /dev-wait?delay=400&fail=1    E04 from a rejected fetch, not from the maximum
  */
 export function WaitHarness() {
   const [round, setRound] = useState(0);
@@ -50,13 +53,20 @@ export function WaitHarness() {
     minimum: numberParam(params, "minimum"),
     maximum: numberParam(params, "max"),
     reassurance: params.get("reassurance") === "1",
+    fail: params.get("fail") === "1",
   };
 
   const fetcher = useCallback(() => {
     const delays = mock.delaysMs ?? [0];
     const delay = delays[Math.min(round, delays.length - 1)];
-    return new Promise<string>((resolve) => setTimeout(() => resolve("pronto"), delay));
-  }, [round, mock.delaysMs]);
+    const shouldFail = mock.fail;
+    return new Promise<string>((resolve, reject) =>
+      setTimeout(
+        () => (shouldFail ? reject(new Error("fetch failed on purpose")) : resolve("pronto")),
+        delay,
+      ),
+    );
+  }, [round, mock.delaysMs, mock.fail]);
 
   const { phase, data, retry } = useLongWait(fetcher, {
     threshold: mock.threshold,
