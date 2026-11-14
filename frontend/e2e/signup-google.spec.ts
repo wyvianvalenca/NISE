@@ -13,6 +13,14 @@ const CIDADES = [
   { id: "2611606", name: "Recife, PE" },
 ];
 
+/** Drops accents and case, the same way the back-end compares names. */
+function comparable(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
 /** Today in Maceió, to build birth dates that do not depend on the clock. */
 function todayInMaceio(): { ano: number; mes: number; dia: number } {
   const [ano, mes, dia] = new Intl.DateTimeFormat("en-CA", {
@@ -64,7 +72,14 @@ async function mockApi(page: Page, mocks: Mocks = {}) {
       : route.fulfill({ status: 404, json: {} }),
   );
 
-  await page.route("**/api/cities**", (route) => route.fulfill({ json: CIDADES }));
+  // Like the real route (#50): filters by name, ignoring accents and case.
+  await page.route("**/api/cities**", (route) => {
+    const search = new URL(route.request().url()).searchParams.get("search");
+    const found = CIDADES.filter((cidade) =>
+      comparable(cidade.name).includes(comparable(search ?? "")),
+    );
+    return route.fulfill({ json: found });
+  });
 
   await page.route("**/api/auth/signup/complete", (route) =>
     route.fulfill({
@@ -85,10 +100,12 @@ async function mockApi(page: Page, mocks: Mocks = {}) {
   );
 }
 
+/** Fills the date, types the city and taps it in the suggestion list. */
 async function fill(page: Page, dataNascimento: string, cidade: string) {
   await page.getByLabel("Data de nascimento").fill(dataNascimento);
   await page.getByLabel("Cidade").fill(cidade);
-  await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
+  await page.getByRole("option", { name: "Maceió, AL" }).click();
+  await expect(page.getByLabel("Cidade")).toHaveValue("Maceió, AL");
 }
 
 test("mostra o nome e o e-mail que vieram do Google", async ({ page }) => {
@@ -234,7 +251,11 @@ test("cidade escrita sem acento e em minúscula também vale", async ({
   await mockApi(page);
   await page.goto("/cadastro/google");
 
-  await fill(page, turnsThirteenToday(), "maceio, al");
+  // She types the whole name without accents and does not tap the list.
+  await page.getByLabel("Data de nascimento").fill(turnsThirteenToday());
+  await page.getByLabel("Cidade").fill("maceio, al");
+  await expect(page.getByRole("option", { name: "Maceió, AL" })).toBeVisible();
+  await page.getByLabel("Cidade").press("Escape");
   await page.getByRole("button", { name: "Concluir cadastro" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
