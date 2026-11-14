@@ -4,11 +4,14 @@ import pytest
 from fastapi import FastAPI
 from sqlalchemy.sql import Select
 
+from app.db.base import Base
 from app.main import app
+from app.modules.actions.models import Action  # noqa: F401 (registra a tabela)
 from app.modules.cities.exceptions import InvalidCityError, invalid_city_handler
 from app.modules.cities.models import City
 from app.modules.cities.service import ensure_city_exists
 from app.modules.cities.utils import normalize_search
+from app.modules.girls.models import Girl  # noqa: F401 (registra a tabela)
 from scripts.carregar_municipios import from_ibge, read, to_rows
 from tests.helpers import chamar_rota
 
@@ -170,6 +173,16 @@ async def test_cidade_fora_da_lista_vira_422_invalid_city() -> None:
 
 def test_app_registra_o_tratamento_de_cidade_invalida() -> None:
     assert app.exception_handlers[InvalidCityError] is invalid_city_handler
+
+
+# --- Chaves estrangeiras (RN-17 vale para meninas e ações) -------------------
+
+
+@pytest.mark.parametrize("tabela", ["girls", "actions"])
+def test_cidade_de_meninas_e_acoes_aponta_para_a_lista_do_ibge(tabela: str) -> None:
+    coluna = Base.metadata.tables[tabela].c.city_ibge_code
+
+    assert {fk.target_fullname for fk in coluna.foreign_keys} == {"cities.id"}
 
 
 # --- Script de carga ---------------------------------------------------------

@@ -51,8 +51,10 @@ class Girl(TimestampMixin, Base):
     # Perfil. Tudo opcional, porque quem foi importada ainda não preencheu nada.
     # Menores de 13 são barradas no servidor antes de qualquer gravação (RN-03).
     birth_date: Mapped[date | None] = mapped_column()
-    # Código do município no IBGE (RN-17). A chave estrangeira vem com a #50.
-    city_ibge_code: Mapped[int | None] = mapped_column()
+    # Código do município no IBGE (RN-17), sempre um dos de `cities` (#50).
+    city_ibge_code: Mapped[int | None] = mapped_column(
+        ForeignKey("cities.id", ondelete="RESTRICT")
+    )
     # Grupo do convite. Vazio quer dizer que ela chegou sozinha (RF-F7.04, RN-04).
     origin_group_id: Mapped[int | None] = mapped_column(
         ForeignKey("groups.id", ondelete="SET NULL")

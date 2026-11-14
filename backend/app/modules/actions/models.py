@@ -57,9 +57,10 @@ class Action(TimestampMixin, Base):
     starts_on: Mapped[date] = mapped_column()
     ends_on: Mapped[date] = mapped_column()
     format: Mapped[ActionFormat] = mapped_column()
-    # Código do município no IBGE (RN-17). A chave estrangeira para a tabela de
-    # cidades vem com a #50.
-    city_ibge_code: Mapped[int | None] = mapped_column()
+    # Código do município no IBGE (RN-17), sempre um dos de `cities` (#50).
+    city_ibge_code: Mapped[int | None] = mapped_column(
+        ForeignKey("cities.id", ondelete="RESTRICT")
+    )
     visibility: Mapped[ActionVisibility] = mapped_column()
     registration_url: Mapped[str | None] = mapped_column()
 
