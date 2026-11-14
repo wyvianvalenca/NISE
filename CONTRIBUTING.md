@@ -108,10 +108,10 @@ O pre-commit já roda quase tudo. Os testes do back rodam na máquina, não no c
 | --- | --- | --- | --- |
 | `main` | Produção. Cada merge publica na Vercel | - | - |
 | `develop` | Integração da sprint | `main` | `main`, ao fim da sprint |
-| `feature/<id>-<nome>` | Uma história de usuário | `develop` | `develop` |
+| `feat/<id>-<nome>` | Uma história de usuário | `develop` | `develop` |
 | `hotfix/<nome>` | Correção urgente em produção | `main` | `main` e `develop` |
 
-Exemplo: `feature/hu-12-importar-inscritas`.
+Exemplo: `feat/hu-12-importar-inscritas`.
 
 - Ninguém faz push direto em `main` nem em `develop`.
 - Um PR por história. História grande vira dois PRs.

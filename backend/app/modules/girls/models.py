@@ -42,8 +42,10 @@ class Girl(TimestampMixin, Base):
     # Sempre gravado com normalize_email (app/users/service.py).
     email: Mapped[str] = mapped_column(unique=True, index=True)
     name: Mapped[str] = mapped_column()
-    # Vazio enquanto ela não tem conta. Se a conta for apagada, o registro
-    # volta a ser só o importado.
+    # Vazio enquanto ela não tem conta. Quem aceitou os termos não tem a linha
+    # de users apagada (RESTRICT em terms_acceptances, #49): a exclusão de conta
+    # (RF-F7.09) anonimiza a usuária e solta este vínculo à mão, e o registro
+    # volta a ser só o importado. O SET NULL cobre só contas sem aceite.
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), unique=True
     )

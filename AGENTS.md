@@ -30,7 +30,7 @@ Rode as verificações antes de dizer que terminou.
 
 ## Regras
 
-- Git flow: trabalhe em `feature/<id>-<nome>` a partir de `develop`. Nunca commite em `main` ou `develop`.
+- Git flow: trabalhe em `feat/<id>-<nome>` a partir de `develop`. Nunca commite em `main` ou `develop`.
 - Todo PR precisa de 1 aprovação de uma pessoa que não seja quem abriu o PR.
 - Commits em Conventional Commits (`feat(f1): ...`).
 - Toda mudança de modelo vem com migração Alembic no mesmo commit/PR.
