@@ -1,7 +1,7 @@
 """cria tabela de municipios do ibge
 
 Revision ID: 50e43b2e6929
-Revises: c49594b7b087
+Revises: bc420bbf1638
 Create Date: 2026-11-12 13:40:23.812209
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "50e43b2e6929"
-down_revision: str | Sequence[str] | None = "c49594b7b087"
+down_revision: str | Sequence[str] | None = "bc420bbf1638"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
