@@ -10,6 +10,7 @@ from app.auth.models import PasswordResetToken  # noqa: F401
 from app.config import settings
 from app.db.base import Base
 from app.modules.actions.models import Action, Participation  # noqa: F401
+from app.modules.consents.models import TermsAcceptance  # noqa: F401
 from app.modules.girls.models import Girl, GirlTopic  # noqa: F401
 from app.modules.groups.models import Group, GroupCoordinator  # noqa: F401
 from app.users.models import OAuthAccount, User  # noqa: F401 (registra as tabelas para o autogenerate)
