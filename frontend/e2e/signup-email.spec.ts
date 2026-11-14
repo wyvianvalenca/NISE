@@ -3,7 +3,9 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * A01 / A01b / A02 of the email sign-up (#51).
  *
- * The back-end does not exist yet (#48, #50, #68), so the routes are mocked.
+ * These tests check the screens, so the routes stay mocked, with the same
+ * answers as the real back-end (#99). The flow against the real back-end is
+ * walked through by hand and recorded in the PR (#143).
  * Fictional data, as CONTRIBUTING requires: no real girl.
  */
 
@@ -388,4 +390,50 @@ test("sem convite, o envio não manda origem de grupo nenhum", async ({
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
   expect(corpoEnviado.invite).toBeUndefined();
+});
+
+test("se o servidor recusar a data, ela corrige o campo sem ir para a A02c", async ({
+  page,
+}) => {
+  await mockApi(page, {
+    cadastro: { status: 422, corpo: { error: "invalid_birth_date" } },
+  });
+  await page.goto("/criar-conta");
+
+  await fillForm(page);
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
+  await expect(page).toHaveURL(/\/criar-conta/);
+});
+
+test("convite que venceu no meio do caminho: avisa e segue sem ele", async ({
+  page,
+}) => {
+  await mockApi(page);
+
+  const corpos: Record<string, unknown>[] = [];
+  await page.route("**/api/auth/signup/email", (route) => {
+    const corpo = route.request().postDataJSON();
+    corpos.push(corpo);
+    return corpo.invite
+      ? route.fulfill({ status: 422, json: { error: "invalid_invite" } })
+      : route.fulfill({ status: 201, json: {} });
+  });
+
+  await page.goto("/criar-conta?convite=rendeiras-2026");
+  await fillForm(page);
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page.getByText("Esse convite não vale mais.")).toBeVisible();
+  await expect(page).toHaveURL(/\/criar-conta/);
+
+  // What she filled in stays; tapping again creates the account without it.
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+  expect(corpos.map((corpo) => corpo.invite)).toEqual([
+    "rendeiras-2026",
+    undefined,
+  ]);
 });

@@ -1,10 +1,14 @@
 /**
  * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51).
  *
- * HEADS UP: the back-end for these routes does not exist yet. It comes with
- * the enablers #48 (data model), #50 (IBGE city list) and #68 (accounts and
- * session). The paths and names below are this story's proposed contract — if
- * they change in the back-end PR, only this file changes.
+ * The city search (#50), the invite and the email sign-up (#99) already exist
+ * in the back-end. The Google routes under /api/auth/signup/ (pending,
+ * complete, discard) are still this story's proposed contract and come with
+ * #52 — if they change in that PR, only this file changes.
+ *
+ * The types below are written by hand, matching the back-end's OpenAPI
+ * (/docs on the FastAPI server): the team chose not to add a type generator
+ * for now.
  *
  * The incomplete Google session lives in an httpOnly cookie set by the
  * callback, so nothing here stores a name, an email or a birth date.
@@ -161,10 +165,12 @@ export type EmailSignupResult =
       ok: false;
       reason:
         | "under_13"
+        | "invalid_birth_date"
         | "invalid_email"
         | "account_exists"
         | "invalid_city"
         | "password_too_short"
+        | "invalid_invite"
         | "failed";
     };
 
@@ -212,7 +218,8 @@ export async function createEmailAccount(
     return { ok: false, reason: "account_exists" };
   }
 
-  // The server checks age, email format, password and city again (RNF-G.03).
+  // The server checks age, email format, password, city and invite again
+  // (RNF-G.03), answering 422 {"error": "<code>"}.
   if (response.status === 422) {
     const body = (await response.json().catch(() => null)) as {
       error?: string;
@@ -220,9 +227,11 @@ export async function createEmailAccount(
 
     const known: Record<string, EmailSignupResult> = {
       under_13: { ok: false, reason: "under_13" },
+      invalid_birth_date: { ok: false, reason: "invalid_birth_date" },
       invalid_email: { ok: false, reason: "invalid_email" },
       invalid_city: { ok: false, reason: "invalid_city" },
       password_too_short: { ok: false, reason: "password_too_short" },
+      invalid_invite: { ok: false, reason: "invalid_invite" },
     };
     const match = body?.error ? known[body.error] : undefined;
     if (match) {
