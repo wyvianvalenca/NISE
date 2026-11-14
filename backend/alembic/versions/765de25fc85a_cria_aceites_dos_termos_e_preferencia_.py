@@ -1,7 +1,7 @@
 """cria aceites dos termos e preferencia de oportunidades
 
 Revision ID: 765de25fc85a
-Revises: bc420bbf1638
+Revises: 3eab7bc3d0f1
 Create Date: 2026-11-14 11:35:40.899871
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "765de25fc85a"
-down_revision: str | Sequence[str] | None = "bc420bbf1638"
+down_revision: str | Sequence[str] | None = "3eab7bc3d0f1"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
