@@ -12,6 +12,8 @@ CADASTRO = {
     "name": "Alana Ficticia",
     "email": "Alana@Exemplo.com",
     "password": "senha-ficticia",
+    "birthDate": "2009-03-02",
+    "cityId": "2704302",
 }
 LOGIN = {"email": "alana@exemplo.com", "password": "senha-ficticia"}
 
@@ -28,7 +30,7 @@ def alana(password_hash: str | None = HASH_DA_ALANA) -> User:
 
 async def test_cadastro_cria_a_conta_e_ja_loga() -> None:
     response = await chamar_rota(
-        app, "POST", "/api/auth/register", sessao_para_busca(None), corpo=CADASTRO
+        app, "POST", "/api/auth/signup/email", sessao_para_busca(None), corpo=CADASTRO
     )
 
     assert response.status_code == 201
@@ -37,6 +39,7 @@ async def test_cadastro_cria_a_conta_e_ja_loga() -> None:
         "email": "alana@exemplo.com",
         "name": "Alana Ficticia",
         "role": "girl",
+        "nextStep": "terms",
     }
     assert "HttpOnly" in response.headers["set-cookie"]
     assert decode_access_token(token_do_cookie(response)) == 1
@@ -46,7 +49,7 @@ async def test_cadastro_ignora_o_papel_enviado() -> None:
     response = await chamar_rota(
         app,
         "POST",
-        "/api/auth/register",
+        "/api/auth/signup/email",
         sessao_para_busca(None),
         corpo={**CADASTRO, "role": "coordinator"},
     )
@@ -57,7 +60,11 @@ async def test_cadastro_ignora_o_papel_enviado() -> None:
 
 async def test_cadastro_com_email_existente_responde_409() -> None:
     response = await chamar_rota(
-        app, "POST", "/api/auth/register", sessao_para_busca(alana()), corpo=CADASTRO
+        app,
+        "POST",
+        "/api/auth/signup/email",
+        sessao_para_busca(alana()),
+        corpo=CADASTRO,
     )
 
     assert response.status_code == 409
@@ -71,12 +78,13 @@ async def test_cadastro_invalido_nem_consulta_o_banco() -> None:
     response = await chamar_rota(
         app,
         "POST",
-        "/api/auth/register",
+        "/api/auth/signup/email",
         sessao_falsa,
         corpo={**CADASTRO, "password": "curta"},
     )
 
     assert response.status_code == 422
+    assert response.json() == {"error": "password_too_short"}
     sessao_falsa.scalar.assert_not_awaited()
 
 

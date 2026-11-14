@@ -24,8 +24,8 @@ from app.auth.permissions import (
     set_pending_signup_cookie,
     set_session_cookie,
 )
-from app.auth.schemas import LoginIn, RegisterIn
-from app.auth.service import authenticate_user, find_oauth_user, register_user
+from app.auth.schemas import EmailSignupIn, EmailSignupOut, LoginIn
+from app.auth.service import authenticate_user, find_oauth_user, signup_with_email
 from app.auth.utils import create_access_token, create_pending_signup_token
 from app.db.engine import AsyncSessionDep
 from app.users.models import User
@@ -48,18 +48,30 @@ async def logout(response: Response) -> None:
     clear_session_cookie(response)
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(
-    data: RegisterIn, session: AsyncSessionDep, response: Response
-) -> User:
-    user = await register_user(session, data)
+# Cadastro da menina por e-mail e senha (A02, #51). A resposta já abre a
+# sessão, e o próximo passo é sempre o aceite dos termos (H3).
+@router.post(
+    "/signup/email",
+    response_model=EmailSignupOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_409_CONFLICT: {"description": "E-mail já cadastrado"},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Dado recusado, ex.: {"error": "under_13"}'
+        },
+    },
+)
+async def signup_email(
+    data: EmailSignupIn, session: AsyncSessionDep, response: Response
+) -> EmailSignupOut:
+    user = await signup_with_email(session, data)
 
     if user is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "E-mail já cadastrado")
 
     set_session_cookie(response, create_access_token(user.id))
 
-    return user
+    return EmailSignupOut.model_validate(user)
 
 
 @router.post("/login", response_model=UserOut)

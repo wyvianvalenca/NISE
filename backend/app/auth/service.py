@@ -5,35 +5,109 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.exceptions import SignupError, SignupErrorCode
 from app.auth.google import GoogleProfile
 from app.auth.models import PasswordResetToken
-from app.auth.schemas import LoginIn, RegisterIn
-from app.auth.utils import hash_password, hash_reset_token, verify_password
+from app.auth.schemas import EmailSignupIn, LoginIn
+from app.auth.utils import (
+    MINIMUM_PASSWORD_LENGTH,
+    hash_password,
+    hash_reset_token,
+    verify_password,
+)
 from app.config import settings
+from app.modules.cities.service import ensure_city_exists
+from app.modules.girls.models import Girl
+from app.modules.girls.service import get_girl_by_email
+from app.modules.girls.utils import AgeCheck, check_age
+from app.modules.groups.exceptions import InvalidInviteError
+from app.modules.groups.service import get_valid_invite
 from app.users.models import OAuthAccount, Provider, Role, User
 from app.users.service import get_user_by_email, normalize_email
+from app.users.utils import is_valid_email
 
 # hash falso para que os três casos tenham o mesmo tempo de execução
 _DUMMY_HASH = hash_password("senha-ficticia-so-para-igualar-o-tempo")
 
 
-async def register_user(session: AsyncSession, data: RegisterIn) -> User | None:
-    if await get_user_by_email(session, data.email) is not None:
+def _check_signup_fields(data: EmailSignupIn) -> None:
+    """Confere o que não precisa do banco. Levanta SignupError na primeira falha."""
+    # A idade vem primeiro: quem tem menos de 13 anos é recusada antes de
+    # qualquer consulta ou gravação, e nada do que ela preencheu fica (RN-03).
+    age = check_age(data.birth_date)
+    if age is AgeCheck.UNDER_13:
+        raise SignupError(SignupErrorCode.UNDER_13)
+    if age is AgeCheck.INVALID_BIRTH_DATE:
+        raise SignupError(SignupErrorCode.INVALID_BIRTH_DATE)
+
+    if not is_valid_email(data.email):
+        raise SignupError(SignupErrorCode.INVALID_EMAIL)
+
+    if len(data.password) < MINIMUM_PASSWORD_LENGTH:
+        raise SignupError(SignupErrorCode.PASSWORD_TOO_SHORT)
+
+
+async def _invite_group_id(session: AsyncSession, code: str | None) -> int | None:
+    """O grupo do convite, ou None quando ela chegou sozinha (RF-F7.04)."""
+    if code is None:
         return None
+
+    try:
+        invite = await get_valid_invite(session, code)
+    except InvalidInviteError:
+        raise SignupError(SignupErrorCode.INVALID_INVITE) from None
+
+    return invite.group_id
+
+
+async def signup_with_email(session: AsyncSession, data: EmailSignupIn) -> User | None:
+    """Cria a conta da menina com e-mail e senha (#51, RF-S2.01).
+
+    Levanta SignupError (ou InvalidCityError) quando algum dado é recusado, e
+    devolve None quando o e-mail já tem conta.
+    """
+    _check_signup_fields(data)
+    await ensure_city_exists(session, data.city_id)
+    origin_group_id = await _invite_group_id(session, data.invite)
+
+    email = normalize_email(data.email)
+
+    if await get_user_by_email(session, email) is not None:
+        return None
+
+    # Se ela veio de uma importação, a conta ativa esse registro em vez de
+    # criar outro (RF-F2.02, RN-29).
+    girl = await get_girl_by_email(session, email)
+    if girl is not None and girl.user_id is not None:
+        return None
+    if girl is None:
+        girl = Girl(email=email)
+        session.add(girl)
 
     user = User(
         name=data.name,
-        email=normalize_email(data.email),
+        email=email,
         password_hash=hash_password(data.password),
         role=Role.GIRL,
     )
     session.add(user)
 
+    # O nome que ela digitou vale mais que o da lista importada. A origem é a
+    # do cadastro: é ela que decide o texto dos termos (H3).
+    girl.name = data.name
+    girl.birth_date = data.birth_date
+    girl.city_ibge_code = data.city_id
+    girl.origin_group_id = origin_group_id
+
     try:
+        # O flush dá o id da usuária, para ligar o registro a ela.
+        await session.flush()
+        girl.user_id = user.id
         await session.commit()
     except IntegrityError:
         await session.rollback()
         return None
+
     return user
 
 

@@ -8,6 +8,8 @@ from app.auth.google import GoogleProfile
 from app.config import settings
 
 JWT_ALGORITHM = "HS256"
+# Mesmo valor de MINIMUM_PASSWORD_LENGTH em frontend/lib/signup-api.ts.
+MINIMUM_PASSWORD_LENGTH = 8
 PENDING_SIGNUP_AUDIENCE = "nise:pending-signup"
 
 
