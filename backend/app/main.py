@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.cities.exceptions import InvalidCityError, invalid_city_handler
+from app.modules.cities.exceptions import InvalidCityError, invalid_city_handler
 from app.routes import router
 
 app = FastAPI()

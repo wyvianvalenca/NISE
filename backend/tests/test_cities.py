@@ -4,11 +4,11 @@ import pytest
 from fastapi import FastAPI
 from sqlalchemy.sql import Select
 
-from app.cities.exceptions import InvalidCityError, invalid_city_handler
-from app.cities.models import City
-from app.cities.service import ensure_city_exists
-from app.cities.utils import normalize_search
 from app.main import app
+from app.modules.cities.exceptions import InvalidCityError, invalid_city_handler
+from app.modules.cities.models import City
+from app.modules.cities.service import ensure_city_exists
+from app.modules.cities.utils import normalize_search
 from scripts.carregar_municipios import from_ibge, read, to_rows
 from tests.helpers import chamar_rota
 

@@ -25,9 +25,9 @@ from typing import Any, TypedDict
 import httpx2
 from sqlalchemy.dialects.postgresql import insert
 
-from app.cities.models import City
-from app.cities.utils import normalize_search
 from app.db.engine import SessionLocal, engine
+from app.modules.cities.models import City
+from app.modules.cities.utils import normalize_search
 
 DATA_FILE = Path(__file__).parent / "dados" / "municipios_ibge.json"
 IBGE_URL = (

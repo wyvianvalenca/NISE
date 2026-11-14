@@ -2,10 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from app.cities.schemas import CityOut
-from app.cities.service import search_cities
-from app.cities.utils import city_label
 from app.db.engine import AsyncSessionDep
+from app.modules.cities.schemas import CityOut
+from app.modules.cities.service import search_cities
+from app.modules.cities.utils import city_label
 
 router = APIRouter(prefix="/cities", tags=["Cities"])
 

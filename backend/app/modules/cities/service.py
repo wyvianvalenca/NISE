@@ -3,9 +3,9 @@ from collections.abc import Sequence
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cities.exceptions import InvalidCityError
-from app.cities.models import City
-from app.cities.utils import normalize_search
+from app.modules.cities.exceptions import InvalidCityError
+from app.modules.cities.models import City
+from app.modules.cities.utils import normalize_search
 
 # As meninas são de Alagoas: numa busca como "sao jose", os municípios de
 # Alagoas vêm antes dos homônimos de outros estados.
