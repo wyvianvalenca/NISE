@@ -1,0 +1,28 @@
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field
+
+
+class GroupOrigin(BaseModel):
+    """Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01)."""
+
+    kind: Literal["group"] = "group"
+    # O front lê em camelCase (Origin.groupName em frontend/lib/signup.ts).
+    group_name: str = Field(serialization_alias="groupName")
+
+
+class SelfOrigin(BaseModel):
+    """Ela chegou sozinha (M2): os grupos só veem números gerais (RN-04)."""
+
+    kind: Literal["self"] = "self"
+
+
+class TermsSummaryOut(BaseModel):
+    """O que a A04·1 precisa para montar o resumo dos termos (RF-F7.03, RF-F7.04).
+
+    O texto fica no front; aqui vão só a versão que ela vai aceitar e a origem,
+    que decide qual versão do resumo ela lê.
+    """
+
+    version: str
+    origin: Annotated[GroupOrigin | SelfOrigin, Field(discriminator="kind")]

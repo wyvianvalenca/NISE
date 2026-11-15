@@ -6,6 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.consents.models import TermsAcceptance
+from app.modules.girls.models import Girl
+from app.modules.groups.models import Group
 from app.users.models import User
 
 # Versão dos termos em vigor. Tem que ser a mesma do front
@@ -27,6 +29,21 @@ ALWAYS_SENT = {
     EmailKind.IMPORTANT_DATES,
     EmailKind.PASSWORD_RESET,
 }
+
+
+async def get_origin_group_name(session: AsyncSession, user_id: int) -> str | None:
+    """Nome do grupo que convidou a menina, ou None se ela chegou sozinha.
+
+    Decide a versão do resumo dos termos (RF-F7.04). Se o grupo foi apagado,
+    origin_group_id fica vazio (SET NULL) e ela lê a versão da NISE.
+    """
+    group_name = await session.scalar(
+        select(Group.name)
+        .join(Girl, Girl.origin_group_id == Group.id)
+        .where(Girl.user_id == user_id)
+    )
+
+    return group_name
 
 
 async def has_accepted_current_terms(session: AsyncSession, user_id: int) -> bool:

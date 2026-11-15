@@ -2,11 +2,13 @@ from fastapi import APIRouter
 
 from app.auth.routes import router as auth_router
 from app.modules.cities.routes import router as cities_router
+from app.modules.consents.routes import router as consents_router
 from app.modules.groups.routes import router as groups_router
 
 router = APIRouter()
 router.include_router(auth_router)
 router.include_router(cities_router)
+router.include_router(consents_router)
 router.include_router(groups_router)
 
 
