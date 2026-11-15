@@ -3,8 +3,9 @@ from typing import Annotated
 
 import httpx2
 from fastapi import APIRouter, Cookie, HTTPException, Query, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
+from app.auth.exceptions import SignupError, SignupErrorCode
 from app.auth.google import (
     GoogleProfile,
     build_authorization_url,
@@ -28,11 +29,17 @@ from app.auth.permissions import (
 )
 from app.auth.schemas import (
     EmailSignupIn,
-    EmailSignupOut,
+    GoogleSignupCompleteIn,
     LoginIn,
     PendingSignupOut,
+    SignupOut,
 )
-from app.auth.service import authenticate_user, find_oauth_user, signup_with_email
+from app.auth.service import (
+    authenticate_user,
+    complete_google_signup,
+    find_oauth_user,
+    signup_with_email,
+)
 from app.auth.utils import (
     PendingSignup,
     create_access_token,
@@ -41,6 +48,7 @@ from app.auth.utils import (
 from app.db.engine import AsyncSessionDep
 from app.users.models import User
 from app.users.schemas import UserOut
+from app.users.service import normalize_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -63,7 +71,7 @@ async def logout(response: Response) -> None:
 # sessão, e o próximo passo é sempre o aceite dos termos (H3).
 @router.post(
     "/signup/email",
-    response_model=EmailSignupOut,
+    response_model=SignupOut,
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_409_CONFLICT: {"description": "E-mail já cadastrado"},
@@ -74,7 +82,7 @@ async def logout(response: Response) -> None:
 )
 async def signup_email(
     data: EmailSignupIn, session: AsyncSessionDep, response: Response
-) -> EmailSignupOut:
+) -> SignupOut:
     user = await signup_with_email(session, data)
 
     if user is None:
@@ -82,7 +90,7 @@ async def signup_email(
 
     set_session_cookie(response, create_access_token(user.id))
 
-    return EmailSignupOut.model_validate(user)
+    return SignupOut.model_validate(user)
 
 
 # Cadastro pelo Google (A02b, #52). O callback deixa o que veio do Google no
@@ -94,7 +102,51 @@ async def signup_email(
     responses={status.HTTP_404_NOT_FOUND: {"description": "Sem cadastro pendente"}},
 )
 async def pending_signup(pending: PendingSignupDep) -> PendingSignupOut:
-    return PendingSignupOut(name=pending.profile.name, email=pending.profile.email)
+    # O e-mail como vai ficar na conta (o mesmo normalize_email do cadastro).
+    return PendingSignupOut(
+        name=pending.profile.name, email=normalize_email(pending.profile.email)
+    )
+
+
+@router.post(
+    "/signup/complete",
+    response_model=SignupOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Sem cadastro pendente"},
+        status.HTTP_409_CONFLICT: {"description": "Conta já existe"},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Dado recusado, ex.: {"error": "under_13"}'
+        },
+    },
+)
+async def complete_signup(
+    data: GoogleSignupCompleteIn,
+    pending: PendingSignupDep,
+    session: AsyncSessionDep,
+    response: Response,
+) -> SignupOut | JSONResponse:
+    try:
+        user = await complete_google_signup(session, pending, data)
+    except SignupError as error:
+        if error.code is not SignupErrorCode.UNDER_13:
+            raise
+        # Menor de 13: o que veio do Google some já aqui, sem depender do
+        # front chamar o discard (RN-03).
+        refused = JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"error": error.code.value},
+        )
+        clear_pending_signup_cookie(refused)
+        return refused
+
+    if user is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Conta já existe")
+
+    set_session_cookie(response, create_access_token(user.id))
+    clear_pending_signup_cookie(response)
+
+    return SignupOut.model_validate(user)
 
 
 # "Usar outra conta" e menor de 13 na A02b: some o que veio do Google, sem

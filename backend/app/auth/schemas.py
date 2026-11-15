@@ -31,7 +31,22 @@ class EmailSignupIn(BaseModel):
     invite: Annotated[str, StringConstraints(max_length=64)] | None = None
 
 
-class EmailSignupOut(UserOut):
+class GoogleSignupCompleteIn(BaseModel):
+    """O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).
+
+    Nome e e-mail vêm do Google, pelo cookie do cadastro pendente, e não daqui.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    birth_date: date
+    # Código IBGE do município. O front manda como texto ("2704302").
+    city_id: int
+    # True quando a tela avisou que o convite venceu e ela seguiu sem ele.
+    without_invite: bool = False
+
+
+class SignupOut(UserOut):
     # O cadastro sempre segue para os termos (H3).
     next_step: Literal["terms"] = Field(default="terms", serialization_alias="nextStep")
 
