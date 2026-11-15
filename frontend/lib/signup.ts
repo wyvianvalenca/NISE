@@ -1,12 +1,10 @@
 // Etapas do cadastro da menina (épico #46), do aceite dos termos em diante.
 //
 // TEMPORÁRIO: as funções abaixo usam dados de teste guardados na memória do
-// navegador. Elas têm o formato das rotas descritas nas issues #54 e #56 a #58 e
-// serão trocadas por chamadas a /api quando essas rotas existirem. Os termos (#53)
-// e as oportunidades por e-mail (#55) já usam a API de verdade, em lib/signup-api.ts.
-// Os dados são fictícios; nada sai do navegador.
-
-import type { Origin } from "@/lib/signup-api";
+// navegador. Elas têm o formato das rotas descritas nas issues #54 e #56 e
+// serão trocadas por chamadas a /api quando essas rotas existirem. Os termos (#53),
+// as oportunidades por e-mail (#55) e a avaliação do evento (#58) já usam a API de
+// verdade, em lib/signup-api.ts. Os dados são fictícios; nada sai do navegador.
 
 /** Caminho de cada tela do cadastro, na ordem do fluxo. */
 export const SIGNUP_PATHS = {
@@ -20,12 +18,6 @@ export const SIGNUP_PATHS = {
   done: "/por-que-file",
 } as const;
 
-// Os testes e2e escolhem o fluxo (M1 ou M2) definindo __NISE_MOCK__ antes da página abrir.
-// Hoje só decide se há ação para avaliar (#58); a origem dos termos vem da API.
-declare global {
-  var __NISE_MOCK__: { origin?: "group" | "self" } | undefined;
-}
-
 // O estado de teste fica no sessionStorage: aguenta recarregar a página no meio
 // do cadastro e deixa os testes conferirem o que foi salvo.
 const STORAGE_KEY = "nise-mock-signup";
@@ -35,8 +27,6 @@ type MockState = {
   questionnaireNoticeSeenAt: string | null;
   /** As Etapas 1 a 3 do consentimento terminaram; o front não mostra elas de novo. */
   consentCompleted: boolean;
-  /** Avaliações enviadas, por ação. Uma só por ação (#58). */
-  ratings: Record<string, { score: number; comment: string }>;
   /** Temas e etapa de estudo do perfil (#56); null enquanto ela não respondeu. */
   interests: InterestsChoice | null;
 };
@@ -44,7 +34,6 @@ type MockState = {
 const EMPTY_STATE: MockState = {
   questionnaireNoticeSeenAt: null,
   consentCompleted: false,
-  ratings: {},
   interests: null,
 };
 
@@ -65,12 +54,6 @@ function saveState(changes: Partial<MockState>) {
   }
 }
 
-function mockOrigin(): Origin {
-  return globalThis.__NISE_MOCK__?.origin === "self"
-    ? { kind: "self" }
-    : { kind: "group", groupName: "Rendeiras do Código" };
-}
-
 /**
  * Registra que ela viu o aviso dos questionários e conclui o consentimento (#54).
  * Os e-mails de questionário não dependem de preferência: toda menina com conta recebe.
@@ -79,42 +62,21 @@ export async function confirmQuestionnaireNotice(): Promise<void> {
   saveState({ questionnaireNoticeSeenAt: new Date().toISOString(), consentCompleted: true });
 }
 
-/** Ação que a menina pode avaliar: participou, teve presença registrada e ainda não avaliou. */
-export type PendingRating = {
-  actionId: string;
-  groupName: string;
-  actionTitle: string;
-  /** Data e cidade, ex.: "Sáb, 11 de out · Maceió". */
-  details: string;
-};
-
-// Ação fictícia do fluxo M1 (convite das Rendeiras do Código).
-const MOCK_ACTION: PendingRating = {
-  actionId: "acao-introducao-robotica",
-  groupName: "Rendeiras do Código",
-  actionTitle: "Introdução à robótica",
-  details: "Sáb, 11 de out · Maceió",
-};
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 /**
- * Ação para avaliar (#58). No M2 ela não tem participação, então não há nada
- * para avaliar e a resposta é null.
+ * Data e lugar de uma ação como no Card / Evento do Figma: "Sáb, 11 de out · Maceió".
+ * Ação online não tem cidade e mostra "Online".
+ *
+ * `startsOn` é a data ISO que vem do back ("2026-10-10"). A conta é feita em UTC
+ * para o dia da semana não mudar com o fuso de quem abre a página.
  */
-export async function getPendingRating(): Promise<PendingRating | null> {
-  if (mockOrigin().kind === "self") return null;
-  return readState().ratings[MOCK_ACTION.actionId] ? null : MOCK_ACTION;
-}
+export function eventDetails(startsOn: string, cityName: string | null): string {
+  const [year, month, day] = startsOn.split("-").map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
-/** Salva a nota de 1 a 5 e o comentário opcional (#58). Uma segunda avaliação é recusada. */
-export async function submitRating(actionId: string, score: number, comment: string): Promise<void> {
-  if (!Number.isInteger(score) || score < 1 || score > 5) {
-    throw new Error("Escolha uma nota de 1 a 5.");
-  }
-  const { ratings } = readState();
-  if (ratings[actionId]) {
-    throw new Error("Você já avaliou esta ação.");
-  }
-  saveState({ ratings: { ...ratings, [actionId]: { score, comment: comment.trim() } } });
+  return `${WEEKDAYS[weekday]}, ${day} de ${MONTHS[month - 1]} · ${cityName ?? "Online"}`;
 }
 
 /** Opção de uma lista fechada: o código é o que vai para o back e para as sugestões. */
@@ -177,9 +139,4 @@ export async function saveInterests(choice: InterestsChoice): Promise<void> {
     throw new Error("Escolha temas ou \"me mostra de tudo\", não os dois.");
   }
   saveState({ interests: choice });
-}
-
-/** Próxima tela depois do consentimento: a avaliação no M1 (se houver), senão os interesses. */
-export async function pathAfterConsent(): Promise<string> {
-  return (await getPendingRating()) ? SIGNUP_PATHS.rating : SIGNUP_PATHS.interests;
 }

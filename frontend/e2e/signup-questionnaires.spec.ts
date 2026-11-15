@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockOpportunitiesApi } from "./opportunities-api";
+import { mockRatingsApi } from "./ratings-api";
 import { mockTermsApi } from "./terms-api";
 
 // #54 · A04·3 Avisos de questionários. Usa os dados de teste de lib/signup.ts;
-// os termos (#91) e a preferência de oportunidades (#145) são simulados.
+// os termos (#91), a preferência de oportunidades (#145) e a avaliação (#149)
+// são simulados.
 
 /**
  * Chega na Etapa 3 pelo caminho normal, escolhendo receber oportunidades.
@@ -11,6 +13,7 @@ import { mockTermsApi } from "./terms-api";
  */
 async function openStep3(page: Page): Promise<boolean[]> {
   await mockTermsApi(page);
+  await mockRatingsApi(page);
   const sentChoices = await mockOpportunitiesApi(page);
   await page.goto("/cadastro/termos");
   await page.getByRole("checkbox", { name: /Li e concordo/ }).check();

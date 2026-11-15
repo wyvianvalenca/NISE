@@ -81,14 +81,8 @@ test("me mostra de tudo salva sem temas", async ({ page }) => {
   expect(await savedInterests(page)).toEqual({ topics: [], everything: true, stage: "tecnico" });
 });
 
+// A tela é a mesma no M1 e no M2: nada nela depende de onde ela veio.
 test("não tem Pular por agora, nem no M1 nem no M2", async ({ page }) => {
-  await page.goto("/cadastro/interesses");
-  await expect(topic(page, "Começar meu filé")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Pular por agora" })).toHaveCount(0);
-
-  await page.addInitScript(() => {
-    globalThis.__NISE_MOCK__ = { origin: "self" };
-  });
   await page.goto("/cadastro/interesses");
   await expect(topic(page, "Começar meu filé")).toBeVisible();
   await expect(page.getByRole("button", { name: "Pular por agora" })).toHaveCount(0);
