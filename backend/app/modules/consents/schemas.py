@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class GroupOrigin(BaseModel):
@@ -26,3 +26,12 @@ class TermsSummaryOut(BaseModel):
 
     version: str
     origin: Annotated[GroupOrigin | SelfOrigin, Field(discriminator="kind")]
+
+
+class TermsAcceptanceIn(BaseModel):
+    """A versão dos termos que ela leu e aceitou na A04·1 (RF-F7.05).
+
+    O servidor só aceita a versão atual; quem confere é o serviço.
+    """
+
+    version: Annotated[str, StringConstraints(max_length=32)]

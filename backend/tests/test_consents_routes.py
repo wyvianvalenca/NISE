@@ -1,9 +1,11 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.auth.utils import create_access_token
 from app.main import app
+from app.modules.consents.models import TermsAcceptance
 from app.modules.consents.service import CURRENT_TERMS_VERSION, get_origin_group_name
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
@@ -100,3 +102,138 @@ def test_openapi_mostra_a_origem_em_camel_case(client: TestClient) -> None:
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
 
     assert list(schemas["GroupOrigin"]["properties"]) == ["kind", "groupName"]
+
+
+# --- POST /api/terms/acceptance ----------------------------------------------
+
+
+def sessao_do_aceite(usuaria: User, aceite_existente: int | None) -> AsyncMock:
+    # session.scalar procura o aceite da versão atual: o id dele, ou None.
+    sessao_falsa = sessao_com(usuaria)
+    sessao_falsa.scalar.return_value = aceite_existente
+    # session.add é síncrono: com AsyncMock, viraria uma corrotina nunca aguardada.
+    sessao_falsa.add = MagicMock()
+    return sessao_falsa
+
+
+async def test_aceite_da_versao_atual_e_gravado() -> None:
+    # Alana, 15 anos, aceita sozinha, sem etapa de responsável (RF-F7.02).
+    sessao_falsa = sessao_do_aceite(alana(), None)
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/terms/acceptance",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"version": CURRENT_TERMS_VERSION},
+    )
+
+    assert response.status_code == 204
+    aceite = sessao_falsa.add.call_args.args[0]
+    assert isinstance(aceite, TermsAcceptance)
+    assert aceite.user_id == 1
+    assert aceite.terms_version == CURRENT_TERMS_VERSION
+    sessao_falsa.commit.assert_awaited_once()
+
+
+async def test_aceite_repetido_nao_cria_outro_registro() -> None:
+    sessao_falsa = sessao_do_aceite(alana(), 10)
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/terms/acceptance",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"version": CURRENT_TERMS_VERSION},
+    )
+
+    assert response.status_code == 204
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_not_called()
+
+
+async def test_versao_antiga_e_recusada_sem_gravar() -> None:
+    sessao_falsa = sessao_do_aceite(alana(), None)
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/terms/acceptance",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"version": "0.0-antiga"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"error": "terms_outdated"}
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_not_called()
+
+
+async def test_versao_comprida_demais_nem_chega_ao_banco() -> None:
+    sessao_falsa = sessao_do_aceite(alana(), None)
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/terms/acceptance",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"version": "v" * 33},
+    )
+
+    assert response.status_code == 422
+    sessao_falsa.add.assert_not_called()
+
+
+async def test_aceite_sem_sessao_responde_401() -> None:
+    sessao_falsa = sessao_do_aceite(alana(), None)
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/terms/acceptance",
+        sessao_falsa,
+        corpo={"version": CURRENT_TERMS_VERSION},
+    )
+
+    assert response.status_code == 401
+    sessao_falsa.add.assert_not_called()
+
+
+async def test_aceite_e_so_para_menina() -> None:
+    sessao_falsa = sessao_do_aceite(alana(role=Role.COORDINATOR), None)
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/terms/acceptance",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"version": CURRENT_TERMS_VERSION},
+    )
+
+    assert response.status_code == 403
+    sessao_falsa.add.assert_not_called()
+
+
+@pytest.mark.parametrize("metodo", ["PUT", "PATCH", "DELETE"])
+async def test_aceite_nao_pode_ser_alterado_nem_apagado(metodo: str) -> None:
+    # RNF-F7.01: não há rota para mudar um aceite. No banco, o trigger da
+    # migração 765de25fc85a recusa UPDATE e DELETE.
+    sessao_falsa = sessao_do_aceite(alana(), 10)
+
+    response = await chamar_rota(
+        app,
+        metodo,
+        "/api/terms/acceptance",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"version": "0.0-antiga"},
+    )
+
+    assert response.status_code == 405
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_not_called()
