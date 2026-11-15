@@ -1,6 +1,8 @@
 from datetime import date
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic.alias_generators import to_camel
 
 
 class PendingRatingOut(BaseModel):
@@ -16,3 +18,21 @@ class PendingRatingOut(BaseModel):
     starts_on: date = Field(serialization_alias="startsOn")
     # Vazio quando a ação é online e não tem cidade.
     city_name: str | None = Field(serialization_alias="cityName")
+
+
+class RatingIn(BaseModel):
+    """A nota de 1 a 5 e o comentário opcional da A03 (RF-F4.03a).
+
+    O front manda em camelCase (actionId). Quem confere se ela pode avaliar a
+    ação é o serviço.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    action_id: int
+    # strict: só aceita número inteiro. Um texto como "4" é recusado.
+    score: int = Field(ge=1, le=5, strict=True)
+    # O mesmo limite do campo na tela. Só espaços conta como sem comentário.
+    comment: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None
+    ) = None

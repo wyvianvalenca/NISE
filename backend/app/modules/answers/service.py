@@ -1,4 +1,7 @@
+import enum
+
 from sqlalchemy import exists, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, Participation
@@ -7,6 +10,13 @@ from app.modules.answers.schemas import PendingRatingOut
 from app.modules.cities.models import City
 from app.modules.girls.models import Girl
 from app.modules.groups.models import Group
+
+
+class RatingResult(enum.Enum):
+    SAVED = "saved"
+    # Ela não tem participação com presença nessa ação.
+    NOTHING_TO_RATE = "nothing_to_rate"
+    ALREADY_RATED = "already_rated"
 
 
 async def get_pending_rating(
@@ -61,3 +71,60 @@ async def get_pending_rating(
         starts_on=starts_on,
         city_name=city_name,
     )
+
+
+async def record_rating(
+    session: AsyncSession,
+    user_id: int,
+    action_id: int,
+    score: int,
+    comment: str | None,
+) -> RatingResult:
+    """Grava a avaliação da ação pela menina da sessão (RF-F4.03a, RF-F4.07).
+
+    Só avalia quem tem participação com presença registrada na ação. A segunda
+    avaliação da mesma ação é recusada.
+    """
+    girl_id = await session.scalar(
+        select(Participation.girl_id)
+        .join(Girl, Girl.id == Participation.girl_id)
+        .where(
+            Girl.user_id == user_id,
+            Participation.action_id == action_id,
+            Participation.attended_at.is_not(None),
+        )
+    )
+
+    if girl_id is None:
+        return RatingResult.NOTHING_TO_RATE
+
+    already_rated = await session.scalar(
+        select(Answer.id).where(
+            Answer.girl_id == girl_id,
+            Answer.action_id == action_id,
+            Answer.stage == AnswerStage.RATING,
+        )
+    )
+
+    if already_rated is not None:
+        return RatingResult.ALREADY_RATED
+
+    session.add(
+        Answer(
+            girl_id=girl_id,
+            action_id=action_id,
+            stage=AnswerStage.RATING,
+            score=score,
+            # Comentário vazio é o mesmo que nenhum.
+            comment=comment or None,
+        )
+    )
+
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Dois envios ao mesmo tempo: o outro já gravou a avaliação.
+        await session.rollback()
+        return RatingResult.ALREADY_RATED
+
+    return RatingResult.SAVED
