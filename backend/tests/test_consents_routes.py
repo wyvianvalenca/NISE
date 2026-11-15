@@ -237,3 +237,87 @@ async def test_aceite_nao_pode_ser_alterado_nem_apagado(metodo: str) -> None:
     assert response.status_code == 405
     sessao_falsa.add.assert_not_called()
     sessao_falsa.commit.assert_not_called()
+
+
+# --- PUT /api/preferences/opportunity-emails ---------------------------------
+
+
+def sessao_da_preferencia(usuaria: User, aceite: int | None = 10) -> AsyncMock:
+    # session.scalar procura o aceite da versão atual dos termos: o id dele, ou
+    # None. Por padrão ela já aceitou, como na Etapa 2.
+    sessao_falsa = sessao_com(usuaria)
+    sessao_falsa.scalar.return_value = aceite
+    return sessao_falsa
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+async def test_preferencia_de_oportunidades_e_gravada(enabled: bool) -> None:
+    # A04·2: "Sim, quero receber" liga; "Não, obrigada" deixa desligada (RF-F7.06).
+    usuaria = alana()
+    usuaria.opportunity_emails = not enabled
+    sessao_falsa = sessao_da_preferencia(usuaria)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"enabled": enabled},
+    )
+
+    assert response.status_code == 204
+    assert usuaria.opportunity_emails is enabled
+    assert usuaria.opportunity_emails_changed_at is not None
+    sessao_falsa.commit.assert_awaited_once()
+
+
+async def test_repetir_a_mesma_escolha_responde_204_sem_gravar() -> None:
+    # Ela volta da Etapa 3 e escolhe de novo o que já tinha escolhido.
+    usuaria = alana()
+    usuaria.opportunity_emails = True
+    sessao_falsa = sessao_da_preferencia(usuaria)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"enabled": True},
+    )
+
+    assert response.status_code == 204
+    sessao_falsa.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("corpo", [{}, {"enabled": "false"}, {"enabled": None}])
+async def test_escolha_invalida_e_recusada_sem_gravar(corpo: dict[str, object]) -> None:
+    # StrictBool: o texto "false" viraria True se fosse aceito.
+    usuaria = alana()
+    usuaria.opportunity_emails = False
+    sessao_falsa = sessao_da_preferencia(usuaria)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo=corpo,
+    )
+
+    assert response.status_code == 422
+    assert usuaria.opportunity_emails is False
+    sessao_falsa.commit.assert_not_awaited()
+
+
+def test_openapi_mostra_a_rota_da_preferencia(client: TestClient) -> None:
+    # O front escreve o tipo à mão a partir do OpenAPI (frontend/lib/signup-api.ts).
+    openapi = client.get("/openapi.json").json()
+
+    rota = openapi["paths"]["/api/preferences/opportunity-emails"]
+    assert list(rota) == ["put"]
+    schema = openapi["components"]["schemas"]["OpportunityEmailsIn"]
+    assert schema["properties"]["enabled"]["type"] == "boolean"
+    assert schema["required"] == ["enabled"]

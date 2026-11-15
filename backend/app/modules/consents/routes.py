@@ -3,8 +3,10 @@ from fastapi.responses import JSONResponse
 
 from app.auth.permissions import GirlDep
 from app.db.engine import AsyncSessionDep
+from app.modules.consents.permissions import AcceptedGirlDep
 from app.modules.consents.schemas import (
     GroupOrigin,
+    OpportunityEmailsIn,
     SelfOrigin,
     TermsAcceptanceIn,
     TermsSummaryOut,
@@ -13,9 +15,11 @@ from app.modules.consents.service import (
     CURRENT_TERMS_VERSION,
     get_origin_group_name,
     record_terms_acceptance,
+    set_opportunity_emails,
 )
 
 router = APIRouter(prefix="/terms", tags=["Terms"])
+preferences_router = APIRouter(prefix="/preferences", tags=["Preferences"])
 
 
 # Resumo dos termos da A04·1 (#53). A versão do grupo ou a da NISE depende de
@@ -60,3 +64,24 @@ async def accept_terms(
         )
 
     return None
+
+
+# "Sim, quero receber" ou "Não, obrigada" na A04·2 (RF-F7.06, RN-30). Só guarda
+# a preferência: o envio dos e-mails de oportunidade não faz parte da #55.
+#
+# Não há id na URL nem no corpo: ela só muda a própria preferência, a da
+# sessão (RNF-G.03). AcceptedGirlDep porque a Etapa 2 vem depois do aceite dos
+# termos; sem ele, responde 403 {"error": "terms_not_accepted"}.
+@preferences_router.put(
+    "/opportunity-emails",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_403_FORBIDDEN: {
+            "description": 'Sem o aceite dos termos: {"error": "terms_not_accepted"}'
+        },
+    },
+)
+async def update_opportunity_emails(
+    data: OpportunityEmailsIn, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> None:
+    await set_opportunity_emails(session, user, data.enabled)

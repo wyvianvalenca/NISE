@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StrictBool, StringConstraints
 
 
 class GroupOrigin(BaseModel):
@@ -35,3 +35,13 @@ class TermsAcceptanceIn(BaseModel):
     """
 
     version: Annotated[str, StringConstraints(max_length=32)]
+
+
+class OpportunityEmailsIn(BaseModel):
+    """A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).
+
+    StrictBool: só aceita true ou false. Um texto como "false" é recusado em
+    vez de virar True.
+    """
+
+    enabled: StrictBool
