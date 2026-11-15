@@ -36,6 +36,13 @@ class EmailSignupOut(UserOut):
     next_step: Literal["terms"] = Field(default="terms", serialization_alias="nextStep")
 
 
+class PendingSignupOut(BaseModel):
+    """O que veio do Google, para a A02b mostrar (#52). Só leitura."""
+
+    name: str
+    email: str
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)

@@ -18,6 +18,7 @@ from app.auth.permissions import (
     GOOGLE_STATE_COOKIE,
     GOOGLE_VERIFIER_COOKIE,
     CurrentUserDep,
+    PendingSignupDep,
     clear_google_oauth_cookies,
     clear_pending_signup_cookie,
     clear_session_cookie,
@@ -25,7 +26,12 @@ from app.auth.permissions import (
     set_pending_signup_cookie,
     set_session_cookie,
 )
-from app.auth.schemas import EmailSignupIn, EmailSignupOut, LoginIn
+from app.auth.schemas import (
+    EmailSignupIn,
+    EmailSignupOut,
+    LoginIn,
+    PendingSignupOut,
+)
 from app.auth.service import authenticate_user, find_oauth_user, signup_with_email
 from app.auth.utils import (
     PendingSignup,
@@ -77,6 +83,26 @@ async def signup_email(
     set_session_cookie(response, create_access_token(user.id))
 
     return EmailSignupOut.model_validate(user)
+
+
+# Cadastro pelo Google (A02b, #52). O callback deixa o que veio do Google no
+# cookie do cadastro pendente; nada vai para o banco antes de ela informar a
+# data de nascimento (RN-03).
+@router.get(
+    "/signup/pending",
+    response_model=PendingSignupOut,
+    responses={status.HTTP_404_NOT_FOUND: {"description": "Sem cadastro pendente"}},
+)
+async def pending_signup(pending: PendingSignupDep) -> PendingSignupOut:
+    return PendingSignupOut(name=pending.profile.name, email=pending.profile.email)
+
+
+# "Usar outra conta" e menor de 13 na A02b: some o que veio do Google, sem
+# criar conta. Responde 204 mesmo sem cadastro pendente, para o front não
+# precisar tratar esse caso.
+@router.post("/signup/discard", status_code=status.HTTP_204_NO_CONTENT)
+async def discard_signup(response: Response) -> None:
+    clear_pending_signup_cookie(response)
 
 
 @router.post("/login", response_model=UserOut)

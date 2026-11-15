@@ -3,7 +3,11 @@ from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
 
-from app.auth.utils import decode_access_token
+from app.auth.utils import (
+    PendingSignup,
+    decode_access_token,
+    decode_pending_signup_token,
+)
 from app.config import settings
 from app.db.engine import AsyncSessionDep
 from app.users.models import Role, User
@@ -45,6 +49,28 @@ async def get_current_user(
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+async def get_pending_signup(
+    token: Annotated[str | None, Cookie(alias=PENDING_SIGNUP_COOKIE)] = None,
+) -> PendingSignup:
+    """O cadastro pelo Google que espera a data de nascimento e a cidade (#52).
+
+    Não é uma sessão: com ele, ela só vê o próprio nome e e-mail e completa ou
+    descarta o cadastro.
+    """
+    pending = decode_pending_signup_token(token) if token else None
+
+    if pending is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum cadastro pendente",
+        )
+
+    return pending
+
+
+PendingSignupDep = Annotated[PendingSignup, Depends(get_pending_signup)]
 
 
 def set_session_cookie(response: Response, token: str) -> None:
