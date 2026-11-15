@@ -74,7 +74,7 @@ test("a página dos termos mostra a versão atual", async ({ page }) => {
   await expect(page.getByText(`Versão ${TERMS_VERSION}`)).toBeVisible();
 });
 
-test("Li e concordo só libera depois que o resumo dos termos aparece", async ({ page }) => {
+test("enquanto o resumo não chega, só aparece o carregamento", async ({ page }) => {
   await mockTermsApi(page);
   // Atrasa o JavaScript, como num celular lento.
   await page.route("**/_next/static/**/*.js", async (route) => {
@@ -83,12 +83,13 @@ test("Li e concordo só libera depois que o resumo dos termos aparece", async ({
   });
   await page.goto("/cadastro/termos", { waitUntil: "commit" });
 
-  // Já vem desabilitada no HTML do servidor, antes de o React carregar.
-  const box = page.getByRole("checkbox", { name: /Li e concordo/ });
-  await expect(box).toBeDisabled();
+  // O HTML do servidor já vem só com o carregamento: nem o texto dos termos, nem a caixa.
+  await expect(page.getByText("Carregando…")).toBeVisible();
+  await expect(page.getByText("O que coletamos")).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).toHaveCount(0);
 
   await expect(page.getByText("A liderança do grupo")).toBeVisible({ timeout: 15000 });
-  await expect(box).toBeEnabled();
+  const box = page.getByRole("checkbox", { name: /Li e concordo/ });
   await box.click();
   await expect(box).toBeChecked();
   await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
@@ -136,7 +137,8 @@ test("se o resumo não carrega, Tentar de novo busca outra vez", async ({ page }
   await page.goto("/cadastro/termos");
 
   await expect(page.getByText("Não deu pra carregar quem vê seus dados.")).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).toBeDisabled();
+  await expect(page.getByText("O que coletamos")).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).toHaveCount(0);
 
   await mockTermsApi(page);
   await page.getByRole("button", { name: "Tentar de novo" }).click();
@@ -156,11 +158,25 @@ test("se o aceite falha, avisa e deixa tentar de novo", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
 });
 
-test("sem sessão, volta para a página inicial", async ({ page }) => {
-  await mockTermsApi(page, { summary: 401 });
+test("sem sessão, volta para a página inicial sem mostrar os termos", async ({ page }) => {
+  // Anota se o texto dos termos chegou a aparecer, desde o HTML do servidor até o redirecionamento.
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      if (location.pathname === "/cadastro/termos" && document.body?.innerText.includes("O que coletamos")) {
+        sessionStorage.setItem("viu-os-termos", "sim");
+      }
+    }).observe(document, { childList: true, subtree: true, characterData: true });
+  });
+  // A resposta demora um pouco, como numa rede lenta.
+  await page.route("**/api/terms/summary", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.fulfill({ status: 401, json: { detail: "Não autenticada" } });
+  });
   await page.goto("/cadastro/termos");
 
+  await expect(page.getByText("Carregando…")).toBeVisible();
   await expect(page).toHaveURL(/localhost:3000\/$/);
+  expect(await page.evaluate(() => sessionStorage.getItem("viu-os-termos"))).toBeNull();
 });
 
 test("com o cadastro do Google incompleto, volta para completar", async ({ page }) => {

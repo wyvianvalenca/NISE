@@ -8,6 +8,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { IconList } from "@/components/IconList";
+import { Loading } from "@/components/Loading";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
 import { SIGNUP_PATHS } from "@/lib/signup";
@@ -48,7 +49,7 @@ export default function TermsPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<TermsSummary | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  // Muda a cada nova busca do resumo: dispara o efeito e remonta a caixa "Li e concordo".
+  // Muda a cada nova busca do resumo, para o efeito abaixo rodar de novo.
   const [attempt, setAttempt] = useState(0);
   const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,6 +119,27 @@ export default function TermsPage() {
     setError("Não deu pra salvar. Tente de novo.");
   }
 
+  // Nada da tela aparece antes do resumo: ela precisa ler quem vê os dados dela (RN-01, RN-04)
+  // antes de concordar, e quem está sem sessão vai para outra página sem ver os termos piscarem.
+  // Como a caixa "Li e concordo" só existe depois disso, também não há toque perdido durante a
+  // hidratação, nem caixa que muda de lugar quando o resumo chega.
+  if (!summary) {
+    return (
+      <div className={styles.screen}>
+        {loadFailed ? (
+          <div role="alert">
+            <p className={styles.error}>Não deu pra carregar quem vê seus dados.</p>
+            <Button variant="secondary" onClick={reloadSummary}>
+              Tentar de novo
+            </Button>
+          </div>
+        ) : (
+          <Loading />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={styles.screen}>
       <StepProgress current={1} total={3} />
@@ -128,25 +150,12 @@ export default function TermsPage() {
       <IconList items={WHAT_WE_COLLECT.map((text) => ({ icon: "check", content: text }))} />
 
       <h2 className={styles.sectionTitle}>Pra que usamos</h2>
-      {summary ? (
-        <IconList
-          items={[
-            { icon: "arrow-right", content: whoSees(summary) },
-            { icon: "arrow-right", content: "Sugerir atividades com base no que você curtiu, fez ou não quis" },
-          ]}
-        />
-      ) : loadFailed ? (
-        <div role="alert">
-          <p className={styles.error}>Não deu pra carregar quem vê seus dados.</p>
-          <Button variant="secondary" onClick={reloadSummary}>
-            Tentar de novo
-          </Button>
-        </div>
-      ) : (
-        <p className={styles.status} aria-live="polite">
-          Carregando…
-        </p>
-      )}
+      <IconList
+        items={[
+          { icon: "arrow-right", content: whoSees(summary) },
+          { icon: "arrow-right", content: "Sugerir atividades com base no que você curtiu, fez ou não quis" },
+        ]}
+      />
 
       <div className={styles.linkRow}>
         <TextLink href="/termos" external>
@@ -156,12 +165,7 @@ export default function TermsPage() {
 
       <div className={styles.spacer} />
 
-      {/*
-        Só libera depois que o resumo carrega: ela precisa ler quem vê os dados dela (RN-01, RN-04)
-        antes de concordar. Isso também evita perder o toque: o resumo empurra a caixa para baixo
-        quando aparece, e um toque dado nesse instante cairia fora dela.
-      */}
-      <Checkbox key={attempt} disabled={!summary} onCheckedChange={setAgreed}>
+      <Checkbox onCheckedChange={setAgreed}>
         Li e concordo com os{" "}
         <a href="/termos#uso" target="_blank" rel="noopener noreferrer">
           Termos de uso
@@ -176,7 +180,7 @@ export default function TermsPage() {
       <div className={styles.actions}>
         <Button
           className={styles.fullWidth}
-          disabled={!agreed || !summary}
+          disabled={!agreed}
           loading={saving}
           onClick={handleContinue}
         >

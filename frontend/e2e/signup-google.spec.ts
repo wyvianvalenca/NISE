@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockTermsApi } from "./terms-api";
 
 /**
  * A02b/A02c of the Google sign-up (#52).
@@ -104,6 +105,10 @@ async function mockApi(page: Page, mocks: Mocks = {}) {
       body: "<html lang='pt-BR'><body><h1>Termos</h1></body></html>",
     }),
   );
+  // A navegação para os termos pode carregar a A04·1 de verdade (o router.push busca
+  // /cadastro/termos?_rsc=…, que a rota acima não pega). Sem isto, ela consultaria um
+  // back local, se houver um rodando, e poderia sair dos termos.
+  await mockTermsApi(page);
 }
 
 /** Fills the date, types the city and taps it in the suggestion list. */

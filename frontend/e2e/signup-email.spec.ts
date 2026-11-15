@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockTermsApi } from "./terms-api";
 
 /**
  * A01 / A01b / A02 of the email sign-up (#51).
@@ -94,6 +95,10 @@ async function mockApi(page: Page, mocks: Mocks = {}) {
       body: "<html lang='pt-BR'><body><h1>Termos</h1></body></html>",
     }),
   );
+  // A navegação para os termos pode carregar a A04·1 de verdade (o router.push busca
+  // /cadastro/termos?_rsc=…, que a rota acima não pega). Sem isto, ela consultaria um
+  // back local, se houver um rodando, e poderia sair dos termos.
+  await mockTermsApi(page);
 }
 
 async function fillForm(
