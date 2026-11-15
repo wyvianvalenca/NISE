@@ -10,7 +10,7 @@ export const GROUP_ORIGIN: Origin = { kind: "group", groupName: "Rendeiras do C�
  * Respostas de erro que o back dá. "incomplete_signup" é o 401 de quem só tem o
  * cadastro pendente do Google (#52).
  */
-type Failure = 401 | "incomplete_signup" | 500;
+export type Failure = 401 | "incomplete_signup" | 500;
 
 type Options = {
   /** De onde ela veio. Padrão: convite das Rendeiras do Código (M1). */
@@ -21,7 +21,8 @@ type Options = {
   acceptance?: 204 | 409 | Failure;
 };
 
-function fail(route: Route, failure: Failure) {
+/** Responde como o back quando não há sessão (401) ou quando dá erro (500). */
+export function fail(route: Route, failure: Failure) {
   if (failure === 500) {
     return route.fulfill({ status: 500, body: "" });
   }

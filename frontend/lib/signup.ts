@@ -1,9 +1,9 @@
 // Etapas do cadastro da menina (épico #46), do aceite dos termos em diante.
 //
 // TEMPORÁRIO: as funções abaixo usam dados de teste guardados na memória do
-// navegador. Elas têm o formato das rotas descritas nas issues #54 a #58 e serão
-// trocadas por chamadas a /api quando essas rotas existirem. Os termos (#53) já
-// usam a API de verdade, em lib/signup-api.ts.
+// navegador. Elas têm o formato das rotas descritas nas issues #54 e #56 a #58 e
+// serão trocadas por chamadas a /api quando essas rotas existirem. Os termos (#53)
+// e as oportunidades por e-mail (#55) já usam a API de verdade, em lib/signup-api.ts.
 // Os dados são fictícios; nada sai do navegador.
 
 import type { Origin } from "@/lib/signup-api";
@@ -31,8 +31,6 @@ declare global {
 const STORAGE_KEY = "nise-mock-signup";
 
 type MockState = {
-  /** null enquanto ela não respondeu a Etapa 2. */
-  opportunityEmails: boolean | null;
   /** Quando ela viu o aviso dos questionários (Etapa 3), como prova de que foi informada. */
   questionnaireNoticeSeenAt: string | null;
   /** As Etapas 1 a 3 do consentimento terminaram; o front não mostra elas de novo. */
@@ -44,7 +42,6 @@ type MockState = {
 };
 
 const EMPTY_STATE: MockState = {
-  opportunityEmails: null,
   questionnaireNoticeSeenAt: null,
   consentCompleted: false,
   ratings: {},
@@ -72,14 +69,6 @@ function mockOrigin(): Origin {
   return globalThis.__NISE_MOCK__?.origin === "self"
     ? { kind: "self" }
     : { kind: "group", groupName: "Rendeiras do Código" };
-}
-
-/**
- * Liga ou desliga "oportunidades por e-mail" (#55). Só guarda a preferência;
- * o envio desses e-mails não faz parte desta história.
- */
-export async function setOpportunityEmails(enabled: boolean): Promise<void> {
-  saveState({ opportunityEmails: enabled });
 }
 
 /**
