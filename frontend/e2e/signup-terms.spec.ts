@@ -88,3 +88,75 @@ test("marcar Li e concordo logo que a página abre não se perde", async ({ page
     await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
   }
 });
+
+// --- Erros ------------------------------------------------------------------
+
+/** Marca "Li e concordo" e toca em "Entendi, continuar". */
+async function accept(page: import("@playwright/test").Page) {
+  await page.getByRole("checkbox", { name: /Li e concordo/ }).check();
+  await page.getByRole("button", { name: "Entendi, continuar" }).click();
+}
+
+test("se os termos mudaram, mostra o resumo de novo e pede o aceite de novo", async ({ page }) => {
+  const acceptedVersions = await mockTermsApi(page, { acceptance: 409 });
+  await page.goto("/cadastro/termos");
+
+  await accept(page);
+
+  await expect(page.getByText(/^Os termos mudaram/)).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+  await expect(page.getByText("A liderança do grupo Rendeiras do Código")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).not.toBeChecked();
+  await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeDisabled();
+  expect(acceptedVersions).toEqual([TERMS_VERSION]);
+});
+
+test("se o resumo não carrega, Tentar de novo busca outra vez", async ({ page }) => {
+  await mockTermsApi(page, { summary: 500 });
+  await page.goto("/cadastro/termos");
+
+  await expect(page.getByText("Não deu pra carregar quem vê seus dados.")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).toBeDisabled();
+
+  await mockTermsApi(page);
+  await page.getByRole("button", { name: "Tentar de novo" }).click();
+
+  await expect(page.getByText("A liderança do grupo Rendeiras do Código")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).toBeEnabled();
+});
+
+test("se o aceite falha, avisa e deixa tentar de novo", async ({ page }) => {
+  await mockTermsApi(page, { acceptance: 500 });
+  await page.goto("/cadastro/termos");
+
+  await accept(page);
+
+  await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+  await expect(page.getByRole("button", { name: "Entendi, continuar" })).toBeEnabled();
+});
+
+test("sem sessão, volta para a página inicial", async ({ page }) => {
+  await mockTermsApi(page, { summary: 401 });
+  await page.goto("/cadastro/termos");
+
+  await expect(page).toHaveURL(/localhost:3000\/$/);
+});
+
+test("com o cadastro do Google incompleto, volta para completar", async ({ page }) => {
+  await mockTermsApi(page, { summary: "incomplete_signup" });
+  // A A02b busca o cadastro pendente; aqui basta ela abrir.
+  await page.route("**/api/auth/signup/pending", (route) => route.fulfill({ status: 404, json: {} }));
+  await page.goto("/cadastro/termos");
+
+  await expect(page).toHaveURL(/\/cadastro\/google$/);
+});
+
+test("se a sessão acaba antes do aceite, volta para a página inicial", async ({ page }) => {
+  await mockTermsApi(page, { acceptance: 401 });
+  await page.goto("/cadastro/termos");
+
+  await accept(page);
+
+  await expect(page).toHaveURL(/localhost:3000\/$/);
+});

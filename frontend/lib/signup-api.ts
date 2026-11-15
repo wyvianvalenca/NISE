@@ -295,21 +295,46 @@ export type TermsSummary = {
   origin: Origin;
 };
 
+/**
+ * Why a terms route said no to her session (401): she has no session, or
+ * only Google's incomplete sign-up, which still lacks birth date and city (#52).
+ */
+export type SessionProblem = "unauthenticated" | "incomplete_signup";
+
+export type TermsSummaryResult =
+  | { ok: true; summary: TermsSummary }
+  | { ok: false; reason: SessionProblem | "failed" };
+
 export type AcceptTermsResult =
   | { ok: true }
-  | { ok: false; reason: "outdated" | "failed" };
+  | { ok: false; reason: SessionProblem | "outdated" | "failed" };
+
+/** Reads the 401 body: get_current_user answers "Cadastro incompleto" in that case. */
+async function sessionProblem(response: Response): Promise<SessionProblem> {
+  const body = (await response.json().catch(() => null)) as {
+    detail?: string;
+  } | null;
+
+  return body?.detail === "Cadastro incompleto"
+    ? "incomplete_signup"
+    : "unauthenticated";
+}
 
 /** The terms version and the logged-in girl's origin, for A04·1 (#53). */
 export async function getTermsSummary(
   signal?: AbortSignal,
-): Promise<TermsSummary> {
+): Promise<TermsSummaryResult> {
   const response = await fetch("/api/terms/summary", { signal });
 
-  if (!response.ok) {
-    throw new Error(`terms summary: ${response.status}`);
+  if (response.ok) {
+    return { ok: true, summary: (await response.json()) as TermsSummary };
   }
 
-  return (await response.json()) as TermsSummary;
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  return { ok: false, reason: "failed" };
 }
 
 /**
@@ -330,6 +355,10 @@ export async function acceptTerms(version: string): Promise<AcceptTermsResult> {
   // She read a version that has changed since: 409 {"error": "terms_outdated"}.
   if (response.status === 409) {
     return { ok: false, reason: "outdated" };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
   }
 
   return { ok: false, reason: "failed" };
