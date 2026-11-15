@@ -1,5 +1,7 @@
 /**
- * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51).
+ * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51),
+ * and the steps after them: terms (#53), opportunities by email (#55) and the
+ * event rating (#58).
  *
  * All of them exist in the back-end: the city search (#50), the invite and
  * the email sign-up (#99), and the Google routes under /api/auth/signup/
@@ -409,14 +411,122 @@ export async function setOpportunityEmails(
 
   // The route needs the current terms accepted: 403 {"error":
   // "terms_not_accepted"}. Any other 403 (not a girl's account) is a failure.
-  if (response.status === 403) {
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
 
-    if (body?.error === "terms_not_accepted") {
-      return { ok: false, reason: "terms_not_accepted" };
+  return { ok: false, reason: "failed" };
+}
+
+/** Reads the {"error": "<code>"} body the back-end answers with, if any. */
+async function errorCode(response: Response): Promise<string | undefined> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+
+  return body?.error;
+}
+
+// ---------------------------------------------------------------------------
+// Event rating (A03, #58)
+// ---------------------------------------------------------------------------
+
+/**
+ * The action she can rate: she took part, her attendance was recorded and she
+ * has not rated it yet.
+ */
+export type PendingRating = {
+  actionId: number;
+  actionName: string;
+  /** The group that ran the action, e.g. "Rendeiras do Código". */
+  groupName: string;
+  /** The action's first day, as an ISO date ("2026-10-11"). */
+  startsOn: string;
+  /** `null` when the action was online. */
+  cityName: string | null;
+};
+
+export type PendingRatingResult =
+  | {
+      ok: true;
+      /** `null` when there is nothing to rate (flow M2): the screen is skipped. */
+      pending: PendingRating | null;
     }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+export type SubmitRatingResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | SessionProblem
+        | "terms_not_accepted"
+        | "nothing_to_rate"
+        | "already_rated"
+        | "failed";
+    };
+
+/** The action to rate on A03, or `null` when there is none (#58). */
+export async function getPendingRating(
+  signal?: AbortSignal,
+): Promise<PendingRatingResult> {
+  const response = await fetch("/api/ratings/pending", { signal });
+
+  if (response.ok) {
+    return {
+      ok: true,
+      pending: (await response.json()) as PendingRating | null,
+    };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // A03 comes after the terms: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/**
+ * Stores the 1–5 score and the optional comment (RF-F4.03a). "Agora não"
+ * does not call this: the rating stays pending for the email link.
+ */
+export async function submitRating(
+  actionId: number,
+  score: number,
+  comment: string,
+): Promise<SubmitRatingResult> {
+  const response = await fetch("/api/ratings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // An empty comment goes as none.
+    body: JSON.stringify({ actionId, score, comment: comment.trim() || null }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  const code = await errorCode(response);
+
+  if (response.status === 403 && code === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+  // She has no participation with attendance in that action anymore.
+  if (response.status === 404 && code === "nothing_to_rate") {
+    return { ok: false, reason: "nothing_to_rate" };
+  }
+  // She already rated it, in another tab for example.
+  if (response.status === 409 && code === "already_rated") {
+    return { ok: false, reason: "already_rated" };
   }
 
   return { ok: false, reason: "failed" };
