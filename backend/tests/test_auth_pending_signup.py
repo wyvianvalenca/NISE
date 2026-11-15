@@ -13,6 +13,7 @@ from app.auth.permissions import (
 from app.auth.utils import (
     JWT_ALGORITHM,
     PENDING_SIGNUP_AUDIENCE,
+    PendingSignup,
     create_access_token,
     create_pending_signup_token,
     decode_access_token,
@@ -23,6 +24,7 @@ from app.config import settings
 PERFIL = GoogleProfile(
     subject="google-123", email="alana@exemplo.com", name="Alana Ficticia"
 )
+PENDENTE = PendingSignup(profile=PERFIL)
 
 
 def token_a_mao(
@@ -48,15 +50,24 @@ def token_a_mao(
 
 
 def test_ida_e_volta_devolve_o_mesmo_perfil() -> None:
-    token = create_pending_signup_token(PERFIL)
+    token = create_pending_signup_token(PENDENTE)
 
-    assert decode_pending_signup_token(token) == PERFIL
+    assert decode_pending_signup_token(token) == PENDENTE
+
+
+def test_ida_e_volta_mantem_o_convite() -> None:
+    # A origem da conta depende do convite com que ela foi ao Google (RN-29).
+    pendente = PendingSignup(profile=PERFIL, invite="convite-ficticio")
+
+    token = create_pending_signup_token(pendente)
+
+    assert decode_pending_signup_token(token) == pendente
 
 
 def test_token_leva_so_o_necessario() -> None:
     # O conteúdo é legível por quem tiver o cookie: nada de data de nascimento,
     # cidade ou outro dado além do que o Google já mostrou a ela.
-    token = create_pending_signup_token(PERFIL)
+    token = create_pending_signup_token(PENDENTE)
 
     conteudo = jwt.decode(token, options={"verify_signature": False})
 
@@ -64,11 +75,22 @@ def test_token_leva_so_o_necessario() -> None:
     assert conteudo["aud"] == PENDING_SIGNUP_AUDIENCE
 
 
+def test_com_convite_o_token_leva_so_o_codigo() -> None:
+    token = create_pending_signup_token(
+        PendingSignup(profile=PERFIL, invite="convite-ficticio")
+    )
+
+    conteudo = jwt.decode(token, options={"verify_signature": False})
+
+    assert set(conteudo) == {"aud", "sub", "email", "name", "exp", "invite"}
+    assert conteudo["invite"] == "convite-ficticio"
+
+
 def test_token_usa_a_validade_do_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "pending_signup_expire_minutes", 15)
 
     antes = int(time.time())
-    token = create_pending_signup_token(PERFIL)
+    token = create_pending_signup_token(PENDENTE)
     depois = int(time.time())
 
     exp = jwt.decode(token, options={"verify_signature": False})["exp"]
@@ -78,7 +100,7 @@ def test_token_usa_a_validade_do_config(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_token_pendente_nao_abre_sessao() -> None:
     # Os dois tokens usam o mesmo segredo: é o aud que impede a troca.
-    token = create_pending_signup_token(PERFIL)
+    token = create_pending_signup_token(PENDENTE)
 
     assert decode_access_token(token) is None
 
@@ -99,6 +121,7 @@ def test_token_de_sessao_nao_serve_como_pendente() -> None:
         ({"email": ""}, ()),
         ({"email": 123}, ()),
         ({"sub": 123}, ()),
+        ({"invite": 123}, ()),
     ],
     ids=[
         "vencido",
@@ -110,6 +133,7 @@ def test_token_de_sessao_nao_serve_como_pendente() -> None:
         "email-vazio",
         "email-nao-e-texto",
         "sub-nao-e-texto",
+        "convite-nao-e-texto",
     ],
 )
 def test_token_recusado_devolve_none(
@@ -130,10 +154,10 @@ def test_texto_qualquer_devolve_none() -> None:
 
 
 def test_token_sem_nome_usa_o_comeco_do_email() -> None:
-    perfil = decode_pending_signup_token(token_a_mao(sem=("name",)))
+    pendente = decode_pending_signup_token(token_a_mao(sem=("name",)))
 
-    assert perfil is not None
-    assert perfil.name == "alana"
+    assert pendente is not None
+    assert pendente.profile.name == "alana"
 
 
 # O cookie

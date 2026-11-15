@@ -12,6 +12,8 @@ SESSION_COOKIE = "nise_session"
 PENDING_SIGNUP_COOKIE = "nise_cadastro_pendente"
 GOOGLE_STATE_COOKIE = "nise_google_state"
 GOOGLE_VERIFIER_COOKIE = "nise_google_verifier"
+# Código do convite com que ela foi ao Google (RN-29). Fica junto do state.
+GOOGLE_INVITE_COOKIE = "nise_google_convite"
 GOOGLE_COOKIE_PATH = "/api/auth/google"
 
 GOOGLE_COOKIE_MAX_AGE = 10 * 60
@@ -90,12 +92,13 @@ def clear_pending_signup_cookie(response: Response) -> None:
 
 
 def set_google_oauth_cookies(
-    response: Response, state: str, code_verifier: str
+    response: Response, state: str, code_verifier: str, invite: str | None = None
 ) -> None:
-    for key, value in (
-        (GOOGLE_STATE_COOKIE, state),
-        (GOOGLE_VERIFIER_COOKIE, code_verifier),
-    ):
+    cookies = [(GOOGLE_STATE_COOKIE, state), (GOOGLE_VERIFIER_COOKIE, code_verifier)]
+    if invite is not None:
+        cookies.append((GOOGLE_INVITE_COOKIE, invite))
+
+    for key, value in cookies:
         response.set_cookie(
             key=key,
             value=value,
@@ -106,16 +109,24 @@ def set_google_oauth_cookies(
             samesite="lax",
         )
 
+    # Sem convite agora, um que sobrou de uma tentativa anterior não vale.
+    if invite is None:
+        _delete_google_cookie(response, GOOGLE_INVITE_COOKIE)
+
+
+def _delete_google_cookie(response: Response, key: str) -> None:
+    response.delete_cookie(
+        key=key,
+        path=GOOGLE_COOKIE_PATH,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+
 
 def clear_google_oauth_cookies(response: Response) -> None:
-    for key in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE):
-        response.delete_cookie(
-            key=key,
-            path=GOOGLE_COOKIE_PATH,
-            httponly=True,
-            secure=settings.cookie_secure,
-            samesite="lax",
-        )
+    for key in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE, GOOGLE_INVITE_COOKIE):
+        _delete_google_cookie(response, key)
 
 
 # Cada rota lista os papeis aceitos.

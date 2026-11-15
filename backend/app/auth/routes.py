@@ -2,7 +2,7 @@ import secrets
 from typing import Annotated
 
 import httpx2
-from fastapi import APIRouter, Cookie, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, HTTPException, Query, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.auth.google import (
@@ -14,6 +14,7 @@ from app.auth.google import (
     validate_id_token,
 )
 from app.auth.permissions import (
+    GOOGLE_INVITE_COOKIE,
     GOOGLE_STATE_COOKIE,
     GOOGLE_VERIFIER_COOKIE,
     CurrentUserDep,
@@ -26,7 +27,11 @@ from app.auth.permissions import (
 )
 from app.auth.schemas import EmailSignupIn, EmailSignupOut, LoginIn
 from app.auth.service import authenticate_user, find_oauth_user, signup_with_email
-from app.auth.utils import create_access_token, create_pending_signup_token
+from app.auth.utils import (
+    PendingSignup,
+    create_access_token,
+    create_pending_signup_token,
+)
 from app.db.engine import AsyncSessionDep
 from app.users.models import User
 from app.users.schemas import UserOut
@@ -86,14 +91,20 @@ async def login(data: LoginIn, session: AsyncSessionDep, response: Response) -> 
     return user
 
 
+# O front também manda switch_account=1 em "Usar outra conta" (A02b). Não
+# muda nada aqui: o Google sempre mostra a escolha de conta (select_account).
 @router.get("/google/login")
-async def google_login() -> RedirectResponse:
+async def google_login(
+    invite: Annotated[str | None, Query(max_length=64)] = None,
+) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     code_verifier = new_code_verifier()
     url = build_authorization_url(state, make_code_challenge(code_verifier))
 
     response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
-    set_google_oauth_cookies(response, state, code_verifier)
+    # O convite fica num cookie e não no state: o Google não precisa saber dele.
+    # Ele só é conferido ao completar o cadastro.
+    set_google_oauth_cookies(response, state, code_verifier, invite or None)
     return response
 
 
@@ -126,6 +137,7 @@ async def google_callback(
     state: str | None = None,
     saved_state: Annotated[str | None, Cookie(alias=GOOGLE_STATE_COOKIE)] = None,
     code_verifier: Annotated[str | None, Cookie(alias=GOOGLE_VERIFIER_COOKIE)] = None,
+    invite: Annotated[str | None, Cookie(alias=GOOGLE_INVITE_COOKIE)] = None,
 ) -> RedirectResponse:
     profile = await _google_profile(code, state, saved_state, code_verifier)
 
@@ -144,7 +156,8 @@ async def google_callback(
             response = RedirectResponse(
                 GOOGLE_SIGNUP_URL, status_code=status.HTTP_302_FOUND
             )
-            set_pending_signup_cookie(response, create_pending_signup_token(profile))
+            pending = PendingSignup(profile=profile, invite=invite)
+            set_pending_signup_cookie(response, create_pending_signup_token(pending))
 
             clear_session_cookie(response)
 
