@@ -15,11 +15,12 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import FastAPI
 from httpx2 import ASGITransport, AsyncClient, Response
 from sqlalchemy.exc import IntegrityError
 
 from app.auth.google import GoogleProfile
-from app.auth.permissions import PENDING_SIGNUP_COOKIE, SESSION_COOKIE
+from app.auth.permissions import PENDING_SIGNUP_COOKIE, SESSION_COOKIE, GirlDep
 from app.auth.utils import (
     PendingSignup,
     create_access_token,
@@ -426,3 +427,91 @@ async def test_data_impossivel_pede_correcao_sem_descartar_o_cadastro() -> None:
     assert response.json() == {"error": "invalid_birth_date"}
     assert "set-cookie" not in response.headers
     assert_nada_gravado(sessao)
+
+
+# Perfil incompleto: o cadastro pendente não é uma sessão (#52)
+
+# App só de teste, como em test_auth_permissions.py: ainda não há rota real
+# só da menina, e uma rota de teste no app real iria para o OpenAPI.
+app_da_menina = FastAPI()
+
+
+@app_da_menina.get("/so-menina")
+async def so_menina(user: GirlDep) -> dict[str, int]:
+    return {"id": user.id}
+
+
+async def chamar_com_cookies(
+    aplicacao: FastAPI, url: str, cookies: dict[str, str], sessao: AsyncMock
+) -> Response:
+    async def trocar_sessao() -> AsyncGenerator[AsyncMock, None]:
+        yield sessao
+
+    aplicacao.dependency_overrides[get_session] = trocar_sessao
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=aplicacao),
+            base_url="http://teste",
+            cookies=cookies,
+        ) as client:
+            return await client.get(url)
+    finally:
+        aplicacao.dependency_overrides.clear()
+
+
+ROTAS_PROTEGIDAS = pytest.mark.parametrize(
+    ("aplicacao", "url"),
+    [(app, "/api/auth/me"), (app_da_menina, "/so-menina")],
+    ids=["me", "rota-da-menina"],
+)
+
+
+@ROTAS_PROTEGIDAS
+async def test_com_cadastro_pendente_as_rotas_pedem_para_completar(
+    aplicacao: FastAPI, url: str
+) -> None:
+    # Até informar a data e a cidade, ela não tem conta nem sessão.
+    sessao = sessao_falsa([])
+
+    response = await chamar_com_cookies(
+        aplicacao, url, {PENDING_SIGNUP_COOKIE: PENDENTE}, sessao
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Cadastro incompleto"}
+    sessao.get.assert_not_awaited()
+
+
+@ROTAS_PROTEGIDAS
+@pytest.mark.parametrize(
+    "cookies",
+    [{SESSION_COOKIE: PENDENTE}, {PENDING_SIGNUP_COOKIE: PENDENTE + "x"}],
+    ids=["pendente-no-lugar-da-sessao", "pendente-adulterado"],
+)
+async def test_cadastro_pendente_nao_vale_como_sessao(
+    aplicacao: FastAPI, url: str, cookies: dict[str, str]
+) -> None:
+    sessao = sessao_falsa([])
+
+    response = await chamar_com_cookies(aplicacao, url, cookies, sessao)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Não autenticada"}
+    sessao.get.assert_not_awaited()
+
+
+async def test_quem_tem_sessao_entra_mesmo_com_cadastro_pendente_antigo() -> None:
+    # Ex.: ela entrou com outra conta e o cookie pendente ainda não venceu.
+    usuaria = User(id=1, email="alana@exemplo.com", name="Alana", role=Role.GIRL)
+    sessao = sessao_falsa([])
+    sessao.get.return_value = usuaria
+
+    response = await chamar_com_cookies(
+        app_da_menina,
+        "/so-menina",
+        {SESSION_COOKIE: create_access_token(1), PENDING_SIGNUP_COOKIE: PENDENTE},
+        sessao,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"id": 1}

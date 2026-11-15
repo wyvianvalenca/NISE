@@ -26,18 +26,23 @@ GOOGLE_COOKIE_MAX_AGE = 10 * 60
 async def get_current_user(
     session: AsyncSessionDep,
     token: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
+    pending: Annotated[str | None, Cookie(alias=PENDING_SIGNUP_COOKIE)] = None,
 ) -> User:
     unauthorized = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não autenticada",
     )
 
-    if token is None:
-        raise unauthorized
-
-    user_id = decode_access_token(token)
+    user_id = decode_access_token(token) if token else None
 
     if user_id is None:
+        # Quem só tem o cadastro pendente do Google ainda não tem conta nem
+        # sessão: a resposta diz que falta completar o cadastro (A02b, #52).
+        if pending and decode_pending_signup_token(pending) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Cadastro incompleto",
+            )
         raise unauthorized
 
     user = await session.get(User, user_id)
