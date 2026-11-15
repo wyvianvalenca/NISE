@@ -12,7 +12,7 @@ import { Loading } from "@/components/Loading";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
 import { SIGNUP_PATHS } from "@/lib/signup";
-import { acceptTerms, getTermsSummary, type SessionProblem, type TermsSummary } from "@/lib/signup-api";
+import { acceptTerms, getTermsSummary, type TermsSummary, WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "../cadastro.module.css";
 
 const WHAT_WE_COLLECT = [
@@ -35,15 +35,6 @@ function whoSees(summary: TermsSummary) {
   }
   return "Os grupos de incentivo cadastrados no NISE só veem números gerais, sem identificar você.";
 }
-
-/**
- * Para onde vai quem chega aqui sem sessão: a página inicial, onde ela entra ou cria conta,
- * ou a A02b, se ainda falta completar o cadastro pelo Google (#52).
- */
-const WITHOUT_SESSION: Record<SessionProblem, string> = {
-  unauthenticated: "/",
-  incomplete_signup: "/cadastro/google",
-};
 
 export default function TermsPage() {
   const router = useRouter();

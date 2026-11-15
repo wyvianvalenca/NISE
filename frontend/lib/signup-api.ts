@@ -301,6 +301,16 @@ export type TermsSummary = {
  */
 export type SessionProblem = "unauthenticated" | "incomplete_signup";
 
+/**
+ * Where a sign-up step sends her when a route says no to her session: the home
+ * page, where she logs in or creates an account, or A02b, when she still has
+ * to complete the Google sign-up (#52).
+ */
+export const WITHOUT_SESSION: Record<SessionProblem, string> = {
+  unauthenticated: "/",
+  incomplete_signup: "/cadastro/google",
+};
+
 export type TermsSummaryResult =
   | { ok: true; summary: TermsSummary }
   | { ok: false; reason: SessionProblem | "failed" };
