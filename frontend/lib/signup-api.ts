@@ -373,3 +373,51 @@ export async function acceptTerms(version: string): Promise<AcceptTermsResult> {
 
   return { ok: false, reason: "failed" };
 }
+
+// ---------------------------------------------------------------------------
+// Opportunities by email (A04·2, #55)
+// ---------------------------------------------------------------------------
+
+export type OpportunityEmailsResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: SessionProblem | "terms_not_accepted" | "failed";
+    };
+
+/**
+ * Turns "opportunities by email" on or off (RF-F7.06). It only stores the
+ * preference: sending those emails is not part of this story. Choosing the
+ * same answer again is fine.
+ */
+export async function setOpportunityEmails(
+  enabled: boolean,
+): Promise<OpportunityEmailsResult> {
+  const response = await fetch("/api/preferences/opportunity-emails", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // The route needs the current terms accepted: 403 {"error":
+  // "terms_not_accepted"}. Any other 403 (not a girl's account) is a failure.
+  if (response.status === 403) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+
+    if (body?.error === "terms_not_accepted") {
+      return { ok: false, reason: "terms_not_accepted" };
+    }
+  }
+
+  return { ok: false, reason: "failed" };
+}
