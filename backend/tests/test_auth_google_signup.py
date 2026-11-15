@@ -138,8 +138,18 @@ async def test_pendente_devolve_nome_e_email_do_google() -> None:
     response = await chamar("GET", "/api/auth/signup/pending")
 
     assert response.status_code == 200
-    # Só o que ela já viu no Google: o convite não sai do cookie.
-    assert response.json() == {"name": "Alana Ficticia", "email": "alana@exemplo.com"}
+    # O e-mail como vai ficar na conta, e o convite para "Usar outra conta".
+    assert response.json() == {
+        "name": "Alana Ficticia",
+        "email": "alana@exemplo.com",
+        "invite": "convite-ficticio",
+    }
+
+
+async def test_pendente_sem_convite_devolve_invite_vazio() -> None:
+    response = await chamar("GET", "/api/auth/signup/pending", PENDENTE_SEM_CONVITE)
+
+    assert response.json()["invite"] is None
 
 
 async def test_sem_cookie_nao_ha_cadastro_pendente() -> None:

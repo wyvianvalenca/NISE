@@ -1,10 +1,9 @@
 /**
  * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51).
  *
- * The city search (#50), the invite and the email sign-up (#99) already exist
- * in the back-end. The Google routes under /api/auth/signup/ (pending,
- * complete, discard) are still this story's proposed contract and come with
- * #52 — if they change in that PR, only this file changes.
+ * All of them exist in the back-end: the city search (#50), the invite and
+ * the email sign-up (#99), and the Google routes under /api/auth/signup/
+ * (pending, complete, discard, #100).
  *
  * The types below are written by hand, matching the back-end's OpenAPI
  * (/docs on the FastAPI server): the team chose not to add a type generator
@@ -18,6 +17,12 @@
 export type PendingSignup = {
   name: string;
   email: string;
+  /**
+   * The invite code she started with, or `null` when she came on her own.
+   * "Usar outra conta" goes back to Google with it, so the origin stays right
+   * (RN-29).
+   */
+  invite: string | null;
 };
 
 /** A municipality from the IBGE list (RN-17: no free text). */
@@ -30,7 +35,16 @@ export type City = {
 
 export type CompleteResult =
   | { ok: true; nextStep: "terms" }
-  | { ok: false; reason: "under_13" | "invalid_city" | "failed" };
+  | {
+      ok: false;
+      reason:
+        | "under_13"
+        | "invalid_birth_date"
+        | "invalid_city"
+        | "invalid_invite"
+        | "account_exists"
+        | "failed";
+    };
 
 /**
  * Where to send her when she taps "Criar conta com o Google".
@@ -86,10 +100,15 @@ export async function searchCities(
   return (await response.json()) as City[];
 }
 
-/** Completes the profile and returns the next step of the sign-up. */
+/**
+ * Completes the profile and returns the next step of the sign-up. The
+ * response already opens the session.
+ */
 export async function completeSignup(data: {
   birthDate: string;
   cityId: string;
+  /** True after the screen said the invite expired and she went on without it. */
+  withoutInvite?: boolean;
 }): Promise<CompleteResult> {
   const response = await fetch("/api/auth/signup/complete", {
     method: "POST",
@@ -101,17 +120,27 @@ export async function completeSignup(data: {
     return { ok: true, nextStep: "terms" };
   }
 
-  // The server runs the age rule and the city check again (RNF-G.03).
+  // The account was created meanwhile, in another tab for example.
+  if (response.status === 409) {
+    return { ok: false, reason: "account_exists" };
+  }
+
+  // The server checks age, city and invite again (RNF-G.03), answering
+  // 422 {"error": "<code>"}.
   if (response.status === 422) {
     const body = (await response.json().catch(() => null)) as {
       error?: string;
     } | null;
 
-    if (body?.error === "under_13") {
-      return { ok: false, reason: "under_13" };
-    }
-    if (body?.error === "invalid_city") {
-      return { ok: false, reason: "invalid_city" };
+    const known: Record<string, CompleteResult> = {
+      under_13: { ok: false, reason: "under_13" },
+      invalid_birth_date: { ok: false, reason: "invalid_birth_date" },
+      invalid_city: { ok: false, reason: "invalid_city" },
+      invalid_invite: { ok: false, reason: "invalid_invite" },
+    };
+    const match = body?.error ? known[body.error] : undefined;
+    if (match) {
+      return match;
     }
   }
 

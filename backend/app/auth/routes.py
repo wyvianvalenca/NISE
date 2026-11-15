@@ -104,7 +104,9 @@ async def signup_email(
 async def pending_signup(pending: PendingSignupDep) -> PendingSignupOut:
     # O e-mail como vai ficar na conta (o mesmo normalize_email do cadastro).
     return PendingSignupOut(
-        name=pending.profile.name, email=normalize_email(pending.profile.email)
+        name=pending.profile.name,
+        email=normalize_email(pending.profile.email),
+        invite=pending.invite,
     )
 
 

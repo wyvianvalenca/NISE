@@ -56,6 +56,9 @@ class PendingSignupOut(BaseModel):
 
     name: str
     email: str
+    # O código com que ela começou, para "Usar outra conta" voltar ao Google
+    # com ele (RN-29). Não é dado dela: já estava no link do convite.
+    invite: str | None
 
 
 class LoginIn(BaseModel):
