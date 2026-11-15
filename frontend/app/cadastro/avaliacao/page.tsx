@@ -101,17 +101,19 @@ export default function RatingPage() {
         {loadFailed ? (
           <div role="alert">
             <p className={shared.error}>Não deu pra carregar a oficina.</p>
-            <Button variant="secondary" onClick={retryLoad}>
-              Tentar de novo
-            </Button>
-            {/* Avaliar é opcional: ela pode seguir, e a avaliação fica para o link do e-mail. */}
-            <button
-              type="button"
-              className={styles.skip}
-              onClick={() => router.push(SIGNUP_PATHS.interests)}
-            >
-              Agora não
-            </button>
+            <div className={styles.actions}>
+              <Button variant="secondary" className={shared.fullWidth} onClick={retryLoad}>
+                Tentar de novo
+              </Button>
+              {/* Avaliar é opcional: ela pode seguir, e a avaliação fica para o link do e-mail. */}
+              <button
+                type="button"
+                className={styles.skip}
+                onClick={() => router.push(SIGNUP_PATHS.interests)}
+              >
+                Agora não
+              </button>
+            </div>
           </div>
         ) : (
           <Loading />
