@@ -1,7 +1,7 @@
 import enum
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
+from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -78,3 +78,6 @@ class Participation(Base):
     action_id: Mapped[int] = mapped_column(
         ForeignKey("actions.id", ondelete="CASCADE"), index=True
     )
+    # Quando a presença dela foi registrada (F3, #135). Vazio enquanto não foi,
+    # ou se ela faltou. Só quem tem presença avalia a ação (#58).
+    attended_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
