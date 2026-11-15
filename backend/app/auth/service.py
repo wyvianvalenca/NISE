@@ -1,5 +1,5 @@
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -75,28 +75,51 @@ async def signup_with_email(session: AsyncSession, data: EmailSignupIn) -> User 
     if await get_user_by_email(session, email) is not None:
         return None
 
-    # Se ela veio de uma importação, a conta ativa esse registro em vez de
-    # criar outro (RF-F2.02, RN-29).
-    girl = await get_girl_by_email(session, email)
-    if girl is not None and girl.user_id is not None:
-        return None
-    if girl is None:
-        girl = Girl(email=email)
-        session.add(girl)
-
     user = User(
         name=data.name,
         email=email,
         password_hash=hash_password(data.password),
         role=Role.GIRL,
     )
+
+    return await _save_girl_account(
+        session,
+        user,
+        birth_date=data.birth_date,
+        city_id=data.city_id,
+        origin_group_id=origin_group_id,
+    )
+
+
+async def _save_girl_account(
+    session: AsyncSession,
+    user: User,
+    *,
+    birth_date: date,
+    city_id: int,
+    origin_group_id: int | None,
+) -> User | None:
+    """Grava a conta nova da menina e liga o registro dela a essa conta.
+
+    Usado pelo cadastro por e-mail (#51) e pelo Google (#52). Quem chama já
+    conferiu idade, cidade e convite. Devolve None quando o e-mail já tem conta.
+    """
+    # Se ela veio de uma importação, a conta ativa esse registro em vez de
+    # criar outro (RF-F2.02, RN-29).
+    girl = await get_girl_by_email(session, user.email)
+    if girl is not None and girl.user_id is not None:
+        return None
+    if girl is None:
+        girl = Girl(email=user.email)
+        session.add(girl)
+
     session.add(user)
 
-    # O nome que ela digitou vale mais que o da lista importada. A origem é a
-    # do cadastro: é ela que decide o texto dos termos (H3).
-    girl.name = data.name
-    girl.birth_date = data.birth_date
-    girl.city_ibge_code = data.city_id
+    # O nome do cadastro vale mais que o da lista importada. A origem é a do
+    # cadastro: é ela que decide o texto dos termos (H3).
+    girl.name = user.name
+    girl.birth_date = birth_date
+    girl.city_ibge_code = city_id
     girl.origin_group_id = origin_group_id
 
     try:
