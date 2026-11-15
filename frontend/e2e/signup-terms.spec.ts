@@ -47,6 +47,26 @@ test("só continua depois de marcar Li e concordo", async ({ page }) => {
   expect(acceptedVersions).toEqual([TERMS_VERSION]);
 });
 
+test("voltar da Etapa 2 mostra os termos prontos para continuar de novo", async ({ page }) => {
+  // O Next guarda a página escondida ao navegar (Activity) e a mostra de volta com o mesmo estado.
+  // O "Enviando…" do aceite não pode voltar junto.
+  const acceptedVersions = await mockTermsApi(page);
+  await page.goto("/cadastro/termos");
+  await page.getByRole("checkbox", { name: /Li e concordo/ }).check();
+  await page.getByRole("button", { name: "Entendi, continuar" }).click();
+  await expect(page).toHaveURL(/\/cadastro\/oportunidades$/);
+
+  await page.getByRole("link", { name: "Etapa anterior" }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+  const button = page.getByRole("button", { name: "Entendi, continuar" });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page).toHaveURL(/\/cadastro\/oportunidades$/);
+  // Aceitar de novo é inofensivo: o servidor não cria outro registro.
+  expect(acceptedVersions).toEqual([TERMS_VERSION, TERMS_VERSION]);
+});
+
 test("a página dos termos mostra a versão atual", async ({ page }) => {
   await page.goto("/termos");
 

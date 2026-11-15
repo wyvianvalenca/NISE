@@ -4,7 +4,7 @@
 // Atende RF-F7.02, RF-F7.03, RF-F7.04 e RF-F7.05 (issue #53).
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { IconList } from "@/components/IconList";
@@ -73,6 +73,13 @@ export default function TermsPage() {
     );
     return () => controller.abort();
   }, [attempt, router]);
+
+  // Ao navegar, o Next esconde a página em vez de desmontá-la (Activity, com cacheComponents)
+  // e, na volta pela "Etapa anterior", mostra o mesmo estado. Sem isto, o botão voltaria preso
+  // em "Enviando…" depois de um aceite que deu certo. A caixa marcada pode ficar como está.
+  useLayoutEffect(() => {
+    return () => setSaving(false);
+  }, []);
 
   /** Busca o resumo de novo. Ela precisa marcar "Li e concordo" de novo depois de ler. */
   function reloadSummary() {
