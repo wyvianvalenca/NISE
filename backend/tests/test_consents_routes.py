@@ -321,3 +321,86 @@ def test_openapi_mostra_a_rota_da_preferencia(client: TestClient) -> None:
     schema = openapi["components"]["schemas"]["OpportunityEmailsIn"]
     assert schema["properties"]["enabled"]["type"] == "boolean"
     assert schema["required"] == ["enabled"]
+
+
+# Permissões (RNF-G.03): só a menina logada, com os termos aceitos, muda a
+# própria preferência.
+
+
+async def test_preferencia_sem_sessao_responde_401() -> None:
+    usuaria = alana()
+    usuaria.opportunity_emails = False
+    sessao_falsa = sessao_da_preferencia(usuaria)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        corpo={"enabled": True},
+    )
+
+    assert response.status_code == 401
+    assert usuaria.opportunity_emails is False
+    sessao_falsa.commit.assert_not_awaited()
+
+
+async def test_preferencia_e_so_para_menina() -> None:
+    coordenadora = alana(role=Role.COORDINATOR)
+    coordenadora.opportunity_emails = False
+    sessao_falsa = sessao_da_preferencia(coordenadora)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"enabled": True},
+    )
+
+    assert response.status_code == 403
+    assert coordenadora.opportunity_emails is False
+    sessao_falsa.commit.assert_not_awaited()
+
+
+async def test_preferencia_sem_aceite_dos_termos_responde_403() -> None:
+    # O front lê o código e leva ela de volta à A04·1.
+    usuaria = alana()
+    usuaria.opportunity_emails = False
+    sessao_falsa = sessao_da_preferencia(usuaria, aceite=None)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"enabled": True},
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"error": "terms_not_accepted"}
+    assert usuaria.opportunity_emails is False
+    sessao_falsa.commit.assert_not_awaited()
+
+
+async def test_preferencia_muda_so_a_da_menina_da_sessao() -> None:
+    # Sem id na URL nem no corpo: um id a mais no corpo é ignorado, e a rota
+    # busca só a usuária do token.
+    usuaria = alana()
+    usuaria.opportunity_emails = False
+    sessao_falsa = sessao_da_preferencia(usuaria)
+
+    response = await chamar_rota(
+        app,
+        "PUT",
+        "/api/preferences/opportunity-emails",
+        sessao_falsa,
+        token=create_access_token(1),
+        corpo={"enabled": True, "user_id": 2},
+    )
+
+    assert response.status_code == 204
+    sessao_falsa.get.assert_awaited_once_with(User, 1)
+    assert usuaria.opportunity_emails is True
