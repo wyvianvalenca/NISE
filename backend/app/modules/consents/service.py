@@ -11,7 +11,7 @@ from app.modules.groups.models import Group
 from app.users.models import User
 
 # Versão dos termos em vigor. Tem que ser a mesma do front
-# (TERMS_VERSION em frontend/lib/signup.ts). O texto final ainda não existe (D-01).
+# (TERMS_VERSION em frontend/lib/signup-api.ts). O texto final ainda não existe (D-01).
 CURRENT_TERMS_VERSION = "0.1-rascunho"
 
 

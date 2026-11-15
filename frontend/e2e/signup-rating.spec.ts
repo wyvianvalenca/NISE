@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockTermsApi } from "./terms-api";
 
 // #58 · A03 E aí, curtiu a oficina? Usa os dados de teste de lib/signup.ts.
 
 /** Passa pelas três etapas do consentimento. */
 async function finishConsent(page: Page) {
+  await mockTermsApi(page);
   await page.goto("/cadastro/termos");
   await page.getByRole("checkbox", { name: /Li e concordo/ }).check();
   await page.getByRole("button", { name: "Entendi, continuar" }).click();

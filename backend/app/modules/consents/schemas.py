@@ -7,7 +7,7 @@ class GroupOrigin(BaseModel):
     """Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01)."""
 
     kind: Literal["group"] = "group"
-    # O front lê em camelCase (Origin.groupName em frontend/lib/signup.ts).
+    # O front lê em camelCase (Origin.groupName em frontend/lib/signup-api.ts).
     group_name: str = Field(serialization_alias="groupName")
 
 

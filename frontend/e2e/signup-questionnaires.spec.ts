@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockTermsApi } from "./terms-api";
 
 // #54 · A04·3 Avisos de questionários. Usa os dados de teste de lib/signup.ts.
 
 /** Chega na Etapa 3 pelo caminho normal, escolhendo receber oportunidades. */
 async function openStep3(page: Page) {
+  await mockTermsApi(page);
   await page.goto("/cadastro/termos");
   await page.getByRole("checkbox", { name: /Li e concordo/ }).check();
   await page.getByRole("button", { name: "Entendi, continuar" }).click();

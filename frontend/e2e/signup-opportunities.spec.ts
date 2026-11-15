@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { mockTermsApi } from "./terms-api";
 
 // #55 · A04·2 Oportunidades por e-mail. Usa os dados de teste de lib/signup.ts.
 
 /** Chega na Etapa 2 pelo caminho normal, aceitando os termos. */
 async function openStep2(page: import("@playwright/test").Page) {
+  await mockTermsApi(page);
   await page.goto("/cadastro/termos");
   await page.getByRole("checkbox", { name: /Li e concordo/ }).check();
   await page.getByRole("button", { name: "Entendi, continuar" }).click();

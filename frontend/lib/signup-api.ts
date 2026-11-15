@@ -270,3 +270,67 @@ export async function createEmailAccount(
 
   return { ok: false, reason: "failed" };
 }
+
+// ---------------------------------------------------------------------------
+// Terms of use and privacy policy (A04·1, #53)
+// ---------------------------------------------------------------------------
+
+/**
+ * The terms version in force, shown on the full terms page (/termos).
+ * Must match CURRENT_TERMS_VERSION in backend/app/modules/consents/service.py.
+ * The final text does not exist yet (D-01).
+ */
+export const TERMS_VERSION = "0.1-rascunho";
+
+/** Where she came from: a group's invite (flow M1) or on her own (M2). */
+export type Origin = { kind: "group"; groupName: string } | { kind: "self" };
+
+export type TermsSummary = {
+  /** The version she is reading; it goes back to the server on acceptance. */
+  version: string;
+  /**
+   * Decides who the screen says sees her data: the group's leadership
+   * (RN-01) or only overall numbers (RN-04).
+   */
+  origin: Origin;
+};
+
+export type AcceptTermsResult =
+  | { ok: true }
+  | { ok: false; reason: "outdated" | "failed" };
+
+/** The terms version and the logged-in girl's origin, for A04·1 (#53). */
+export async function getTermsSummary(
+  signal?: AbortSignal,
+): Promise<TermsSummary> {
+  const response = await fetch("/api/terms/summary", { signal });
+
+  if (!response.ok) {
+    throw new Error(`terms summary: ${response.status}`);
+  }
+
+  return (await response.json()) as TermsSummary;
+}
+
+/**
+ * Records that she accepted `version` (RF-F7.05). The server only takes the
+ * current version, and accepting again does not create another record.
+ */
+export async function acceptTerms(version: string): Promise<AcceptTermsResult> {
+  const response = await fetch("/api/terms/acceptance", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ version }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  // She read a version that has changed since: 409 {"error": "terms_outdated"}.
+  if (response.status === 409) {
+    return { ok: false, reason: "outdated" };
+  }
+
+  return { ok: false, reason: "failed" };
+}

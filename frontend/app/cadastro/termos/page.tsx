@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/Checkbox";
 import { IconList } from "@/components/IconList";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
-import { acceptTerms, getTermsSummary, SIGNUP_PATHS, type TermsSummary } from "@/lib/signup";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { acceptTerms, getTermsSummary, type TermsSummary } from "@/lib/signup-api";
 import styles from "../cadastro.module.css";
 
 const WHAT_WE_COLLECT = [
@@ -42,26 +43,31 @@ export default function TermsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let current = true;
-    getTermsSummary().then((result) => {
-      if (current) setSummary(result);
+    const controller = new AbortController();
+    getTermsSummary(controller.signal).then(setSummary, () => {
+      // Saiu da página antes da resposta, ou a API falhou.
     });
-    return () => {
-      current = false;
-    };
+    return () => controller.abort();
   }, []);
 
   async function handleContinue() {
     if (!summary) return;
     setSaving(true);
     setError(null);
-    try {
-      await acceptTerms(summary.version);
+
+    const result = await acceptTerms(summary.version).catch(() => null);
+
+    if (result?.ok) {
       router.push(SIGNUP_PATHS.opportunities);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não deu pra salvar. Tente de novo.");
-      setSaving(false);
+      return;
     }
+
+    setError(
+      result?.reason === "outdated"
+        ? "Os termos mudaram. Recarregue a página para ler a versão nova."
+        : "Não deu pra salvar. Tente de novo.",
+    );
+    setSaving(false);
   }
 
   return (
