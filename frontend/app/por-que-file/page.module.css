@@ -1,0 +1,122 @@
+/* A06·0 "Por que filé?" (Figma 511:1811). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}
+
+.antes {
+  color: var(--nise-ink);
+  font-size: 16px;
+}
+
+.title {
+  margin-top: 10px;
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.lead {
+  margin-top: 10px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+/* "uma ensina a outra": o coração da metáfora, no rosa da marca. */
+.destaque {
+  color: var(--nise-pink);
+  font-weight: 700;
+}
+
+.passos {
+  margin-top: 24px;
+  list-style: none;
+}
+
+.passo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Fio tracejado ligando um passo ao outro, alinhado ao centro da ilustração. */
+.passo .fio {
+  position: absolute;
+  left: 49px;
+  top: 100%;
+  width: 2px;
+  height: 22px;
+  background-image: url(/file/fio-tracejado.svg);
+  background-repeat: no-repeat;
+}
+
+.passo:not(:first-child) {
+  margin-top: 22px;
+}
+
+.texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.passoTitulo {
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.passoDetalhe {
+  color: var(--nise-teal);
+  font-size: 14px;
+}
+
+.rodape {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 20px 28px;
+}
+
+.lema {
+  color: var(--nise-teal);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.status {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.erro {
+  color: var(--nise-pink);
+  font-size: 14px;
+  text-align: center;
+}
+
+.fullWidth {
+  width: 100%;
+}

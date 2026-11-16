@@ -10,14 +10,14 @@ import {
 import styles from "./Field.module.css";
 
 /**
- * Os campos são não controlados: quem guarda o texto é o próprio input, não o
- * React. Por isso não aceitam `value`; use `defaultValue` para o valor inicial
- * e `onValueChange` para saber quando muda.
+ * Fields are uncontrolled: the input itself holds the text, not React. That
+ * is why they do not take `value`; use `defaultValue` for the initial value
+ * and `onValueChange` to hear about changes.
  *
- * Motivo: num celular lento a menina pode começar a digitar antes de o React
- * terminar de carregar (hidratação). Com `value`, o React devolve o campo ao
- * valor do estado e o que ela digitou some sem aviso (review do #69). É o
- * mesmo motivo do `Checkbox`.
+ * Why: on a slow phone she may start typing before React finishes loading
+ * (hydration). With `value`, React puts the field back to the state's value
+ * and what she typed disappears with no warning (review on #69). Same reason
+ * as `Checkbox`.
  */
 type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value"> & {
   label: string;
@@ -25,7 +25,7 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value"> & {
   error?: string;
   /** Mostra "(opcional)" depois do rótulo. */
   optional?: boolean;
-  /** Avisa a cada mudança, e também quando ela digitou antes da hidratação. */
+  /** Fires on every change, and on mount when she typed before hydration. */
   onValueChange?: (value: string) => void;
 };
 

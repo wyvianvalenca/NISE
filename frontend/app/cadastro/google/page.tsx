@@ -8,131 +8,134 @@ import { CityField } from "@/components/CityField";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
 import {
-  buscarCadastroPendente,
-  completarCadastro,
-  descartarCadastro,
-  urlInicioGoogle,
-  type CadastroPendente,
-  type Cidade,
-} from "@/lib/cadastro";
-import { checarIdade } from "@/lib/idade";
+  completeSignup,
+  discardSignup,
+  getPendingSignup,
+  googleStartUrl,
+  type City,
+  type PendingSignup,
+} from "@/lib/signup-api";
+import { checkAge } from "@/lib/age";
 import styles from "./page.module.css";
 
-type Conta = CadastroPendente | "carregando" | "nenhuma";
+type Account = PendingSignup | "loading" | "none";
 
-const ERRO_DE_REDE = "Não deu pra concluir agora. Tente de novo.";
+const NETWORK_ERROR = "Não deu pra concluir agora. Tente de novo.";
 
 /**
- * A02b "Só mais um passo" (#52): depois de autorizar o Google, ela confirma
- * data de nascimento e cidade. Nome e e-mail já vêm do Google e não se editam
- * aqui.
+ * A02b "Só mais um passo" (#52): after authorising Google, she confirms her
+ * birth date and city. Name and email already come from Google and are not
+ * editable here.
  */
-export default function ContaGoogle() {
+export default function GoogleAccount() {
   const router = useRouter();
-  const [conta, setConta] = useState<Conta>("carregando");
-  const [dataNascimento, setDataNascimento] = useState("");
-  const [cidadeDigitada, setCidadeDigitada] = useState("");
-  const [cidade, setCidade] = useState<Cidade | null>(null);
-  const [erroData, setErroData] = useState<string>();
-  const [erroCidade, setErroCidade] = useState<string>();
-  const [erroGeral, setErroGeral] = useState<string>();
-  const [enviando, setEnviando] = useState(false);
+  const [account, setAccount] = useState<Account>("loading");
+  const [birthDate, setBirthDate] = useState("");
+  const [cityText, setCityText] = useState("");
+  const [city, setCity] = useState<City | null>(null);
+  const [dateError, setDateError] = useState<string>();
+  const [cityError, setCityError] = useState<string>();
+  const [generalError, setGeneralError] = useState<string>();
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    const controle = new AbortController();
+    const controller = new AbortController();
 
-    buscarCadastroPendente(controle.signal)
-      .then((pendente) => setConta(pendente ?? "nenhuma"))
+    getPendingSignup(controller.signal)
+      .then((pending) => setAccount(pending ?? "none"))
       .catch(() => {
-        if (!controle.signal.aborted) {
-          setConta("nenhuma");
+        if (!controller.signal.aborted) {
+          setAccount("none");
         }
       });
 
-    return () => controle.abort();
+    return () => controller.abort();
   }, []);
 
-  /** Descarta a sessão incompleta e manda para a A02c (RN-03). */
-  const recusarPorIdade = useCallback(async () => {
+  /** Discards the incomplete session and sends her to A02c (RN-03). */
+  const refuseByAge = useCallback(async () => {
     try {
-      await descartarCadastro();
+      await discardSignup();
     } catch {
+      // Even without reaching the server, she cannot go on.
     }
     router.replace("/cadastro/idade-minima");
   }, [router]);
 
-  async function enviar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    setErroData(undefined);
-    setErroCidade(undefined);
-    setErroGeral(undefined);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDateError(undefined);
+    setCityError(undefined);
+    setGeneralError(undefined);
 
-    if (!dataNascimento) {
-      setErroData("Preencha sua data de nascimento.");
+    if (!birthDate) {
+      setDateError("Preencha sua data de nascimento.");
       return;
     }
 
-    const idade = checarIdade(dataNascimento);
+    const age = checkAge(birthDate);
 
-    if (idade === "invalid_date") {
-      setErroData("Confira sua data de nascimento.");
+    // An impossible date (wrong year, 30/02) is not the same as being too
+    // young: here she fixes the field without losing her Google session.
+    if (age === "invalid_date") {
+      setDateError("Confira sua data de nascimento.");
       return;
     }
 
-    if (idade === "under_13") {
-      setEnviando(true);
-      await recusarPorIdade();
+    // Under 13: nothing she filled in leaves the screen (RN-03).
+    if (age === "under_13") {
+      setSending(true);
+      await refuseByAge();
       return;
     }
 
-    if (!cidade) {
-      setErroCidade("Escolha uma cidade da lista.");
+    if (!city) {
+      setCityError("Escolha uma cidade da lista.");
       return;
     }
 
-    setEnviando(true);
+    setSending(true);
     try {
-      const resultado = await completarCadastro({
-        birthDate: dataNascimento,
-        cityId: cidade.id,
-      });
+      const result = await completeSignup({ birthDate, cityId: city.id });
 
-      if (resultado.ok) {
+      if (result.ok) {
         router.push("/cadastro/termos");
         return;
       }
 
-      if (resultado.motivo === "under_13") {
-        await recusarPorIdade();
+      if (result.reason === "under_13") {
+        await refuseByAge();
         return;
       }
 
-      setEnviando(false);
-      if (resultado.motivo === "invalid_city") {
-        setErroCidade("Escolha uma cidade da lista.");
+      setSending(false);
+      if (result.reason === "invalid_city") {
+        setCityError("Escolha uma cidade da lista.");
       } else {
-        setErroGeral(ERRO_DE_REDE);
+        setGeneralError(NETWORK_ERROR);
       }
     } catch {
-      setEnviando(false);
-      setErroGeral(ERRO_DE_REDE);
+      // The connection dropped midway: free the button and explain, rather
+      // than leaving it stuck.
+      setSending(false);
+      setGeneralError(NETWORK_ERROR);
     }
   }
 
-  async function usarOutraConta() {
-    setErroGeral(undefined);
-    setEnviando(true);
+  async function useAnotherAccount() {
+    setGeneralError(undefined);
+    setSending(true);
     try {
-      await descartarCadastro();
+      await discardSignup();
     } catch {
-      setEnviando(false);
-      setErroGeral(ERRO_DE_REDE);
+      setSending(false);
+      setGeneralError(NETWORK_ERROR);
       return;
     }
-    window.location.href = urlInicioGoogle({ trocarConta: true });
+    window.location.href = googleStartUrl({ switchAccount: true });
   }
 
-  if (conta === "carregando") {
+  if (account === "loading") {
     return (
       <div className={styles.screen}>
         <p className={styles.status}>Carregando...</p>
@@ -140,7 +143,8 @@ export default function ContaGoogle() {
     );
   }
 
-  if (conta === "nenhuma") {
+  // With no Google session there is nothing to complete: she starts over here.
+  if (account === "none") {
     return (
       <div className={styles.screen}>
         <h1 className={styles.title}>Vamos de novo?</h1>
@@ -157,7 +161,7 @@ export default function ContaGoogle() {
   }
 
   return (
-    <form className={styles.screen} onSubmit={enviar} noValidate>
+    <form className={styles.screen} onSubmit={submit} noValidate>
       <h1 className={styles.title}>Só mais um passo</h1>
       <p className={styles.lead}>
         Com sua data de nascimento e cidade, mostramos oportunidades certas para
@@ -165,42 +169,46 @@ export default function ContaGoogle() {
       </p>
 
       <div className={styles.card}>
-        <AccountCard name={conta.name} email={conta.email} provider="google" />
+        <AccountCard
+          name={account.name}
+          email={account.email}
+          provider="google"
+        />
       </div>
 
-      <div className={styles.campos}>
+      <div className={styles.fields}>
         <Field
           label="Data de nascimento"
           type="date"
-          onValueChange={setDataNascimento}
-          error={erroData}
+          onValueChange={setBirthDate}
+          error={dateError}
           required
         />
         <CityField
-          value={cidadeDigitada}
-          onChange={setCidadeDigitada}
-          onSelect={setCidade}
-          error={erroCidade}
+          value={cityText}
+          onChange={setCityText}
+          onSelect={setCity}
+          error={cityError}
         />
       </div>
 
-      {erroGeral && (
-        <p className={styles.erro} role="alert">
-          {erroGeral}
+      {generalError && (
+        <p className={styles.error} role="alert">
+          {generalError}
         </p>
       )}
 
       <div className={styles.spacer} />
 
       <div className={styles.actions}>
-        <Button type="submit" loading={enviando} className={styles.fullWidth}>
+        <Button type="submit" loading={sending} className={styles.fullWidth}>
           Concluir cadastro
         </Button>
         <button
           type="button"
-          className={styles.outraConta}
-          disabled={enviando}
-          onClick={usarOutraConta}
+          className={styles.otherAccount}
+          disabled={sending}
+          onClick={useAnotherAccount}
         >
           Usar outra conta
         </button>

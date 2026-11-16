@@ -1,7 +1,7 @@
 /* A02c "Ainda não dá (menos de 13)" (Figma 511:593).
  *
- * As medidas de moldura ficam aqui, e não no cadastro.module.css do #61, para
- * esta tela não disputar aquele arquivo com os PRs #62 a #65.
+ * The shell measurements live here and not in #61's cadastro.module.css, so
+ * this screen does not fight over that file with PRs #62 to #65.
  */
 
 .screen {
@@ -10,7 +10,7 @@
   flex-direction: column;
 }
 
-.simbolo {
+.symbol {
   margin-top: 36px;
 }
 
@@ -27,7 +27,7 @@
   font-size: 16px;
 }
 
-.lista {
+.list {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -38,7 +38,7 @@
   background: var(--nise-surface);
 }
 
-/* O Icon herda a cor do texto; no Figma este check é teal. */
+/* Icon inherits the text colour; in Figma this check is teal. */
 .check {
   display: inline-flex;
   flex-shrink: 0;
@@ -50,7 +50,7 @@
   font-size: 14px;
 }
 
-.acoes {
+.actions {
   margin-top: 32px;
   height: 48px;
 }

@@ -2,20 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { Field } from "./Field";
-import { buscarCidades, type Cidade } from "@/lib/cadastro";
+import { searchCities, type City } from "@/lib/signup-api";
 
 type CityFieldProps = {
-  /** O que ela digitou. O input é dono do texto; isto é só o espelho. */
+  /** What she typed. The input owns the text; this is only the mirror. */
   value: string;
-  onChange: (texto: string) => void;
-  /** Avisa qual município da lista casou, ou `null` enquanto nenhum casa. */
-  onSelect: (cidade: Cidade | null) => void;
+  onChange: (text: string) => void;
+  /** Reports which municipality matched, or `null` while none does. */
+  onSelect: (city: City | null) => void;
   error?: string;
 };
 
-/** Tira acento e caixa, para "maceió, al" casar com "Maceió, AL". */
-function comparavel(texto: string): string {
-  return texto
+/** Drops accents and case, so "maceió, al" matches "Maceió, AL". */
+function comparable(text: string): string {
+  return text
     .trim()
     .toLowerCase()
     .normalize("NFD")
@@ -23,39 +23,39 @@ function comparavel(texto: string): string {
 }
 
 /**
- * Campo de cidade preso à lista do IBGE (RN-17: nada de texto livre).
+ * City field tied to the IBGE list (RN-17: no free text).
  *
- * Mora aqui porque as duas portas de cadastro usam o mesmo campo: a A02
- * (#51) e a A02b do Google (#52). A lista vem da rota de municípios (#50).
+ * It lives here because both sign-up doors use the same field: A02 (#51) and
+ * the Google A02b (#52). The list comes from the municipalities route (#50).
  */
 export function CityField({ value, onChange, onSelect, error }: CityFieldProps) {
-  const [cidades, setCidades] = useState<Cidade[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
 
   useEffect(() => {
-    const busca = value.trim();
-    const controle = new AbortController();
-    const espera = setTimeout(() => {
-      if (busca.length < 2) {
-        setCidades([]);
+    const search = value.trim();
+    const controller = new AbortController();
+    const wait = setTimeout(() => {
+      if (search.length < 2) {
+        setCities([]);
         return;
       }
-      buscarCidades(busca, controle.signal)
-        .then(setCidades)
+      searchCities(search, controller.signal)
+        .then(setCities)
         .catch(() => {
-          /* Sem lista, o envio avisa que a cidade precisa vir da lista. */
+          /* Without the list, submitting tells her the city must come from it. */
         });
     }, 250);
 
     return () => {
-      clearTimeout(espera);
-      controle.abort();
+      clearTimeout(wait);
+      controller.abort();
     };
   }, [value]);
 
   useEffect(() => {
-    const alvo = comparavel(value);
-    onSelect(cidades.find((cidade) => comparavel(cidade.name) === alvo) ?? null);
-  }, [value, cidades, onSelect]);
+    const target = comparable(value);
+    onSelect(cities.find((city) => comparable(city.name) === target) ?? null);
+  }, [value, cities, onSelect]);
 
   return (
     <>
@@ -69,8 +69,8 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
         required
       />
       <datalist id="cidades-ibge">
-        {cidades.map((cidade) => (
-          <option key={cidade.id} value={cidade.name} />
+        {cities.map((city) => (
+          <option key={city.id} value={city.name} />
         ))}
       </datalist>
     </>

@@ -1,24 +1,24 @@
 import Image from "next/image";
-import { urlInicioGoogle } from "@/lib/cadastro";
+import { googleStartUrl } from "@/lib/signup-api";
 import styles from "./GoogleButton.module.css";
 
 type GoogleButtonProps = {
-  /** Código do convite do grupo, quando ela chegou por um (RN-29). */
-  convite?: string;
+  /** The group's invite code, when she arrived through one (RN-29). */
+  invite?: string;
   label?: string;
 };
 
 /**
- * Ação "Criar conta com o Google" (Figma: Action / Criar conta com o Google,
- * na A02). É um link, e não um botão, porque leva para fora: o back-end
- * redireciona para o Google.
+ * The "Criar conta com o Google" action (Figma: Action / Criar conta com o
+ * Google, on A02). It is a link and not a button because it leads outside:
+ * the back-end redirects to Google.
  */
 export function GoogleButton({
-  convite,
+  invite,
   label = "Criar conta com o Google",
 }: GoogleButtonProps) {
   return (
-    <a className={styles.button} href={urlInicioGoogle({ convite })}>
+    <a className={styles.button} href={googleStartUrl({ invite })}>
       <Image src="/icons/google.svg" alt="" width={20} height={20} unoptimized />
       {label}
     </a>
