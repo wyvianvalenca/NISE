@@ -8,7 +8,8 @@ from app.db.base import Base
 from app.db.mixins import TimestampMixin
 
 
-# Os valores são os mesmos códigos que o front usa (frontend/lib/signup.ts).
+# Os valores são os códigos que a A05 envia e que GET /api/profile/interest-options
+# serve (os nomes que aparecem na tela ficam em app/modules/girls/utils.py).
 class Topic(enum.Enum):
     PROGRAMACAO = "programacao"
     ROBOTICA = "robotica"

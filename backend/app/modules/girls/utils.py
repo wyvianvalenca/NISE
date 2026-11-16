@@ -1,6 +1,8 @@
 import enum
 from datetime import UTC, date, datetime, timedelta, timezone
 
+from app.modules.girls.models import StudyStage, Topic
+
 # Regra de idade da NISE (RN-03, RF-F7.01): só cria conta quem já fez 13 anos.
 # Fica num lugar só porque o cadastro por e-mail (H1, #51) e o do Google
 # (H2, #52) usam a mesma regra. É a mesma conta de frontend/lib/age.ts; o
@@ -67,3 +69,25 @@ def check_age(birth_date: date, reference: date | None = None) -> AgeCheck:
         return AgeCheck.UNDER_13
 
     return AgeCheck.OK
+
+
+# Como cada tema e cada etapa de estudo aparecem na A05 (RF-F10.01), na ordem
+# do Figma. O front mostra estas listas, e as sugestões usam os mesmos códigos.
+TOPIC_LABELS: dict[Topic, str] = {
+    Topic.PROGRAMACAO: "Programação",
+    Topic.ROBOTICA: "Robótica",
+    Topic.IA: "Inteligência artificial",
+    Topic.DADOS: "Dados",
+    Topic.CIBERSEGURANCA: "Cibersegurança",
+    Topic.JOGOS: "Jogos",
+    Topic.SITES: "Sites e apps",
+    Topic.DESIGN: "Design e criação",
+}
+
+STUDY_STAGE_LABELS: dict[StudyStage, str] = {
+    StudyStage.FUNDAMENTAL: "Ensino fundamental",
+    StudyStage.MEDIO: "Ensino médio",
+    StudyStage.TECNICO: "Curso técnico",
+    StudyStage.GRADUACAO: "Graduação",
+    StudyStage.FORMADA: "Já me formei",
+}
