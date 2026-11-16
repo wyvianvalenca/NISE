@@ -6,6 +6,8 @@
 // as oportunidades por e-mail (#55) e a avaliação do evento (#58) já usam a API de
 // verdade, em lib/signup-api.ts. Os dados são fictícios; nada sai do navegador.
 
+import type { InterestOptions, InterestsChoice } from "./signup-api";
+
 /** Caminho de cada tela do cadastro, na ordem do fluxo. */
 export const SIGNUP_PATHS = {
   terms: "/cadastro/termos",
@@ -78,20 +80,6 @@ export function eventDetails(startsOn: string, cityName: string | null): string 
 
   return `${WEEKDAYS[weekday]}, ${day} de ${MONTHS[month - 1]} · ${cityName ?? "Online"}`;
 }
-
-/** Opção de uma lista fechada: o código é o que vai para o back e para as sugestões. */
-export type Option = { code: string; label: string };
-
-export type InterestOptions = { topics: Option[]; stages: Option[] };
-
-export type InterestsChoice = {
-  /** Códigos dos temas; vazio quando ela escolhe "me mostra de tudo". */
-  topics: string[];
-  /** "Ainda não sei, me mostra de tudo". Não vem junto com temas. */
-  everything: boolean;
-  /** Código da etapa de estudo. */
-  stage: string;
-};
 
 // No back, estas listas virão de uma rota, para o front e as sugestões usarem os mesmos códigos.
 const INTEREST_OPTIONS: InterestOptions = {

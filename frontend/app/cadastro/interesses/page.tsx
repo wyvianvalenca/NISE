@@ -9,13 +9,8 @@ import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
 import type { IconName } from "@/components/Icon";
 import { TopicToggle } from "@/components/TopicToggle";
-import {
-  getInterestOptions,
-  saveInterests,
-  SIGNUP_PATHS,
-  type InterestOptions,
-  type InterestsChoice,
-} from "@/lib/signup";
+import { getInterestOptions, saveInterests, SIGNUP_PATHS } from "@/lib/signup";
+import type { InterestOptions, InterestsChoice } from "@/lib/signup-api";
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
 

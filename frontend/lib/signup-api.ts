@@ -1,7 +1,7 @@
 /**
  * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51),
- * and the steps after them: terms (#53), opportunities by email (#55) and the
- * event rating (#58).
+ * and the steps after them: terms (#53), opportunities by email (#55), the
+ * event rating (#58) and the interests (#56).
  *
  * All of them exist in the back-end: the city search (#50), the invite and
  * the email sign-up (#99), and the Google routes under /api/auth/signup/
@@ -527,6 +527,88 @@ export async function submitRating(
   // She already rated it, in another tab for example.
   if (response.status === 409 && code === "already_rated") {
     return { ok: false, reason: "already_rated" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+// ---------------------------------------------------------------------------
+// Interests (A05, #56)
+// ---------------------------------------------------------------------------
+
+/** An option from a closed list: the code goes to the back-end and the suggestions. */
+export type Option = { code: string; label: string };
+
+/** The topics and the study stages, in the order the screen shows them. */
+export type InterestOptions = { topics: Option[]; stages: Option[] };
+
+export type InterestsChoice = {
+  /** Topic codes; empty when she picks "me mostra de tudo". */
+  topics: string[];
+  /** "Ainda não sei, me mostra de tudo". Never comes with topics. */
+  everything: boolean;
+  /** Study stage code. */
+  stage: string;
+};
+
+export type InterestOptionsResult =
+  | { ok: true; options: InterestOptions }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+export type SaveInterestsResult =
+  | { ok: true }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+/**
+ * The closed lists of topics and study stages (RF-F10.01). They come from the
+ * back-end, so the screen and the suggestions use the same codes.
+ */
+export async function getInterestOptions(
+  signal?: AbortSignal,
+): Promise<InterestOptionsResult> {
+  const response = await fetch("/api/profile/interest-options", { signal });
+
+  if (response.ok) {
+    return { ok: true, options: (await response.json()) as InterestOptions };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // A05 comes after the terms: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/**
+ * Stores the topics and the study stage in her profile (RF-F10.01). Choosing
+ * again replaces what was stored. The server refuses, with 422, codes outside
+ * the lists, "me mostra de tudo" together with topics and no topic at all
+ * (D-19: there is no "Pular por agora"); the screen never sends those.
+ */
+export async function saveInterests(
+  choice: InterestsChoice,
+): Promise<SaveInterestsResult> {
+  const response = await fetch("/api/profile/interests", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(choice),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
   }
 
   return { ok: false, reason: "failed" };
