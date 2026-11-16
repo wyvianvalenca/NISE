@@ -4,14 +4,20 @@
 // Atende RF-F10.01 (issues #56 e #76), pelas rotas da #147.
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
 import type { IconName } from "@/components/Icon";
 import { Loading } from "@/components/Loading";
 import { TopicToggle } from "@/components/TopicToggle";
 import { SIGNUP_PATHS } from "@/lib/signup";
-import { getInterestOptions, type InterestOptions, type InterestsChoice, saveInterests } from "@/lib/signup-api";
+import {
+  getInterestOptions,
+  type InterestOptions,
+  type InterestsChoice,
+  saveInterests,
+  WITHOUT_SESSION,
+} from "@/lib/signup-api";
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
 
@@ -36,6 +42,8 @@ export default function InterestsPage() {
   const [everything, setEverything] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  // Muda a cada nova busca das listas, para o efeito abaixo rodar de novo.
+  const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,8 +53,13 @@ export default function InterestsPage() {
       (result) => {
         if (result.ok) {
           setOptions(result.options);
-        } else {
+        } else if (result.reason === "terms_not_accepted") {
+          // A A05 vem depois do aceite dos termos (Etapa 1).
+          router.replace(SIGNUP_PATHS.terms);
+        } else if (result.reason === "failed") {
           setLoadFailed(true);
+        } else {
+          router.replace(WITHOUT_SESSION[result.reason]);
         }
       },
       () => {
@@ -55,7 +68,19 @@ export default function InterestsPage() {
       },
     );
     return () => controller.abort();
+  }, [attempt, router]);
+
+  // Ao navegar, o Next esconde a página em vez de desmontá-la (Activity, com cacheComponents)
+  // e, se ela voltar, mostra o mesmo estado. Sem isto, o botão voltaria preso em
+  // "Enviando…" depois de salvar.
+  useLayoutEffect(() => {
+    return () => setSaving(false);
   }, []);
+
+  function retryLoad() {
+    setLoadFailed(false);
+    setAttempt((current) => current + 1);
+  }
 
   // Escolher um tema desmarca "me mostra de tudo", e vice-versa.
   function toggleTopic(code: string) {
@@ -80,17 +105,34 @@ export default function InterestsPage() {
     }
 
     setSaving(false);
+
+    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+      router.replace(WITHOUT_SESSION[result.reason]);
+      return;
+    }
+
+    if (result?.reason === "terms_not_accepted") {
+      router.replace(SIGNUP_PATHS.terms);
+      return;
+    }
+
     setError("Não deu pra salvar. Tente de novo.");
   }
 
-  // Nada da tela aparece antes das listas chegarem.
+  // Nada da tela aparece antes das listas chegarem: quem está sem sessão ou sem o
+  // aceite dos termos vai para outra página sem ver a A05 piscar.
   if (!options) {
     return (
       <div className={shared.screen}>
         {loadFailed ? (
-          <p className={shared.error} role="alert">
-            Não deu pra carregar os temas.
-          </p>
+          <div role="alert">
+            <p className={shared.error}>Não deu pra carregar os temas.</p>
+            <div className={styles.actions}>
+              <Button variant="secondary" className={shared.fullWidth} onClick={retryLoad}>
+                Tentar de novo
+              </Button>
+            </div>
+          </div>
         ) : (
           <Loading />
         )}

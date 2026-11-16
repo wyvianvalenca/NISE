@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { INTEREST_OPTIONS, mockInterestsApi } from "./interests-api";
+import { mockTermsApi } from "./terms-api";
 
 // #56 · A05 O que te interessa? As rotas dos interesses (#147) são simuladas.
 
@@ -129,7 +130,27 @@ test("cada tema mostra o próprio ícone", async ({ page }) => {
   expect(icons).toBe(8);
 });
 
-test("se não dá pra salvar, avisa e fica na tela com as escolhas", async ({ page }) => {
+test("voltar do filé deixa escolher de novo", async ({ page }) => {
+  const sentChoices = await openInterests(page);
+  await topic(page, "Robótica").click();
+  await topic(page, "Ensino médio").click();
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+  await expect(page).toHaveURL(/\/por-que-file$/);
+
+  await page.goBack();
+
+  // O botão não volta preso em "Enviando…".
+  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await topic(page, "Dados").click();
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+  await expect(page).toHaveURL(/\/por-que-file$/);
+  expect(sentChoices).toHaveLength(2);
+  expect(sentChoices[1].topics).toContain("dados");
+});
+
+// Quando a rota diz não.
+
+test("se não dá pra salvar, avisa e deixa tentar de novo", async ({ page }) => {
   await openInterests(page, { save: 500 });
 
   await topic(page, "Robótica").click();
@@ -139,5 +160,63 @@ test("se não dá pra salvar, avisa e fica na tela com as escolhas", async ({ pa
   await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
   await expect(page).toHaveURL(/\/cadastro\/interesses$/);
   await expect(topic(page, "Robótica")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Começar meu filé" })).toBeEnabled();
+
+  // A rota mais nova vale: agora salvar dá certo.
+  const sentChoices = await mockInterestsApi(page);
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+  await expect(page).toHaveURL(/\/por-que-file$/);
+  expect(sentChoices).toEqual([{ topics: ["robotica"], everything: false, stage: "medio" }]);
+});
+
+test("se as listas não carregam, deixa tentar de novo", async ({ page }) => {
+  await openInterests(page, { options: 500 });
+
+  await expect(page.getByText("Não deu pra carregar os temas.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Começar meu filé" })).toHaveCount(0);
+
+  await mockInterestsApi(page);
+  await page.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(topic(page, "Robótica")).toBeVisible();
+});
+
+test("sem sessão, volta para a página inicial", async ({ page }) => {
+  await openInterests(page, { options: 401 });
+
+  await expect(page).toHaveURL(/localhost:3000\/$/);
+});
+
+test("com o cadastro do Google incompleto, volta para a A02b", async ({ page }) => {
+  // A A02b busca o cadastro pendente; aqui basta ela abrir.
+  await page.route("**/api/auth/signup/pending", (route) => route.fulfill({ status: 404, json: {} }));
+  await openInterests(page, { options: "incomplete_signup" });
+
+  await expect(page).toHaveURL(/\/cadastro\/google$/);
+});
+
+test("sem o aceite dos termos, volta para a A04·1", async ({ page }) => {
+  await mockTermsApi(page);
+  await openInterests(page, { options: "terms_not_accepted" });
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+});
+
+test("se a sessão cai antes de salvar, volta para a página inicial", async ({ page }) => {
+  await openInterests(page, { save: 401 });
+
+  await topic(page, "Robótica").click();
+  await topic(page, "Ensino médio").click();
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+
+  await expect(page).toHaveURL(/localhost:3000\/$/);
+});
+
+test("se os termos mudaram antes de salvar, volta para a A04·1", async ({ page }) => {
+  await mockTermsApi(page);
+  await openInterests(page, { save: "terms_not_accepted" });
+
+  await topic(page, "Robótica").click();
+  await topic(page, "Ensino médio").click();
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
