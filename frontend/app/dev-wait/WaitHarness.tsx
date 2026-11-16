@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { LoadFailed } from "@/components/LoadFailed";
 import { TecendoFile } from "@/components/TecendoFile";
 import { useLongWait } from "@/lib/loading";
@@ -47,14 +47,31 @@ export function WaitHarness() {
   const fromGlobal = globalThis.__NISE_MOCK_WAIT__;
   const delayParam = numberParam(params, "delay");
 
-  const mock = fromGlobal ?? {
-    delaysMs: delayParam === undefined ? undefined : [delayParam],
-    threshold: numberParam(params, "threshold"),
-    minimum: numberParam(params, "minimum"),
-    maximum: numberParam(params, "max"),
-    reassurance: params.get("reassurance") === "1",
-    fail: params.get("fail") === "1",
-  };
+  const threshold = numberParam(params, "threshold");
+  const minimum = numberParam(params, "minimum");
+  const maximum = numberParam(params, "max");
+  const reassurance = params.get("reassurance") === "1";
+  const fail = params.get("fail") === "1";
+
+  /**
+   * Memoised because `useLongWait` restarts whenever `fetcher` changes identity,
+   * and a fresh object here — above all a fresh `delaysMs` array — made every
+   * render start the wait over. Driven by the query string, that added a whole
+   * extra round to the wait; the e2e never saw it, because it passes the global
+   * object, which keeps its identity.
+   */
+  const mock = useMemo(
+    () =>
+      fromGlobal ?? {
+        delaysMs: delayParam === undefined ? undefined : [delayParam],
+        threshold,
+        minimum,
+        maximum,
+        reassurance,
+        fail,
+      },
+    [fromGlobal, delayParam, threshold, minimum, maximum, reassurance, fail],
+  );
 
   const fetcher = useCallback(() => {
     const delays = mock.delaysMs ?? [0];

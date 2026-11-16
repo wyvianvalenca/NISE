@@ -12,10 +12,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *   THRESHOLD  a short wait shows nothing; only past it does E03 come in
  *   MINIMUM    once visible, E03 stays at least this long, so it never flashes
  *   MAXIMUM    past it, give up and show E04 with "Tentar novamente"
+ *
+ * MAXIMUM is 15 s and not the 10 s the issue suggested, because of RNF-F11.01
+ * (Must): when the LLM does not answer within 10 s the back-end falls back to
+ * rule-based suggestions and returns them without an error. At a 10 s maximum
+ * the two deadlines collide — E04 would replace the screen exactly as those
+ * suggestions arrive, and a good answer would be thrown away. This has to stay
+ * longer than the LLM timeout plus the rule-based lookup.
  */
 export const THRESHOLD_MS = 1000;
 export const MINIMUM_MS = 600;
-export const MAXIMUM_MS = 10000;
+export const MAXIMUM_MS = 15000;
 
 export type WaitPhase =
   /** Waiting, but still too early to show anything. */
@@ -26,6 +33,14 @@ export type WaitPhase =
   | "ready"
   /** Took too long or failed: E04. */
   | "error";
+
+/**
+ * Phase and data travel together so an outcome can be applied against the phase
+ * it finds. Kept apart, a response landing after the maximum would store its
+ * data while the screen stayed on E04 — the data visible to the caller, the
+ * error visible to her.
+ */
+type WaitState<T> = { phase: WaitPhase; data: T | null };
 
 type WaitResult<T> = {
   phase: WaitPhase;
@@ -50,8 +65,7 @@ export function useLongWait<T>(
   const minimum = times.minimum ?? MINIMUM_MS;
   const maximum = times.maximum ?? MAXIMUM_MS;
 
-  const [phase, setPhase] = useState<WaitPhase>("early");
-  const [data, setData] = useState<T | null>(null);
+  const [state, setState] = useState<WaitState<T>>({ phase: "early", data: null });
   const [attempt, setAttempt] = useState(0);
   const shownAt = useRef<number | null>(null);
 
@@ -60,14 +74,27 @@ export function useLongWait<T>(
    *
    * Goes straight to E03 instead of back to `early`: she has already waited
    * once and knows this is slow, so a second blank screen would only look
-   * broken. `shownAt` starts now, so the minimum counts from this moment.
+   * broken. `shownAt` is cleared so the effect below stamps it again once E03
+   * is actually back on screen.
    */
   const retry = useCallback(() => {
-    setData(null);
-    setPhase("weaving");
-    shownAt.current = Date.now();
+    setState({ phase: "weaving", data: null });
+    shownAt.current = null;
     setAttempt((n) => n + 1);
   }, []);
+
+  /**
+   * Starts the minimum when E03 has actually been painted, not when the phase
+   * was decided. Stamping it at the state change counted the render and paint
+   * against her: measured in the browser, E03 stayed about 845 ms of a 900 ms
+   * minimum, and under load less. Declared before the fetch effect so a retry
+   * is stamped before any outcome can land.
+   */
+  useEffect(() => {
+    if (state.phase === "weaving" && shownAt.current === null) {
+      shownAt.current = Date.now();
+    }
+  }, [state.phase]);
 
   useEffect(() => {
     let active = true;
@@ -76,14 +103,15 @@ export function useLongWait<T>(
     timers.push(
       setTimeout(() => {
         if (!active) return;
-        if (shownAt.current === null) shownAt.current = Date.now();
-        setPhase((current) => (current === "early" ? "weaving" : current));
+        setState((current) => (current.phase === "early" ? { ...current, phase: "weaving" } : current));
       }, threshold),
     );
 
     timers.push(
       setTimeout(() => {
-        if (active) setPhase((current) => (current === "ready" ? current : "error"));
+        if (active) {
+          setState((current) => (current.phase === "ready" ? current : { ...current, phase: "error" }));
+        }
       }, maximum),
     );
 
@@ -115,13 +143,12 @@ export function useLongWait<T>(
       .then((value) => {
         if (!active) return;
         afterMinimum(() => {
-          setData(value);
-          setPhase((current) => (current === "error" ? current : "ready"));
+          setState((current) => (current.phase === "error" ? current : { phase: "ready", data: value }));
         });
       })
       .catch(() => {
         if (!active) return;
-        afterMinimum(() => setPhase("error"));
+        afterMinimum(() => setState((current) => ({ ...current, phase: "error" })));
       });
 
     return () => {
@@ -130,5 +157,5 @@ export function useLongWait<T>(
     };
   }, [fetcher, threshold, minimum, maximum, attempt]);
 
-  return { phase, data, retry };
+  return { phase: state.phase, data: state.data, retry };
 }

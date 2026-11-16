@@ -14,7 +14,48 @@ type Mock = {
   fail?: boolean;
 };
 
+type Marks = { e03?: number; e04?: number; ready?: number };
+
+/**
+ * Stamps, inside the page, the moment each screen first appears.
+ *
+ * Timing these from the test process measures when Playwright *polls* and sees
+ * a change, not when it happened, and that lag is unbounded under parallel
+ * workers. Reading `performance.now()` from a MutationObserver measures the
+ * thing itself, so the assertions can keep a tight margin.
+ */
+async function watchMarks(page: Page) {
+  await page.addInitScript(() => {
+    const marks: Record<string, number> = {};
+    (globalThis as unknown as { __waitMarks: Record<string, number> }).__waitMarks = marks;
+
+    const stamp = (key: string) => {
+      if (marks[key] === undefined) marks[key] = performance.now();
+    };
+    const look = () => {
+      const heading = document.querySelector("h1")?.textContent ?? "";
+      if (heading.includes("Tecendo seu filé")) stamp("e03");
+      if (heading.includes("Não foi possível carregar")) stamp("e04");
+      if (document.querySelector('[data-testid="ready"]')) stamp("ready");
+    };
+    const start = () => {
+      look();
+      new MutationObserver(look).observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    };
+    if (document.body) start();
+    else document.addEventListener("DOMContentLoaded", start);
+  });
+}
+
+const marksOf = (page: Page) =>
+  page.evaluate(() => (globalThis as unknown as { __waitMarks: Marks }).__waitMarks);
+
 async function openWith(page: Page, mock: Mock) {
+  await watchMarks(page);
   await page.addInitScript((value) => {
     globalThis.__NISE_MOCK_WAIT__ = value as typeof globalThis.__NISE_MOCK_WAIT__;
   }, mock);
@@ -55,10 +96,10 @@ test("E03 does not flash: once visible it stays for at least the minimum", async
   await openWith(page, { delaysMs: [400], threshold: 300, minimum: 900 });
 
   await expect(weaving(page)).toBeVisible();
-  const visibleAt = Date.now();
   await expect(page.getByTestId("ready")).toBeVisible();
 
-  expect(Date.now() - visibleAt).toBeGreaterThanOrEqual(700);
+  const marks = await marksOf(page);
+  expect(marks.ready! - marks.e03!).toBeGreaterThanOrEqual(850);
 });
 
 test("going past the maximum shows E04 without the sign-up block", async ({ page }) => {
@@ -101,20 +142,14 @@ test("\"Tentar novamente\" shows E03 at once, with no blank screen in between", 
   await expect(weaving(page)).toBeVisible({ timeout: 1500 });
 });
 
-/**
- * The minimum is generous on purpose: the timestamp is taken when Playwright
- * *sees* E03, which can be well after it appears. At a 4 s minimum that
- * observation lag stays far from the bound being measured; at a short minimum
- * it would be most of the sum, and the test would wobble.
- */
 test("a failed fetch shows E04, and E03 does not flash first", async ({ page }) => {
-  await openWith(page, { delaysMs: [500], fail: true, threshold: 200, minimum: 4000, maximum: 30000 });
+  await openWith(page, { delaysMs: [400], fail: true, threshold: 200, minimum: 900, maximum: 30000 });
 
   await expect(weaving(page)).toBeVisible();
-  const visibleAt = Date.now();
   await expect(failed(page)).toBeVisible();
 
-  expect(Date.now() - visibleAt).toBeGreaterThanOrEqual(2000);
+  const marks = await marksOf(page);
+  expect(marks.e04! - marks.e03!).toBeGreaterThanOrEqual(850);
 });
 
 test("E04 works with the keyboard alone, with visible focus, and does not trap it", async ({ page }) => {

@@ -21,7 +21,7 @@ export function TecendoFile({ name, cards = 5 }: TecendoFileProps) {
     <div className={styles.page}>
       <AppHeader />
 
-      <main className={styles.main} aria-busy="true">
+      <main className={styles.main}>
         <p className={styles.almost}>Quase lá, {name}</p>
         <h1 className={styles.title}>Tecendo seu filé…</h1>
         <p className={styles.lead} role="status">
@@ -29,7 +29,7 @@ export function TecendoFile({ name, cards = 5 }: TecendoFileProps) {
           escolaridade.
         </p>
 
-        <div className={styles.skeletons}>
+        <div className={styles.skeletons} aria-busy="true">
           {Array.from({ length: cards }, (_, i) => (
             <div key={i} className={styles.card} aria-hidden="true">
               <span className={styles.icon} />
