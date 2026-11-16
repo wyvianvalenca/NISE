@@ -1,10 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockInterestsApi } from "./interests-api";
 import { mockOpportunitiesApi } from "./opportunities-api";
 import { mockRatingsApi, ROBOTICS } from "./ratings-api";
 import { mockTermsApi } from "./terms-api";
 
 // #58 · A03 E aí, curtiu a oficina? As rotas dos termos (#91), da preferência
-// (#145) e da avaliação (#149) são simuladas.
+// (#145), da avaliação (#149) e dos interesses (#147) são simuladas.
+
+// Vários testes terminam na A05, que busca as listas logo que abre.
+test.beforeEach(async ({ page }) => {
+  await mockInterestsApi(page);
+});
 
 /** Passa pelas três etapas do consentimento. */
 async function finishConsent(page: Page) {

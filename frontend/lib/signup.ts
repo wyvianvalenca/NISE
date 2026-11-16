@@ -1,12 +1,10 @@
 // Etapas do cadastro da menina (épico #46), do aceite dos termos em diante.
 //
-// TEMPORÁRIO: as funções abaixo usam dados de teste guardados na memória do
-// navegador. Elas têm o formato das rotas descritas nas issues #54 e #56 e
-// serão trocadas por chamadas a /api quando essas rotas existirem. Os termos (#53),
-// as oportunidades por e-mail (#55) e a avaliação do evento (#58) já usam a API de
-// verdade, em lib/signup-api.ts. Os dados são fictícios; nada sai do navegador.
-
-import type { InterestOptions, InterestsChoice } from "./signup-api";
+// TEMPORÁRIO: o aviso dos questionários usa dados de teste guardados na memória
+// do navegador. Ele tem o formato da rota descrita na issue #54 e será trocado por
+// uma chamada a /api quando essa rota existir. Os termos (#53), as oportunidades
+// por e-mail (#55), a avaliação do evento (#58) e os interesses (#56) já usam a
+// API de verdade, em lib/signup-api.ts. Os dados são fictícios; nada sai do navegador.
 
 /** Caminho de cada tela do cadastro, na ordem do fluxo. */
 export const SIGNUP_PATHS = {
@@ -29,14 +27,11 @@ type MockState = {
   questionnaireNoticeSeenAt: string | null;
   /** As Etapas 1 a 3 do consentimento terminaram; o front não mostra elas de novo. */
   consentCompleted: boolean;
-  /** Temas e etapa de estudo do perfil (#56); null enquanto ela não respondeu. */
-  interests: InterestsChoice | null;
 };
 
 const EMPTY_STATE: MockState = {
   questionnaireNoticeSeenAt: null,
   consentCompleted: false,
-  interests: null,
 };
 
 function readState(): MockState {
@@ -79,52 +74,4 @@ export function eventDetails(startsOn: string, cityName: string | null): string 
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
   return `${WEEKDAYS[weekday]}, ${day} de ${MONTHS[month - 1]} · ${cityName ?? "Online"}`;
-}
-
-// No back, estas listas virão de uma rota, para o front e as sugestões usarem os mesmos códigos.
-const INTEREST_OPTIONS: InterestOptions = {
-  topics: [
-    { code: "programacao", label: "Programação" },
-    { code: "robotica", label: "Robótica" },
-    { code: "ia", label: "Inteligência artificial" },
-    { code: "dados", label: "Dados" },
-    { code: "ciberseguranca", label: "Cibersegurança" },
-    { code: "jogos", label: "Jogos" },
-    { code: "sites", label: "Sites e apps" },
-    { code: "design", label: "Design e criação" },
-  ],
-  stages: [
-    { code: "fundamental", label: "Ensino fundamental" },
-    { code: "medio", label: "Ensino médio" },
-    { code: "tecnico", label: "Curso técnico" },
-    { code: "graduacao", label: "Graduação" },
-    { code: "formada", label: "Já me formei" },
-  ],
-};
-
-/** Listas fechadas de temas e etapas de estudo (#56). */
-export async function getInterestOptions(): Promise<InterestOptions> {
-  return INTEREST_OPTIONS;
-}
-
-/**
- * Salva temas e etapa no perfil (#56). Recusa códigos fora das listas,
- * "me mostra de tudo" junto com temas e perfil sem temas (não há pular, D-19 / #76).
- */
-export async function saveInterests(choice: InterestsChoice): Promise<void> {
-  const topicCodes = INTEREST_OPTIONS.topics.map((topic) => topic.code);
-  const stageCodes = INTEREST_OPTIONS.stages.map((stage) => stage.code);
-  if (choice.topics.some((code) => !topicCodes.includes(code))) {
-    throw new Error("Tema desconhecido.");
-  }
-  if (choice.topics.length === 0 && !choice.everything) {
-    throw new Error("Escolha pelo menos um tema ou \"me mostra de tudo\".");
-  }
-  if (!stageCodes.includes(choice.stage)) {
-    throw new Error("Etapa de estudo desconhecida.");
-  }
-  if (choice.everything && choice.topics.length > 0) {
-    throw new Error("Escolha temas ou \"me mostra de tudo\", não os dois.");
-  }
-  saveState({ interests: choice });
 }

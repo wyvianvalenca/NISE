@@ -72,7 +72,8 @@ def test_action_checks_exist() -> None:
 
 
 def test_topic_and_stage_codes_match_the_front() -> None:
-    # Mesmos códigos de frontend/lib/signup.ts; se um mudar, o outro tem que mudar.
+    # O front tem um ícone e uma cor para cada código (TOPIC_ICONS na A05 e
+    # ThemeCode em frontend/lib/file.ts); se um mudar, o outro tem que mudar.
     assert {topic.value for topic in Topic} == {
         "programacao",
         "robotica",

@@ -1,21 +1,22 @@
 "use client";
 
 // A05 · O que te interessa? Última tela do cadastro, antes de "Por que filé?".
-// Atende RF-F10.01 (issues #56 e #76).
+// Atende RF-F10.01 (issues #56 e #76), pelas rotas da #147.
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
 import type { IconName } from "@/components/Icon";
+import { Loading } from "@/components/Loading";
 import { TopicToggle } from "@/components/TopicToggle";
-import { getInterestOptions, saveInterests, SIGNUP_PATHS } from "@/lib/signup";
-import type { InterestOptions, InterestsChoice } from "@/lib/signup-api";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { getInterestOptions, type InterestOptions, type InterestsChoice, saveInterests } from "@/lib/signup-api";
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
 
-// Ícone de cada tema. Quando os temas vierem do back, um código sem ícone aqui
-// usa o ícone genérico, em vez de quebrar a imagem.
+// Ícone de cada tema. Os temas vêm do back: um código sem ícone aqui usa o
+// ícone genérico, em vez de quebrar a imagem.
 const TOPIC_ICONS: Record<string, IconName> = {
   programacao: "topic-programacao",
   robotica: "topic-robotica",
@@ -34,17 +35,26 @@ export default function InterestsPage() {
   const [topics, setTopics] = useState<string[]>([]);
   const [everything, setEverything] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let current = true;
-    getInterestOptions().then((lists) => {
-      if (current) setOptions(lists);
-    });
-    return () => {
-      current = false;
-    };
+    const controller = new AbortController();
+    getInterestOptions(controller.signal).then(
+      (result) => {
+        if (result.ok) {
+          setOptions(result.options);
+        } else {
+          setLoadFailed(true);
+        }
+      },
+      () => {
+        // Sem rede. Se ela só saiu da página, não há o que mostrar.
+        if (!controller.signal.aborted) setLoadFailed(true);
+      },
+    );
+    return () => controller.abort();
   }, []);
 
   // Escolher um tema desmarca "me mostra de tudo", e vice-versa.
@@ -61,20 +71,30 @@ export default function InterestsPage() {
   async function save(choice: InterestsChoice) {
     setSaving(true);
     setError(null);
-    try {
-      await saveInterests(choice);
+
+    const result = await saveInterests(choice).catch(() => null);
+
+    if (result?.ok) {
       router.push(SIGNUP_PATHS.done);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não deu pra salvar. Tente de novo.");
-      setSaving(false);
+      return;
     }
+
+    setSaving(false);
+    setError("Não deu pra salvar. Tente de novo.");
   }
 
+  // Nada da tela aparece antes das listas chegarem.
   if (!options) {
     return (
-      <p className={shared.status} aria-live="polite">
-        Carregando…
-      </p>
+      <div className={shared.screen}>
+        {loadFailed ? (
+          <p className={shared.error} role="alert">
+            Não deu pra carregar os temas.
+          </p>
+        ) : (
+          <Loading />
+        )}
+      </div>
     );
   }
 

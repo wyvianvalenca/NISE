@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockInterestsApi } from "./interests-api";
 
 /**
  * A06·0 "Por que filé?" (#83). Uses the test data in lib/file-intro.ts.
@@ -113,6 +114,8 @@ test("dá pra chegar no botão pelo teclado, com foco visível (RNF-G.02)", asyn
 });
 
 test("o fim do cadastro cai na porta do filé, não num 404", async ({ page }) => {
+  // As rotas dos interesses (#147) são simuladas.
+  await mockInterestsApi(page);
   await page.goto("/cadastro/interesses");
 
   await page.getByRole("button", { name: "Programação" }).click();
