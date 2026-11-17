@@ -250,42 +250,14 @@
   margin-top: 36px;
 }
 
-.endMain,
-.endSecondary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  font-size: 15px;
-  font-weight: 500;
+/* Os dois são LinkButton; aqui só a largura total e a borda teal do Figma no secundário.
+ * O texto do secundário fica ink: teal sobre tealSoft no hover dá 4,06:1, abaixo do AA. */
+.endAction {
+  width: 100%;
 }
 
-.endMain {
-  min-height: 54px;
-  background: var(--nise-ink);
-  color: var(--nise-onPrimary);
-  font-size: 16px;
-}
-
-.endMain:hover {
-  background: var(--nise-teal);
-}
-
-.endSecondary {
-  min-height: 51px;
+.endActions .endSecondary {
   border: 1.5px solid var(--nise-teal);
-  background: var(--nise-surface);
-  color: var(--nise-teal);
-}
-
-.endSecondary:hover {
-  background: var(--nise-tealSoft);
-}
-
-.endMain:focus-visible,
-.endSecondary:focus-visible {
-  outline: 3px solid var(--nise-pink);
-  outline-offset: 2px;
 }
 
 .srOnly {

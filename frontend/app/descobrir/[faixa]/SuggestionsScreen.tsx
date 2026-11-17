@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/Button";
+import { Button, LinkButton } from "@/components/Button";
 import { Icon, type IconName } from "@/components/Icon";
 import { SuggestionCard } from "@/components/SuggestionCard";
 import { Tag, TagList } from "@/components/Tag";
@@ -32,6 +32,8 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
 
   const { state, item, position, total, choose, undo, reload } = useSuggestionDeck(band, { onChoiceConfirmed: showNotice });
   const [reasonOpen, setReasonOpen] = useState(false);
+  // O fim da faixa só puxa o foco quando ela chega lá escolhendo, não quando a página já abre nele.
+  const [decided, setDecided] = useState(false);
 
   // Depois de desfazer, o foco vai para o contador, que lê "Sugestão N de M: <título>".
   const counterRef = useRef<HTMLParagraphElement>(null);
@@ -43,6 +45,7 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
   /** Uma escolha nova substitui o aviso: só a última pode ser desfeita. */
   function decide(choice: Choice, reason?: ReasonCode) {
     setNotice(null);
+    setDecided(true);
     choose(choice, reason);
   }
 
@@ -119,7 +122,7 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
             />
           </>
         ) : (
-          <End title={title} empty={total === 0} />
+          <End title={title} empty={total === 0} takeFocus={decided} />
         )}
       </main>
 
@@ -206,11 +209,14 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
 
 /**
  * Depois da última sugestão (A06·2 · Sugestões acabaram, #166) ou faixa sem nenhuma.
- * O foco vai para o título, porque os botões de escolha saíram da tela.
+ * Depois da última escolha, o foco vai para o título, porque os botões de escolha saíram da tela.
+ * Se a página já abre aqui, o foco fica onde está.
  */
-function End({ title, empty }: { title: string; empty: boolean }) {
+function End({ title, empty, takeFocus }: { title: string; empty: boolean; takeFocus: boolean }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => titleRef.current?.focus(), []);
+  useEffect(() => {
+    if (takeFocus) titleRef.current?.focus();
+  }, [takeFocus]);
 
   return (
     <div className={styles.end}>
@@ -220,19 +226,18 @@ function End({ title, empty }: { title: string; empty: boolean }) {
       </h2>
       {!empty && <p className={styles.endText}>Por enquanto, é isso por aqui.</p>}
       <div className={styles.endActions}>
-        <Link href="/descobrir" className={styles.endMain}>
+        <LinkButton href="/descobrir" className={styles.endAction}>
           Escolher outra categoria
-        </Link>
-        {/* A tela Ver depois é a #111; até ela entrar, o link dá 404. */}
-        <Link href="/ver-depois" className={styles.endSecondary}>
+        </LinkButton>
+        <LinkButton href="/ver-depois" variant="secondary" className={`${styles.endAction} ${styles.endSecondary}`}>
           Ver o que salvei pra depois
-        </Link>
+        </LinkButton>
       </div>
     </div>
   );
 }
 
-/** Dois cards tracejados, sem nada dentro (Figma: Card / Acabaram as sugestões · Ícone). */
+/** Três cards tracejados, sem nada dentro (Figma: Card / Acabaram as sugestões · Ícone). */
 function EmptyDeck() {
   return (
     <svg className={styles.endArt} width="130" height="110" viewBox="0 0 130 110" fill="none" aria-hidden="true">

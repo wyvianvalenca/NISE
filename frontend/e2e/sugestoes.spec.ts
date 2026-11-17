@@ -157,9 +157,21 @@ test("depois da última sugestão mostra o fim da faixa com as duas saídas", as
 test("faixa sem sugestões mostra \"Por enquanto, nada marcado.\"", async ({ page }) => {
   await open(page, "grande-desafio", { count: 0 });
 
-  await expect(page.getByRole("heading", { name: "Por enquanto, nada marcado." })).toBeVisible();
+  const heading = page.getByRole("heading", { name: "Por enquanto, nada marcado." });
+  await expect(heading).toBeVisible();
   await expect(page.getByText("Por enquanto, é isso por aqui.")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Escolher outra categoria" })).toHaveAttribute("href", "/descobrir");
+  // Ela acabou de chegar: o foco não pula para o título.
+  await expect(heading).not.toBeFocused();
+});
+
+test("o link secundário do fim da faixa mantém o texto ink no hover", async ({ page }) => {
+  await open(page, "grande-desafio", { count: 0 });
+
+  const secondary = page.getByRole("link", { name: "Ver o que salvei pra depois" });
+  await secondary.hover();
+  // ink sobre tealSoft dá 9,56:1; teal ali dava 4,06:1, abaixo do AA.
+  await expect(secondary).toHaveCSS("color", "rgb(10, 59, 72)");
 });
 
 test("mostra o carregamento enquanto as sugestões chegam", async ({ page }) => {
