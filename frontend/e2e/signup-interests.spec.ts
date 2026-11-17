@@ -40,7 +40,7 @@ test("salva um tema e a etapa e segue para o filé", async ({ page }) => {
   await topic(page, "Ensino médio").click();
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
-  await expect(page).toHaveURL(/\/file$/);
+  await expect(page).toHaveURL(/\/por-que-file$/);
   expect(await savedInterests(page)).toEqual({ topics: ["robotica"], everything: false, stage: "medio" });
 });
 
@@ -53,7 +53,7 @@ test("salva vários temas", async ({ page }) => {
   await topic(page, "Graduação").click();
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
-  await expect(page).toHaveURL(/\/file$/);
+  await expect(page).toHaveURL(/\/por-que-file$/);
   expect((await savedInterests(page)).topics).toEqual(["programacao", "ia", "jogos"]);
 });
 
@@ -77,7 +77,7 @@ test("me mostra de tudo salva sem temas", async ({ page }) => {
   await topic(page, "Curso técnico").click();
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
-  await expect(page).toHaveURL(/\/file$/);
+  await expect(page).toHaveURL(/\/por-que-file$/);
   expect(await savedInterests(page)).toEqual({ topics: [], everything: true, stage: "tecnico" });
 });
 

@@ -7,19 +7,29 @@ type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   count?: number;
   /** "lg" é o tamanho do painel de motivo, no celular. */
   size?: "md" | "lg";
+  /** "filter": filtro de lista com o escolhido em ink, como no Ver depois (Figma: Filtros / Chip). */
+  variant?: "toggle" | "filter";
 };
 
 /**
  * Opção que liga e desliga (Figma: Chip / Oficina, Filtro / Todas).
  * Serve para escolher o tipo da ação e para os filtros das listas.
  */
-export function Chip({ selected, count, size = "md", className, children, ...rest }: ChipProps) {
+export function Chip({
+  selected,
+  count,
+  size = "md",
+  variant = "toggle",
+  className,
+  children,
+  ...rest
+}: ChipProps) {
   return (
     <button
       {...rest}
       type="button"
       aria-pressed={selected}
-      className={[styles.chip, styles[size], className].filter(Boolean).join(" ")}
+      className={[styles.chip, styles[size], variant === "filter" && styles.filter, className].filter(Boolean).join(" ")}
     >
       {children}
       {count !== undefined && <span className={styles.count}>{count}</span>}

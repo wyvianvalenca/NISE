@@ -17,5 +17,19 @@ class AppSettings(BaseSettings):
     database_url: str
     debug_mode: bool = False
 
+    jwt_secret: str
+    jwt_expire_minutes: int = 60 * 24 * 7
+    # True em produção, False em desenvolvimento.
+    cookie_secure: bool = True
+
+    password_reset_expire_minutes: int = 60
+
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    # Tem que ser idêntico ao cadastrado no console do Google:
+    google_redirect_uri: str = "http://localhost:3000/api/auth/google/callback"
+
+    pending_signup_expire_minutes: int = 30
+
 
 settings = AppSettings()
