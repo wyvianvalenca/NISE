@@ -158,3 +158,36 @@
   height: 52px;
   font-size: 16px;
 }
+
+/* "Me lembra um dia antes" (#186): cartão com a caixa, como no Figma. */
+.reminder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reminderOption {
+  align-items: flex-start;
+  padding: 14px 16px;
+}
+
+.reminderOption:has(input:checked) {
+  padding: 13px 15px;
+}
+
+.reminderOption > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.reminderTitle {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.reminderText {
+  color: var(--nise-muted);
+  font-size: 13px;
+}

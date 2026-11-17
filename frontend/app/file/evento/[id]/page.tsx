@@ -2,7 +2,7 @@
 
 // A06·4b · Evento: o detalhe de um evento do filé, nas versões "Próxima aventura", "Inscrita",
 // "Você foi?" e "Concluído". Atende RF-F10.13, RF-F10.14, RF-F10.15, RF-F10.23 e RN-19, RN-36
-// (issues #178, #179, #182, #183, #190 e #191).
+// (issues #178, #179, #182, #183, #190, #191, #194 e #195), e o lembrete RF-F4.12 (#186 e #187).
 // Usa os dados de teste de lib/evento.ts.
 
 import Link from "next/link";
@@ -18,6 +18,7 @@ import {
   rememberDidNotGo,
   rememberLeftToSignUp,
   removeEvent,
+  setReminder,
   SIGNED_UP_PARAM,
   signUpCheckPath,
   takeLeftToSignUp,
@@ -207,6 +208,7 @@ function Detail({ event, onChange }: DetailProps) {
         onOpenSignUp={() => rememberLeftToSignUp(event.id)}
         onMarkSignedUp={mark}
         onRemove={remove}
+        onReminderChange={async (on) => onChange(await setReminder(event.id, on))}
         onWent={went}
         onDidNotGo={didNotGo}
         saving={saving}

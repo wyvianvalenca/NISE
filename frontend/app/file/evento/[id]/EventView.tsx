@@ -1,5 +1,8 @@
-import type { Ref } from "react";
+"use client";
+
+import { useState, type Ref } from "react";
 import { Button } from "@/components/Button";
+import { Checkbox } from "@/components/Checkbox";
 import { Icon, type IconName } from "@/components/Icon";
 import { Notice } from "@/components/Notice";
 import { Tag } from "@/components/Tag";
@@ -11,6 +14,7 @@ import {
   formatEventDays,
   formatWeekdays,
   organizerLine,
+  reminderDate,
   typeIcon,
   typeLabel,
   wentQuestion,
@@ -36,6 +40,8 @@ type EventViewProps = {
   onMarkSignedUp?: () => void;
   /** "Tirar do filé". Sem ela, o botão aparece desabilitado. */
   onRemove?: () => void;
+  /** "Me lembra um dia antes" (#186). Se a promessa falha, a caixa volta a como estava. */
+  onReminderChange?: (on: boolean) => Promise<void>;
   /** "Fui!" e "Não deu", do evento de fora depois da data (#190). */
   onWent?: () => void;
   onDidNotGo?: () => void;
@@ -192,11 +198,11 @@ function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: Eve
 }
 
 /**
- * "Inscrita": quando e onde, com quanto falta para o dia, e só "Tirar do filé".
- * Ficam para depois o "Me lembra um dia antes" (#186) e o aviso "Depois do evento,
- * a gente pergunta o que você achou" (a avaliação de evento de fora ainda não existe).
+ * "Inscrita": quando e onde, com quanto falta para o dia, o lembrete opcional e "Tirar do filé".
+ * Fica para depois o aviso "Depois do evento, a gente pergunta o que você achou"
+ * (a avaliação de evento de fora ainda não existe).
  */
-function SignedUpBody({ event, onRemove, saving }: EventViewProps) {
+function SignedUpBody({ event, onRemove, onReminderChange, saving }: EventViewProps) {
   const weekdays = formatWeekdays(event.startsOn, event.endsOn);
 
   return (
@@ -213,6 +219,8 @@ function SignedUpBody({ event, onRemove, saving }: EventViewProps) {
           sub={event.city ? "O local chega no e-mail das organizadoras" : "O link chega no e-mail das organizadoras"}
         />
       </ul>
+
+      <ReminderOption event={event} onReminderChange={onReminderChange} />
 
       <div className={styles.signedUpFooter}>
         <RemoveButton onRemove={onRemove} saving={saving} />
@@ -333,6 +341,53 @@ function DetailChips({ event }: { event: EventDetail }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * "Me lembra um dia antes" (#186): começa desmarcado e some quando o dia anterior já
+ * passou ou é hoje. Se salvar falha, avisa e a caixa volta a como estava.
+ */
+function ReminderOption({ event, onReminderChange }: Pick<EventViewProps, "event" | "onReminderChange">) {
+  // A caixa é não controlada (veja o Checkbox); trocar a key recria a caixa com o valor salvo.
+  const [version, setVersion] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const day = reminderDate(event);
+  if (!day || !onReminderChange) return null;
+
+  async function change(on: boolean) {
+    setSaving(true);
+    setFailed(false);
+    try {
+      await onReminderChange?.(on);
+    } catch {
+      setFailed(true);
+      setVersion((current) => current + 1);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={styles.reminder}>
+      <Checkbox
+        key={version}
+        variant="card"
+        className={styles.reminderOption}
+        defaultChecked={event.reminder}
+        onCheckedChange={change}
+        disabled={saving}
+      >
+        <span className={styles.reminderTitle}>Me lembra um dia antes</span>
+        <span className={styles.reminderText}>Um e-mail só, no dia {day}. Opcional.</span>
+      </Checkbox>
+      {failed && (
+        <p className={shared.error} role="alert">
+          Não deu pra salvar o lembrete. Tente de novo.
+        </p>
+      )}
+    </div>
   );
 }
 
