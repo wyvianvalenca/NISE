@@ -58,20 +58,37 @@ export default function FilePage() {
   );
 }
 
+/**
+ * The whole filé. With no activity at all (A06·3 empty, D-35, RF-F10.19) the
+ * introduction paragraph becomes a dashed card and the three sections go away;
+ * the drawing and the legend stay, because the drawing already handles an empty
+ * list. Both come back on her first "Quero fazer".
+ */
 function File({ data }: { data: FileData }) {
+  const isEmpty = data.done.length + data.inProgress.length + data.next.length === 0;
+
   return (
     <>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>Seu filé</h1>
-        {/* "Por que filé?" (A06·0) é da #82; até existir, o destino dá 404. */}
         <Link href="/por-que-file" className={styles.help} aria-label="O que é o filé?">
           <Icon name="question" />
         </Link>
       </div>
-      <p className={styles.intro}>
-        Ele vai ganhando forma com o que você escolhe. Cada atividade é um quadradinho do seu filé, e quando
-        você conclui, ele é colorido. No seu ritmo, sem pressa.
-      </p>
+      {isEmpty ? (
+        <div className={styles.empty}>
+          <h2 className={styles.emptyTitle}>Seu filé tá só começando</h2>
+          <p className={styles.emptyText}>
+            Ele vai ganhando forma com o que você escolhe: cada atividade vira um quadradinho, e quando você
+            conclui, ele é colorido.
+          </p>
+        </div>
+      ) : (
+        <p className={styles.intro}>
+          Ele vai ganhando forma com o que você escolhe. Cada atividade é um quadradinho do seu filé, e quando
+          você conclui, ele é colorido. No seu ritmo, sem pressa.
+        </p>
+      )}
       <Link href="/descobrir" className={styles.discover}>
         <Icon name="sparkle" size={15} />
         Descobrir mais sugestões
@@ -81,9 +98,13 @@ function File({ data }: { data: FileData }) {
       <FileDrawing data={data} />
       <FileLegend data={data} />
 
-      <Section title="Em andamento" items={data.inProgress} startOpen />
-      <Section title="Próximas aventuras" items={data.next} startOpen />
-      <Section title="Concluídos" items={data.done} startOpen={false} />
+      {!isEmpty && (
+        <>
+          <Section title="Em andamento" items={data.inProgress} startOpen />
+          <Section title="Próximas aventuras" items={data.next} startOpen />
+          <Section title="Concluídos" items={data.done} startOpen={false} />
+        </>
+      )}
     </>
   );
 }
@@ -107,7 +128,7 @@ function Section({ title, items, startOpen }: SectionProps) {
           {title}
           <span className={styles.counter}>{items.length}</span>
         </h2>
-        {/* Seção vazia não tem o que recolher. O filé vazio ainda espera o design (#114). */}
+        {/* Seção vazia não tem o que recolher. */}
         {!empty && (
           <button
             type="button"

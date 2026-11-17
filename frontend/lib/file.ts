@@ -177,13 +177,24 @@ const MOCK_ITEMS: FileItem[] = [
   },
 ];
 
-/** O filé da menina em três grupos, pelo status (#114). */
+/**
+ * Her filé in three groups, by status (#114).
+ *
+ * Outside production, `?empty` on the URL returns no activity, so the empty A06·3
+ * can be opened from the address bar. Guarded because this reads the real URL: once
+ * the test data here is replaced by the API, an unguarded flag would let anyone
+ * blank out their own filé.
+ */
 export async function getFile(): Promise<FileData> {
   const mock = globalThis.__NISE_MOCK_FILE__ ?? {};
   if (mock.delayMs) {
     await new Promise((resolve) => setTimeout(resolve, mock.delayMs));
   }
-  const items = mock.items ?? MOCK_ITEMS;
+  const emptyByQuery =
+    process.env.NODE_ENV !== "production" &&
+    typeof location !== "undefined" &&
+    new URLSearchParams(location.search).has("empty");
+  const items = emptyByQuery ? [] : (mock.items ?? MOCK_ITEMS);
   const byStatus = (status: FileStatus) => items.filter((item) => item.status === status);
   return {
     firstName: "Alana",

@@ -58,6 +58,7 @@ O front repassa tudo que começa com `/api` para o back (`rewrites` no `frontend
 
 1. Suba o ambiente: `docker compose up -d --build`. O `--build` só é preciso na primeira vez ou quando mudar um `Dockerfile`, o `pyproject.toml` ou o `package.json`.
 1. Aplique as migrações: `docker compose exec backend uv run alembic upgrade head`
+1. Carregue os municípios do IBGE (só na primeira vez; repetir não duplica): `docker compose exec backend uv run python -m scripts.carregar_municipios`
 1. Confira:
 
 | O quê | Onde |
@@ -79,7 +80,7 @@ O código de `backend/` e `frontend/` fica montado nos containers: ao salvar, o 
 Útil para usar o debugger do editor. Pare antes o ambiente da 3.2 (`docker compose down`), senão as portas 8000 e 3000 ficam ocupadas.
 
 1. Banco: `docker compose up -d db`
-1. Back: `cd backend && uv run alembic upgrade head && uv run uvicorn app.main:app --reload`. Ele lê o `DATABASE_URL` do `.env` da raiz.
+1. Back: `cd backend && uv run alembic upgrade head && uv run uvicorn app.main:app --reload`. Ele lê o `DATABASE_URL` do `.env` da raiz. Na primeira vez, carregue também os municípios: `uv run python -m scripts.carregar_municipios`.
 1. Front: `cd frontend && pnpm install && pnpm dev`. Sem `BACKEND_URL`, ele usa `http://localhost:8000`.
 
 ### 3.4. Verificações à mão
