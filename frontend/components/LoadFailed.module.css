@@ -1,0 +1,47 @@
+/* E04 "Não foi possível carregar" (Figma 5:437). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* On desktop the screen stays narrow, like the Figma phone. */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.lead {
+  margin-top: 10px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.reassurance {
+  margin-top: 24px;
+}
+
+.reassuranceTitle {
+  color: var(--nise-ink);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.retry {
+  align-self: stretch;
+  margin-top: 28px;
+}

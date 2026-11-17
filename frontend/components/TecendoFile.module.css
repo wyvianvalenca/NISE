@@ -1,0 +1,130 @@
+/* E03 "Tecendo seu filé…" (Figma 511:988). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* On desktop the screen stays narrow, like the Figma phone. */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}
+
+.almost {
+  color: var(--nise-ink);
+  font-size: 16px;
+}
+
+.title {
+  margin-top: 10px;
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.lead {
+  margin-top: 10px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: 14px;
+  background: var(--nise-surface);
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--nise-tealSoft);
+}
+
+.lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.heading,
+.line,
+.shortLine {
+  display: block;
+  background: var(--nise-track);
+}
+
+.heading {
+  width: 130px;
+  height: 14px;
+  border-radius: 7px;
+}
+
+.line {
+  width: 190px;
+  max-width: 100%;
+  height: 10px;
+  border-radius: 5px;
+}
+
+.shortLine {
+  width: 150px;
+  max-width: 100%;
+  height: 10px;
+  border-radius: 5px;
+}
+
+/* A light pulse so the wait does not look frozen. Whoever asked for less
+ * motion in the system preference sees the screen still. */
+@media (prefers-reduced-motion: no-preference) {
+  .heading,
+  .line,
+  .shortLine {
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  .card:nth-child(2) .lines > * {
+    animation-delay: 0.1s;
+  }
+  .card:nth-child(3) .lines > * {
+    animation-delay: 0.2s;
+  }
+  .card:nth-child(4) .lines > * {
+    animation-delay: 0.3s;
+  }
+  .card:nth-child(5) .lines > * {
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
