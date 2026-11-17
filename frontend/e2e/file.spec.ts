@@ -257,3 +257,24 @@ for (const width of [360, 1366]) {
     expect(scrollWidth).toBeLessThanOrEqual(width);
   });
 }
+
+test("with no activity, shows the empty card, the link and the drawing, and hides the sections", async ({ page }) => {
+  await openWith(page, { items: [] });
+
+  await expect(page.getByRole("heading", { level: 2, name: "Seu filé tá só começando" })).toBeVisible();
+  await expect(page.getByText("cada atividade vira um quadradinho")).toBeVisible();
+  await expect(page.getByText("No seu ritmo, sem pressa.")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Descobrir mais sugestões/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: /0 concluídos, 0 em andamento e 0 próximas aventuras/ })).toBeVisible();
+  for (const name of ["Em andamento", "Próximas aventuras", "Concluídos"]) {
+    await expect(section(page, name)).toHaveCount(0);
+  }
+});
+
+test("with a single activity, the regular screen is back", async ({ page }) => {
+  await openWith(page, { items: [makeItem("a", "proxima")] });
+
+  await expect(page.getByRole("heading", { name: "Seu filé tá só começando" })).toHaveCount(0);
+  await expect(page.getByText("No seu ritmo, sem pressa.")).toBeVisible();
+  await expect(section(page, "Próximas aventuras")).toBeVisible();
+});

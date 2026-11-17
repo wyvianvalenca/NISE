@@ -53,6 +53,29 @@
   color: var(--nise-teal);
 }
 
+/* Cartão do filé vazio (Figma: Card / Filé vazio, A06·3). */
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: stretch;
+  padding: 18px 20px;
+  border: 1px dashed var(--nise-border);
+  border-radius: 16px;
+  background: var(--nise-surface);
+}
+
+.emptyTitle {
+  color: var(--nise-ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.emptyText {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
 .intro {
   color: var(--nise-muted);
   font-size: 15px;
