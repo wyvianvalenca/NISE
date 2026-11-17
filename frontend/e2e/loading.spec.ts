@@ -12,6 +12,8 @@ type Mock = {
   maximum?: number;
   reassurance?: boolean;
   fail?: boolean;
+  switchable?: boolean;
+  next?: { delayMs?: number; fail?: boolean };
 };
 
 type Marks = { e03?: number; e04?: number; ready?: number };
@@ -62,6 +64,7 @@ async function openWith(page: Page, mock: Mock) {
   await page.goto("/dev-wait");
 }
 
+const switchFetcher = (page: Page) => page.getByRole("button", { name: "switch" });
 const weaving = (page: Page) =>
   page.getByRole("heading", { name: "Tecendo seu filé…" });
 const failed = (page: Page) =>
@@ -138,7 +141,8 @@ test("\"Tentar novamente\" shows E03 at once, with no blank screen in between", 
   await expect(failed(page)).toBeVisible();
   await page.getByRole("button", { name: "Tentar novamente" }).click();
 
-  // Threshold of 5 s: were retry to go back to "early", the screen would be empty here.
+  // The bench's fetcher changes identity on a retry. Threshold of 5 s: were that to
+  // send it back to "early", the screen would be empty here.
   await expect(weaving(page)).toBeVisible({ timeout: 1500 });
 });
 
@@ -152,13 +156,103 @@ test("a failed fetch shows E04, and E03 does not flash first", async ({ page }) 
   expect(marks.e04! - marks.e03!).toBeGreaterThanOrEqual(850);
 });
 
+test("after an error, a new fetcher is not dropped: its result shows", async ({ page }) => {
+  await openWith(page, {
+    delaysMs: [400],
+    fail: true,
+    switchable: true,
+    next: { delayMs: 0 },
+    threshold: 100,
+    minimum: 100,
+    maximum: 30000,
+  });
+
+  await expect(failed(page)).toBeVisible();
+  await switchFetcher(page).click();
+
+  await expect(page.getByTestId("ready")).toContainText("pronto-1");
+  await expect(failed(page)).toHaveCount(0);
+});
+
+test("after a result, a slow new fetcher shows E03 and the old data is gone", async ({ page }) => {
+  await openWith(page, {
+    delaysMs: [0],
+    switchable: true,
+    next: { delayMs: 3000 },
+    threshold: 300,
+    maximum: 30000,
+  });
+
+  await expect(page.getByTestId("ready")).toContainText("pronto");
+  await switchFetcher(page).click();
+
+  await expect(weaving(page)).toBeVisible();
+  await expect(page.getByTestId("ready")).toHaveCount(0);
+});
+
+test("a new fetcher after an E03 holds its own minimum", async ({ page }) => {
+  await openWith(page, {
+    delaysMs: [400],
+    switchable: true,
+    next: { delayMs: 400 },
+    threshold: 300,
+    minimum: 900,
+    maximum: 30000,
+  });
+
+  await expect(weaving(page)).toBeVisible();
+  await expect(page.getByTestId("ready")).toContainText("pronto");
+
+  await page.evaluate(() => {
+    const marks = (globalThis as unknown as { __waitMarks: Record<string, number> }).__waitMarks;
+    for (const key of Object.keys(marks)) delete marks[key];
+  });
+  await switchFetcher(page).click();
+
+  await expect(weaving(page)).toBeVisible();
+  await expect(page.getByTestId("ready")).toContainText("pronto-1");
+
+  const marks = await marksOf(page);
+  expect(marks.ready! - marks.e03!).toBeGreaterThanOrEqual(850);
+});
+
+test("a new fetcher while E03 is on screen keeps E03", async ({ page }) => {
+  await openWith(page, {
+    delaysMs: [60000],
+    switchable: true,
+    next: { delayMs: 60000 },
+    threshold: 200,
+    maximum: 30000,
+  });
+
+  await expect(weaving(page)).toBeVisible();
+
+  /** Records whether the E03 heading is ever missing after the switch, however briefly. */
+  const gone = await page.evaluate(async () => {
+    const button = [...document.querySelectorAll("button")].find((b) => b.textContent === "switch");
+    let missing = false;
+    const look = () => {
+      if (!document.querySelector("h1")?.textContent?.includes("Tecendo seu filé")) missing = true;
+    };
+    const observer = new MutationObserver(look);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    button!.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    observer.disconnect();
+    return missing;
+  });
+  expect(gone).toBe(false);
+  await expect(weaving(page)).toBeVisible();
+});
+
 test("E04 works with the keyboard alone, with visible focus, and does not trap it", async ({ page }) => {
   await openWith(page, { delaysMs: [60000, 0], threshold: 100, maximum: 800 });
   await expect(failed(page)).toBeVisible();
 
   const retry = page.getByRole("button", { name: "Tentar novamente" });
-  // In dev mode the Next portal comes before the button in tab order.
-  for (let i = 0; i < 3 && !(await retry.evaluate((el) => el === document.activeElement)); i++) {
+  // In dev mode the Next dev overlay and its "Security Insight" badge (three
+  // focusable buttons) come before the button in tab order.
+  for (let i = 0; i < 10 && !(await retry.evaluate((el) => el === document.activeElement)); i++) {
     await page.keyboard.press("Tab");
   }
   await expect(retry).toBeFocused();

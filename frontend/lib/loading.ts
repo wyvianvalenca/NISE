@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *
  * The "Tecendo seu filé…" screen must not show on every wait: on a good
  * connection the girl goes straight to the result, and a flash of screen tires
- * more than it helps. Three times rule it (RNF-F10.02):
+ * more than it helps. Three times rule it (RNF-F10.02, arrives with PR #74):
  *
  *   THRESHOLD  a short wait shows nothing; only past it does E03 come in
  *   MINIMUM    once visible, E03 stays at least this long, so it never flashes
@@ -56,6 +56,12 @@ type WaitTimes = { threshold?: number; minimum?: number; maximum?: number };
  *
  * `fetcher` must be stable between renders (use `useCallback`), otherwise the
  * fetch restarts on every render.
+ *
+ * Changing `fetcher` restarts the wait from `early`, dropping a previous error
+ * or result so it never outlives the fetch that produced it. The exception is
+ * E03 already on screen: she is still waiting, so it stays, keeps its minimum
+ * counted from when it appeared, and only the maximum restarts with the new
+ * fetch. A `retry` goes straight to E03 whether or not `fetcher` changes with it.
  */
 export function useLongWait<T>(
   fetcher: () => Promise<T>,
@@ -67,19 +73,35 @@ export function useLongWait<T>(
 
   const [state, setState] = useState<WaitState<T>>({ phase: "early", data: null });
   const [attempt, setAttempt] = useState(0);
+  const [seenFetcher, setSeenFetcher] = useState(() => fetcher);
   const shownAt = useRef<number | null>(null);
+
+  /**
+   * Drops the previous outcome when `fetcher` changes, while rendering.
+   *
+   * The fetch effect restarts on a new `fetcher`, but the state it left behind
+   * would not: an `error` would swallow the new result for good, and a `ready`
+   * would keep the old data on screen with no E03. Done during render rather
+   * than in an effect, per react.dev "adjusting state when a prop changes", so
+   * the stale phase is never painted. `weaving` is kept, so E03 neither blinks
+   * out nor lets a retry fall back to a blank screen. The function is wrapped
+   * because a bare function passed to a state setter is called as an updater.
+   */
+  if (seenFetcher !== fetcher) {
+    setSeenFetcher(() => fetcher);
+    setState((current) => (current.phase === "weaving" ? current : { phase: "early", data: null }));
+  }
 
   /**
    * Restarts the fetch for E04's "Tentar novamente".
    *
    * Goes straight to E03 instead of back to `early`: she has already waited
    * once and knows this is slow, so a second blank screen would only look
-   * broken. `shownAt` is cleared so the effect below stamps it again once E03
-   * is actually back on screen.
+   * broken. `shownAt` needs no handling here: leaving `error` clears it and
+   * entering `weaving` stamps it again, in the effect below.
    */
   const retry = useCallback(() => {
     setState({ phase: "weaving", data: null });
-    shownAt.current = null;
     setAttempt((n) => n + 1);
   }, []);
 
@@ -88,10 +110,14 @@ export function useLongWait<T>(
    * was decided. Stamping it at the state change counted the render and paint
    * against her: measured in the browser, E03 stayed about 845 ms of a 900 ms
    * minimum, and under load less. Declared before the fetch effect so a retry
-   * is stamped before any outcome can land.
+   * is stamped before any outcome can land. The only owner of `shownAt`: it is
+   * cleared whenever E03 is not on screen, so the next E03 starts a fresh
+   * minimum.
    */
   useEffect(() => {
-    if (state.phase === "weaving" && shownAt.current === null) {
+    if (state.phase !== "weaving") {
+      shownAt.current = null;
+    } else if (shownAt.current === null) {
       shownAt.current = Date.now();
     }
   }, [state.phase]);
