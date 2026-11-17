@@ -127,6 +127,15 @@ test("sem nada guardado mostra o estado vazio, sem filtros nem dica", async ({ p
   await expect(page).toHaveURL("/descobrir");
 });
 
+test("Ver sugestões mantém o texto ink no hover", async ({ page }) => {
+  await openWith(page, { items: [] });
+
+  const action = page.getByRole("link", { name: "Ver sugestões" });
+  await action.hover();
+  // ink sobre tealSoft dá 9,56:1; teal ali dava 4,06:1, abaixo do AA.
+  await expect(action).toHaveCSS("color", "rgb(10, 59, 72)");
+});
+
 test("com itens mostra a lista e a dica; ao decidir o último, aparece o estado vazio", async ({ page }) => {
   await page.goto("/ver-depois");
   await expect(page.getByRole("article")).toHaveCount(4);

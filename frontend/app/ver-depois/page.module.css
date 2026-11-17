@@ -101,12 +101,14 @@
   line-height: 1.45;
 }
 
-/* Contorno teal, como as ações de apoio do Figma. */
+/*
+ * Contorno teal, como as ações de apoio do Figma. O texto fica ink, o do .secondary:
+ * teal sobre o tealSoft do hover dá 4,06:1, abaixo do AA; ink dá 9,56:1.
+ */
 .empty .emptyAction {
   width: 100%;
   height: 50px;
   border: 1.5px solid var(--nise-teal);
-  color: var(--nise-teal);
   font-weight: 700;
 }
 
