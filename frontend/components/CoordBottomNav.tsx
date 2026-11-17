@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
-import type { CoordSection } from "./CoordHeader";
 import styles from "./BottomNav.module.css";
 
-// Mesmas seções e rotas provisórias do CoordHeader.
+// Not used anywhere (D-40 dropped the coordinator's phone screens). It keeps
+// its own sections now that the CoordHeader ones changed with #210.
+type CoordSection = "visao-geral" | "acoes" | "acompanhamento" | "relatorios";
+
 const SECTIONS = [
   { key: "visao-geral", label: "Visão geral", href: "/coordenacao", icon: "dashboard" },
   { key: "acoes", label: "Ações", href: "/coordenacao/acoes", icon: "calendar" },
@@ -21,8 +23,8 @@ type CoordBottomNavProps = {
 };
 
 /**
- * Navegação da coordenadora no celular (Figma: Barra inferior · coordenação).
- * Só aparece abaixo de 768px; acima disso a navegação fica no CoordHeader.
+ * Coordinator phone navigation (Figma: Bottom bar · coordination).
+ * Only shown below 768px; above that the navigation lives in CoordHeader.
  */
 export function CoordBottomNav({ active }: CoordBottomNavProps) {
   return (
