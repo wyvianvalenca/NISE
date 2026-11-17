@@ -6,6 +6,7 @@ import {
   useId,
   useRef,
   type InputHTMLAttributes,
+  type ReactNode,
 } from "react";
 import styles from "./Field.module.css";
 
@@ -27,6 +28,11 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value"> & {
   optional?: boolean;
   /** Fires on every change, and on mount when she typed before hydration. */
   onValueChange?: (value: string) => void;
+  /**
+   * Shown right below the input, anchored to it (for example, the suggestion
+   * list of `CityField`). Position it with `position: absolute`.
+   */
+  children?: ReactNode;
 };
 
 /**
@@ -42,6 +48,7 @@ export function Field({
   className,
   onChange,
   onValueChange,
+  children,
   ...rest
 }: FieldProps) {
   const generatedId = useId();
@@ -63,18 +70,21 @@ export function Field({
         {label}
         {optional && <span className={styles.optional}> (opcional)</span>}
       </label>
-      <input
-        {...rest}
-        ref={ref}
-        id={inputId}
-        className={styles.input}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(evento) => {
-          onChange?.(evento);
-          onValueChange?.(evento.target.value);
-        }}
-      />
+      <div className={styles.control}>
+        <input
+          {...rest}
+          ref={ref}
+          id={inputId}
+          className={styles.input}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          onChange={(evento) => {
+            onChange?.(evento);
+            onValueChange?.(evento.target.value);
+          }}
+        />
+        {children}
+      </div>
       {error && (
         <p id={errorId} className={styles.error}>
           {error}

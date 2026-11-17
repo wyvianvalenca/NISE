@@ -14,6 +14,14 @@ const CIDADES = [
 
 const CONVITE = { groupName: "Rendeiras" };
 
+/** Drops accents and case, the same way the back-end compares names. */
+function comparable(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
 /** Today in Maceió, to build dates that do not depend on the machine clock. */
 function todayInMaceio() {
   const [ano, mes, dia] = new Intl.DateTimeFormat("en-CA", {
@@ -56,7 +64,14 @@ type Mocks = {
 };
 
 async function mockApi(page: Page, mocks: Mocks = {}) {
-  await page.route("**/api/cities**", (route) => route.fulfill({ json: CIDADES }));
+  // Like the real route (#50): filters by name, ignoring accents and case.
+  await page.route("**/api/cities**", (route) => {
+    const search = new URL(route.request().url()).searchParams.get("search");
+    const found = CIDADES.filter((cidade) =>
+      comparable(cidade.name).includes(comparable(search ?? "")),
+    );
+    return route.fulfill({ json: found });
+  });
 
   await page.route("**/api/invites/**", (route) =>
     mocks.conviteStatus
@@ -89,8 +104,14 @@ async function fillForm(
   await page
     .getByLabel("Data de nascimento")
     .fill(dados.nascimento ?? turnsThirteenToday());
-  await page.getByLabel("Cidade").fill("Maceió, AL");
-  await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
+  await pickCity(page, "macei", "Maceió, AL");
+}
+
+/** Types part of the name and taps the city in the suggestion list. */
+async function pickCity(page: Page, typed: string, city: string) {
+  await page.getByLabel("Cidade").fill(typed);
+  await page.getByRole("option", { name: city }).click();
+  await expect(page.getByLabel("Cidade")).toHaveValue(city);
 }
 
 test("A01: a home mostra as boas-vindas sem grupo", async ({ page }) => {
@@ -175,6 +196,34 @@ test("cidade fora da lista do IBGE não passa (RN-17)", async ({ page }) => {
   await expect(page.getByText("Escolha uma cidade da lista.")).toBeVisible();
 });
 
+test("a lista mostra a cidade com acento quando ela digita sem acento", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.goto("/criar-conta");
+
+  // The native datalist hid these options on Chrome for Android (#50).
+  await page.getByLabel("Cidade").fill("maceio");
+
+  await expect(page.getByRole("option", { name: "Maceió, AL" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Recife, PE" })).toHaveCount(0);
+});
+
+test("dá para escolher a cidade só com o teclado", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/criar-conta");
+
+  const cidade = page.getByLabel("Cidade");
+  await cidade.fill("macei");
+  await expect(page.getByRole("option", { name: "Maceió, AL" })).toBeVisible();
+  await cidade.press("ArrowDown");
+  await expect(cidade).toHaveAttribute("aria-activedescendant", /.+/);
+  await cidade.press("Enter");
+
+  await expect(cidade).toHaveValue("Maceió, AL");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+});
+
 test("o que ela digita antes de a página carregar não se perde", async ({
   page,
 }) => {
@@ -198,8 +247,7 @@ test("o que ela digita antes de a página carregar não se perde", async ({
   // And what she typed earlier counts on submit, not just on screen.
   await page.getByLabel("Senha").fill("senhaforte123");
   await page.getByLabel("Data de nascimento").fill(turnsThirteenToday());
-  await page.getByLabel("Cidade").fill("Maceió, AL");
-  await expect(page.locator("#cidades-ibge option").first()).toBeAttached();
+  await pickCity(page, "macei", "Maceió, AL");
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
