@@ -1,14 +1,14 @@
 .wrap {
   position: relative;
   width: 100%;
-  /* O quadro da ilustração no Figma: 396 x 342, mais o respiro da malha. */
+  /* The illustration frame in Figma: 396 x 342, plus the mesh's breathing room. */
   aspect-ratio: 396 / 396;
   max-height: 396px;
   overflow: hidden;
 }
 
-/* Grade de 18px em 18px, do rosa da marca, apagando nas pontas. */
-.malha {
+/* An 18px grid in the brand pink, fading out at the edges. */
+.mesh {
   position: absolute;
   inset: 0;
   background-image:
@@ -29,7 +29,7 @@
   -webkit-mask-composite: source-in;
 }
 
-.motivos {
+.motifs {
   position: absolute;
   left: 50%;
   top: 50%;

@@ -2,21 +2,20 @@ import Image from "next/image";
 import styles from "./FileIllustration.module.css";
 
 /**
- * Ilustração do filé das telas de entrada (Figma: Ilustração / Filé, nas
- * A01 e A01b). São duas camadas: a malha esmaecida ao fundo e os motivos
- * por cima.
+ * The filé illustration on the entry screens (Figma: Ilustração / Filé, on
+ * A01 and A01b). Two layers: the faded mesh behind and the motifs on top.
  *
- * No Figma a malha é desenhada linha a linha (uns 40 retângulos de 1px com
- * gradiente). Aqui ela vira uma grade em CSS com a mesma medida — 18px entre
- * linhas — e uma máscara que apaga as pontas, que é o que aqueles gradientes
- * faziam. Só os motivos são imagem de verdade.
+ * In Figma the mesh is drawn line by line — about forty 1px rectangles with a
+ * gradient. Here it becomes a CSS grid at the same spacing, 18px, with a mask
+ * that fades the edges, which is what those gradients were doing. Only the
+ * motifs are a real image.
  */
 export function FileIllustration() {
   return (
     <div className={styles.wrap} aria-hidden="true">
-      <div className={styles.malha} />
+      <div className={styles.mesh} />
       <Image
-        className={styles.motivos}
+        className={styles.motifs}
         src="/motivos-de-file.svg"
         alt=""
         width={396}

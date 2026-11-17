@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-test("abre a página de status", async ({ page }) => {
+test("opens the status page", async ({ page }) => {
   await page.goto("/status");
 
   await expect(page.getByRole("heading", { name: "Status", level: 1 })).toBeVisible();
   await expect(page.getByTestId("health")).toBeVisible();
 });
 
-test("mostra o status quando o back-end responde", async ({ page }) => {
+test("shows the status when the back-end answers", async ({ page }) => {
   await page.route("**/api/health", (route) =>
     route.fulfill({ json: { status: "ok" } }),
   );
@@ -18,11 +18,11 @@ test("mostra o status quando o back-end responde", async ({ page }) => {
   await expect(page.getByTestId("health")).toContainText("ok");
 });
 
-test("avisa quando o back-end não responde", async ({ page }) => {
+test("warns when the back-end does not answer", async ({ page }) => {
   await page.route("**/api/health", (route) => route.abort());
 
   await page.goto("/status");
 
-  await expect(page.getByTestId("health")).toHaveAttribute("data-state", "erro");
+  await expect(page.getByTestId("health")).toHaveAttribute("data-state", "error");
   await expect(page.getByTestId("health")).toContainText("fora do ar");
 });

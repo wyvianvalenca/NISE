@@ -8,22 +8,23 @@ export const metadata: Metadata = {
 };
 
 /**
- * A02c "Ainda não dá (menos de 13)" (Figma 511:593), para quem ainda não tem
- * 13 anos (RN-03, RF-F7.01).
+ * A02c "Ainda não dá (menos de 13)" (Figma 511:593), for whoever is not 13
+ * yet (RN-03, RF-F7.01).
  *
- * A tela não recebe nem mostra nada que ela preencheu: quem manda para cá já
- * descartou a sessão incompleta, e nada do que veio do Google fica guardado.
+ * The screen neither receives nor shows anything she filled in: whoever sends
+ * her here has already discarded the incomplete session, and nothing that came
+ * from Google is kept.
  *
- * O símbolo de 84px é colorido, então entra como imagem; o `Icon` viraria
- * máscara e perderia as cores. O espaço vazio no fim é o nó "Ações / A02c" do
- * Figma, que reserva 48px e não tem conteúdo nas versões M1 nem M2 — fica
- * assim até a equipe decidir o que entra ali.
+ * The 84px symbol is multi-colour, so it is an image; `Icon` would turn it
+ * into a mask and lose the colours. The empty space at the end is Figma's
+ * "Ações / A02c" node, which reserves 48px and holds nothing in either the M1
+ * or the M2 version — it stays that way until the team decides what goes in.
  */
-export default function IdadeMinima() {
+export default function MinimumAge() {
   return (
     <div className={styles.screen}>
       <Image
-        className={styles.simbolo}
+        className={styles.symbol}
         src="/icons/simbolo-nise-lg.svg"
         alt=""
         width={84}
@@ -37,14 +38,14 @@ export default function IdadeMinima() {
         se interessa por tecnologia, continua curiosa!
       </p>
 
-      <div className={styles.lista}>
+      <div className={styles.list}>
         <span className={styles.check}>
           <Icon name="check" />
         </span>
         <p className={styles.item}>Não guardamos os dados que você preencheu.</p>
       </div>
 
-      <div className={styles.acoes} />
+      <div className={styles.actions} />
     </div>
   );
 }

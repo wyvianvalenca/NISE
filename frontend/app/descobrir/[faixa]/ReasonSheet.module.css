@@ -1,0 +1,33 @@
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.send {
+  width: 100%;
+}
+
+/* "Pular": link de texto teal centralizado, com alvo de 44px (Figma: Link target / Pular). */
+.skip {
+  align-self: center;
+  min-height: 44px;
+  margin: -10px 0 -12px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.skip:hover {
+  text-decoration: underline;
+}
+
+.skip:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}

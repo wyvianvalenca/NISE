@@ -73,10 +73,7 @@ export const BANDS: Record<BandCode, BandInfo> = {
   },
 };
 
-/**
- * Para onde leva o toque numa faixa. A tela das sugestões da faixa é de outra
- * história (*Decide on suggestions one at a time*); até ela existir, o destino dá 404.
- */
+/** Para onde leva o toque numa faixa: as sugestões dela, uma de cada vez (A06·2, #103). */
 export function bandPath(code: BandCode): string {
   return `/descobrir/${code}`;
 }

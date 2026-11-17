@@ -10,8 +10,9 @@ type TagProps = {
    * "teal": contagem, como "n = 42 meninas".
    * "wait": etapa que ainda não dá para medir, como "em jan".
    * "soft": marca leve em teal, como "da última vez" no Descobrir.
+   * "chip": só borda, maior, para os dados do card de sugestão (Online, ~10 horas).
    */
-  variant?: "outline" | "surface" | "pink" | "teal" | "wait" | "soft";
+  variant?: "outline" | "surface" | "pink" | "teal" | "wait" | "soft" | "chip";
 };
 
 /** Etiqueta pequena, só para leitura (Figma: Tag, Chip das listas, Pílula). */

@@ -1,0 +1,240 @@
+/* Cabeçalho fixo; só o meio rola, como no Descobrir. */
+.page {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--nise-border);
+  background: var(--nise-surface);
+}
+
+.back {
+  gap: 6px;
+  font-size: 16px;
+}
+
+/* Pílula "Meu filé" com o contador (Figma: Action / Meu filé). */
+.filePill {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border: 1.5px solid var(--nise-teal);
+  border-radius: var(--radius-pill);
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.filePill:hover {
+  background: var(--nise-tealSoft);
+}
+
+.fileCount {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-teal);
+  color: var(--nise-onPrimary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 14px 24px 24px;
+  overflow-y: auto;
+}
+
+/*
+ * Reservado para o aviso "Desfazer" (#107): 64px como no Figma (844px de altura).
+ * Em celular mais baixo o espaço encolhe, para os três botões caberem sem rolar.
+ */
+.noticeSlot {
+  flex-shrink: 0;
+  width: 100%;
+  height: clamp(0px, calc(100dvh - 780px), 64px);
+}
+
+/*
+ * Aviso "Desfazer" (#107): por cima do espaço do aviso, logo abaixo do cabeçalho,
+ * na mesma largura do card (Figma: Aviso / Sugestão salva, 342 × 64).
+ */
+.toastArea {
+  position: absolute;
+  top: calc(68px + 14px);
+  left: 50%;
+  z-index: 1;
+  width: min(100% - 48px, 342px);
+  transform: translateX(-50%);
+}
+
+.counter {
+  color: var(--nise-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.status {
+  color: var(--nise-muted);
+}
+
+/* Escolha que não foi guardada: aparece acima do contador, sem tirar o card do lugar. */
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+  text-align: center;
+}
+
+.retry {
+  margin-top: 8px;
+}
+
+/* Baralho: o card da frente e até dois cards tortos atrás. */
+.deck {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 342px;
+  padding: 0 4px;
+}
+
+.front {
+  position: relative;
+}
+
+.backCard {
+  position: absolute;
+  inset: 7px 4px;
+  border: 1px solid var(--nise-border);
+  border-radius: 22px;
+  background: var(--nise-surface);
+}
+
+.backLeft {
+  transform: rotate(-3deg);
+}
+
+.backRight {
+  transform: rotate(2.5deg);
+}
+
+/* Os três botões (Figma: Ações). O espaço entre eles encolhe no celular estreito. */
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(8px, 6vw, 40px);
+  margin-top: 6px;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-16);
+  background: none;
+  color: var(--nise-ink);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 4px;
+}
+
+.action:disabled {
+  cursor: progress;
+}
+
+.actionCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--nise-border);
+  border-radius: 50%;
+  background: var(--nise-surface);
+}
+
+.action:first-child .actionCircle {
+  color: var(--nise-pink);
+}
+
+.action:hover:not(:disabled) .actionCircle {
+  border-color: var(--nise-teal);
+}
+
+.actionMain {
+  font-weight: 700;
+}
+
+.actionMain .actionCircle {
+  width: 76px;
+  height: 76px;
+  border: none;
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+  box-shadow: 0 8px 24px rgba(10, 59, 71, 0.1);
+}
+
+.actionMain:hover:not(:disabled) .actionCircle {
+  background: var(--nise-teal);
+}
+
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  text-align: center;
+}
+
+.endTitle {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.endText {
+  color: var(--nise-muted);
+  font-size: 15px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

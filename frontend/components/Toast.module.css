@@ -11,6 +11,7 @@
 }
 
 .icon {
+  flex-shrink: 0;
   color: var(--nise-tealLight);
 }
 
@@ -31,6 +32,11 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.action[aria-disabled="true"] {
+  opacity: 0.7;
+  cursor: progress;
 }
 
 .action:focus-visible {
