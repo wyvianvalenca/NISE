@@ -49,14 +49,16 @@ type EventViewProps = {
 function variantOf(event: EventDetail) {
   if (event.status === "concluded") return "concluded";
   if (event.status === "next") return "next";
-  // Inscrita: antes da data, a versão "Inscrita"; depois, o evento de fora pergunta "Você foi?".
+  // Inscrita: antes da data, a versão "Inscrita". Depois, o evento de fora pergunta "Você foi?"
+  // e o de grupo da NISE espera a lista de presença da coordenadora.
   if (!event.afterEvent) return "signedUp";
-  return event.group === null ? "askWent" : "signedUp";
+  return event.group === null ? "askWent" : "waitingAttendance";
 }
 
 /**
  * O detalhe do evento (Figma A06·4b): as versões "Próxima aventura", "Inscrita"
- * (A06·4b inscrita), "Você foi?" (evento de fora depois da data) e "Concluído".
+ * (A06·4b inscrita), "Você foi?" (evento de fora depois da data), "Esperando a lista
+ * de presença" (evento de grupo da NISE depois da data) e "Concluído".
  */
 export function EventView(props: EventViewProps) {
   const variant = variantOf(props.event);
@@ -66,6 +68,7 @@ export function EventView(props: EventViewProps) {
       {variant === "next" && <NextBody {...props} />}
       {variant === "signedUp" && <SignedUpBody {...props} />}
       {variant === "askWent" && <AskWentBody {...props} />}
+      {variant === "waitingAttendance" && <WaitingAttendanceBody {...props} />}
       {variant === "concluded" && <ConcludedBody {...props} />}
       {props.error && (
         <p className={shared.error} role="alert">
@@ -268,7 +271,29 @@ function AskWentBody({ event, onWent, onDidNotGo, saving }: EventViewProps) {
   );
 }
 
-/** "Concluído": ela foi. Sem botões (#190). */
+/**
+ * Evento de grupo da NISE depois da data, com ela inscrita: espera a coordenadora marcar
+ * a presença (#194). Sem botões; quem conclui é a lista de presença (RF-F10.24).
+ */
+function WaitingAttendanceBody({ event }: EventViewProps) {
+  return (
+    <ul className={styles.summary} aria-label="Quando e onde">
+      <SummaryRow
+        icon="calendar"
+        main={`Foi em ${formatEventDays(event.startsOn, event.endsOn)}`}
+        sub={formatWeekdays(event.startsOn, event.endsOn)}
+      />
+      <PlaceRow event={event} />
+      <SummaryRow
+        icon="clock"
+        main="Esperando a lista de presença"
+        sub="Quando o grupo marcar, ele vai pros concluídos do seu filé"
+      />
+    </ul>
+  );
+}
+
+/** "Concluído": ela foi (pelo "Fui!" ou pela presença marcada pelo grupo). Sem botões (#190, #194). */
 function ConcludedBody({ event }: EventViewProps) {
   return (
     <>

@@ -1,12 +1,13 @@
 // Detalhe de um evento do filé (A06·4b), issues #178 e #179, e a marca de inscrição
 // (A09 e versão "Inscrita"), issues #182 e #183, e o "Você foi?" do evento de fora,
-// issues #190 e #191.
+// issues #190 e #191, e a espera pela lista de presença do evento de grupo da NISE,
+// issues #194 e #195.
 //
 // TEMPORÁRIO: getEvent() usa dados de teste guardados na memória do navegador.
 // Os tipos seguem a rota descrita na #178 (sub-issue de back #180) e serão trocados
 // pelos tipos gerados do OpenAPI quando ela existir; a troca pela chamada a /api é a
 // #181. As rotas de marcar e desfazer são a #184 (troca na #185), e as de "Fui!" e
-// "Não deu", a #192 (troca na #193).
+// "Não deu", a #192 (troca na #193). A presença muda o status pela #196 (troca na #197).
 // Os dados são fictícios; nada sai do navegador.
 
 import type { IconName } from "@/components/Icon";
@@ -213,8 +214,10 @@ type MockEvent = Omit<
 declare global {
   var __NISE_MOCK_EVENTO__:
     | {
-        /** Status inicial de cada evento, pelo id. */
+        /** Status inicial de cada evento, pelo id. "concluded" num evento de grupo é a presença marcada. */
         status?: Record<string, EventStatus>;
+        /** Eventos que já saíram do filé, ex.: a coordenadora registrou a presença sem ela (#194). */
+        removed?: string[];
         /** "Hoje" no fuso de Maceió (AAAA-MM-DD), para as datas não dependerem do relógio. */
         today?: string;
         /** Atraso das respostas, em ms, para testar o carregamento. */
@@ -316,6 +319,24 @@ const MOCK_EVENTS: MockEvent[] = [
     prerequisites: [],
     registrationUrl: "https://example.com/eventos/palestra-mulheres-na-computacao",
   },
+  // Evento de grupo da NISE que já passou, com ela inscrita: espera a lista de presença (#194).
+  {
+    id: "oficina-de-jogos-rendeiras",
+    status: "in_progress",
+    type: "oficina",
+    topic: "Jogos",
+    band: "role-com-a-galera",
+    title: "Oficina de jogos com Scratch",
+    group: "Rendeiras do Código",
+    deadlineIn: -12,
+    startsIn: -5,
+    length: 1,
+    city: "Maceió",
+    cost: null,
+    stage: "Ensino fundamental",
+    prerequisites: ["Não precisa saber programar"],
+    registrationUrl: "https://example.com/eventos/oficina-de-jogos",
+  },
 ];
 
 // O "banco" do mock. Fica no sessionStorage para sobreviver a um recarregamento;
@@ -330,7 +351,8 @@ function load(): Saved {
   } catch {
     // Sem sessionStorage (aba anônima bloqueada etc.): começa do zero.
   }
-  return { status: globalThis.__NISE_MOCK_EVENTO__?.status ?? {}, removed: [] };
+  const mock = globalThis.__NISE_MOCK_EVENTO__;
+  return { status: mock?.status ?? {}, removed: mock?.removed ?? [] };
 }
 
 /** Hoje em Maceió (UTC−3, sem horário de verão), como o servidor vai contar. */
