@@ -17,7 +17,7 @@
   padding: 20px 24px 24px;
 }
 
-.antes {
+.before {
   color: var(--nise-ink);
   font-size: 16px;
 }
@@ -37,17 +37,17 @@
 }
 
 /* "uma ensina a outra": o coração da metáfora, no rosa da marca. */
-.destaque {
+.highlight {
   color: var(--nise-pink);
   font-weight: 700;
 }
 
-.passos {
+.steps {
   margin-top: 24px;
   list-style: none;
 }
 
-.passo {
+.step {
   position: relative;
   display: flex;
   align-items: center;
@@ -55,7 +55,7 @@
 }
 
 /* Fio tracejado ligando um passo ao outro, alinhado ao centro da ilustração. */
-.passo .fio {
+.step .thread {
   position: absolute;
   left: 49px;
   top: 100%;
@@ -65,11 +65,11 @@
   background-repeat: no-repeat;
 }
 
-.passo:not(:first-child) {
+.step:not(:first-child) {
   margin-top: 22px;
 }
 
-.texto {
+.text {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -77,18 +77,18 @@
   min-width: 0;
 }
 
-.passoTitulo {
+.stepTitle {
   color: var(--nise-ink);
   font-size: 16px;
   font-weight: 500;
 }
 
-.passoDetalhe {
+.stepDetail {
   color: var(--nise-teal);
   font-size: 14px;
 }
 
-.rodape {
+.footer {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -99,7 +99,7 @@
   padding: 10px 20px 28px;
 }
 
-.lema {
+.motto {
   color: var(--nise-teal);
   font-size: 16px;
   font-weight: 500;
@@ -111,7 +111,7 @@
   font-size: 14px;
 }
 
-.erro {
+.error {
   color: var(--nise-pink);
   font-size: 14px;
   text-align: center;
