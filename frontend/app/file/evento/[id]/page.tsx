@@ -1,7 +1,8 @@
 "use client";
 
-// A06·4b · Evento: o detalhe de um evento do filé, nas versões "Próxima aventura" e "Inscrita".
-// Atende RF-F10.13, RF-F10.14, RF-F10.15 e RN-19, RN-36 (issues #178, #179, #182 e #183).
+// A06·4b · Evento: o detalhe de um evento do filé, nas versões "Próxima aventura", "Inscrita",
+// "Você foi?" e "Concluído". Atende RF-F10.13, RF-F10.14, RF-F10.15, RF-F10.23 e RN-19, RN-36
+// (issues #178, #179, #182, #183, #190 e #191).
 // Usa os dados de teste de lib/evento.ts.
 
 import Link from "next/link";
@@ -11,13 +12,17 @@ import { Icon } from "@/components/Icon";
 import { UndoTimerToast } from "@/components/UndoTimerToast";
 import {
   getEvent,
+  markDidNotGo,
   markSignedUp,
+  markWent,
+  rememberDidNotGo,
   rememberLeftToSignUp,
   removeEvent,
   SIGNED_UP_PARAM,
   signUpCheckPath,
   takeLeftToSignUp,
   undoSignUp,
+  wentPath,
   type EventDetail,
 } from "@/lib/evento";
 import shared from "../../[id]/atividade.module.css";
@@ -89,7 +94,7 @@ function Detail({ event, onChange }: DetailProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [saving, setSaving] = useState<"mark" | "remove" | null>(null);
+  const [saving, setSaving] = useState<"mark" | "remove" | "went" | "didNotGo" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // O aviso "Você tá inscrita!" chega aberto quando ela vem da A09 com "Sim, me inscrevi".
   const cameSignedUp = searchParams.has(SIGNED_UP_PARAM) && event.status === "in_progress";
@@ -153,6 +158,33 @@ function Detail({ event, onChange }: DetailProps) {
     }
   }
 
+  // "Fui!": conclui e abre a celebração (A06·5). Sem "Desfazer": o evento já passou (#190).
+  async function went() {
+    setSaving("went");
+    setError(null);
+    try {
+      await markWent(event.id);
+      router.push(wentPath(event.id));
+    } catch {
+      setError(SEND_ERROR);
+      setSaving(null);
+    }
+  }
+
+  // "Não deu": tira do filé e volta para ele, onde o aviso com "Desfazer" aparece (#190).
+  async function didNotGo() {
+    setSaving("didNotGo");
+    setError(null);
+    try {
+      await markDidNotGo(event.id);
+      rememberDidNotGo(event);
+      router.push(FILE_PATH);
+    } catch {
+      setError(SEND_ERROR);
+      setSaving(null);
+    }
+  }
+
   async function undo() {
     if (toast?.status === "undoing") return;
     setToast({ status: "undoing" });
@@ -175,6 +207,8 @@ function Detail({ event, onChange }: DetailProps) {
         onOpenSignUp={() => rememberLeftToSignUp(event.id)}
         onMarkSignedUp={mark}
         onRemove={remove}
+        onWent={went}
+        onDidNotGo={didNotGo}
         saving={saving}
         error={error}
       />

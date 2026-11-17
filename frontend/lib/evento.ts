@@ -1,10 +1,12 @@
 // Detalhe de um evento do filé (A06·4b), issues #178 e #179, e a marca de inscrição
-// (A09 e versão "Inscrita"), issues #182 e #183.
+// (A09 e versão "Inscrita"), issues #182 e #183, e o "Você foi?" do evento de fora,
+// issues #190 e #191.
 //
 // TEMPORÁRIO: getEvent() usa dados de teste guardados na memória do navegador.
 // Os tipos seguem a rota descrita na #178 (sub-issue de back #180) e serão trocados
 // pelos tipos gerados do OpenAPI quando ela existir; a troca pela chamada a /api é a
-// #181. As rotas de marcar e desfazer são a #184, e a troca pela chamada a /api, a #185.
+// #181. As rotas de marcar e desfazer são a #184 (troca na #185), e as de "Fui!" e
+// "Não deu", a #192 (troca na #193).
 // Os dados são fictícios; nada sai do navegador.
 
 import type { IconName } from "@/components/Icon";
@@ -44,6 +46,8 @@ export type EventDetail = {
   registrationsOpen: boolean;
   /** Dias até o primeiro dia do evento, contados no servidor; 0 é hoje. */
   daysUntilStart: number;
+  /** true depois do fim do último dia do evento, no horário de Maceió (calculado no servidor, #190). */
+  afterEvent: boolean;
   /** null quando é gratuito: aparece "Grátis". */
   cost: string | null;
   /** Etapa mínima, ex.: "Ensino médio"; null se não há. */
@@ -70,6 +74,22 @@ const TYPE_LABELS: Record<EventType, string> = {
 /** Nome do tipo para o selo, ex.: "Hackathon". */
 export function typeLabel(type: EventType): string {
   return TYPE_LABELS[type];
+}
+
+// "Você foi ao hackathon?": cada tipo com o seu artigo.
+const TYPE_WITH_ARTICLE: Record<EventType, string> = {
+  oficina: "à oficina",
+  palestra: "à palestra",
+  minicurso: "ao minicurso",
+  hackathon: "ao hackathon",
+  visita: "à visita",
+  acolhimento: "ao acolhimento",
+  outro: "ao evento",
+};
+
+/** A pergunta do evento de fora depois da data (#190), ex.: "Você foi ao hackathon?". */
+export function wentQuestion(type: EventType): string {
+  return `Você foi ${TYPE_WITH_ARTICLE[type]}?`;
 }
 
 /** Ícone do selo e do quadrado. Só o hackathon tem ícone próprio no Figma. */
@@ -179,7 +199,7 @@ export function daysUntilText(days: number): string {
 /** Um evento de teste, com as datas em dias a partir de hoje, para não envelhecer. */
 type MockEvent = Omit<
   EventDetail,
-  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen" | "daysUntilStart"
+  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen" | "daysUntilStart" | "afterEvent"
 > & {
   /** Dias de hoje até o fim das inscrições; negativo se já fecharam. */
   deadlineIn: number;
@@ -207,7 +227,7 @@ declare global {
     | undefined;
 }
 
-// O hackathon tem o mesmo id do item do filé (#115). Os outros dois só abrem pelo endereço.
+// O hackathon tem o mesmo id do item do filé (#115). Os outros só abrem pelo endereço.
 const MOCK_EVENTS: MockEvent[] = [
   {
     id: "hackathon-meninas-na-tecnologia",
@@ -260,6 +280,42 @@ const MOCK_EVENTS: MockEvent[] = [
     prerequisites: ["Ter um computador"],
     registrationUrl: "https://example.com/eventos/minicurso-de-sites",
   },
+  // Evento de fora que já passou, com ela inscrita: pergunta "Você foi?" (#190).
+  {
+    id: "hackathon-cidades-inteligentes",
+    status: "in_progress",
+    type: "hackathon",
+    topic: "Programação",
+    band: "grande-desafio",
+    title: "Hackathon Cidades Inteligentes",
+    group: null,
+    deadlineIn: -20,
+    startsIn: -8,
+    length: 2,
+    city: "Maceió",
+    cost: null,
+    stage: "Ensino médio",
+    prerequisites: ["Não precisa saber programar"],
+    registrationUrl: "https://example.com/eventos/hackathon-cidades-inteligentes",
+  },
+  // Evento de fora em que ela foi: versão "Concluído".
+  {
+    id: "palestra-mulheres-na-computacao",
+    status: "concluded",
+    type: "palestra",
+    topic: "Inteligência artificial",
+    band: "role-com-a-galera",
+    title: "Palestra Mulheres na Computação",
+    group: null,
+    deadlineIn: -40,
+    startsIn: -30,
+    length: 1,
+    city: "Maceió",
+    cost: null,
+    stage: "Ensino fundamental",
+    prerequisites: [],
+    registrationUrl: "https://example.com/eventos/palestra-mulheres-na-computacao",
+  },
 ];
 
 // O "banco" do mock. Fica no sessionStorage para sobreviver a um recarregamento;
@@ -305,6 +361,7 @@ function toDetail(mock: MockEvent, status: EventStatus): EventDetail {
     daysLeft: Math.max(deadlineIn, 0),
     registrationsOpen: deadlineIn >= 0,
     daysUntilStart: Math.max(startsIn, 0),
+    afterEvent: startsIn + length - 1 < 0,
   };
 }
 
@@ -378,6 +435,70 @@ export async function removeEvent(id: string): Promise<void> {
   }
   const saved = load();
   save({ ...saved, removed: [...saved.removed, id] });
+}
+
+/** "Fui!" e "Não deu" só valem para evento de fora, depois da data, com ela inscrita (#190). */
+async function getAskedEvent(id: string): Promise<EventDetail> {
+  const event = await getEvent(id);
+  fail("failUpdates");
+  if (!event || event.group !== null || !event.afterEvent || event.status !== "in_progress") {
+    throw new Error("Esse evento não pergunta se ela foi");
+  }
+  return event;
+}
+
+/** "Fui!": em andamento → concluído; o quadradinho dele fica colorido no filé (RF-F10.23). */
+export async function markWent(id: string): Promise<EventDetail> {
+  const event = await getAskedEvent(id);
+  setStatus(id, "concluded");
+  return { ...event, status: "concluded" };
+}
+
+/** "Não deu": o evento sai do filé; o "Desfazer" do aviso traz de volta (RF-F10.23). */
+export async function markDidNotGo(id: string): Promise<void> {
+  await getAskedEvent(id);
+  const saved = load();
+  save({ ...saved, removed: [...saved.removed, id] });
+}
+
+/** "Desfazer" do "Não deu": o evento volta, ainda "Inscrita", para a pergunta "Você foi?". */
+export async function undoDidNotGo(id: string): Promise<void> {
+  await wait();
+  fail("failUndo");
+  const saved = load();
+  if (!saved.removed.includes(id)) {
+    throw new Error("Esse evento não saiu do filé");
+  }
+  save({ ...saved, removed: saved.removed.filter((removed) => removed !== id) });
+}
+
+// O aviso do "Não deu" aparece no filé, para onde ela vai. Guarda id e título para ele (#191).
+const DID_NOT_GO_KEY = "nise-evento-nao-deu";
+
+export type DidNotGo = { id: string; title: string };
+
+export function rememberDidNotGo(event: DidNotGo) {
+  try {
+    sessionStorage.setItem(DID_NOT_GO_KEY, JSON.stringify({ id: event.id, title: event.title }));
+  } catch {
+    // Sem sessionStorage o aviso não aparece; o evento já saiu do filé.
+  }
+}
+
+/** Devolve o evento do último "Não deu" e esquece, para o aviso aparecer uma vez só. */
+export function takeDidNotGo(): DidNotGo | null {
+  try {
+    const saved = sessionStorage.getItem(DID_NOT_GO_KEY);
+    sessionStorage.removeItem(DID_NOT_GO_KEY);
+    return saved ? (JSON.parse(saved) as DidNotGo) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Endereço da celebração depois de "Fui!" (A06·5). */
+export function wentPath(id: string): string {
+  return `${eventPath(id)}/concluido`;
 }
 
 // ---------------------------------------------------------------------------

@@ -5,7 +5,8 @@
 // Usa os dados de teste de lib/file.ts até a rota da #114 existir.
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useId, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
@@ -13,6 +14,8 @@ import { FileDrawing } from "@/components/FileDrawing";
 import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
+import { UndoTimerToast } from "@/components/UndoTimerToast";
+import { eventPath, takeDidNotGo, undoDidNotGo, type DidNotGo } from "@/lib/evento";
 import { getFile, type FileData, type FileItem } from "@/lib/file";
 import styles from "./page.module.css";
 
@@ -54,7 +57,53 @@ export default function FilePage() {
       </div>
 
       <BottomNav active="file" />
+      <DidNotGoToast />
     </div>
+  );
+}
+
+/**
+ * Aviso depois do "Não deu" de um evento de fora (#190): o evento saiu do filé, e o
+ * "Desfazer" o traz de volta para a pergunta "Você foi?". Some sozinho ou quando ela sai da tela.
+ */
+function DidNotGoToast() {
+  const router = useRouter();
+  const [notice, setNotice] = useState<DidNotGo | null>(null);
+  const [status, setStatus] = useState<"ready" | "undoing" | "error">("ready");
+
+  // Lido depois da montagem, como os dados do filé: no servidor não há sessionStorage.
+  useEffect(() => {
+    let current = true;
+    Promise.resolve().then(() => {
+      // Só lê (e esquece) se este efeito ainda vale: no modo estrito o React monta duas vezes.
+      if (!current) return;
+      const event = takeDidNotGo();
+      if (event) setNotice(event);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const close = useCallback(() => setNotice(null), []);
+
+  if (!notice) return null;
+
+  async function undo() {
+    if (!notice || status === "undoing") return;
+    setStatus("undoing");
+    try {
+      await undoDidNotGo(notice.id);
+      router.push(eventPath(notice.id));
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <UndoTimerToast status={status} errorText="Não deu pra desfazer." onUndo={undo} onTimeout={close}>
+      <strong>{notice.title}</strong> saiu do seu filé.
+    </UndoTimerToast>
   );
 }
 
