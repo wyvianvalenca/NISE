@@ -105,7 +105,8 @@ test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluí
   await section(page, "Próximas aventuras")
     .getByRole("link", { name: "Abrir: Hackathon Meninas na Tecnologia" })
     .click();
-  await expect(page).toHaveURL(/\/file\/hackathon-meninas-na-tecnologia$/);
+  // O hackathon é evento: abre a A06·4b (#178), não o detalhe da atividade.
+  await expect(page).toHaveURL(/\/file\/evento\/hackathon-meninas-na-tecnologia$/);
 });
 
 test("cada item fica na seção do seu status", async ({ page }) => {
