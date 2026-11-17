@@ -3,6 +3,11 @@
  * vem de ../../[id]/atividade.module.css, para as duas telas do filé ficarem iguais.
  */
 
+/* Ocupa a altura toda, para o "Tirar do filé" da versão "Inscrita" ficar no pé da tela. */
+.main {
+  min-height: 100%;
+}
+
 /* Cartão "Quando e onde". */
 .summary {
   display: flex;
@@ -78,8 +83,48 @@
   text-decoration: underline;
 }
 
-/* Até a #182 os dois botões ficam desenhados, mas apagados. */
+/* Desabilitado (sem a ação, ou enquanto outra é enviada): apagado. */
 .footer button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Versão "Inscrita": tema à esquerda e o selo "Inscrita" à direita. */
+.topicRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Texto ink em vez de teal, pelo contraste (4,06:1 no Figma), como o selo "Em andamento". */
+.signedUpChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1.5px solid var(--nise-teal);
+  border-radius: var(--radius-pill);
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.signedUpChip > span {
+  color: var(--nise-teal);
+}
+
+/* "Tirar do filé" centralizado no pé da tela. */
+.signedUpFooter {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.signedUpFooter > button {
+  align-self: auto;
 }
