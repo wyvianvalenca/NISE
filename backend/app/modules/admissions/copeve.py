@@ -43,6 +43,13 @@ class ReportUnavailableError(Exception):
     """A COPEVE não respondeu ou respondeu com erro."""
 
 
+# Sem charset no cabeçalho nem na página, o relatório antigo vinha em Latin-1;
+# cp1252 lê Latin-1 e também as aspas e travessões do Windows.
+_FALLBACK_ENCODING = "cp1252"
+_META_CHARSET = re.compile(rb"""<meta[^>]+charset=["']?([\w-]+)""", re.IGNORECASE)
+_HEADER_CHARSET = re.compile(r"""charset=["']?([\w-]+)""", re.IGNORECASE)
+
+
 @dataclass(frozen=True)
 class CalledName:
     """Um nome chamado na lista, já normalizado (RF-F31.03), e a chamada."""
@@ -68,20 +75,36 @@ class _TableParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "tr":
+            # Um <tr> sem o </tr> da linha anterior: fecha a anterior.
+            self._close_row()
             self._row = []
         elif tag in ("td", "th") and self._row is not None:
+            self._close_cell()
             self._cell = []
         elif tag == "br" and self._cell is not None:
             # "Inscrição<br>no ENEM": sem o espaço, as palavras grudam.
             self._cell.append(" ")
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ("td", "th") and self._row is not None and self._cell is not None:
+        if tag in ("td", "th"):
+            self._close_cell()
+        elif tag in ("tr", "table"):
+            self._close_row()
+
+    def close(self) -> None:
+        super().close()
+        self._close_row()
+
+    def _close_cell(self) -> None:
+        if self._row is not None and self._cell is not None:
             self._row.append(" ".join("".join(self._cell).split()))
-            self._cell = None
-        elif tag == "tr" and self._row is not None:
+        self._cell = None
+
+    def _close_row(self) -> None:
+        self._close_cell()
+        if self._row is not None:
             self.rows.append(self._row)
-            self._row = None
+        self._row = None
 
     def handle_data(self, data: str) -> None:
         if self._cell is not None:
@@ -106,6 +129,7 @@ def parse_report(html: str) -> Report:
     """
     parser = _TableParser()
     parser.feed(html)
+    parser.close()
 
     header_index = next(
         (
@@ -124,7 +148,13 @@ def parse_report(html: str) -> Report:
     status_col = _column(header, "status")
     width = len(header)
 
-    rows = [row for row in parser.rows[header_index + 1 :] if len(row) == width]
+    body = parser.rows[header_index + 1 :]
+    rows = [row for row in body if len(row) == width]
+    # As linhas de uma célula vazia do fim da tabela não contam. Se sobrou
+    # alguma linha com conteúdo e nenhuma tem a largura do cabeçalho, a tabela
+    # mudou: melhor parar que terminar a rodada sem achar ninguém.
+    if not rows and any("".join(row) for row in body):
+        raise ReportFormatError
     called = [
         CalledName(name=normalize_search(row[name_col]), call=row[call_col])
         for row in rows
@@ -153,4 +183,24 @@ async def fetch_report(
     except httpx2.HTTPError as error:
         raise ReportUnavailableError from error
 
-    return response.text
+    return decode_page(response.content, response.headers.get("content-type", ""))
+
+
+def decode_page(content: bytes, content_type: str) -> str:
+    """Decodifica a página pelo charset do cabeçalho, depois pelo <meta>.
+
+    Sem nenhum dos dois, usa cp1252. Ler um Latin-1 como UTF-8 troca "ª" por
+    U+FFFD, a chamada deixa de ter o formato esperado e toda rodada para.
+    """
+    candidates: list[str] = []
+    if header := _HEADER_CHARSET.search(content_type):
+        candidates.append(header.group(1))
+    if meta := _META_CHARSET.search(content[:4096]):
+        candidates.append(meta.group(1).decode("ascii"))
+
+    for encoding in candidates:
+        try:
+            return content.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return content.decode(_FALLBACK_ENCODING, errors="replace")

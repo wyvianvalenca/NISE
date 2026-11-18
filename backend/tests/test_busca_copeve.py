@@ -20,14 +20,25 @@ from app.modules.admissions.copeve import (
     TARGET_COURSES,
     ReportFormatError,
     ReportUnavailableError,
+    fetch_report,
     parse_report,
 )
-from app.modules.admissions.models import ListSearchRun, OfficialList
-from app.modules.admissions.search import run_copeve_round
+from app.modules.admissions.models import ListMatch, ListSearchRun, OfficialList
+from app.modules.admissions.search import (
+    RoundRunningError,
+    SearchDisabledError,
+    run_copeve_round,
+)
 from tests.copeve_ficticio import HEADER, Linha, nome_ficticio, pagina
 
 FIXTURE = Path(__file__).parent / "fixtures" / "copeve_resultado_ficticio.html"
 CHAMADA = "1ª chamada"
+
+
+@pytest.fixture(autouse=True)
+def busca_ligada(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Os testes rodam a busca ligada; o padrão desligado tem teste próprio."""
+    monkeypatch.setattr(settings, "list_search_enabled", True)
 
 
 # --- Leitura da página -------------------------------------------------------
@@ -82,6 +93,69 @@ def test_chamada_num_formato_novo_para_a_rodada() -> None:
         parse_report(pagina([Linha(nome_ficticio(0), "Chamada extra")]))
 
 
+def test_linhas_sem_fechamento_sao_lidas() -> None:
+    # Sem </tr> nem </td>: cada <tr> fecha a linha anterior, e </table> a última.
+    html = pagina([Linha(nome_ficticio(0), CHAMADA), Linha(nome_ficticio(1))])
+    html = html.replace("</tr>", "").replace("</td>", "")
+
+    report = parse_report(html)
+
+    assert report.rows_read == 2
+    assert [item.name for item in report.called] == ["ana clara lima da ficticia"]
+
+
+def test_linha_com_uma_celula_a_mais_para_a_rodada() -> None:
+    # Nenhuma linha com a largura do cabeçalho: antes dava 0 linhas e nenhum
+    # erro, e a rodada terminava sem achar ninguém (RNF-F31.04).
+    html = pagina([Linha(nome_ficticio(0), CHAMADA)]).replace(
+        "</td></tr><tr><td></td>", "</td><td>extra</td></tr><tr><td></td>", 1
+    )
+
+    with pytest.raises(ReportFormatError):
+        parse_report(html)
+
+
+def test_pagina_sem_ninguem_nao_e_erro() -> None:
+    assert parse_report(pagina([])).rows_read == 0
+
+
+async def test_pagina_latin_1_sem_charset_no_cabecalho() -> None:
+    # Sem charset no Content-Type nem <meta>: "ª" em Latin-1 é o byte 0xAA.
+    html = pagina([Linha(nome_ficticio(0), CHAMADA)]).replace(
+        '<meta charset="UTF-8">', ""
+    )
+
+    def responder(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200, content=html.encode("latin-1"), headers={"Content-Type": "text/html"}
+        )
+
+    cliente = httpx2.AsyncClient(transport=httpx2.MockTransport(responder))
+    texto = await fetch_report(cliente, "http://copeve.teste", 6, 0)
+
+    assert [item.call for item in parse_report(texto).called] == [CHAMADA]
+
+
+@pytest.mark.parametrize(
+    ("cabecalho", "meta"),
+    [("text/html; charset=ISO-8859-1", ""), ("text/html", '<meta charset="latin1">')],
+)
+async def test_charset_do_cabecalho_ou_da_pagina(cabecalho: str, meta: str) -> None:
+    html = pagina([Linha(nome_ficticio(0), CHAMADA)]).replace(
+        '<meta charset="UTF-8">', meta
+    )
+
+    def responder(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200, content=html.encode("latin-1"), headers={"Content-Type": cabecalho}
+        )
+
+    cliente = httpx2.AsyncClient(transport=httpx2.MockTransport(responder))
+    texto = await fetch_report(cliente, "http://copeve.teste", 6, 0)
+
+    assert "1ª chamada" in texto
+
+
 # --- Rodada ------------------------------------------------------------------
 
 
@@ -102,9 +176,11 @@ def _cliente(
     return httpx2.AsyncClient(transport=httpx2.MockTransport(responder)), pedidos
 
 
-def _sessao(meninas: list[tuple[int, str]]) -> AsyncMock:
+def _sessao(meninas: list[tuple[int, str]], lock: bool = True) -> AsyncMock:
     sessao_falsa = AsyncMock()
     sessao_falsa.execute.return_value = meninas
+    # O único scalar fora de _official_list e create_match é o do lock.
+    sessao_falsa.scalar.return_value = lock
     sessao_falsa.add = MagicMock()
     return sessao_falsa
 
@@ -260,6 +336,84 @@ async def test_formato_novo_no_meio_da_rodada_para_sem_gravar_nada(
     sessao_falsa.commit.assert_not_called()
 
 
+async def test_desligada_por_padrao_nao_consulta_nada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # RN-20: até o Comitê de Ética aprovar, nenhum nome é comparado.
+    monkeypatch.undo()
+    assert settings.list_search_enabled is False
+    cliente, pedidos = _cliente()
+    sessao_falsa = _sessao([(1, nome_ficticio(0))])
+
+    with pytest.raises(SearchDisabledError):
+        await run_copeve_round(sessao_falsa, cliente, [6], _sem_espera)
+
+    assert pedidos == []
+    sessao_falsa.execute.assert_not_called()
+
+
+async def test_solta_a_conexao_antes_das_consultas() -> None:
+    # As 54 consultas levam uns 2 minutos: a transação de leitura fecha antes.
+    cliente, pedidos = _cliente()
+    sessao_falsa = _sessao([])
+    rollback_antes: list[int] = []
+    sessao_falsa.rollback.side_effect = lambda: rollback_antes.append(len(pedidos))
+
+    await run_copeve_round(sessao_falsa, cliente, [6], _sem_espera)
+
+    assert rollback_antes == [0]
+
+
+async def test_outra_rodada_gravando_para_sem_gravar_nada(
+    indicios: list[tuple[int, str, str]],
+) -> None:
+    cliente, _ = _cliente(lambda c, d: pagina([Linha(nome_ficticio(0), CHAMADA)]))
+    sessao_falsa = _sessao([(1, nome_ficticio(0))], lock=False)
+
+    with pytest.raises(RoundRunningError):
+        await run_copeve_round(sessao_falsa, cliente, [6], _sem_espera)
+
+    statement = sessao_falsa.scalar.call_args.args[0]
+    assert "pg_try_advisory_xact_lock" in str(statement)
+    assert indicios == []
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_not_called()
+
+
+async def test_mesma_menina_nos_cursos_6_e_7_gera_um_indicio_so() -> None:
+    # Sem trocar _official_list nem create_match: a gravação de verdade, com
+    # uma sessão falsa que guarda o que foi adicionado.
+    adicionados: list[object] = []
+    sessao_falsa = _sessao([(1, nome_ficticio(0))])
+    sessao_falsa.add = MagicMock(side_effect=adicionados.append)
+
+    async def scalar(statement: object) -> object:
+        sql = str(statement)
+        if "pg_try_advisory_xact_lock" in sql:
+            return True
+        if "FROM official_lists" in sql:
+            # A chamada já criada nesta rodada, se houver.
+            return next((o for o in adicionados if isinstance(o, OfficialList)), None)
+        # A checagem de create_match: sem autoflush, o indício pendente não
+        # aparece aqui, como numa sessão com autoflush desligado.
+        return False
+
+    async def flush() -> None:
+        for item in adicionados:
+            if isinstance(item, OfficialList) and item.id is None:
+                item.id = 1
+
+    sessao_falsa.scalar.side_effect = scalar
+    sessao_falsa.flush.side_effect = flush
+    cliente, _ = _cliente(lambda c, d: pagina([Linha(nome_ficticio(0), CHAMADA)]))
+
+    resultado = await run_copeve_round(sessao_falsa, cliente, [6, 7], _sem_espera)
+
+    indicios_gravados = [o for o in adicionados if isinstance(o, ListMatch)]
+    assert len(indicios_gravados) == 1
+    assert resultado.matches_created == 1
+
+
 async def test_compara_so_meninas_com_conta() -> None:
     sessao_falsa = _sessao([])
     cliente, _ = _cliente()
@@ -350,6 +504,22 @@ async def test_rodada_que_para_responde_502(
     assert response.status_code == 502
 
 
+@pytest.mark.parametrize("erro", [SearchDisabledError, RoundRunningError])
+async def test_rodada_desligada_ou_ocupada_responde_409(
+    segredo: str, monkeypatch: pytest.MonkeyPatch, erro: type[Exception]
+) -> None:
+    from app.modules.admissions import cron
+
+    async def rodada(*_: object) -> search.RoundResult:
+        raise erro
+
+    monkeypatch.setattr(cron, "run_copeve_round", rodada)
+
+    response = await _cron("/api/cron/official-lists", f"Bearer {segredo}")
+
+    assert response.status_code == 409
+
+
 async def test_rotina_diaria_apaga_vencidos(
     segredo: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -412,8 +582,35 @@ async def test_script_para_sem_gravar_quando_a_pagina_muda(
         async def __aexit__(self, *_: object) -> None:
             return None
 
+    engine_falso = AsyncMock()
     monkeypatch.setattr(buscar_listas, "run_copeve_round", rodada)
     monkeypatch.setattr(buscar_listas, "SessionLocal", Sessao)
+    monkeypatch.setattr(buscar_listas, "engine", engine_falso)
 
     assert await buscar_listas.main([6], expire=False) == 1
     assert "Nada foi gravado" in capsys.readouterr().out
+    # Fecha as conexões também quando para.
+    engine_falso.dispose.assert_awaited_once()
+
+
+async def test_script_com_a_busca_desligada_nao_consulta(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from scripts import buscar_listas
+
+    async def rodada(*_: object) -> search.RoundResult:
+        raise SearchDisabledError
+
+    class Sessao:
+        async def __aenter__(self) -> object:
+            return object()
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+    monkeypatch.setattr(buscar_listas, "run_copeve_round", rodada)
+    monkeypatch.setattr(buscar_listas, "SessionLocal", Sessao)
+    monkeypatch.setattr(buscar_listas, "engine", AsyncMock())
+
+    assert await buscar_listas.main([6], expire=False) == 1
+    assert "desligada" in capsys.readouterr().out

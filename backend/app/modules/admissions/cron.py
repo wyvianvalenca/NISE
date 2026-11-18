@@ -19,7 +19,11 @@ from app.modules.admissions.copeve import (
     ReportFormatError,
     ReportUnavailableError,
 )
-from app.modules.admissions.search import run_copeve_round
+from app.modules.admissions.search import (
+    RoundRunningError,
+    SearchDisabledError,
+    run_copeve_round,
+)
 from app.modules.admissions.service import delete_expired_matches
 
 logger = logging.getLogger(__name__)
@@ -65,6 +69,14 @@ async def official_lists_round(
             logger.warning("Busca na COPEVE parou: %s", type(error).__name__)
             raise HTTPException(
                 status.HTTP_502_BAD_GATEWAY, "A busca parou sem gravar nada"
+            ) from None
+        except SearchDisabledError:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "A busca em listas oficiais está desligada"
+            ) from None
+        except RoundRunningError:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Outra rodada está gravando agora"
             ) from None
 
     return {

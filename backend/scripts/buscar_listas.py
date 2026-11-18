@@ -24,14 +24,35 @@ from app.modules.admissions.copeve import (
     ReportFormatError,
     ReportUnavailableError,
 )
-from app.modules.admissions.search import run_copeve_round
+from app.modules.admissions.search import (
+    RoundRunningError,
+    SearchDisabledError,
+    run_copeve_round,
+)
 from app.modules.admissions.service import delete_expired_matches
 
 
 async def main(courses: list[int], expire: bool) -> int:
+    try:
+        return await _run(courses, expire)
+    finally:
+        # Também quando a rodada para: sem isto, o processo deixa conexões abertas.
+        await engine.dispose()
+
+
+async def _run(courses: list[int], expire: bool) -> int:
     async with SessionLocal() as session, httpx2.AsyncClient(timeout=30) as client:
         try:
             result = await run_copeve_round(session, client, courses)
+        except SearchDisabledError:
+            print(
+                "A busca está desligada (LIST_SEARCH_ENABLED) até o Comitê de"
+                " Ética aprovar. Nada foi consultado."
+            )
+            return 1
+        except RoundRunningError:
+            print("Outra rodada está gravando agora. Nada foi gravado.")
+            return 1
         except ReportFormatError:
             print("A página da COPEVE mudou de formato. Nada foi gravado.")
             return 1
@@ -48,7 +69,6 @@ async def main(courses: list[int], expire: bool) -> int:
                 f"Indícios vencidos apagados: {await delete_expired_matches(session)}"
             )
 
-    await engine.dispose()
     return 0
 
 

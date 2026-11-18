@@ -34,8 +34,12 @@ class AppSettings(BaseSettings):
     # Endereço público do app, para os links dos e-mails.
     app_url: str = "http://localhost:3000"
 
-    # Busca em listas oficiais (F31, #273). O endereço muda a cada edição do
-    # Sisu: é configuração, não código (RF-F31.08).
+    # Busca em listas oficiais (F31, #273). Desligada até o Comitê de Ética
+    # aprovar a comparação com listas oficiais nos termos ou num consentimento
+    # (RN-20). Desligada, a rota agendada e o script param sem consultar nada.
+    list_search_enabled: bool = False
+    # O endereço muda a cada edição do Sisu: é configuração, não código
+    # (RF-F31.08).
     copeve_report_url: str = (
         "https://copeve.ufal.br/concursos/sisu_2026/resultado_curso.php"
     )
