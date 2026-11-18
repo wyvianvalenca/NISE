@@ -9,13 +9,11 @@ check, downgrade e um roteiro com dados fictícios), como descrito no PR.
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from sqlalchemy import Table, UniqueConstraint
 from sqlalchemy.dialects import postgresql
 
 from app.db.base import Base
 from app.modules.actions.models import Action  # noqa: F401 (registra as tabelas)
-from app.modules.admissions.exceptions import MatchForbiddenError
 from app.modules.admissions.models import (
     AdmissionOrigin,
     CourseLevel,
@@ -29,13 +27,11 @@ from app.modules.admissions.service import (
     delete_expired_matches,
     dismiss_match,
     girl_has_open_match,
-    match_flag_for_coordinator,
     open_matches_of_girl,
 )
 from app.modules.cities.models import City  # noqa: F401
 from app.modules.girls.models import Girl  # noqa: F401
 from app.modules.groups.models import Group  # noqa: F401
-from app.users.models import Role, User
 
 TABLES = Base.metadata.tables
 AGORA = datetime(2026, 11, 18, 12, 0, tzinfo=UTC)
@@ -216,54 +212,6 @@ async def test_flag_diz_so_se_existe_indicio_aberto() -> None:
     sql = _sql(sessao_falsa)
     assert sql.startswith("SELECT EXISTS")
     assert "list_matches.answered_at IS NULL" in sql
-
-
-# --- O fato para a coordenadora (RF-F5.10) ----------------------------------
-
-
-def _usuaria(papel: Role) -> User:
-    return User(id=10, email="conta@exemplo.test", name="Conta", role=papel)
-
-
-async def test_coordenadora_do_grupo_recebe_so_sim_ou_nao() -> None:
-    # 1º scalar: ela coordena um grupo da menina; 2º: existe indício aberto.
-    sessao_falsa = _sessao()
-    sessao_falsa.scalar.side_effect = [True, True]
-
-    resposta = await match_flag_for_coordinator(
-        sessao_falsa, _usuaria(Role.COORDINATOR), 3, AGORA
-    )
-
-    assert resposta is True
-    sessao_falsa.scalars.assert_not_called()
-
-
-async def test_coordenadora_de_outro_grupo_nao_recebe_nada() -> None:
-    sessao_falsa = _sessao(scalar=False)
-
-    with pytest.raises(MatchForbiddenError):
-        await match_flag_for_coordinator(
-            sessao_falsa, _usuaria(Role.COORDINATOR), 3, AGORA
-        )
-
-    # Parou na permissão: nem chegou a perguntar pelo indício.
-    assert sessao_falsa.scalar.await_count == 1
-    sql = _sql(sessao_falsa)
-    assert "group_coordinators.user_id = 10" in sql
-    assert "girls.origin_group_id" in sql
-    # Sem o filtro da menina, um grupo com uma convidada daria o fato de todas.
-    assert "girls.id = 3" in sql
-    assert "participations.girl_id = 3" in sql
-
-
-@pytest.mark.parametrize("papel", [Role.NISE_TEAM, Role.GIRL])
-async def test_curadoria_e_menina_nao_recebem_o_fato(papel: Role) -> None:
-    sessao_falsa = _sessao(scalar=True)
-
-    with pytest.raises(MatchForbiddenError):
-        await match_flag_for_coordinator(sessao_falsa, _usuaria(papel), 3, AGORA)
-
-    sessao_falsa.scalar.assert_not_called()
 
 
 # --- Apagar ------------------------------------------------------------------

@@ -5,7 +5,6 @@ from sqlalchemy import ColumnElement, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.admissions.exceptions import MatchForbiddenError
 from app.modules.admissions.models import (
     Approval,
     CourseLevel,
@@ -14,8 +13,6 @@ from app.modules.admissions.models import (
     ListMatch,
     OfficialList,
 )
-from app.modules.admissions.permissions import coordinates_a_group_of_girl
-from app.users.models import Role, User
 
 # Sem resposta nesse prazo, o indício é apagado (RF-F31.06).
 MATCH_DAYS = 30
@@ -106,31 +103,18 @@ async def open_matches_of_girl(
 async def girl_has_open_match(
     session: AsyncSession, girl_id: int, now: datetime | None = None
 ) -> bool:
-    """Diz só se existe um indício sem resposta, sem nenhum detalhe dele."""
+    """Diz só se existe um indício sem resposta, sem nenhum detalhe dele.
+
+    Para as rotas da própria menina, como a agenda (#266). A coordenadora não
+    recebe nem isto até a menina confirmar (RN-21, RNF-F31.02): o fato da C5
+    (RF-F5.10) fica para o PR do painel dela (#137), depois da validação do M7.
+    """
     if now is None:
         now = datetime.now(UTC)
 
     statement = select(exists().where(ListMatch.girl_id == girl_id, _is_open(now)))
 
     return bool(await session.scalar(statement))
-
-
-async def match_flag_for_coordinator(
-    session: AsyncSession, user: User, girl_id: int, now: datetime | None = None
-) -> bool:
-    """O fato que a C5 (#137) mostra como "Possível aprovação" (RF-F5.10).
-
-    Só a coordenadora de um grupo da menina recebe a resposta, e ela é só um
-    sim ou não. Qualquer outra conta, inclusive a curadoria, leva
-    MatchForbiddenError (RNF-F31.02, RNF-G.03).
-    """
-    if user.role != Role.COORDINATOR:
-        raise MatchForbiddenError
-
-    if not await coordinates_a_group_of_girl(session, user.id, girl_id):
-        raise MatchForbiddenError
-
-    return await girl_has_open_match(session, girl_id, now)
 
 
 async def dismiss_match(session: AsyncSession, match: ListMatch) -> None:
