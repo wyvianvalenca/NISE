@@ -190,7 +190,10 @@ async def test_chamada_sem_flush_ganha_id_antes_da_checagem() -> None:
     await create_match(sessao_falsa, 3, nova, "x", CourseLevel.GRADUACAO, AGORA)
 
     sessao_falsa.flush.assert_awaited_once()
-    assert "list_matches.official_list_id = 8" in _sql(sessao_falsa)
+    # A checagem é o primeiro scalar; depois vem a fila do e-mail (#275).
+    checagem = sessao_falsa.scalar.call_args_list[0].args[0]
+    sql = str(checagem.compile(compile_kwargs={"literal_binds": True}))
+    assert "list_matches.official_list_id = 8" in sql
 
 
 # --- Ler o indício -----------------------------------------------------------

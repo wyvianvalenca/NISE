@@ -287,10 +287,11 @@ async def test_conta_apagada_antes_do_envio_nao_envia() -> None:
     "erro",
     [
         EmailNotConfiguredError(),
-        smtplib.SMTPRecipientsRefused({ENDERECO: (550, b"no such user")}),
+        smtplib.SMTPServerDisconnected("caiu"),
+        smtplib.SMTPAuthenticationError(535, b"senha errada"),
         OSError("rede fora"),
     ],
-    ids=["sem-configuracao", "smtp", "rede"],
+    ids=["sem-configuracao", "desconectado", "login", "rede"],
 )
 async def test_falha_no_envio_para_e_deixa_na_fila(erro: Exception) -> None:
     primeiro = MatchEmail(id=1, list_match_id=11)
@@ -310,6 +311,36 @@ async def test_falha_no_envio_para_e_deixa_na_fila(erro: Exception) -> None:
     assert primeiro.sent_at is None and primeiro.dropped_at is None
     sessao_falsa.rollback.assert_awaited_once()
     sessao_falsa.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [
+        smtplib.SMTPRecipientsRefused({ENDERECO: (550, b"no such user")}),
+        smtplib.SMTPNotSupportedError("SMTPUTF8"),
+    ],
+    ids=["destinatario-recusado", "nao-suportado"],
+)
+async def test_erro_de_um_destinatario_descarta_e_segue(erro: Exception) -> None:
+    # Antes, um endereço recusado parava a rotina, e a próxima pegava o mesmo
+    # e-mail primeiro: a fila travava para sempre atrás dele.
+    primeiro = MatchEmail(id=1, list_match_id=11)
+    segundo = MatchEmail(id=2, list_match_id=12)
+    sessao_falsa = _sessao_envio(
+        [
+            (primeiro, _indicio(), _usuaria(aceitou=True)),
+            (segundo, _indicio(id=12), _usuaria(aceitou=True)),
+        ]
+    )
+    enviar = MagicMock(side_effect=[erro, None])
+
+    resultado = await send_match_emails(sessao_falsa, enviar, AGORA)
+
+    assert resultado == SendResult(sent=1, dropped=1, stopped=False)
+    assert enviar.call_count == 2
+    assert primeiro.dropped_at == AGORA and primeiro.sent_at is None
+    assert segundo.sent_at == AGORA
+    assert sessao_falsa.commit.await_count == 2
 
 
 # --- Texto e logs --------------------------------------------------------------
@@ -491,5 +522,6 @@ def test_nenhuma_rota_publica_devolve_o_e_mail() -> None:
     # outra rota fala do e-mail do indício (RNF-F31.02).
     caminhos = app.openapi()["paths"]
 
-    assert not [c for c in caminhos if "email" in c.replace("-", "")]
+    # Outras rotas falam de e-mail (cadastro, preferência), mas nenhuma do indício.
+    assert not [c for c in caminhos if "email" in c.replace("-", "") and "match" in c]
     assert match_email.SUBJECT not in str(app.openapi())

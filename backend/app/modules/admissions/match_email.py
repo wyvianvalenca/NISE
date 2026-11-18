@@ -47,6 +47,19 @@ Pra não receber mais, desligue essa opção no app.
 Equipe NISE
 """
 
+# Erros que valem para todos os e-mails, não para um: sem conexão, sem login
+# ou sem envio configurado. Neles a rotina para e o resto fica na fila. Os
+# outros erros do SMTP (endereço recusado, por exemplo) são de um e-mail só,
+# que é descartado para não travar a fila para sempre.
+_STOP_ERRORS: tuple[type[Exception], ...] = (
+    EmailNotConfiguredError,
+    smtplib.SMTPServerDisconnected,
+    smtplib.SMTPConnectError,
+    smtplib.SMTPHeloError,
+    smtplib.SMTPAuthenticationError,
+    smtplib.SMTPSenderRefused,
+)
+
 # Quantos e-mails uma chamada da rotina tenta enviar, para caber no limite de
 # duração da hospedagem. O que sobrar vai na próxima.
 BATCH_SIZE = 50
@@ -109,6 +122,15 @@ def _still_wanted(match: ListMatch, user: User, now: datetime) -> bool:
     return accepts_opportunity_emails(user)
 
 
+async def _stop(
+    session: AsyncSession, error: Exception, sent: int, dropped: int
+) -> SendResult:
+    # A mensagem do erro pode trazer o endereço: só o tipo vai ao log.
+    await session.rollback()
+    logger.warning("Envio dos e-mails de indício parou: %s", type(error).__name__)
+    return SendResult(sent=sent, dropped=dropped, stopped=True)
+
+
 async def send_match_emails(
     session: AsyncSession,
     send: Callable[[str, str, str], None] = send_email,
@@ -118,8 +140,10 @@ async def send_match_emails(
 
     Cada e-mail é travado (FOR UPDATE SKIP LOCKED) e gravado como enviado ou
     descartado no seu próprio commit: duas rotinas ao mesmo tempo nunca pegam o
-    mesmo, e uma rotina rodando de novo não reenvia (RNF-F4.01). Se o envio
-    falhar ou não estiver configurado, para e deixa o resto na fila.
+    mesmo, e uma rotina rodando de novo não reenvia (RNF-F4.01). Um erro de um
+    destinatário só (endereço recusado, por exemplo) descarta aquele e-mail e
+    segue para o próximo. Sem conexão, sem login ou sem envio configurado, para
+    e deixa o resto na fila.
     """
     if now is None:
         now = datetime.now(UTC)
@@ -162,13 +186,19 @@ async def send_match_emails(
 
         try:
             await asyncio.to_thread(send, user.email, SUBJECT, match_email_body())
-        except (EmailNotConfiguredError, smtplib.SMTPException, OSError) as error:
+        except _STOP_ERRORS as error:
+            return await _stop(session, error, sent, dropped)
+        except smtplib.SMTPException as error:
+            # Um e-mail só: descarta e segue, para não travar quem vem depois.
             # A mensagem do erro pode trazer o endereço: só o tipo vai ao log.
-            await session.rollback()
-            logger.warning(
-                "Envio dos e-mails de indício parou: %s", type(error).__name__
-            )
-            return SendResult(sent=sent, dropped=dropped, stopped=True)
+            logger.warning("E-mail de indício descartado: %s", type(error).__name__)
+            email.dropped_at = now
+            await session.commit()
+            dropped += 1
+            continue
+        except OSError as error:
+            # Rede fora. Vem depois do SMTPException, que também é um OSError.
+            return await _stop(session, error, sent, dropped)
 
         email.sent_at = now
         await session.commit()
