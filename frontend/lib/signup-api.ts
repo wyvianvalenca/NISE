@@ -1,10 +1,15 @@
 /**
- * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51).
+ * Sign-up routes, for Google (H2, #52) and for email and password (H1, #51),
+ * and the steps after them: terms (#53), opportunities by email (#55), the
+ * event rating (#58) and the interests (#56).
  *
- * HEADS UP: the back-end for these routes does not exist yet. It comes with
- * the enablers #48 (data model), #50 (IBGE city list) and #68 (accounts and
- * session). The paths and names below are this story's proposed contract — if
- * they change in the back-end PR, only this file changes.
+ * All of them exist in the back-end: the city search (#50), the invite and
+ * the email sign-up (#99), and the Google routes under /api/auth/signup/
+ * (pending, complete, discard, #100).
+ *
+ * The types below are written by hand, matching the back-end's OpenAPI
+ * (/docs on the FastAPI server): the team chose not to add a type generator
+ * for now.
  *
  * The incomplete Google session lives in an httpOnly cookie set by the
  * callback, so nothing here stores a name, an email or a birth date.
@@ -14,6 +19,12 @@
 export type PendingSignup = {
   name: string;
   email: string;
+  /**
+   * The invite code she started with, or `null` when she came on her own.
+   * "Usar outra conta" goes back to Google with it, so the origin stays right
+   * (RN-29).
+   */
+  invite: string | null;
 };
 
 /** A municipality from the IBGE list (RN-17: no free text). */
@@ -26,7 +37,16 @@ export type City = {
 
 export type CompleteResult =
   | { ok: true; nextStep: "terms" }
-  | { ok: false; reason: "under_13" | "invalid_city" | "failed" };
+  | {
+      ok: false;
+      reason:
+        | "under_13"
+        | "invalid_birth_date"
+        | "invalid_city"
+        | "invalid_invite"
+        | "account_exists"
+        | "failed";
+    };
 
 /**
  * Where to send her when she taps "Criar conta com o Google".
@@ -82,10 +102,15 @@ export async function searchCities(
   return (await response.json()) as City[];
 }
 
-/** Completes the profile and returns the next step of the sign-up. */
+/**
+ * Completes the profile and returns the next step of the sign-up. The
+ * response already opens the session.
+ */
 export async function completeSignup(data: {
   birthDate: string;
   cityId: string;
+  /** True after the screen said the invite expired and she went on without it. */
+  withoutInvite?: boolean;
 }): Promise<CompleteResult> {
   const response = await fetch("/api/auth/signup/complete", {
     method: "POST",
@@ -97,17 +122,27 @@ export async function completeSignup(data: {
     return { ok: true, nextStep: "terms" };
   }
 
-  // The server runs the age rule and the city check again (RNF-G.03).
+  // The account was created meanwhile, in another tab for example.
+  if (response.status === 409) {
+    return { ok: false, reason: "account_exists" };
+  }
+
+  // The server checks age, city and invite again (RNF-G.03), answering
+  // 422 {"error": "<code>"}.
   if (response.status === 422) {
     const body = (await response.json().catch(() => null)) as {
       error?: string;
     } | null;
 
-    if (body?.error === "under_13") {
-      return { ok: false, reason: "under_13" };
-    }
-    if (body?.error === "invalid_city") {
-      return { ok: false, reason: "invalid_city" };
+    const known: Record<string, CompleteResult> = {
+      under_13: { ok: false, reason: "under_13" },
+      invalid_birth_date: { ok: false, reason: "invalid_birth_date" },
+      invalid_city: { ok: false, reason: "invalid_city" },
+      invalid_invite: { ok: false, reason: "invalid_invite" },
+    };
+    const match = body?.error ? known[body.error] : undefined;
+    if (match) {
+      return match;
     }
   }
 
@@ -161,10 +196,12 @@ export type EmailSignupResult =
       ok: false;
       reason:
         | "under_13"
+        | "invalid_birth_date"
         | "invalid_email"
         | "account_exists"
         | "invalid_city"
         | "password_too_short"
+        | "invalid_invite"
         | "failed";
     };
 
@@ -212,7 +249,8 @@ export async function createEmailAccount(
     return { ok: false, reason: "account_exists" };
   }
 
-  // The server checks age, email format, password and city again (RNF-G.03).
+  // The server checks age, email format, password, city and invite again
+  // (RNF-G.03), answering 422 {"error": "<code>"}.
   if (response.status === 422) {
     const body = (await response.json().catch(() => null)) as {
       error?: string;
@@ -220,14 +258,357 @@ export async function createEmailAccount(
 
     const known: Record<string, EmailSignupResult> = {
       under_13: { ok: false, reason: "under_13" },
+      invalid_birth_date: { ok: false, reason: "invalid_birth_date" },
       invalid_email: { ok: false, reason: "invalid_email" },
       invalid_city: { ok: false, reason: "invalid_city" },
       password_too_short: { ok: false, reason: "password_too_short" },
+      invalid_invite: { ok: false, reason: "invalid_invite" },
     };
     const match = body?.error ? known[body.error] : undefined;
     if (match) {
       return match;
     }
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+// ---------------------------------------------------------------------------
+// Terms of use and privacy policy (A04·1, #53)
+// ---------------------------------------------------------------------------
+
+/**
+ * The terms version in force, shown on the full terms page (/termos).
+ * Must match CURRENT_TERMS_VERSION in backend/app/modules/consents/service.py.
+ * The final text does not exist yet (D-01).
+ */
+export const TERMS_VERSION = "0.1-rascunho";
+
+/** Where she came from: a group's invite (flow M1) or on her own (M2). */
+export type Origin = { kind: "group"; groupName: string } | { kind: "self" };
+
+export type TermsSummary = {
+  /** The version she is reading; it goes back to the server on acceptance. */
+  version: string;
+  /**
+   * Decides who the screen says sees her data: the group's leadership
+   * (RN-01) or only overall numbers (RN-04).
+   */
+  origin: Origin;
+};
+
+/**
+ * Why a terms route said no to her session (401): she has no session, or
+ * only Google's incomplete sign-up, which still lacks birth date and city (#52).
+ */
+export type SessionProblem = "unauthenticated" | "incomplete_signup";
+
+/**
+ * Where a sign-up step sends her when a route says no to her session: the home
+ * page, where she logs in or creates an account, or A02b, when she still has
+ * to complete the Google sign-up (#52).
+ */
+export const WITHOUT_SESSION: Record<SessionProblem, string> = {
+  unauthenticated: "/",
+  incomplete_signup: "/cadastro/google",
+};
+
+export type TermsSummaryResult =
+  | { ok: true; summary: TermsSummary }
+  | { ok: false; reason: SessionProblem | "failed" };
+
+export type AcceptTermsResult =
+  | { ok: true }
+  | { ok: false; reason: SessionProblem | "outdated" | "failed" };
+
+/** Reads the 401 body: get_current_user answers "Cadastro incompleto" in that case. */
+async function sessionProblem(response: Response): Promise<SessionProblem> {
+  const body = (await response.json().catch(() => null)) as {
+    detail?: string;
+  } | null;
+
+  return body?.detail === "Cadastro incompleto"
+    ? "incomplete_signup"
+    : "unauthenticated";
+}
+
+/** The terms version and the logged-in girl's origin, for A04·1 (#53). */
+export async function getTermsSummary(
+  signal?: AbortSignal,
+): Promise<TermsSummaryResult> {
+  const response = await fetch("/api/terms/summary", { signal });
+
+  if (response.ok) {
+    return { ok: true, summary: (await response.json()) as TermsSummary };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/**
+ * Records that she accepted `version` (RF-F7.05). The server only takes the
+ * current version, and accepting again does not create another record.
+ */
+export async function acceptTerms(version: string): Promise<AcceptTermsResult> {
+  const response = await fetch("/api/terms/acceptance", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ version }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  // She read a version that has changed since: 409 {"error": "terms_outdated"}.
+  if (response.status === 409) {
+    return { ok: false, reason: "outdated" };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+// ---------------------------------------------------------------------------
+// Opportunities by email (A04·2, #55)
+// ---------------------------------------------------------------------------
+
+export type OpportunityEmailsResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: SessionProblem | "terms_not_accepted" | "failed";
+    };
+
+/**
+ * Turns "opportunities by email" on or off (RF-F7.06). It only stores the
+ * preference: sending those emails is not part of this story. Choosing the
+ * same answer again is fine.
+ */
+export async function setOpportunityEmails(
+  enabled: boolean,
+): Promise<OpportunityEmailsResult> {
+  const response = await fetch("/api/preferences/opportunity-emails", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // The route needs the current terms accepted: 403 {"error":
+  // "terms_not_accepted"}. Any other 403 (not a girl's account) is a failure.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/** Reads the {"error": "<code>"} body the back-end answers with, if any. */
+async function errorCode(response: Response): Promise<string | undefined> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+
+  return body?.error;
+}
+
+// ---------------------------------------------------------------------------
+// Event rating (A03, #58)
+// ---------------------------------------------------------------------------
+
+/**
+ * The action she can rate: she took part, her attendance was recorded and she
+ * has not rated it yet.
+ */
+export type PendingRating = {
+  actionId: number;
+  actionName: string;
+  /** The group that ran the action, e.g. "Rendeiras do Código". */
+  groupName: string;
+  /** The action's first day, as an ISO date ("2026-10-11"). */
+  startsOn: string;
+  /** `null` when the action was online. */
+  cityName: string | null;
+};
+
+export type PendingRatingResult =
+  | {
+      ok: true;
+      /** `null` when there is nothing to rate (flow M2): the screen is skipped. */
+      pending: PendingRating | null;
+    }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+export type SubmitRatingResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | SessionProblem
+        | "terms_not_accepted"
+        | "nothing_to_rate"
+        | "already_rated"
+        | "failed";
+    };
+
+/** The action to rate on A03, or `null` when there is none (#58). */
+export async function getPendingRating(
+  signal?: AbortSignal,
+): Promise<PendingRatingResult> {
+  const response = await fetch("/api/ratings/pending", { signal });
+
+  if (response.ok) {
+    return {
+      ok: true,
+      pending: (await response.json()) as PendingRating | null,
+    };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // A03 comes after the terms: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/**
+ * Stores the 1–5 score and the optional comment (RF-F4.03a). "Agora não"
+ * does not call this: the rating stays pending for the email link.
+ */
+export async function submitRating(
+  actionId: number,
+  score: number,
+  comment: string,
+): Promise<SubmitRatingResult> {
+  const response = await fetch("/api/ratings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // An empty comment goes as none.
+    body: JSON.stringify({ actionId, score, comment: comment.trim() || null }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  const code = await errorCode(response);
+
+  if (response.status === 403 && code === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+  // She has no participation with attendance in that action anymore.
+  if (response.status === 404 && code === "nothing_to_rate") {
+    return { ok: false, reason: "nothing_to_rate" };
+  }
+  // She already rated it, in another tab for example.
+  if (response.status === 409 && code === "already_rated") {
+    return { ok: false, reason: "already_rated" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+// ---------------------------------------------------------------------------
+// Interests (A05, #56)
+// ---------------------------------------------------------------------------
+
+/** An option from a closed list: the code goes to the back-end and the suggestions. */
+export type Option = { code: string; label: string };
+
+/** The topics and the study stages, in the order the screen shows them. */
+export type InterestOptions = { topics: Option[]; stages: Option[] };
+
+export type InterestsChoice = {
+  /** Topic codes; empty when she picks "me mostra de tudo". */
+  topics: string[];
+  /** "Ainda não sei, me mostra de tudo". Never comes with topics. */
+  everything: boolean;
+  /** Study stage code. */
+  stage: string;
+};
+
+export type InterestOptionsResult =
+  | { ok: true; options: InterestOptions }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+export type SaveInterestsResult =
+  | { ok: true }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+/**
+ * The closed lists of topics and study stages (RF-F10.01). They come from the
+ * back-end, so the screen and the suggestions use the same codes.
+ */
+export async function getInterestOptions(
+  signal?: AbortSignal,
+): Promise<InterestOptionsResult> {
+  const response = await fetch("/api/profile/interest-options", { signal });
+
+  if (response.ok) {
+    return { ok: true, options: (await response.json()) as InterestOptions };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // A05 comes after the terms: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/**
+ * Stores the topics and the study stage in her profile (RF-F10.01). Choosing
+ * again replaces what was stored. The server refuses, with 422, codes outside
+ * the lists, "me mostra de tudo" together with topics and no topic at all
+ * (D-19: there is no "Pular por agora"); the screen never sends those.
+ */
+export async function saveInterests(
+  choice: InterestsChoice,
+): Promise<SaveInterestsResult> {
+  const response = await fetch("/api/profile/interests", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(choice),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
   }
 
   return { ok: false, reason: "failed" };

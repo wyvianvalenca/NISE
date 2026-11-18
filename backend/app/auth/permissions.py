@@ -3,7 +3,11 @@ from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
 
-from app.auth.utils import decode_access_token
+from app.auth.utils import (
+    PendingSignup,
+    decode_access_token,
+    decode_pending_signup_token,
+)
 from app.config import settings
 from app.db.engine import AsyncSessionDep
 from app.users.models import Role, User
@@ -12,6 +16,8 @@ SESSION_COOKIE = "nise_session"
 PENDING_SIGNUP_COOKIE = "nise_cadastro_pendente"
 GOOGLE_STATE_COOKIE = "nise_google_state"
 GOOGLE_VERIFIER_COOKIE = "nise_google_verifier"
+# Código do convite com que ela foi ao Google (RN-29). Fica junto do state.
+GOOGLE_INVITE_COOKIE = "nise_google_convite"
 GOOGLE_COOKIE_PATH = "/api/auth/google"
 
 GOOGLE_COOKIE_MAX_AGE = 10 * 60
@@ -20,18 +26,23 @@ GOOGLE_COOKIE_MAX_AGE = 10 * 60
 async def get_current_user(
     session: AsyncSessionDep,
     token: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
+    pending: Annotated[str | None, Cookie(alias=PENDING_SIGNUP_COOKIE)] = None,
 ) -> User:
     unauthorized = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não autenticada",
     )
 
-    if token is None:
-        raise unauthorized
-
-    user_id = decode_access_token(token)
+    user_id = decode_access_token(token) if token else None
 
     if user_id is None:
+        # Quem só tem o cadastro pendente do Google ainda não tem conta nem
+        # sessão: a resposta diz que falta completar o cadastro (A02b, #52).
+        if pending and decode_pending_signup_token(pending) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Cadastro incompleto",
+            )
         raise unauthorized
 
     user = await session.get(User, user_id)
@@ -43,6 +54,28 @@ async def get_current_user(
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+async def get_pending_signup(
+    token: Annotated[str | None, Cookie(alias=PENDING_SIGNUP_COOKIE)] = None,
+) -> PendingSignup:
+    """O cadastro pelo Google que espera a data de nascimento e a cidade (#52).
+
+    Não é uma sessão: com ele, ela só vê o próprio nome e e-mail e completa ou
+    descarta o cadastro.
+    """
+    pending = decode_pending_signup_token(token) if token else None
+
+    if pending is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum cadastro pendente",
+        )
+
+    return pending
+
+
+PendingSignupDep = Annotated[PendingSignup, Depends(get_pending_signup)]
 
 
 def set_session_cookie(response: Response, token: str) -> None:
@@ -90,12 +123,13 @@ def clear_pending_signup_cookie(response: Response) -> None:
 
 
 def set_google_oauth_cookies(
-    response: Response, state: str, code_verifier: str
+    response: Response, state: str, code_verifier: str, invite: str | None = None
 ) -> None:
-    for key, value in (
-        (GOOGLE_STATE_COOKIE, state),
-        (GOOGLE_VERIFIER_COOKIE, code_verifier),
-    ):
+    cookies = [(GOOGLE_STATE_COOKIE, state), (GOOGLE_VERIFIER_COOKIE, code_verifier)]
+    if invite is not None:
+        cookies.append((GOOGLE_INVITE_COOKIE, invite))
+
+    for key, value in cookies:
         response.set_cookie(
             key=key,
             value=value,
@@ -106,16 +140,24 @@ def set_google_oauth_cookies(
             samesite="lax",
         )
 
+    # Sem convite agora, um que sobrou de uma tentativa anterior não vale.
+    if invite is None:
+        _delete_google_cookie(response, GOOGLE_INVITE_COOKIE)
+
+
+def _delete_google_cookie(response: Response, key: str) -> None:
+    response.delete_cookie(
+        key=key,
+        path=GOOGLE_COOKIE_PATH,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+
 
 def clear_google_oauth_cookies(response: Response) -> None:
-    for key in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE):
-        response.delete_cookie(
-            key=key,
-            path=GOOGLE_COOKIE_PATH,
-            httponly=True,
-            secure=settings.cookie_secure,
-            samesite="lax",
-        )
+    for key in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE, GOOGLE_INVITE_COOKIE):
+        _delete_google_cookie(response, key)
 
 
 # Cada rota lista os papeis aceitos.

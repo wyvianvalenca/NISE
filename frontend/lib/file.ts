@@ -9,7 +9,7 @@ import type { IconName } from "@/components/Icon";
 /** Status de um item no filé (tabela "Status of an item in the filé" da #78). */
 export type FileStatus = "em-andamento" | "proxima" | "concluido";
 
-/** Os mesmos códigos de tema dos interesses (lib/signup.ts). */
+/** Os mesmos códigos de tema dos interesses, que vêm do back (Topic, em backend/app/modules/girls/models.py). */
 export type ThemeCode =
   | "programacao"
   | "robotica"

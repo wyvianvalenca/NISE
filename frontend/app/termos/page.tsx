@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AppHeader } from "@/components/AppHeader";
-import { currentTermsVersion } from "@/lib/signup";
+import { TERMS_VERSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export default function FullTermsPage() {
       <AppHeader />
       <main className={styles.main}>
         <h1 className={styles.title}>Termos de uso e Política de privacidade</h1>
-        <p className={styles.version}>Versão {currentTermsVersion()}</p>
+        <p className={styles.version}>Versão {TERMS_VERSION}</p>
         <p className={styles.draft} role="note">
           Texto provisório. A versão final está sendo escrita pela equipe e vai substituir este conteúdo.
         </p>

@@ -4,13 +4,15 @@
 // Atende RF-F7.02, RF-F7.03, RF-F7.04 e RF-F7.05 (issue #53).
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { IconList } from "@/components/IconList";
+import { Loading } from "@/components/Loading";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
-import { acceptTerms, getTermsSummary, SIGNUP_PATHS, type TermsSummary } from "@/lib/signup";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { acceptTerms, getTermsSummary, type TermsSummary, WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "../cadastro.module.css";
 
 const WHAT_WE_COLLECT = [
@@ -37,31 +39,96 @@ function whoSees(summary: TermsSummary) {
 export default function TermsPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<TermsSummary | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Muda a cada nova busca do resumo, para o efeito abaixo rodar de novo.
+  const [attempt, setAttempt] = useState(0);
   const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let current = true;
-    getTermsSummary().then((result) => {
-      if (current) setSummary(result);
-    });
-    return () => {
-      current = false;
-    };
+    const controller = new AbortController();
+    getTermsSummary(controller.signal).then(
+      (result) => {
+        if (result.ok) {
+          setSummary(result.summary);
+        } else if (result.reason === "failed") {
+          setLoadFailed(true);
+        } else {
+          router.replace(WITHOUT_SESSION[result.reason]);
+        }
+      },
+      () => {
+        // Sem rede. Se ela só saiu da página, não há o que mostrar.
+        if (!controller.signal.aborted) setLoadFailed(true);
+      },
+    );
+    return () => controller.abort();
+  }, [attempt, router]);
+
+  // Ao navegar, o Next esconde a página em vez de desmontá-la (Activity, com cacheComponents)
+  // e, na volta pela "Etapa anterior", mostra o mesmo estado. Sem isto, o botão voltaria preso
+  // em "Enviando…" depois de um aceite que deu certo. A caixa marcada pode ficar como está.
+  useLayoutEffect(() => {
+    return () => setSaving(false);
   }, []);
+
+  /** Busca o resumo de novo. Ela precisa marcar "Li e concordo" de novo depois de ler. */
+  function reloadSummary() {
+    setSummary(null);
+    setLoadFailed(false);
+    setAgreed(false);
+    setAttempt((current) => current + 1);
+  }
 
   async function handleContinue() {
     if (!summary) return;
     setSaving(true);
     setError(null);
-    try {
-      await acceptTerms(summary.version);
+
+    const result = await acceptTerms(summary.version).catch(() => null);
+
+    if (result?.ok) {
       router.push(SIGNUP_PATHS.opportunities);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não deu pra salvar. Tente de novo.");
-      setSaving(false);
+      return;
     }
+
+    setSaving(false);
+
+    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+      router.replace(WITHOUT_SESSION[result.reason]);
+      return;
+    }
+
+    if (result?.reason === "outdated") {
+      // Ela leu um texto que já mudou: mostra o resumo atual antes de ela aceitar.
+      setError("Os termos mudaram. Leia o resumo de novo e marque Li e concordo.");
+      reloadSummary();
+      return;
+    }
+
+    setError("Não deu pra salvar. Tente de novo.");
+  }
+
+  // Nada da tela aparece antes do resumo: ela precisa ler quem vê os dados dela (RN-01, RN-04)
+  // antes de concordar, e quem está sem sessão vai para outra página sem ver os termos piscarem.
+  // Como a caixa "Li e concordo" só existe depois disso, também não há toque perdido durante a
+  // hidratação, nem caixa que muda de lugar quando o resumo chega.
+  if (!summary) {
+    return (
+      <div className={styles.screen}>
+        {loadFailed ? (
+          <div role="alert">
+            <p className={styles.error}>Não deu pra carregar quem vê seus dados.</p>
+            <Button variant="secondary" onClick={reloadSummary}>
+              Tentar de novo
+            </Button>
+          </div>
+        ) : (
+          <Loading />
+        )}
+      </div>
+    );
   }
 
   return (
@@ -74,18 +141,12 @@ export default function TermsPage() {
       <IconList items={WHAT_WE_COLLECT.map((text) => ({ icon: "check", content: text }))} />
 
       <h2 className={styles.sectionTitle}>Pra que usamos</h2>
-      {summary ? (
-        <IconList
-          items={[
-            { icon: "arrow-right", content: whoSees(summary) },
-            { icon: "arrow-right", content: "Sugerir atividades com base no que você curtiu, fez ou não quis" },
-          ]}
-        />
-      ) : (
-        <p className={styles.status} aria-live="polite">
-          Carregando…
-        </p>
-      )}
+      <IconList
+        items={[
+          { icon: "arrow-right", content: whoSees(summary) },
+          { icon: "arrow-right", content: "Sugerir atividades com base no que você curtiu, fez ou não quis" },
+        ]}
+      />
 
       <div className={styles.linkRow}>
         <TextLink href="/termos" external>
@@ -95,12 +156,7 @@ export default function TermsPage() {
 
       <div className={styles.spacer} />
 
-      {/*
-        Só libera depois que o resumo carrega: ela precisa ler quem vê os dados dela (RN-01, RN-04)
-        antes de concordar. Isso também evita perder o toque: o resumo empurra a caixa para baixo
-        quando aparece, e um toque dado nesse instante cairia fora dela.
-      */}
-      <Checkbox disabled={!summary} onCheckedChange={setAgreed}>
+      <Checkbox onCheckedChange={setAgreed}>
         Li e concordo com os{" "}
         <a href="/termos#uso" target="_blank" rel="noopener noreferrer">
           Termos de uso
@@ -115,7 +171,7 @@ export default function TermsPage() {
       <div className={styles.actions}>
         <Button
           className={styles.fullWidth}
-          disabled={!agreed || !summary}
+          disabled={!agreed}
           loading={saving}
           onClick={handleContinue}
         >

@@ -27,6 +27,8 @@ type Errors = {
 };
 
 const NETWORK_ERROR = "Não deu pra criar sua conta agora. Tente de novo.";
+const INVITE_EXPIRED_ERROR =
+  "Esse convite não vale mais. Toque em Criar conta para seguir sem ele.";
 
 /**
  * A02 "Crie sua conta" (Figma 511:505), issue #51.
@@ -42,7 +44,12 @@ const NETWORK_ERROR = "Não deu pra criar sua conta agora. Tente de novo.";
  */
 function CreateAccount() {
   const router = useRouter();
-  const invite = useSearchParams().get("convite") ?? undefined;
+  const searchParams = useSearchParams();
+  // State, not just the URL: if the server says the invite no longer works,
+  // she can still create the account without it (see "invalid_invite").
+  const [invite, setInvite] = useState(
+    searchParams.get("convite") ?? undefined,
+  );
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -128,6 +135,15 @@ function CreateAccount() {
           break;
         case "invalid_city":
           setErrors({ city: "Escolha uma cidade da lista." });
+          break;
+        case "invalid_birth_date":
+          setErrors({ birthDate: "Confira sua data de nascimento." });
+          break;
+        case "invalid_invite":
+          // The invite expired between A01b and now. Instead of trapping her,
+          // drop it: the next try creates the account as "came on her own".
+          setInvite(undefined);
+          setErrors({ general: INVITE_EXPIRED_ERROR });
           break;
         default:
           setErrors({ general: NETWORK_ERROR });

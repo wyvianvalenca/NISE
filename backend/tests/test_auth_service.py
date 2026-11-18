@@ -1,12 +1,14 @@
+from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.auth import service
-from app.auth.schemas import LoginIn, RegisterIn
-from app.auth.service import authenticate_user, register_user
+from app.auth.schemas import EmailSignupIn, LoginIn
+from app.auth.service import authenticate_user, signup_with_email
 from app.auth.utils import hash_password, verify_password
+from app.modules.girls.models import Girl
 from app.users.models import Role, User
 from app.users.service import get_user_by_email, normalize_email
 from tests.helpers import sessao_para_busca
@@ -25,8 +27,14 @@ def alana(password_hash: str | None = HASH_DA_ALANA) -> User:
     )
 
 
-def cadastro(email: str = "alana@exemplo.com") -> RegisterIn:
-    return RegisterIn(name="Alana Ficticia", email=email, password="senha-ficticia")
+def cadastro(email: str = "alana@exemplo.com") -> EmailSignupIn:
+    return EmailSignupIn(
+        name="Alana Ficticia",
+        email=email,
+        password="senha-ficticia",
+        birth_date=date(2009, 3, 2),
+        city_id=2704302,
+    )
 
 
 def login(
@@ -56,7 +64,7 @@ async def test_busca_por_email_usa_o_email_normalizado() -> None:
 async def test_cadastro_cria_menina_com_senha_em_hash() -> None:
     sessao_falsa = sessao_para_busca(None)
 
-    user = await register_user(sessao_falsa, cadastro("Alana@Exemplo.com"))
+    user = await signup_with_email(sessao_falsa, cadastro("Alana@Exemplo.com"))
 
     assert user is not None
     assert user.role == Role.GIRL
@@ -64,14 +72,20 @@ async def test_cadastro_cria_menina_com_senha_em_hash() -> None:
     assert user.password_hash is not None
     assert user.password_hash.startswith("$argon2id$")
     assert verify_password("senha-ficticia", user.password_hash)
-    sessao_falsa.add.assert_called_once_with(user)
+
+    # Grava a usuária e o registro da menina, ligado a ela.
+    gravados = [chamada.args[0] for chamada in sessao_falsa.add.call_args_list]
+    assert user in gravados
+    girl = next(item for item in gravados if isinstance(item, Girl))
+    assert girl.user_id == user.id
+    assert girl.email == "alana@exemplo.com"
     sessao_falsa.commit.assert_awaited_once()
 
 
 async def test_cadastro_com_email_existente_nao_cria() -> None:
     sessao_falsa = sessao_para_busca(alana())
 
-    assert await register_user(sessao_falsa, cadastro()) is None
+    assert await signup_with_email(sessao_falsa, cadastro()) is None
     sessao_falsa.add.assert_not_called()
     sessao_falsa.commit.assert_not_awaited()
 
@@ -84,7 +98,7 @@ async def test_cadastro_na_corrida_vira_none() -> None:
         "INSERT INTO users ...", {}, Exception("e-mail duplicado")
     )
 
-    assert await register_user(sessao_falsa, cadastro()) is None
+    assert await signup_with_email(sessao_falsa, cadastro()) is None
     sessao_falsa.rollback.assert_awaited_once()
 
 

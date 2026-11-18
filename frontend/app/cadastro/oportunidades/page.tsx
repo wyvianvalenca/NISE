@@ -4,13 +4,14 @@
 // Atende RF-F7.06 e RN-30 (issue #55).
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { IconList } from "@/components/IconList";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
-import { setOpportunityEmails, SIGNUP_PATHS } from "@/lib/signup";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { setOpportunityEmails, WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "../cadastro.module.css";
 
 export default function OpportunitiesPage() {
@@ -19,16 +20,38 @@ export default function OpportunitiesPage() {
   const [saving, setSaving] = useState<"yes" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Ao navegar, o Next esconde a página em vez de desmontá-la (Activity, com cacheComponents)
+  // e, na volta pela "Etapa anterior" da Etapa 3, mostra o mesmo estado. Sem isto, os botões
+  // voltariam presos em "Enviando…" depois de uma escolha que deu certo.
+  useLayoutEffect(() => {
+    return () => setSaving(null);
+  }, []);
+
   async function choose(enabled: boolean) {
     setSaving(enabled ? "yes" : "no");
     setError(null);
-    try {
-      await setOpportunityEmails(enabled);
+
+    const result = await setOpportunityEmails(enabled).catch(() => null);
+
+    if (result?.ok) {
       router.push(SIGNUP_PATHS.questionnaires);
-    } catch {
-      setError("Não deu pra salvar. Tente de novo.");
-      setSaving(null);
+      return;
     }
+
+    setSaving(null);
+
+    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+      router.replace(WITHOUT_SESSION[result.reason]);
+      return;
+    }
+
+    if (result?.reason === "terms_not_accepted") {
+      // A preferência só é guardada depois do aceite dos termos (Etapa 1).
+      router.replace(SIGNUP_PATHS.terms);
+      return;
+    }
+
+    setError("Não deu pra salvar. Tente de novo.");
   }
 
   return (

@@ -11,7 +11,7 @@ import { Icon } from "@/components/Icon";
 import { IconList } from "@/components/IconList";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
-import { confirmQuestionnaireNotice, pathAfterConsent, SIGNUP_PATHS } from "@/lib/signup";
+import { confirmQuestionnaireNotice, SIGNUP_PATHS } from "@/lib/signup";
 import styles from "../cadastro.module.css";
 
 export default function QuestionnairesPage() {
@@ -24,8 +24,9 @@ export default function QuestionnairesPage() {
     setError(null);
     try {
       await confirmQuestionnaireNotice();
-      // M1 vai para a avaliação do evento; M2 vai direto para os interesses.
-      router.push(await pathAfterConsent());
+      // Segue para a avaliação do evento (M1). Quando não há o que avaliar (M2), a
+      // própria A03 manda para os interesses, sem precisar perguntar ao back duas vezes.
+      router.push(SIGNUP_PATHS.rating);
     } catch {
       setError("Não deu pra salvar. Tente de novo.");
       setSaving(false);
