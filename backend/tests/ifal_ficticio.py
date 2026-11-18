@@ -42,7 +42,12 @@ def _linha(y: int, celulas: list[str], xs: list[int] = COLUMNS_X) -> str:
 
 
 def _pagina(
-    curso: str, campus: str, linhas: list[Linha], inicio: int, cabecalho: list[str]
+    curso: str,
+    campus: str,
+    linhas: list[Linha],
+    inicio: int,
+    cabecalho: list[str],
+    rodape: str | None = None,
 ) -> str:
     topo = [
         "INSTITUTO FEDERAL DE ALAGOAS",
@@ -62,6 +67,9 @@ def _pagina(
             f"{600 + posicao % 100},{posicao % 10}0",
         ]
         partes.append(_linha(716 - 13 * i, celulas))
+    if rodape is not None:
+        # Sozinho no pé da página, como o número da página dos PDFs de várias.
+        partes.append(_linha(30, [rodape], [290]))
     return "".join(partes)
 
 
@@ -105,10 +113,21 @@ def lista_pdf(
     curso: str = "Bacharelado em Sistemas de Informação",
     campus: str = "Maceió",
     cabecalho: list[str] = HEADER,
+    rodape: str | None = None,
 ) -> bytes:
-    """A lista de um curso, 50 candidatos por página, curso e campus no topo."""
+    """A lista de um curso, 50 candidatos por página, curso e campus no topo.
+
+    Com `rodape`, cada página termina com ele; "{n}" vira o número da página.
+    """
     paginas = [
-        _pagina(curso, campus, linhas[i : i + ROWS_PER_PAGE], i, cabecalho)
+        _pagina(
+            curso,
+            campus,
+            linhas[i : i + ROWS_PER_PAGE],
+            i,
+            cabecalho,
+            None if rodape is None else rodape.format(n=i // ROWS_PER_PAGE + 1),
+        )
         for i in range(0, max(len(linhas), 1), ROWS_PER_PAGE)
     ]
     return montar_pdf(paginas)

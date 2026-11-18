@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import tempfile
+import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -173,6 +174,16 @@ def test_cada_pagina_vale_pelo_curso_do_topo() -> None:
     assert [item.name for item in lista.convoked] == ["ana clara lima da ficticia"]
 
 
+@pytest.mark.parametrize("rodape", ["{n}", "Página {n} de 3"])
+def test_rodape_com_o_numero_da_pagina_nao_e_candidato(rodape: str) -> None:
+    # "1" sozinho no pé da página começa com dígito, mas não é uma linha.
+    linhas = [Linha(nome_ficticio(i)) for i in range(120)]
+
+    lista = parse_convocation(lista_pdf(linhas, rodape=rodape), CLASSIFICADOS, [ALVO])
+
+    assert lista.rows_read == 120
+
+
 def test_pdf_imagem_para_a_rodada() -> None:
     with pytest.raises(ReportFormatError):
         parse_convocation(pdf_imagem(), CLASSIFICADOS, [ALVO])
@@ -322,6 +333,25 @@ def sem_disco(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     ):
         monkeypatch.setattr(tempfile, nome, proibido)
     return escritas
+
+
+async def test_pdf_e_lido_fora_do_loop_de_eventos(
+    indicios: list[tuple[int, str, str, str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # O pypdf num PDF de até 15 MB não pode travar as outras requisições.
+    threads: list[int] = []
+    ler = parse_convocation
+
+    def ler_registrando(*args: Any) -> Any:
+        threads.append(threading.get_ident())
+        return ler(*args)
+
+    monkeypatch.setattr(search, "parse_convocation", ler_registrando)
+    cliente, _ = _cliente([(1, CLASSIFICADOS, lista_pdf([Linha(nome_ficticio(0))]))])
+
+    await run_ifal_round(_sessao([]), cliente, _sem_espera)
+
+    assert threads and threading.get_ident() not in threads
 
 
 async def test_500_linhas_com_3_meninas_geram_3_indicios_e_nada_dos_outros(

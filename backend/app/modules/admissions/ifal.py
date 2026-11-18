@@ -227,7 +227,9 @@ def parse_convocation(
             continue
         cells = _cells(line)
         is_header = _is_header(cells)
-        is_row = header is not None and cells[0].isdigit()
+        # Uma linha de candidato tem mais de uma célula: o número da página
+        # sozinho no rodapé ("1") também começa com dígito e não é candidato.
+        is_row = header is not None and len(cells) > 1 and cells[0].isdigit()
         if not is_header and not is_row:
             context.append(line)
             continue

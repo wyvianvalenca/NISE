@@ -291,7 +291,11 @@ async def run_ifal_round(
             url = download_url(api_url, selection, document.id)
             await request_slot()
             pdf = await fetch_pdf(client, url, settings.ifal_max_pdf_bytes)
-            convocation = parse_convocation(pdf, document.title, targets)
+            # O pypdf leva tempo num PDF grande (até 15 MB): numa thread, para
+            # não travar as outras requisições do servidor enquanto lê.
+            convocation = await asyncio.to_thread(
+                parse_convocation, pdf, document.title, targets
+            )
             del pdf
             rows_read += convocation.rows_read
             for convoked in convocation.convoked:
