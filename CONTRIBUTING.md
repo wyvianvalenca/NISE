@@ -30,8 +30,11 @@ Telas internas (curadoria do filé, datas importantes, possíveis duplicadas) **
 nise/
   backend/              FastAPI, modelos, Alembic, testes, scripts
   frontend/             Next.js
-  docs/                 requisitos, decisões
+  docs/                 requisitos, decisões, ferramentas (docs/ferramentas.md)
   docker-compose.yml    ambiente local
+  pyproject.toml        workspace do uv (o back e as ferramentas do repositório)
+  uv.lock               versões travadas de todo o Python do repositório
+  .pre-commit-config.yaml  hooks do Git (rodados pelo prek)
   .github/workflows/    CI
   .env.example          variáveis sem valores reais
   CONTRIBUTING.md       este arquivo
@@ -51,8 +54,10 @@ O front repassa tudo que começa com `/api` para o back (`rewrites` no `frontend
 ### 3.1. Primeira vez
 
 1. Copie as variáveis: `cp .env.example .env` (PowerShell: `Copy-Item .env.example .env`)
-1. Instale os hooks (uma vez por máquina): `uv tool install pre-commit` e `pre-commit install`
-1. Instale as dependências do back na máquina, para o editor, os testes e o pre-commit: `cd backend && uv sync`
+1. Instale as dependências do Python, na raiz do repositório: `uv sync`. Isso instala o back, as ferramentas dele (pytest, ruff, mypy) e as do repositório (prek, zizmor) numa `.venv` na raiz. Se você tinha uma `backend/.venv` de antes, pode apagá-la.
+1. Instale os hooks do Git (uma vez por máquina): `uv run prek install`. Se você tinha instalado o pre-commit antes, o prek substitui os hooks dele.
+1. Instale as dependências do front, para o editor e os hooks: `cd frontend && pnpm install`
+1. Opcional: `git config blame.ignoreRevsFile .git-blame-ignore-revs`, para o `git blame` pular os commits só de formatação.
 
 ### 3.2. Tudo no Docker (dia a dia)
 
@@ -85,10 +90,14 @@ O código de `backend/` e `frontend/` fica montado nos containers: ao salvar, o 
 
 ### 3.4. Verificações à mão
 
-O pre-commit já roda quase tudo. Os testes do back rodam na máquina, não no container (a imagem não tem as dependências de desenvolvimento).
+Os hooks já rodam quase tudo a cada commit, e os testes do back a cada push. Para rodar todos os hooks em todos os arquivos, como o CI faz: `uv run prek run --all-files` (na raiz). Os testes do back rodam na máquina, não no container (a imagem não tem as dependências de desenvolvimento).
 
 - Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
-- Front (em `frontend/`): `pnpm lint`, `pnpm tsc --noEmit`
+- Front (em `frontend/`): `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:e2e`
+
+Use `pnpm typecheck`, não `pnpm tsc --noEmit`: o tsc solto falha num clone novo, porque os tipos de rota do Next ainda não foram gerados.
+
+Se um hook falhar, corrija a causa em vez de pular com `--no-verify`: o CI roda os mesmos hooks e vai falhar do mesmo jeito.
 
 ### 3.5. Problemas comuns
 
@@ -96,7 +105,7 @@ O pre-commit já roda quase tudo. Os testes do back rodam na máquina, não no c
 | --- | --- | --- |
 | `error during connect ... dockerDesktopLinuxEngine` | Docker Desktop fechado | Abra o Docker Desktop e espere iniciar |
 | `port is already allocated` | Outro programa ou o modo 3.3 usando a porta | Pare o outro processo, ou troque `POSTGRES_PORT` no `.env` (e a porta do `DATABASE_URL` junto) |
-| O back não acha um pacote recém-adicionado | O container subiu antes de o `uv.lock` mudar | `docker compose restart backend` (ao iniciar, o `uv run` sincroniza a `.venv` com o `uv.lock`) |
+| O back não acha um pacote recém-adicionado | O container subiu antes de o `uv.lock` (na raiz) mudar | `docker compose restart backend` (ao iniciar, o `uv run` sincroniza a `.venv` com o `uv.lock`) |
 | `ValidationError ... database_url` ao rodar o back na máquina | Falta o `.env` na raiz | Volte à 3.1 |
 | A migração não detecta a tabela nova | O `models.py` não é importado no `alembic/env.py` | Importe o módulo do model no `env.py` |
 
@@ -109,6 +118,7 @@ O pre-commit já roda quase tudo. Os testes do back rodam na máquina, não no c
 | `main` | Produção. Cada merge publica na Vercel | - | - |
 | `develop` | Integração da sprint | `main` | `main`, ao fim da sprint |
 | `feat/<id>-<nome>` | Uma história de usuário | `develop` | `develop` |
+| `chore/<nome>` | Ferramentas, CI e configuração, sem mudar o produto | `develop` | `develop` |
 | `hotfix/<nome>` | Correção urgente em produção | `main` | `main` e `develop` |
 
 Exemplo: `feat/hu-12-importar-inscritas`.
@@ -133,16 +143,20 @@ Exemplos: `feat(f1): importar planilha CSV na página da ação`, `fix(auth): re
 
 ## 6. Verificações
 
-Rodam no **pre-commit** (na sua máquina) e no **CI** (no PR). O PR só entra com tudo verde.
+Rodam nos **hooks do Git** (na sua máquina, pelo prek) e no **CI** (no PR, pelo `.github/workflows/ci.yml`). O PR só entra com tudo verde. O porquê de cada ferramenta está em [docs/ferramentas.md](docs/ferramentas.md).
 
 | Lado | Verificação | Ferramenta |
 | --- | --- | --- |
+| Geral | Segredos no commit | gitleaks |
+| Geral | Segurança dos workflows | zizmor |
 | Back | Formatação e lint | ruff |
 | Back | Tipos | mypy |
 | Back | Testes | pytest |
 | Back | Migrações em dia | Alembic |
+| Front | Formatação | Prettier |
 | Front | Lint | ESLint |
-| Front | Tipos | `tsc --noEmit` |
+| Front | Tipos | `pnpm typecheck` (`next typegen` + `tsc --noEmit`) |
+| Front | Build | `pnpm build` |
 | Front | Contrato com o back | Tipos do OpenAPI regenerados e commitados |
 | Front | E2E | Ferramenta a definir (sugestão: Playwright), só nos caminhos principais |
 
@@ -152,7 +166,7 @@ Não há meta de cobertura de testes, mas toda história tem testes de back para
 
 - Título no formato de Conventional Commits.
 - Descrição com: história e RFs cobertos (ex.: RF-F1.01), como testar, prints no celular quando houver tela.
-- 1 aprovação obrigatória de outra pessoa, que não seja quem abriu o PR. Configurar na proteção das branches `main` e `develop` do GitHub.
+- 1 aprovação obrigatória de outra pessoa, que não seja quem abriu o PR. Configurar na proteção das branches `main` e `develop` do GitHub, junto com os checks obrigatórios do CI: `hooks`, `backend-tests`, `frontend-build` e `e2e`.
 - Toda mudança de modelo vem com a migração no mesmo PR.
 
 ## 8. Regras do domínio que valem para todo código

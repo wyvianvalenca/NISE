@@ -5,7 +5,7 @@
 #   uv sync
 #   uv run prek install
 # Rodar em todos os arquivos (é o que o CI faz): uv run prek run --all-files
-# Atualizar as versões dos repositórios externos: uv run prek auto-update --freeze
+# Atualizar as versões dos repositórios externos: uv run prek update --freeze
 
 # Instala os dois ganchos: pre-commit (lint, formatação, tipos) e pre-push (testes)
 default_install_hook_types: [pre-commit, pre-push]

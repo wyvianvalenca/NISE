@@ -19,18 +19,21 @@ Parte da equipe programa sem agentes para aprender. Escreva código simples e le
 
 ## Comandos
 
-> A confirmar quando o esqueleto existir.
+O uv usa um workspace: `uv.lock` e `.venv` ficam na raiz. Ferramentas e o porquê de cada uma em `docs/ferramentas.md`.
 
-- Back: `uv run ruff format`, `uv run ruff check`, `uv run mypy`, `uv run pytest`
-- Migração nova: `uv run alembic revision --autogenerate -m "..."`
-- Front: `pnpm lint`, `pnpm tsc --noEmit`, `pnpm test:e2e`
+- Instalar: `uv sync` (raiz), `pnpm install` (em `frontend/`), `uv run prek install` (hooks, uma vez)
+- Tudo de uma vez, como o CI: `uv run prek run --all-files` (raiz)
+- Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
+- Migração nova (em `backend/`): `uv run alembic revision --autogenerate -m "..."`
+- Front (em `frontend/`): `pnpm format`, `pnpm lint`, `pnpm typecheck` (não use `tsc --noEmit` solto), `pnpm build`, `pnpm test:e2e`
 - Tipos da API: regenerar do OpenAPI depois de mudar qualquer rota
 
-Rode as verificações antes de dizer que terminou.
+Rode as verificações antes de dizer que terminou. O CI (`.github/workflows/ci.yml`) roda os hooks, os testes do back, o build do front e o E2E em todo PR.
 
 ## Regras
 
-- Git flow: trabalhe em `feat/<id>-<nome>` a partir de `develop`. Nunca commite em `main` ou `develop`.
+- Git flow: trabalhe em `feat/<id>-<nome>` a partir de `develop` (ferramentas, CI e configuração: `chore/<nome>`). Nunca commite em `main` ou `develop`.
+- Não pule os hooks (`--no-verify`); se um falhar, corrija a causa.
 - Todo PR precisa de 1 aprovação de uma pessoa que não seja quem abriu o PR.
 - Commits em Conventional Commits (`feat(f1): ...`).
 - Toda mudança de modelo vem com migração Alembic no mesmo commit/PR.
