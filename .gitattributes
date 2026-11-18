@@ -1,0 +1,13 @@
+# Fim de linha LF no repositório e na cópia de trabalho, em qualquer sistema.
+# Sem isso, o Git no Windows troca para CRLF ao baixar, o que quebra scripts
+# shell dentro dos containers e briga com o Prettier e os hooks de espaço.
+* text=auto eol=lf
+
+# Arquivos binários: nunca converter.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary

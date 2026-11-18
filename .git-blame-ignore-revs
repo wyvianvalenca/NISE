@@ -1,0 +1,6 @@
+# Commits só de formatação, que o `git blame` deve pular.
+# O GitHub usa este arquivo sozinho. Na sua máquina, uma vez:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style(front): formatar o front com o Prettier
+f13b1fd046284e42e069450fd1f039c194101d34
