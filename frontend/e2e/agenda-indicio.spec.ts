@@ -15,6 +15,28 @@ async function mockToAnswer(page: Page, listMatch: boolean, status = 200): Promi
 
 const ITEM = "Achamos seu nome numa lista de aprovados!";
 
+/**
+ * Opens the page and waits for the agenda route. The heading shows before the
+ * route answers, so a "toHaveCount(0)" checked earlier would pass even with
+ * the item on screen.
+ */
+async function openAndWait(page: Page, path: string): Promise<void> {
+  const answered = page.waitForResponse("**/api/agenda/to-answer");
+  await page.goto(path);
+  await answered;
+}
+
+/** Nothing wider than the screen: globals.css hides the overflow, so a long text would be clipped. */
+async function expectNoOverflow(page: Page, text: string | RegExp): Promise<void> {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  const element = page.getByRole("link", { name: text });
+  const clipped = await element.evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(clipped).toBeLessThanOrEqual(0);
+  const box = await element.boundingBox();
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
+}
+
 test.describe("Sua agenda · Pra responder", () => {
   test.use({ viewport: { width: 360, height: 800 } });
 
@@ -44,7 +66,7 @@ test.describe("Sua agenda · Pra responder", () => {
 
   test("without a match there is no item and no section", async ({ page }) => {
     await mockToAnswer(page, false);
-    await page.goto("/agenda");
+    await openAndWait(page, "/agenda");
 
     await expect(page.getByRole("heading", { name: "Sua agenda" })).toBeVisible();
     await expect(page.getByText(ITEM)).toHaveCount(0);
@@ -84,6 +106,14 @@ test.describe("Sua agenda · Pra responder", () => {
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/agenda\/e-voce-na-lista$/);
   });
+
+  test("the item fits in 360 px with no horizontal overflow", async ({ page }) => {
+    await mockToAnswer(page, true);
+    await page.goto("/agenda");
+
+    await expect(page.getByText(ITEM)).toBeVisible();
+    await expectNoOverflow(page, new RegExp(ITEM));
+  });
 });
 
 test.describe("Seu filé · Tem umas perguntinhas pra você", () => {
@@ -101,7 +131,7 @@ test.describe("Seu filé · Tem umas perguntinhas pra você", () => {
 
   test("without anything to answer there is no strip", async ({ page }) => {
     await mockToAnswer(page, false);
-    await page.goto("/file");
+    await openAndWait(page, "/file");
 
     await expect(page.getByRole("heading", { name: "Seu filé" })).toBeVisible();
     await expect(page.getByText("Tem umas perguntinhas pra você")).toHaveCount(0);
@@ -109,10 +139,18 @@ test.describe("Seu filé · Tem umas perguntinhas pra você", () => {
 
   test("if the agenda route fails, the filé still shows, without the strip", async ({ page }) => {
     await mockToAnswer(page, true, 500);
-    await page.goto("/file");
+    await openAndWait(page, "/file");
 
     await expect(page.getByRole("heading", { name: "Seu filé" })).toBeVisible();
     await expect(page.getByText("Tem umas perguntinhas pra você")).toHaveCount(0);
+  });
+
+  test("the strip fits in 360 px with no horizontal overflow", async ({ page }) => {
+    await mockToAnswer(page, true);
+    await page.goto("/file");
+
+    await expect(page.getByText("Tem umas perguntinhas pra você")).toBeVisible();
+    await expectNoOverflow(page, /Tem umas perguntinhas pra você/);
   });
 });
 
