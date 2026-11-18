@@ -15,6 +15,9 @@ A base foi o [full-stack-fastapi-template](https://github.com/fastapi/full-stack
 | Formatação do front | Prettier | `frontend/.prettierrc.json` | Hook e CI |
 | Lint do front | ESLint (config do Next) | `frontend/eslint.config.mjs` | Hook e CI |
 | Tipos do front | `pnpm typecheck` | `frontend/tsconfig.json` | Hook e CI |
+| Testes do back | pytest, com Postgres de verdade | `backend/tests/conftest.py` | `git push` e CI |
+| Migrações em dia | Alembic (dentro do pytest) | `backend/tests/conftest.py` | `git push` e CI |
+| Cobertura do back | coverage | `backend/pyproject.toml` | CI (relatório, sem meta) |
 | Contrato front/back | `@hey-api/openapi-ts` | `frontend/openapi-ts.config.ts`, `scripts/generate-client.sh` | Hook (quando o back muda) e CI |
 | Segredos no commit | gitleaks | `.pre-commit-config.yaml` | Hook |
 | Segurança dos workflows | zizmor | `.pre-commit-config.yaml` | Hook e CI |
@@ -101,7 +104,7 @@ O workflow `.github/workflows/ci.yml` roda em todo PR e em todo push para `devel
 | Job | O que faz |
 | --- | --- |
 | `hooks` | `uv run prek run --all-files`: os mesmos hooks do commit, em todos os arquivos. Se alguém commitou sem os hooks instalados, falha aqui |
-| `backend-tests` | `uv run pytest` |
+| `backend-tests` | `uv run coverage run -m pytest`, com um Postgres 16 como serviço do job (seção 8). O relatório de cobertura sai no log e o HTML no artefato `coverage-html` |
 | `frontend-build` | `pnpm build` |
 | `e2e` | Playwright com o Chromium. Os testes simulam o back com `page.route`, então o FastAPI não sobe. Se falhar, os rastros ficam no artefato `playwright-test-results` |
 
@@ -151,6 +154,29 @@ const { data, error, response } = await listCities({
 - Por enquanto, só a busca de municípios e a página `/status` usam o cliente gerado. As outras chamadas de `frontend/lib/signup-api.ts` ainda usam `fetch` com tipos à mão; a migração delas é a issue #319. Código novo já deve usar o cliente gerado.
 
 **Por quê:** a decisão de "tipos TypeScript gerados do OpenAPI do FastAPI" já estava na stack; faltava a ferramenta. O template usa a mesma, com versão fixada (ela ainda está antes da 1.0 e muda bastante entre versões).
+
+## 8. Testes do back com o Postgres
+
+Os testes do back são de dois tipos:
+
+- **Com mock** (a maioria, como `test_auth_*.py`): trocam a sessão do banco por uma falsa (`tests/helpers.py`). São rápidos e testam a lógica das rotas e dos serviços.
+- **Com o banco** (`test_db_constraints.py`): usam a fixture `db_session` e rodam no Postgres de verdade. Servem para o que só o banco garante: restrições únicas, checagens, chaves estrangeiras, consultas de permissão. Um mock aceita uma linha duplicada; o Postgres, não.
+
+Como a fixture funciona (`backend/tests/conftest.py`):
+
+- Os testes usam um banco separado, o **`nise_test`**, no mesmo Postgres do docker compose. Os dados do ambiente local não são tocados. O endereço vem da variável `TEST_DATABASE_URL`; sem ela, `postgresql+asyncpg://nise:nise@localhost:5432/nise_test`.
+- Na primeira vez da rodada, a fixture cria o `nise_test` se ele não existe e prepara as tabelas com as próprias migrações: **aplica todas, desfaz todas, aplica de novo e roda o `alembic check`**. Isso é o teste das migrações: um `downgrade` quebrado ou um model mudado sem migração reprovam a suíte.
+- Cada teste recebe uma sessão dentro de uma transação que é **desfeita no fim**. O teste pode dar `commit` à vontade; nada sobra para o próximo.
+- **Trava:** a fixture recusa um banco cujo nome não termine em `_test`, porque o `downgrade` apaga todas as tabelas. Um `TEST_DATABASE_URL` errado não destrói dados.
+- Sem o Postgres no ar, os testes com o banco falham com a mensagem "Suba o banco com `docker compose up -d db`". Eles não são pulados: um teste pulado em silêncio esconderia o erro. Os testes com mock rodam sem banco.
+
+Quando usar cada um: regra que o banco garante ou consulta que precisa do SQL de verdade, `db_session`; lógica de rota e serviço, mock.
+
+No CI, o job `backend-tests` sobe um Postgres 16 (a mesma versão do docker compose) como serviço e define o `TEST_DATABASE_URL`.
+
+**Cobertura:** o CI roda os testes pelo `coverage` e mostra quanto do `app/` os testes alcançam, com as linhas que ficaram de fora. Não há meta mínima (decisão do CONTRIBUTING); o relatório serve para achar o que ficou sem teste. Na máquina: `uv run coverage run -m pytest && uv run coverage html` e abra `backend/htmlcov/index.html`.
+
+**Por quê:** o template do FastAPI roda os testes no Postgres de verdade. Na NISE, várias regras são garantidas pelo banco (por exemplo, a RNF-F4.01, "nunca dois envios iguais", é uma restrição única), e o CONTRIBUTING já pedia "migrações em dia" sem nada que conferisse.
 
 ## Fora do escopo, por enquanto
 

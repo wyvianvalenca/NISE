@@ -38,7 +38,7 @@ Rode as verificações antes de dizer que terminou. O CI (`.github/workflows/ci.
 - Commits em Conventional Commits (`feat(f1): ...`).
 - Toda mudança de modelo vem com migração Alembic no mesmo commit/PR.
 - No SQLAlchemy assíncrono, carregue relações com `selectinload`; acesso preguiçoso dá erro.
-- Toda história tem testes de back para os critérios de aceite.
+- Toda história tem testes de back para os critérios de aceite. Regra que o banco garante (restrição, checagem, consulta de permissão) é testada no Postgres com a fixture `db_session` (`backend/tests/conftest.py`), não com mock. Os testes precisam do banco no ar: `docker compose up -d db`.
 - Não desative, pule ou apague testes para fazer o CI passar.
 - Não adicione dependências sem dizer por quê no PR.
 - Não mude decisões da stack nem do fluxo (bibliotecas, padrões, ferramentas) por conta própria. Se achar que uma deve mudar, pergunte a quem está usando você; mudanças são decididas pela equipe e registradas no CONTRIBUTING.md.
