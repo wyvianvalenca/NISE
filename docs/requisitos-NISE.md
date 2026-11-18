@@ -13,7 +13,7 @@ Versão: 0.2 (rascunho) · Data: 20/10/2026 · Status: em revisão
 | 0.1.1 | 09/10/2026 | Felipe Lira | Introdução |
 | 0.2 | 20/10/2026 | Wyvian Valença | Revisão de RFs, RNFs e RNs pelo Figma e pelo doc vivo; nova numeração; rastreabilidade; registro de decisões |
 | 0.3 | 03/11/2026 | Wyvian Valença | Alinhamento com as histórias do épico 1: sem opt-out nos questionários, lembretes sempre enviados, E2E com Playwright, fim do login Microsoft, deduplicação, regra do convite e novas decisões D-15 a D-24 |
-| 0.4 | 16/11/2026 | Wyvian Valença | Validação das funcionalidades contra o Protótipo Enxuto do Figma (#154): perfil, cadastro, filé, inscrição em evento, C1 e C2 validados; C3 a C7 em andamento. O detalhe das mudanças está no PR |
+| 0.4 | 16/11/2026 | Wyvian Valença | Validação das funcionalidades contra o Protótipo Enxuto do Figma (#154): perfil, cadastro, filé, inscrição em evento, C1 e C2 validados; M7 (F31) sem o Plano B, só com a busca na COPEVE (D-48); C3 a C7 em andamento. O detalhe das mudanças está no PR |
 
 ---
 
