@@ -32,6 +32,29 @@ dev = [
 line-length = 88
 target-version = "py312"
 
+[tool.ruff.lint]
+# Além do padrão (E e F), as regras abaixo. Explicação em docs/ferramentas.md.
+select = [
+    "E",     # pycodestyle (erros)
+    "W",     # pycodestyle (avisos)
+    "F",     # pyflakes
+    "I",     # ordem dos imports
+    "B",     # flake8-bugbear: armadilhas comuns
+    "C4",    # comprehensions mais simples
+    "UP",    # sintaxe moderna para a versão do Python
+    "ASYNC", # chamadas que travam dentro de código assíncrono
+    "T20",   # sem print: saída vai por logging, sem dados pessoais
+]
+ignore = [
+    "E501", # tamanho da linha fica com o ruff format
+    "B008", # Depends(...) nos parâmetros é o padrão do FastAPI
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Scripts de linha de comando mostram o resultado no terminal de quem roda.
+# Mesmo aqui: nada de nome, e-mail, telefone ou data de nascimento.
+"scripts/*" = ["T20"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
