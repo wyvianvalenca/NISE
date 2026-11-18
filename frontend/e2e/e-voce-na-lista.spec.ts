@@ -120,6 +120,8 @@ test.describe("A19 · É você na lista?", () => {
     const sent = await mockApi(page);
     await page.goto("/agenda/e-voce-na-lista");
 
+    // Texto em ink (#0a3b48) sobre o papel; o teal do TextLink dava 4,26:1, abaixo do AA.
+    await expect(page.getByRole("link", { name: "Agora não" })).toHaveCSS("color", "rgb(10, 59, 72)");
     await page.getByRole("link", { name: "Agora não" }).click();
 
     await expect(page).toHaveURL(/\/agenda$/);
@@ -150,6 +152,21 @@ test.describe("A19 · É você na lista?", () => {
       page.getByRole("heading", { name: "Essa pergunta não está mais aqui" }),
     ).toBeFocused();
     await expect(page.getByRole("link", { name: "Voltar pra agenda" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Voltar pra agenda" })).toHaveCSS("color", "rgb(10, 59, 72)");
+  });
+
+  test("a 200 whose body is not JSON says it failed, instead of staying on Enviando…", async ({ page }) => {
+    await mockApi(page);
+    await page.route("**/api/matches/*/answer", (route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: "<html>proxy</html>" }),
+    );
+    await page.goto("/agenda/e-voce-na-lista");
+
+    await page.getByRole("radio", { name: "Não sou eu" }).check();
+    await page.getByRole("button", { name: "Enviar" }).click();
+
+    await expect(page.getByRole("alert").filter({ hasText: "Não deu pra enviar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled();
   });
 
   test("with no open match there is no question", async ({ page }) => {

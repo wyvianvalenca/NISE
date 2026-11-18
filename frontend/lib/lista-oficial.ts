@@ -64,8 +64,14 @@ export async function answerMatch(id: number, answer: MatchAnswer): Promise<Answ
     return { ok: false, reason: "failed" };
   }
 
-  const body = (await response.json()) as { result: "enrolled" | "approved" | "dismissed" };
-  return { ok: true, result: body.result };
+  // Um 200 com corpo que não é JSON também é falha: sem isto, o botão
+  // ficaria em "Enviando…" para sempre.
+  try {
+    const body = (await response.json()) as { result: "enrolled" | "approved" | "dismissed" };
+    return { ok: true, result: body.result };
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
 }
 
 /** "Alana Souza Lima" vira "Alana", para o título da A19. */

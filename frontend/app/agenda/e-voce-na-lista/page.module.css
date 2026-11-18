@@ -187,6 +187,16 @@
   align-self: center;
 }
 
+/* TextLink é teal, que no papel dá 4,26:1, abaixo do AA (#169). Aqui o texto
+   fica em ink, como o "Ver lista oficial", e só a seta continua teal. */
+.inkLink {
+  color: var(--nise-ink);
+}
+
+.inkLink > span {
+  color: var(--nise-teal);
+}
+
 .error {
   color: var(--nise-pink);
   font-size: 14px;

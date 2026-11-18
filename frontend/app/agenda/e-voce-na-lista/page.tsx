@@ -73,7 +73,7 @@ function Gone() {
         Essa pergunta não está mais aqui
       </h1>
       <p className={styles.lead}>Pode ser que você já tenha respondido. Não precisa fazer mais nada.</p>
-      <TextLink href={AGENDA_PATH} back>
+      <TextLink href={AGENDA_PATH} back className={styles.inkLink}>
         Voltar pra agenda
       </TextLink>
     </>
@@ -187,7 +187,7 @@ function Question({ match }: { match: ListMatch }) {
           </p>
         )}
         {/* "Agora não" não grava nada; o item continua na agenda. */}
-        <TextLink href={AGENDA_PATH} className={styles.later}>
+        <TextLink href={AGENDA_PATH} className={`${styles.inkLink} ${styles.later}`}>
           Agora não
         </TextLink>
       </div>
