@@ -444,11 +444,11 @@ Políticas que valem para várias telas. Os RFs apontam para elas pelo ID.
 | RN-12 | Quem pediu exclusão sai das exportações seguintes. Arquivos já baixados não podem ser recolhidos. | F7, LGPD art. 18 | RF-F7.09 |
 | RN-13 | Todo campo do banco é classificado como identificador direto, quase-identificador, analítico ou texto livre. Campo sem classificação não é exportado. | LGPD art. 46 | RF-F24.02 |
 | RN-20 | O nome da menina só é comparado com listas oficiais se isso estiver previsto nos termos ou num consentimento próprio. *Depende do Comitê de Ética.* | F31, D-02 | RF-F31.03 |
-| RN-21 | Um nome encontrado numa lista oficial é só indício. Não conta como aprovação nem ingresso e não aparece para os grupos até a menina confirmar. Sem resposta em 30 dias, é apagado. | F31 | RF-F31.04, RF-F31.06 |
+| RN-21 | Um nome encontrado numa lista oficial é só indício. Não conta como aprovação nem ingresso e não aparece para os grupos até a menina confirmar. Sem resposta em 30 dias, é apagado. Só a menina vê o indício e só ela o confirma; a coordenadora não vê nem confirma (D-48). | F31, D-48 | RF-F31.04, RF-F31.06 |
 | RN-22 | Ingresso é a matrícula declarada ou confirmada pela menina. Convocação sem matrícula é aprovação. | F31, F6 | RF-F31.04, RF-F6.03 |
 | RN-23 | A lista oficial é usada só para o cruzamento. Linhas de quem não é usuária são descartadas, e modalidade de concorrência, nota e inscrição no ENEM nunca são guardadas. | F31, LGPD art. 11 | RF-F31.05 |
-| RN-24 | Só a curadoria importa listas oficiais, e ela vê só contagens, nunca quais meninas foram encontradas. | F31 | RF-F31.01 |
-| RN-25 | Entram só listas oficiais da UFAL, do IFAL ou da COPEVE, e só as linhas de cursos-alvo. | F31 | RF-F31.01, RF-F31.02 |
+| RN-24 | Só a equipe NISE roda a busca, por script, e ela vê só contagens, nunca quais meninas foram encontradas. | F31, D-48 | RF-F31.08 |
+| RN-25 | A busca lê só o relatório da COPEVE (UFAL), e só as linhas de cursos-alvo. IFAL e outras instituições ficam fora enquanto a leitura de PDF for Won't. | F31, D-48 | RF-F31.02, RF-F31.07 |
 | RN-29 *(nova)* | Cada menina tem um único cadastro, não importa a quantos eventos ela vá nem de quantos grupos participe. Novas participações são ligadas ao cadastro existente pelo e-mail, cada grupo conta a menina uma vez, e ela recebe um único convite para criar conta. *A validar com a equipe: os casos de borda (e-mails diferentes, RF-F2.05).* | D-06, D-21, F2 | RF-F4.01, RF-F4.02, RF-F2.01, RF-F2.03 |
 | RN-30 *(nova)* | A menina sempre recebe os e-mails de questionários, de recuperação de acesso e de lembretes de datas importantes, e é avisada disso no cadastro, sem opção de recusar. Oportunidades e o lembrete de evento só são enviados se ela tiver aceitado cada tipo, e ela pode desligar a qualquer momento. | Figma A04·2, A04·3, A10, D-15, D-16 | RF-F7.06 a RF-F7.08, RF-F7.10, RF-F4.06, RF-F4.11a, RF-F4.12 |
 | RN-31 *(nova)* | Raça/cor, renda e deficiência não são coletadas nem mostradas. | D-04, seção 6 da v0.1 | RF-F5.08 |
@@ -507,8 +507,8 @@ Cada RNF tem um número, um limite ou um teste. As 6 linhas-modelo vazias da v0.
 | RNF-F31.01 (RNF-31.01) | Segurança | Nenhum dado de terceiros da lista oficial fica no banco, nos logs ou em disco depois do cruzamento. | Cruzar uma lista sintética de 500 linhas com 3 correspondências e procurar os outros 497 nomes: zero ocorrências. | Must | RN-23 |
 | RNF-F31.02 (RNF-31.02) | Segurança | Só a própria menina vê os indícios dela. | Chamar as rotas de indícios com contas de curadoria e de coordenadora: negado. | Must | RN-21, RN-24 |
 | RNF-F31.03 (RNF-31.03) | Confiabilidade | O cruzamento segue a RF-F31.03 sem exceções. | Base de teste com acentos, maiúsculas, espaços e homônimos parciais: 100% conforme a regra. | Must | RF-F31.03 |
-| RNF-F31.04 (RNF-31.06) | Confiabilidade | Se o formato do relatório mudar ou a página não responder, a rodada para sem gravar nada, e a curadoria recebe um aviso. | Rodar contra uma cópia de teste com uma coluna renomeada e com o servidor fora do ar. | Should (Plano A) | RF-F31.07 |
-| RNF-F31.05 (RNF-31.07) | Compatibilidade com a fonte | O robô faz no máximo uma requisição a cada 2 segundos e se identifica. | Conferir no log o intervalo e o agente. | Should (Plano A) | RF-F31.07 |
+| RNF-F31.04 (RNF-31.06) | Confiabilidade | Se o formato do relatório mudar ou a página não responder, a rodada para sem gravar nada, e a equipe NISE recebe um aviso. | Rodar contra uma cópia de teste, com dados fictícios, com uma coluna renomeada e com o servidor fora do ar. | Should | RF-F31.07 |
+| RNF-F31.05 (RNF-31.07) | Compatibilidade com a fonte | O robô faz no máximo uma requisição a cada 2 segundos e se identifica com um nome genérico, sem dados de contato pessoais. Uma rodada de 48 consultas (6 cursos, 8 modalidades) leva cerca de 96 segundos e, se passar do limite de duração da hospedagem, é dividida em partes. | Conferir no log o intervalo e o agente, e rodar uma rodada completa dentro do limite da hospedagem. | Should | RF-F31.07 |
 
 ---
 
