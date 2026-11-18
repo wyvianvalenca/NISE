@@ -74,6 +74,9 @@ test("\"Fui!\" conclui o evento e abre a celebração", async ({ page }) => {
   await expect(page.getByText("Mais um passo dado")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Você conseguiu, Alana!" })).toBeFocused();
   await expect(page.locator("p", { hasText: "Hackathon Cidades Inteligentes" })).toBeVisible();
+  // Sem a avaliação de atividade: a de evento de fora ainda não existe (revisão do #257).
+  await expect(page.getByRole("button", { name: "Enviar" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Pular" })).toHaveCount(0);
 
   // Sem "Desfazer": voltar ao evento mostra a versão "Concluído".
   await page.goto(PAST_PATH);

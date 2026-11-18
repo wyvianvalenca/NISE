@@ -1,16 +1,17 @@
 "use client";
 
 // A06·5 · Concluído, depois de "Fui!" num evento de fora (issues #190 e #191).
-// É a mesma celebração da atividade concluída (#120), com a parte opcional de avaliação (#124).
+// É a mesma celebração da atividade concluída (#120), por enquanto sem a avaliação (#124):
+// ActivityFeedback grava na rota de avaliação de atividade, e a avaliação de evento de fora
+// ainda não existe (está em revisão na F4). Quando ela existir, entra aqui com a função própria.
 //
 // A confirmar com o design (notas da #190): os textos da A06·5 para evento, que foi
-// desenhada para atividade ("Você conseguiu"), e a avaliação de evento de fora, ainda em revisão na F4.
+// desenhada para atividade ("Você conseguiu").
 
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { ActivityFeedback } from "@/components/ActivityFeedback";
 import { getFirstName } from "@/lib/atividade";
 import { getEvent, type EventDetail } from "@/lib/evento";
 import shared from "../../../[id]/atividade.module.css";
@@ -48,7 +49,6 @@ function Loading() {
 
 function Celebration() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [event, setEvent] = useState<EventDetail | null | undefined>(undefined);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -86,11 +86,6 @@ function Celebration() {
         Você conseguiu, {getFirstName()}!
       </h1>
       <p className={celebration.activity}>{event.title}</p>
-
-      <div className={celebration.feedback}>
-        {/* replace: voltar depois de "Pular" ou "Enviar" não reabre o formulário vazio. */}
-        <ActivityFeedback activityId={event.id} onDone={() => router.replace(FILE_PATH)} />
-      </div>
     </>
   );
 }
