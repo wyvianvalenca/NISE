@@ -2,9 +2,10 @@ import secrets
 from typing import Annotated
 
 import httpx2
-from fastapi import APIRouter, Cookie, HTTPException, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Cookie, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 
+from app.auth.exceptions import SignupError, SignupErrorCode
 from app.auth.google import (
     GoogleProfile,
     build_authorization_url,
@@ -14,9 +15,11 @@ from app.auth.google import (
     validate_id_token,
 )
 from app.auth.permissions import (
+    GOOGLE_INVITE_COOKIE,
     GOOGLE_STATE_COOKIE,
     GOOGLE_VERIFIER_COOKIE,
     CurrentUserDep,
+    PendingSignupDep,
     clear_google_oauth_cookies,
     clear_pending_signup_cookie,
     clear_session_cookie,
@@ -24,12 +27,28 @@ from app.auth.permissions import (
     set_pending_signup_cookie,
     set_session_cookie,
 )
-from app.auth.schemas import LoginIn, RegisterIn
-from app.auth.service import authenticate_user, find_oauth_user, register_user
-from app.auth.utils import create_access_token, create_pending_signup_token
+from app.auth.schemas import (
+    EmailSignupIn,
+    GoogleSignupCompleteIn,
+    LoginIn,
+    PendingSignupOut,
+    SignupOut,
+)
+from app.auth.service import (
+    authenticate_user,
+    complete_google_signup,
+    find_oauth_user,
+    signup_with_email,
+)
+from app.auth.utils import (
+    PendingSignup,
+    create_access_token,
+    create_pending_signup_token,
+)
 from app.db.engine import AsyncSessionDep
 from app.users.models import User
 from app.users.schemas import UserOut
+from app.users.service import normalize_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -48,18 +67,96 @@ async def logout(response: Response) -> None:
     clear_session_cookie(response)
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(
-    data: RegisterIn, session: AsyncSessionDep, response: Response
-) -> User:
-    user = await register_user(session, data)
+# Cadastro da menina por e-mail e senha (A02, #51). A resposta já abre a
+# sessão, e o próximo passo é sempre o aceite dos termos (H3).
+@router.post(
+    "/signup/email",
+    response_model=SignupOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_409_CONFLICT: {"description": "E-mail já cadastrado"},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Dado recusado, ex.: {"error": "under_13"}'
+        },
+    },
+)
+async def signup_email(
+    data: EmailSignupIn, session: AsyncSessionDep, response: Response
+) -> SignupOut:
+    user = await signup_with_email(session, data)
 
     if user is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "E-mail já cadastrado")
 
     set_session_cookie(response, create_access_token(user.id))
 
-    return user
+    return SignupOut.model_validate(user)
+
+
+# Cadastro pelo Google (A02b, #52). O callback deixa o que veio do Google no
+# cookie do cadastro pendente; nada vai para o banco antes de ela informar a
+# data de nascimento (RN-03).
+@router.get(
+    "/signup/pending",
+    response_model=PendingSignupOut,
+    responses={status.HTTP_404_NOT_FOUND: {"description": "Sem cadastro pendente"}},
+)
+async def pending_signup(pending: PendingSignupDep) -> PendingSignupOut:
+    # O e-mail como vai ficar na conta (o mesmo normalize_email do cadastro).
+    return PendingSignupOut(
+        name=pending.profile.name,
+        email=normalize_email(pending.profile.email),
+        invite=pending.invite,
+    )
+
+
+@router.post(
+    "/signup/complete",
+    response_model=SignupOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Sem cadastro pendente"},
+        status.HTTP_409_CONFLICT: {"description": "Conta já existe"},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Dado recusado, ex.: {"error": "under_13"}'
+        },
+    },
+)
+async def complete_signup(
+    data: GoogleSignupCompleteIn,
+    pending: PendingSignupDep,
+    session: AsyncSessionDep,
+    response: Response,
+) -> SignupOut | JSONResponse:
+    try:
+        user = await complete_google_signup(session, pending, data)
+    except SignupError as error:
+        if error.code is not SignupErrorCode.UNDER_13:
+            raise
+        # Menor de 13: o que veio do Google some já aqui, sem depender do
+        # front chamar o discard (RN-03).
+        refused = JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"error": error.code.value},
+        )
+        clear_pending_signup_cookie(refused)
+        return refused
+
+    if user is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Conta já existe")
+
+    set_session_cookie(response, create_access_token(user.id))
+    clear_pending_signup_cookie(response)
+
+    return SignupOut.model_validate(user)
+
+
+# "Usar outra conta" e menor de 13 na A02b: some o que veio do Google, sem
+# criar conta. Responde 204 mesmo sem cadastro pendente, para o front não
+# precisar tratar esse caso.
+@router.post("/signup/discard", status_code=status.HTTP_204_NO_CONTENT)
+async def discard_signup(response: Response) -> None:
+    clear_pending_signup_cookie(response)
 
 
 @router.post("/login", response_model=UserOut)
@@ -74,14 +171,20 @@ async def login(data: LoginIn, session: AsyncSessionDep, response: Response) -> 
     return user
 
 
+# O front também manda switch_account=1 em "Usar outra conta" (A02b). Não
+# muda nada aqui: o Google sempre mostra a escolha de conta (select_account).
 @router.get("/google/login")
-async def google_login() -> RedirectResponse:
+async def google_login(
+    invite: Annotated[str | None, Query(max_length=64)] = None,
+) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     code_verifier = new_code_verifier()
     url = build_authorization_url(state, make_code_challenge(code_verifier))
 
     response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
-    set_google_oauth_cookies(response, state, code_verifier)
+    # O convite fica num cookie e não no state: o Google não precisa saber dele.
+    # Ele só é conferido ao completar o cadastro.
+    set_google_oauth_cookies(response, state, code_verifier, invite or None)
     return response
 
 
@@ -114,6 +217,7 @@ async def google_callback(
     state: str | None = None,
     saved_state: Annotated[str | None, Cookie(alias=GOOGLE_STATE_COOKIE)] = None,
     code_verifier: Annotated[str | None, Cookie(alias=GOOGLE_VERIFIER_COOKIE)] = None,
+    invite: Annotated[str | None, Cookie(alias=GOOGLE_INVITE_COOKIE)] = None,
 ) -> RedirectResponse:
     profile = await _google_profile(code, state, saved_state, code_verifier)
 
@@ -132,7 +236,8 @@ async def google_callback(
             response = RedirectResponse(
                 GOOGLE_SIGNUP_URL, status_code=status.HTTP_302_FOUND
             )
-            set_pending_signup_cookie(response, create_pending_signup_token(profile))
+            pending = PendingSignup(profile=profile, invite=invite)
+            set_pending_signup_cookie(response, create_pending_signup_token(pending))
 
             clear_session_cookie(response)
 

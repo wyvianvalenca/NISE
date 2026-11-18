@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 from sqlalchemy.exc import IntegrityError
 
 from app.auth.google import GoogleProfile
-from app.auth.service import create_oauth_user, find_oauth_user
+from app.auth.service import find_oauth_user
 from app.db.engine import engine
 from app.users.models import OAuthAccount, Provider, Role, User
 from tests.helpers import sessao_para_busca
@@ -136,76 +136,3 @@ async def test_ligacao_na_corrida_devolve_a_usuaria() -> None:
     # Busca de novo pelo sub, em vez de ler o objeto expirado pelo rollback.
     assert sessao_falsa.scalar.await_count == 3
     assert "oauth_accounts" in sql_da_busca(sessao_falsa, 2)
-
-
-# Criar a conta
-
-
-async def test_criar_grava_a_usuaria_e_a_ligacao() -> None:
-    sessao_falsa = sessao_que_acha(None, None)
-
-    usuaria = await create_oauth_user(sessao_falsa, PERFIL)
-
-    assert usuaria is not None
-    assert usuaria.name == "Alana Ficticia"
-    assert usuaria.email == "alana@exemplo.com"
-    assert usuaria.password_hash is None
-    assert usuaria.role == Role.GIRL
-
-    [nova, ligacao] = objetos_adicionados(sessao_falsa)
-    assert nova is usuaria
-    assert isinstance(ligacao, OAuthAccount)
-    assert ligacao.user_id == usuaria.id
-    assert ligacao.provider == Provider.GOOGLE
-    assert ligacao.provider_user_id == "google-123"
-    sessao_falsa.commit.assert_awaited_once()
-
-
-async def test_criar_pega_o_id_com_flush_antes_da_ligacao() -> None:
-    # Sem o flush, a usuária ainda não teria id para a ligação.
-    sessao_falsa = sessao_que_acha(None, None)
-
-    await create_oauth_user(sessao_falsa, PERFIL)
-
-    chamadas = [
-        nome
-        for nome, _, _ in sessao_falsa.mock_calls
-        if nome in ("add", "flush", "commit")
-    ]
-    assert chamadas == ["add", "flush", "add", "commit"]
-
-
-async def test_criar_quando_ja_tem_ligacao_nao_cria() -> None:
-    sessao_falsa = sessao_que_acha(alana())
-
-    assert await create_oauth_user(sessao_falsa, PERFIL) is None
-
-    sessao_falsa.add.assert_not_called()
-
-
-async def test_criar_quando_o_email_ja_existe_nao_cria_outra_usuaria() -> None:
-    sessao_falsa = sessao_que_acha(None, alana())
-
-    assert await create_oauth_user(sessao_falsa, PERFIL) is None
-
-    assert not any(isinstance(o, User) for o in objetos_adicionados(sessao_falsa))
-
-
-async def test_criar_na_corrida_do_email_devolve_none() -> None:
-    # O índice único do e-mail barra a segunda aba já no flush.
-    sessao_falsa = sessao_que_acha(None, None)
-    sessao_falsa.flush.side_effect = corrida()
-
-    assert await create_oauth_user(sessao_falsa, PERFIL) is None
-
-    sessao_falsa.rollback.assert_awaited_once()
-    sessao_falsa.commit.assert_not_awaited()
-
-
-async def test_criar_na_corrida_da_ligacao_devolve_none() -> None:
-    sessao_falsa = sessao_que_acha(None, None)
-    sessao_falsa.commit.side_effect = corrida()
-
-    assert await create_oauth_user(sessao_falsa, PERFIL) is None
-
-    sessao_falsa.rollback.assert_awaited_once()

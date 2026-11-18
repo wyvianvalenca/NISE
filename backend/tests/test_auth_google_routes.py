@@ -13,12 +13,17 @@ from app.auth.google import (
     make_code_challenge,
 )
 from app.auth.permissions import (
+    GOOGLE_INVITE_COOKIE,
     GOOGLE_STATE_COOKIE,
     GOOGLE_VERIFIER_COOKIE,
     PENDING_SIGNUP_COOKIE,
     SESSION_COOKIE,
 )
-from app.auth.utils import decode_access_token, decode_pending_signup_token
+from app.auth.utils import (
+    PendingSignup,
+    decode_access_token,
+    decode_pending_signup_token,
+)
 from app.config import AppSettings, settings
 from app.db.engine import get_session
 from app.main import app
@@ -134,9 +139,40 @@ async def test_cada_login_gera_um_state_novo() -> None:
 
 
 async def test_login_aceita_os_parametros_do_front() -> None:
-    response = await chamar("/api/auth/google/login?convite=abc&trocar_conta=1")
+    # Os nomes que o front manda (googleStartUrl, em lib/signup-api.ts).
+    response = await chamar("/api/auth/google/login?invite=abc&switch_account=1")
 
     assert response.status_code == 302
+
+
+async def test_login_guarda_o_convite_num_cookie_e_nao_no_google() -> None:
+    response = await chamar("/api/auth/google/login?invite=convite-ficticio")
+
+    cookie = cookies_gravados(response)[GOOGLE_INVITE_COOKIE]
+    assert valor(cookie) == "convite-ficticio"
+    assert "HttpOnly" in cookie
+    assert "Path=/api/auth/google;" in cookie
+    assert "Max-Age=600" in cookie
+    assert "convite-ficticio" not in response.headers["location"]
+
+
+@pytest.mark.parametrize("consulta", ["", "?invite="], ids=["sem", "vazio"])
+async def test_login_sem_convite_apaga_o_de_uma_tentativa_anterior(
+    consulta: str,
+) -> None:
+    # Ela começou por um convite, desistiu e voltou pelo início: chegou sozinha.
+    response = await chamar("/api/auth/google/login" + consulta)
+
+    cookie = cookies_gravados(response)[GOOGLE_INVITE_COOKIE]
+    assert apagado(cookie)
+    assert "Path=/api/auth/google;" in cookie
+
+
+async def test_login_recusa_convite_comprido_demais() -> None:
+    # Mesmo limite de GET /api/invites/{code}.
+    response = await chamar("/api/auth/google/login?invite=" + "a" * 65)
+
+    assert response.status_code == 422
 
 
 # Callback: endereço
@@ -183,9 +219,19 @@ async def test_pessoa_nova_vai_completar_o_cadastro(sessao_falsa: AsyncMock) -> 
     cookies = cookies_gravados(response)
     assert "HttpOnly" in cookies[PENDING_SIGNUP_COOKIE]
     pendente = decode_pending_signup_token(valor(cookies[PENDING_SIGNUP_COOKIE]))
-    assert pendente == PERFIL
+    assert pendente == PendingSignup(profile=PERFIL, invite=None)
     # Se havia outra conta logada neste navegador, ela sai.
     assert apagado(cookies[SESSION_COOKIE])
+
+
+async def test_convite_atravessa_a_ida_ao_google(sessao_falsa: AsyncMock) -> None:
+    cookies_do_login = {**COOKIES_DO_LOGIN, GOOGLE_INVITE_COOKIE: "convite-ficticio"}
+
+    response = await chamar(CALLBACK + VOLTA_DO_GOOGLE, cookies_do_login)
+
+    cookies = cookies_gravados(response)
+    pendente = decode_pending_signup_token(valor(cookies[PENDING_SIGNUP_COOKIE]))
+    assert pendente == PendingSignup(profile=PERFIL, invite="convite-ficticio")
 
 
 async def test_pessoa_nova_nao_vai_para_o_banco(sessao_falsa: AsyncMock) -> None:
@@ -274,7 +320,7 @@ async def test_callback_sempre_apaga_os_cookies_do_google(
 
     cookies = cookies_gravados(await chamar(CALLBACK + consulta, COOKIES_DO_LOGIN))
 
-    for nome in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE):
+    for nome in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE, GOOGLE_INVITE_COOKIE):
         assert apagado(cookies[nome])
         # No mesmo Path em que foram gravados, senão o navegador não apaga.
         assert "Path=/api/auth/google;" in cookies[nome]

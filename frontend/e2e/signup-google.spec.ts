@@ -1,13 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockTermsApi } from "./terms-api";
 
 /**
  * A02b/A02c of the Google sign-up (#52).
  *
- * The back-end does not exist yet (#68 and #50), so the routes are mocked.
- * Fictional data, as CONTRIBUTING requires: no real girl.
+ * The routes are mocked, with the contract of the real back-end (#100), so
+ * these tests run without it. The walkthrough against the real back-end is
+ * recorded in the PR (#144). Fictional data, as CONTRIBUTING requires: no
+ * real girl.
  */
 
-const CONTA = { name: "Alana Oliveira", email: "alana@exemplo.com" };
+const CONTA = {
+  name: "Alana Oliveira",
+  email: "alana@exemplo.com",
+  invite: null as string | null,
+};
 const CIDADES = [
   { id: "2704302", name: "Maceió, AL" },
   { id: "2611606", name: "Recife, PE" },
@@ -98,6 +105,10 @@ async function mockApi(page: Page, mocks: Mocks = {}) {
       body: "<html lang='pt-BR'><body><h1>Termos</h1></body></html>",
     }),
   );
+  // A navegação para os termos pode carregar a A04·1 de verdade (o router.push busca
+  // /cadastro/termos?_rsc=…, que a rota acima não pega). Sem isto, ela consultaria um
+  // back local, se houver um rodando, e poderia sair dos termos.
+  await mockTermsApi(page);
 }
 
 /** Fills the date, types the city and taps it in the suggestion list. */
@@ -279,4 +290,81 @@ test("a A02c avisa que nada foi guardado", async ({ page }) => {
   await expect(
     page.getByText("Não guardamos os dados que você preencheu."),
   ).toBeVisible();
+});
+
+test("'Usar outra conta' volta ao Google com o mesmo convite", async ({
+  page,
+}) => {
+  await mockApi(page, { pendente: { ...CONTA, invite: "rendeiras-2026" } });
+
+  let inicioGoogle: string | undefined;
+  await page.route("**/api/auth/google/login**", (route) => {
+    inicioGoogle = route.request().url();
+    return route.fulfill({
+      contentType: "text/html",
+      body: "<html lang='pt-BR'><body><h1>Google</h1></body></html>",
+    });
+  });
+
+  await page.goto("/cadastro/google");
+  await page.getByRole("button", { name: "Usar outra conta" }).click();
+
+  await expect.poll(() => inicioGoogle).toContain("invite=rendeiras-2026");
+  expect(inicioGoogle).toContain("switch_account=1");
+});
+
+test("data recusada pelo servidor pede correção no campo", async ({ page }) => {
+  await mockApi(page, {
+    completar: { status: 422, corpo: { error: "invalid_birth_date" } },
+  });
+  await page.goto("/cadastro/google");
+
+  await fill(page, turnsThirteenToday(), "Maceió, AL");
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page.getByText("Confira sua data de nascimento.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro\/google$/);
+});
+
+test("convite vencido: avisa e o próximo toque segue sem ele", async ({
+  page,
+}) => {
+  await mockApi(page, { pendente: { ...CONTA, invite: "rendeiras-2026" } });
+
+  const corpos: unknown[] = [];
+  await page.route("**/api/auth/signup/complete", (route) => {
+    const corpo = route.request().postDataJSON() as { withoutInvite: boolean };
+    corpos.push(corpo);
+    return corpo.withoutInvite
+      ? route.fulfill({ status: 201, json: {} })
+      : route.fulfill({ status: 422, json: { error: "invalid_invite" } });
+  });
+
+  await page.goto("/cadastro/google");
+  await fill(page, turnsThirteenToday(), "Maceió, AL");
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page.getByText("Esse convite não vale mais.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro\/google$/);
+
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+  expect(corpos).toEqual([
+    { birthDate: turnsThirteenToday(), cityId: "2704302", withoutInvite: false },
+    { birthDate: turnsThirteenToday(), cityId: "2704302", withoutInvite: true },
+  ]);
+});
+
+test("conta criada em outra aba: avisa para entrar com o Google", async ({
+  page,
+}) => {
+  await mockApi(page, { completar: { status: 409, corpo: {} } });
+  await page.goto("/cadastro/google");
+
+  await fill(page, turnsThirteenToday(), "Maceió, AL");
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
+
+  await expect(page.getByText("Essa conta já foi criada.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro\/google$/);
 });

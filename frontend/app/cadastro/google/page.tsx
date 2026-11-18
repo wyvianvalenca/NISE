@@ -21,6 +21,10 @@ import styles from "./page.module.css";
 type Account = PendingSignup | "loading" | "none";
 
 const NETWORK_ERROR = "Não deu pra concluir agora. Tente de novo.";
+const INVITE_EXPIRED_ERROR =
+  "Esse convite não vale mais. Toque em Concluir cadastro para seguir sem ele.";
+const ACCOUNT_EXISTS_ERROR =
+  "Essa conta já foi criada. Entre com o Google para continuar.";
 
 /**
  * A02b "Só mais um passo" (#52): after authorising Google, she confirms her
@@ -37,6 +41,8 @@ export default function GoogleAccount() {
   const [cityError, setCityError] = useState<string>();
   const [generalError, setGeneralError] = useState<string>();
   const [sending, setSending] = useState(false);
+  // The server said the invite expired: she goes on as "came on her own".
+  const [withoutInvite, setWithoutInvite] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -96,7 +102,11 @@ export default function GoogleAccount() {
 
     setSending(true);
     try {
-      const result = await completeSignup({ birthDate, cityId: city.id });
+      const result = await completeSignup({
+        birthDate,
+        cityId: city.id,
+        withoutInvite,
+      });
 
       if (result.ok) {
         router.push("/cadastro/termos");
@@ -109,10 +119,24 @@ export default function GoogleAccount() {
       }
 
       setSending(false);
-      if (result.reason === "invalid_city") {
-        setCityError("Escolha uma cidade da lista.");
-      } else {
-        setGeneralError(NETWORK_ERROR);
+      switch (result.reason) {
+        case "invalid_city":
+          setCityError("Escolha uma cidade da lista.");
+          break;
+        case "invalid_birth_date":
+          setDateError("Confira sua data de nascimento.");
+          break;
+        case "invalid_invite":
+          // The invite expired after she left for Google. Instead of trapping
+          // her, the next tap creates the account without it.
+          setWithoutInvite(true);
+          setGeneralError(INVITE_EXPIRED_ERROR);
+          break;
+        case "account_exists":
+          setGeneralError(ACCOUNT_EXISTS_ERROR);
+          break;
+        default:
+          setGeneralError(NETWORK_ERROR);
       }
     } catch {
       // The connection dropped midway: free the button and explain, rather
@@ -123,6 +147,12 @@ export default function GoogleAccount() {
   }
 
   async function useAnotherAccount() {
+    if (typeof account !== "object") {
+      return;
+    }
+    // Back to Google with the same invite, so the origin stays right (RN-29).
+    const invite = withoutInvite ? undefined : (account.invite ?? undefined);
+
     setGeneralError(undefined);
     setSending(true);
     try {
@@ -132,7 +162,7 @@ export default function GoogleAccount() {
       setGeneralError(NETWORK_ERROR);
       return;
     }
-    window.location.href = googleStartUrl({ switchAccount: true });
+    window.location.href = googleStartUrl({ invite, switchAccount: true });
   }
 
   if (account === "loading") {
