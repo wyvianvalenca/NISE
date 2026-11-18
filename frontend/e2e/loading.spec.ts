@@ -250,9 +250,8 @@ test("E04 works with the keyboard alone, with visible focus, and does not trap i
   await expect(failed(page)).toBeVisible();
 
   const retry = page.getByRole("button", { name: "Tentar novamente" });
-  // In dev mode the Next dev overlay and its "Security Insight" badge (three
-  // focusable buttons) come before the button in tab order.
-  for (let i = 0; i < 10 && !(await retry.evaluate((el) => el === document.activeElement)); i++) {
+  // In dev mode the Next dev overlay portal comes before the button in tab order.
+  for (let i = 0; i < 5 && !(await retry.evaluate((el) => el === document.activeElement)); i++) {
     await page.keyboard.press("Tab");
   }
   await expect(retry).toBeFocused();
