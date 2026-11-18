@@ -176,13 +176,15 @@ Telas e regras da nota "Estados da Alana" (30/10) do Figma. Ficam fora do protó
 | RF-F6.05 (RF-06.05) | O sistema deve permitir corrigir a declaração, guardando o valor anterior. | F6 | Menina | Should | Confirmado | Dado uma declaração errada, quando Alana a corrige, então o sistema guarda a nova e a anterior, com as datas. |
 
 
-#### F31 · Confirmação "sou eu"
+#### F31 · Confirmação "sou eu" (M7)
 
-Os planos da F31 estão em 3.3.
+A busca automática que gera os indícios está em 3.3.
 
 | ID | Requisito | Origem | Perfil | Prior. | Status | Critério de aceite |
 | --- | --- | --- | --- | --- | --- | --- |
-| RF-F31.04 (RF-31.06, RF-31.07) | O sistema deve perguntar à menina, por e-mail, se é ela quem aparece na lista, com "sou eu" e "não sou eu". Ao confirmar, registra a aprovação com a origem; o ingresso só conta quando ela confirma a matrícula. | F31, RN-21, RN-22 | Menina | Must | Confirmado | Dado um indício, quando Maria responde "sou eu" e "ainda não me matriculei", então ela consta como aprovada, e não como ingressante. |
+| RF-F31.04 (RF-31.06, RF-31.07) | O sistema deve perguntar à menina, na tela "É você na lista?", com o card da lista oficial, se é ela quem aparece ("Sou eu" ou "Não sou eu") e se já se matriculou ("Já me matriculei" ou "Ainda não"). "Sou eu" e "Ainda não" registram a aprovação, com a origem da lista. "Sou eu" e "Já me matriculei" registram o ingresso, com a origem "relatório da UFAL, confirmado pela menina" (RF-F6.03). "Não sou eu" apaga o indício (RF-F31.06). "Agora não" volta à agenda, e o item continua lá. Só a menina confirma (RN-21). | F31, Figma M7 (A19), RN-21, RN-22, D-48 | Menina | Must | **A validar** | Dado um indício, quando Maria responde "Sou eu" e "Ainda não", então ela consta como aprovada, e não como ingressante. Quando responde "Sou eu" e "Já me matriculei", então o ingresso fica registrado com a data e a origem. Quando responde "Não sou eu", então o indício é apagado. *O Figma da M7 diz que a coordenadora também pode confirmar o indício na tela de Ingressantes; isso não vale (RN-21, D-48).* |
+| RF-F31.10 | O sistema deve mostrar, no topo de "Pra responder" da agenda ("Sua agenda"), o item "Achamos seu nome numa lista de aprovados!" enquanto houver um indício sem resposta, e o item abre a tela "É você na lista?" (RF-F31.04). A faixa "Tem umas perguntinhas pra você", do Seu filé, também leva à agenda. | F31, Figma M7 (agenda com aprovação para confirmar), D-48 | Menina | Must | **A validar** | Dado um indício para Maria, quando ela abre a agenda, então vê o item no topo de "Pra responder". Dado que ela respondeu, ou que o indício foi apagado (RF-F31.06), então o item some. |
+| RF-F31.11 | O sistema deve avisar a menina por e-mail que achamos o nome dela numa lista de aprovados, sem citar a lista nem o curso, com um link para o app. O e-mail só avisa: a resposta é dada no app (RF-F31.04). | F31, D-48 | Menina | Should | **A validar** | Dado um indício novo para Maria, quando ele é gerado, então ela recebe um e-mail curto com o link para a agenda, e o e-mail não traz o nome da lista nem o curso. *Falta o texto do e-mail no Figma, e falta decidir se ele entra nos e-mails sempre enviados (RN-30).* |
 
 ### 3.2 Coordenadora
 
