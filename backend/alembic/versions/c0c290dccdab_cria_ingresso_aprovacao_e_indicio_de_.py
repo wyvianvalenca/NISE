@@ -120,6 +120,7 @@ def upgrade() -> None:
             ["official_list_id"], ["official_lists.id"], ondelete="SET NULL"
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("girl_id", "official_list_id"),
     )
     op.create_index(
         op.f("ix_enrollments_girl_id"), "enrollments", ["girl_id"], unique=False
@@ -175,6 +176,6 @@ def downgrade() -> None:
     op.drop_table("official_lists")
     # O drop_table não apaga os tipos enum do Postgres; sem isto, subir de novo
     # dá "type already exists".
-    sa.Enum(name="admissionorigin").drop(op.get_bind())
-    sa.Enum(name="courselevel").drop(op.get_bind())
+    sa.Enum(name="admissionorigin").drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name="courselevel").drop(op.get_bind(), checkfirst=True)
     # ### end Alembic commands ###

@@ -130,6 +130,9 @@ class Enrollment(Base):
     """
 
     __tablename__ = "enrollments"
+    # Um ingresso por chamada. Os declarados por ela (sem chamada) ficam com
+    # official_list_id vazio, e NULL não conflita com NULL no Postgres.
+    __table_args__ = (UniqueConstraint("girl_id", "official_list_id"),)
 
     girl_id: Mapped[int] = mapped_column(
         ForeignKey("girls.id", ondelete="CASCADE"), index=True

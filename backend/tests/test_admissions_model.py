@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy import Table, UniqueConstraint
+from sqlalchemy.dialects import postgresql
 
 from app.db.base import Base
 from app.modules.actions.models import Action  # noqa: F401 (registra as tabelas)
@@ -99,7 +100,7 @@ def test_indicio_nao_guarda_nenhum_dado_da_lista_alem_do_curso() -> None:
 
 
 def test_um_indicio_por_menina_e_chamada() -> None:
-    for tabela in ("list_matches", "dismissed_matches", "approvals"):
+    for tabela in ("list_matches", "dismissed_matches", "approvals", "enrollments"):
         assert ("girl_id", "official_list_id") in _unique_column_sets(TABLES[tabela]), (
             tabela
         )
@@ -174,7 +175,24 @@ async def test_a_checagem_olha_indicio_marca_aprovacao_e_ingresso() -> None:
     sql = _sql(sessao_falsa)
     for tabela in ("list_matches", "dismissed_matches", "approvals", "enrollments"):
         assert f"FROM {tabela}" in sql, tabela
-    assert "official_list_id = 7" in sql
+        # Sem o filtro da menina, a primeira confirmação bloquearia todas as outras.
+        assert f"{tabela}.girl_id = 3" in sql, tabela
+        assert f"{tabela}.official_list_id = 7" in sql, tabela
+
+
+async def test_chamada_sem_flush_ganha_id_antes_da_checagem() -> None:
+    sessao_falsa = _sessao(scalar=False)
+    nova = OfficialList(institution="UFAL", selection_process="Sisu 2027", call="2ª")
+
+    async def flush() -> None:
+        nova.id = 8
+
+    sessao_falsa.flush.side_effect = flush
+
+    await create_match(sessao_falsa, 3, nova, "x", CourseLevel.GRADUACAO, AGORA)
+
+    sessao_falsa.flush.assert_awaited_once()
+    assert "list_matches.official_list_id = 8" in _sql(sessao_falsa)
 
 
 # --- Ler o indício -----------------------------------------------------------
@@ -233,6 +251,8 @@ async def test_coordenadora_de_outro_grupo_nao_recebe_nada() -> None:
     sql = _sql(sessao_falsa)
     assert "group_coordinators.user_id = 10" in sql
     assert "girls.origin_group_id" in sql
+    # Sem o filtro da menina, um grupo com uma convidada daria o fato de todas.
+    assert "girls.id = 3" in sql
     assert "participations.girl_id = 3" in sql
 
 
@@ -277,3 +297,7 @@ async def test_rotina_apaga_os_vencidos_sem_resposta() -> None:
     sql = _sql(sessao_falsa, "scalars")
     assert "list_matches.answered_at IS NULL" in sql
     assert "list_matches.expires_at <=" in sql
+    # Passa por um indício que ela está respondendo agora, em vez de esperar.
+    statement = sessao_falsa.scalars.call_args.args[0]
+    pg = postgresql.dialect()  # type: ignore[no-untyped-call]
+    assert "FOR UPDATE SKIP LOCKED" in str(statement.compile(dialect=pg))

@@ -44,6 +44,10 @@ async def create_match(
     if now is None:
         now = datetime.now(UTC)
 
+    # Uma chamada nova ainda sem flush tem id vazio, e a checagem abaixo
+    # compararia com NULL e não acharia nada.
+    if official_list.id is None:
+        await session.flush()
     list_id = official_list.id
     already_known = select(
         or_(
@@ -150,8 +154,13 @@ async def delete_expired_matches(
     if now is None:
         now = datetime.now(UTC)
 
-    statement = select(ListMatch).where(
-        ListMatch.answered_at.is_(None), ListMatch.expires_at <= now
+    # skip_locked: se ela está respondendo "Sou eu" agora, a resposta segura o
+    # indício e a rotina passa por ele. Sem isso, a rotina esperaria a resposta e
+    # depois apagaria um indício já respondido, deixando ingresso e marca juntos.
+    statement = (
+        select(ListMatch)
+        .where(ListMatch.answered_at.is_(None), ListMatch.expires_at <= now)
+        .with_for_update(skip_locked=True)
     )
     expired = (await session.scalars(statement)).all()
 
