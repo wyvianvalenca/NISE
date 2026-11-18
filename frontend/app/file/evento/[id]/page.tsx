@@ -92,16 +92,24 @@ function Detail({ event, onChange }: DetailProps) {
   const [saving, setSaving] = useState<"mark" | "remove" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // O aviso "Você tá inscrita!" chega aberto quando ela vem da A09 com "Sim, me inscrevi".
-  const [toast, setToast] = useState<Toast | null>(() =>
-    searchParams.has(SIGNED_UP_PARAM) && event.status === "in_progress" ? { status: "ready" } : null,
-  );
+  const cameSignedUp = searchParams.has(SIGNED_UP_PARAM) && event.status === "in_progress";
+  const [toast, setToast] = useState<Toast | null>(() => (cameSignedUp ? { status: "ready" } : null));
 
-  // Tira o parâmetro do endereço, para o aviso não voltar ao recarregar.
+  // Na mesma aba, o Next reaproveita esta tela já montada ao voltar da A09, e o useState acima
+  // não roda de novo. Então o aviso também abre quando isso muda com a tela já montada.
+  const [wasSignedUp, setWasSignedUp] = useState(cameSignedUp);
+  if (cameSignedUp !== wasSignedUp) {
+    setWasSignedUp(cameSignedUp);
+    if (cameSignedUp) setToast({ status: "ready" });
+  }
+
+  // Tira o parâmetro do endereço, para o aviso não voltar ao recarregar. Espera o evento
+  // recarregado sair de "Próxima aventura", senão o aviso acima não chega a abrir.
   useEffect(() => {
-    if (searchParams.has(SIGNED_UP_PARAM)) {
+    if (searchParams.has(SIGNED_UP_PARAM) && event.status !== "next") {
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [searchParams]);
+  }, [searchParams, event.status]);
 
   // Quando ela volta do site de inscrição (ou reabre a NISE), a A09 pergunta se deu certo.
   // Só para um evento que ainda é "Próxima aventura" (#182).

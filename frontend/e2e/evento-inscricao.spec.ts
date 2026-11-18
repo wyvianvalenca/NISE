@@ -56,6 +56,26 @@ test.describe("volta do site de inscrição", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Conseguiu se inscrever?" })).toBeVisible();
   });
 
+  test("na mesma aba, \"Sim, me inscrevi\" volta ao evento com o aviso", async ({ page }) => {
+    await open(page, EVENT_PATH);
+    await page.context().route("https://example.com/**", (route) => route.fulfill({ body: "ok" }));
+
+    const [popup] = await Promise.all([
+      page.waitForEvent("popup"),
+      page.getByRole("link", { name: /Ir para inscrição/ }).click(),
+    ]);
+    await popup.close();
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await expect(page).toHaveURL(CHECK_PATH);
+
+    // O evento já foi aberto nesta aba, então o Next reaproveita a tela montada.
+    await button(page, "Sim, me inscrevi").click();
+
+    await expect(page).toHaveURL(EVENT_PATH);
+    await expect(page.getByRole("main").getByText("Inscrita", { exact: true })).toBeVisible();
+    await expect(toast(page)).toContainText("Você tá inscrita! Agora é só esperar o dia.");
+  });
+
   test("sem ter ido ao site, voltar à aba não abre a A09", async ({ page }) => {
     await open(page, EVENT_PATH);
 
