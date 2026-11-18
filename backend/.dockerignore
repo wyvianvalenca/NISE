@@ -1,7 +1,0 @@
-# A .venv da máquina não pode sobrescrever a que o uv cria na imagem.
-.venv/
-__pycache__/
-.mypy_cache/
-.ruff_cache/
-.pytest_cache/
-.env
