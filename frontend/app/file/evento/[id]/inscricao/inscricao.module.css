@@ -42,9 +42,14 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  color: var(--nise-teal);
+  color: var(--nise-ink);
   font-size: 15px;
   font-weight: 500;
+}
+
+/* Como em "Já me inscrevi": texto em tinta (AA, #169) e só o ícone teal. */
+.again > span {
+  color: var(--nise-teal);
 }
 
 .again:hover {

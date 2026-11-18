@@ -147,6 +147,8 @@ test.describe("A09", () => {
     const again = page.getByRole("link", { name: /Abrir o site de novo/ });
     await expect(again).toHaveAttribute("href", "https://example.com/eventos/hackathon-meninas-na-tecnologia");
     await expect(again).toHaveAttribute("target", "_blank");
+    // Texto em ink sobre o papel; teal ali dava 4,26:1, abaixo do AA.
+    await expect(again).toHaveCSS("color", "rgb(10, 59, 72)");
   });
 
   test("se o envio falha, avisa e ela pode tentar de novo no mesmo lugar (RF-S2.15)", async ({ page }) => {
