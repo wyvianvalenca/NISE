@@ -104,6 +104,8 @@ test("\"Já me inscrevi\" e \"Tirar do filé\" aparecem desabilitados até a #18
   await open(page, HACKATHON);
 
   await expect(page.getByRole("button", { name: "Já me inscrevi" })).toBeDisabled();
+  // Texto em ink (#0a3b48) sobre o papel; teal ali dava 4,26:1, abaixo do AA.
+  await expect(page.getByRole("button", { name: "Já me inscrevi" })).toHaveCSS("color", "rgb(10, 59, 72)");
   await expect(page.getByRole("button", { name: "Tirar do filé" })).toBeDisabled();
 });
 

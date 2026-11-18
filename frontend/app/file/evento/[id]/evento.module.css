@@ -62,11 +62,16 @@
   min-height: 44px;
   border: none;
   background: none;
-  color: var(--nise-teal);
+  color: var(--nise-ink);
   font: inherit;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
+}
+
+/* Teal no papel tem contraste 4,26:1, abaixo do AA para texto (#169): só o ícone fica teal. */
+.signedUp > span {
+  color: var(--nise-teal);
 }
 
 .signedUp:hover:not(:disabled) {
