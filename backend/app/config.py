@@ -34,5 +34,20 @@ class AppSettings(BaseSettings):
     # Endereço público do app, para os links dos e-mails.
     app_url: str = "http://localhost:3000"
 
+    # Busca em listas oficiais (F31, #273). O endereço muda a cada edição do
+    # Sisu: é configuração, não código (RF-F31.08).
+    copeve_report_url: str = (
+        "https://copeve.ufal.br/concursos/sisu_2026/resultado_curso.php"
+    )
+    # Página pública do relatório, para o "Ver lista oficial" da A19.
+    copeve_public_url: str = (
+        "https://copeve.ufal.br/concursos/sisu_2026_acompanhamento.php"
+    )
+    copeve_selection_process: str = "Sisu 2026"
+    # Intervalo mínimo entre duas requisições do robô (RNF-F31.05).
+    list_search_interval_seconds: float = 2.0
+    # Segredo das rotas chamadas pelo agendador da hospedagem. Vazio recusa tudo.
+    cron_secret: str = ""
+
 
 settings = AppSettings()

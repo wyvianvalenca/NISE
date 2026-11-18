@@ -15,6 +15,7 @@ from app.modules.admissions.models import (  # noqa: F401
     DismissedMatch,
     Enrollment,
     ListMatch,
+    ListSearchRun,
     OfficialList,
 )
 from app.modules.answers.models import Answer  # noqa: F401
