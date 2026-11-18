@@ -47,9 +47,28 @@ jobs:
         working-directory: frontend
       - run: uv run prek run --all-files --show-diff-on-failure
 
+  # Testes do back com um Postgres de verdade, na mesma versão do docker
+  # compose. A suíte também testa as migrações (sobe, desce, sobe e
+  # `alembic check`). Usuário e senha fictícios: o banco só existe no job.
   backend-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nise
+          POSTGRES_PASSWORD: nise
+          POSTGRES_DB: nise_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nise -d nise_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://nise:nise@localhost:5432/nise_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,8 +77,19 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
-      - run: uv run pytest
+      - run: uv run coverage run -m pytest
         working-directory: backend
+      # Cobertura sem meta mínima: o relatório aparece no log e o HTML fica no
+      # artefato `coverage-html`, para ver as linhas sem teste.
+      - run: uv run coverage report
+        working-directory: backend
+      - run: uv run coverage html
+        working-directory: backend
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-html
+          path: backend/htmlcov
+          retention-days: 7
 
   frontend-build:
     runs-on: ubuntu-latest
