@@ -68,6 +68,7 @@ def test_action_checks_exist() -> None:
         "ck_actions_ends_after_start",
         "ck_actions_in_person_has_city",
         "ck_actions_open_has_registration_url",
+        "ck_actions_description_max_length",
     }
 
 
