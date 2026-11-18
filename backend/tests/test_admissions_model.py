@@ -168,7 +168,9 @@ async def test_a_checagem_olha_indicio_marca_aprovacao_e_ingresso() -> None:
 
     await create_match(sessao_falsa, 3, LISTA, "x", CourseLevel.GRADUACAO, AGORA)
 
-    sql = _sql(sessao_falsa)
+    # A checagem é o primeiro scalar; o segundo acha a conta para o e-mail (#275).
+    checagem = sessao_falsa.scalar.call_args_list[0].args[0]
+    sql = str(checagem.compile(compile_kwargs={"literal_binds": True}))
     for tabela in ("list_matches", "dismissed_matches", "approvals", "enrollments"):
         assert f"FROM {tabela}" in sql, tabela
         # Sem o filtro da menina, a primeira confirmação bloquearia todas as outras.

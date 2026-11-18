@@ -19,6 +19,7 @@ from app.modules.admissions.copeve import (
     ReportFormatError,
     ReportUnavailableError,
 )
+from app.modules.admissions.match_email import send_match_emails
 from app.modules.admissions.search import (
     RoundRunningError,
     SearchDisabledError,
@@ -90,3 +91,19 @@ async def official_lists_round(
 async def expire_matches(session: AsyncSessionDep) -> dict[str, int]:
     """A rotina diária que apaga os indícios sem resposta há 30 dias (RF-F31.06)."""
     return {"deleted": await delete_expired_matches(session)}
+
+
+@router.get("/match-emails", dependencies=[CronDep])
+async def match_emails(session: AsyncSessionDep) -> dict[str, int]:
+    """Envia os e-mails da fila que avisam dos indícios (RF-F31.11, #275).
+
+    Responde só contagens. Se o envio parar (SMTP fora do ar ou não
+    configurado), responde 502 para a falha aparecer no painel de cron, e os
+    e-mails que faltam ficam na fila para a próxima vez.
+    """
+    result = await send_match_emails(session)
+    if result.stopped:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "O envio parou; o resto fica na fila"
+        )
+    return {"sent": result.sent, "dropped": result.dropped}
