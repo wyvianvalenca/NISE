@@ -1,0 +1,95 @@
+# Dependabot: abre PRs para atualizar as dependências, uma vez por mês, um PR
+# por ecossistema. Explicação em docs/ferramentas.md (seção 10).
+#
+# - target-branch: develop, para seguir o git flow (nada entra direto na main).
+# - cooldown: espera 7 dias depois de uma versão sair antes de propor, para não
+#   pegar versão recém-publicada que depois é retirada (ou comprometida).
+# - Os PRs seguem Conventional Commits: "chore(deps): ...".
+# - Como qualquer PR, precisam do CI verde e de 1 aprovação de uma pessoa.
+
+version: 2
+
+updates:
+  # Python (workspace do uv: pyproject.toml da raiz e do backend, uv.lock)
+  - package-ecosystem: uv
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [type:chore, area:back]
+    groups:
+      python:
+        patterns: ["*"]
+
+  # Front (pnpm)
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: develop
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [type:chore, area:front]
+    ignore:
+      # Fixado de propósito: ainda antes da 1.0, muda o código gerado entre
+      # versões. Atualize à mão e regenere o cliente (scripts/generate-client.sh).
+      - dependency-name: "@hey-api/openapi-ts"
+    groups:
+      front:
+        patterns: ["*"]
+
+  # Imagens base dos Dockerfiles
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    target-branch: develop
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [type:chore, area:infra]
+    groups:
+      docker:
+        patterns: ["*"]
+
+  # Imagens do docker-compose.yml (Postgres)
+  - package-ecosystem: docker-compose
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [type:chore, area:infra]
+    groups:
+      docker-compose:
+        patterns: ["*"]
+
+  # Actions do .github/workflows (atualiza o hash e o comentário da versão)
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [type:chore, area:infra]
+    groups:
+      github-actions:
+        patterns: ["*"]
