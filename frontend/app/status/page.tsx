@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { healthCheck } from "@/lib/api";
 import styles from "./page.module.css";
 
 /**
@@ -16,14 +17,17 @@ type Health =
   | { state: "error"; reason: string };
 
 async function fetchHealth(): Promise<string> {
-  const response = await fetch("/api/health");
+  const { data, error, response } = await healthCheck();
 
+  // Sem resposta nenhuma: a requisição nem chegou ao back-end.
+  if (!response) {
+    throw error;
+  }
   if (!response.ok) {
     throw new Error(`o back-end respondeu ${response.status}`);
   }
 
-  const body: { status?: string } = await response.json();
-  return body.status ?? "sem status";
+  return data?.status ?? "sem status";
 }
 
 function describe(health: Health): string {

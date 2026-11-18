@@ -1,0 +1,1102 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "FastAPI", "version": "0.1.0" },
+  "paths": {
+    "/api/auth/me": {
+      "get": {
+        "tags": ["API", "Auth"],
+        "summary": "Me",
+        "operationId": "me",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserOut" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["API", "Auth"],
+        "summary": "Logout",
+        "operationId": "logout",
+        "responses": { "204": { "description": "Successful Response" } }
+      }
+    },
+    "/api/auth/signup/email": {
+      "post": {
+        "tags": ["API", "Auth"],
+        "summary": "Signup Email",
+        "operationId": "signup_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmailSignupIn" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignupOut" }
+              }
+            }
+          },
+          "409": { "description": "E-mail j\u00e1 cadastrado" },
+          "422": {
+            "description": "Dado recusado, ex.: {\"error\": \"under_13\"}"
+          }
+        }
+      }
+    },
+    "/api/auth/signup/pending": {
+      "get": {
+        "tags": ["API", "Auth"],
+        "summary": "Pending Signup",
+        "operationId": "pending_signup",
+        "parameters": [
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PendingSignupOut" }
+              }
+            }
+          },
+          "404": { "description": "Sem cadastro pendente" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/signup/complete": {
+      "post": {
+        "tags": ["API", "Auth"],
+        "summary": "Complete Signup",
+        "operationId": "complete_signup",
+        "parameters": [
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSignupCompleteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignupOut" }
+              }
+            }
+          },
+          "404": { "description": "Sem cadastro pendente" },
+          "409": { "description": "Conta j\u00e1 existe" },
+          "422": {
+            "description": "Dado recusado, ex.: {\"error\": \"under_13\"}"
+          }
+        }
+      }
+    },
+    "/api/auth/signup/discard": {
+      "post": {
+        "tags": ["API", "Auth"],
+        "summary": "Discard Signup",
+        "operationId": "discard_signup",
+        "responses": { "204": { "description": "Successful Response" } }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["API", "Auth"],
+        "summary": "Login",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginIn" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserOut" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/google/login": {
+      "get": {
+        "tags": ["API", "Auth"],
+        "summary": "Google Login",
+        "operationId": "google_login",
+        "parameters": [
+          {
+            "name": "invite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                { "type": "string", "maxLength": 64 },
+                { "type": "null" }
+              ],
+              "title": "Invite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/google/callback": {
+      "get": {
+        "tags": ["API", "Auth"],
+        "summary": "Google Callback",
+        "operationId": "google_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "State"
+            }
+          },
+          {
+            "name": "nise_google_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Google State"
+            }
+          },
+          {
+            "name": "nise_google_verifier",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Google Verifier"
+            }
+          },
+          {
+            "name": "nise_google_convite",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Google Convite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cities": {
+      "get": {
+        "tags": ["API", "Cities"],
+        "summary": "List Cities",
+        "operationId": "list_cities",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100,
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CityOut" },
+                  "title": "Response List Cities"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terms/summary": {
+      "get": {
+        "tags": ["API", "Terms"],
+        "summary": "Terms Summary",
+        "operationId": "terms_summary",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TermsSummaryOut" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terms/acceptance": {
+      "post": {
+        "tags": ["API", "Terms"],
+        "summary": "Accept Terms",
+        "operationId": "accept_terms",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TermsAcceptanceIn" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Successful Response" },
+          "409": {
+            "description": "Os termos mudaram: {\"error\": \"terms_outdated\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preferences/opportunity-emails": {
+      "put": {
+        "tags": ["API", "Preferences"],
+        "summary": "Update Opportunity Emails",
+        "operationId": "update_opportunity_emails",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OpportunityEmailsIn" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Successful Response" },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invites/{code}": {
+      "get": {
+        "tags": ["API", "Invites"],
+        "summary": "Get Invite",
+        "operationId": "get_invite",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "maxLength": 64, "title": "Code" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InviteOut" }
+              }
+            }
+          },
+          "404": { "description": "Convite n\u00e3o encontrado" },
+          "410": { "description": "Convite vencido" },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings/pending": {
+      "get": {
+        "tags": ["API", "Ratings"],
+        "summary": "Pending Rating",
+        "operationId": "pending_rating",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/PendingRatingOut" },
+                    { "type": "null" }
+                  ],
+                  "title": "Response Pending Rating"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings": {
+      "post": {
+        "tags": ["API", "Ratings"],
+        "summary": "Rate Action",
+        "operationId": "rate_action",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RatingIn" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Successful Response" },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "Sem participa\u00e7\u00e3o com presen\u00e7a nessa a\u00e7\u00e3o: {\"error\": \"nothing_to_rate\"}"
+          },
+          "409": {
+            "description": "Ela j\u00e1 avaliou essa a\u00e7\u00e3o: {\"error\": \"already_rated\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/interest-options": {
+      "get": {
+        "tags": ["API", "Profile"],
+        "summary": "Interest Options",
+        "operationId": "interest_options",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InterestOptionsOut" }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/interests": {
+      "put": {
+        "tags": ["API", "Profile"],
+        "summary": "Update Interests",
+        "operationId": "update_interests",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InterestsIn" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Successful Response" },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta n\u00e3o tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": ["API", "Health"],
+        "summary": "Health Check",
+        "operationId": "health_check",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": { "type": "string" },
+                  "type": "object",
+                  "title": "Response Health Check"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CityOut": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "name": { "type": "string", "title": "Name" }
+        },
+        "type": "object",
+        "required": ["id", "name"],
+        "title": "CityOut"
+      },
+      "EmailSignupIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "email": { "type": "string", "maxLength": 254, "title": "Email" },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Password"
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Birthdate"
+          },
+          "cityId": { "type": "integer", "title": "Cityid" },
+          "invite": {
+            "anyOf": [
+              { "type": "string", "maxLength": 64 },
+              { "type": "null" }
+            ],
+            "title": "Invite"
+          }
+        },
+        "type": "object",
+        "required": ["name", "email", "password", "birthDate", "cityId"],
+        "title": "EmailSignupIn",
+        "description": "Cadastro por e-mail e senha (A02, #51).\n\nO front manda em camelCase (birthDate, cityId). O formato do e-mail, o\ntamanho m\u00ednimo da senha, a idade, a cidade e o convite s\u00e3o conferidos no\nservi\u00e7o, que devolve um c\u00f3digo que o front sabe mostrar junto ao campo.\nAqui ficam s\u00f3 os limites que protegem o servidor."
+      },
+      "GoogleSignupCompleteIn": {
+        "properties": {
+          "birthDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Birthdate"
+          },
+          "cityId": { "type": "integer", "title": "Cityid" },
+          "withoutInvite": {
+            "type": "boolean",
+            "title": "Withoutinvite",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["birthDate", "cityId"],
+        "title": "GoogleSignupCompleteIn",
+        "description": "O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).\n\nNome e e-mail v\u00eam do Google, pelo cookie do cadastro pendente, e n\u00e3o daqui."
+      },
+      "GroupOrigin": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "group",
+            "title": "Kind",
+            "default": "group"
+          },
+          "groupName": { "type": "string", "title": "Groupname" }
+        },
+        "type": "object",
+        "required": ["groupName"],
+        "title": "GroupOrigin",
+        "description": "Ela veio pelo convite de um grupo (M1): a lideran\u00e7a dele v\u00ea os dados dela (RN-01)."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InterestOptionsOut": {
+        "properties": {
+          "topics": {
+            "items": { "$ref": "#/components/schemas/OptionOut" },
+            "type": "array",
+            "title": "Topics"
+          },
+          "stages": {
+            "items": { "$ref": "#/components/schemas/OptionOut" },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": ["topics", "stages"],
+        "title": "InterestOptionsOut",
+        "description": "As listas de temas e de etapas de estudo da A05 (RF-F10.01)."
+      },
+      "InterestsIn": {
+        "properties": {
+          "topics": {
+            "items": { "$ref": "#/components/schemas/Topic" },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Topics"
+          },
+          "everything": { "type": "boolean", "title": "Everything" },
+          "stage": { "$ref": "#/components/schemas/StudyStage" }
+        },
+        "type": "object",
+        "required": ["topics", "everything", "stage"],
+        "title": "InterestsIn",
+        "description": "O que ela escolheu na A05: temas e etapa de estudo (RF-F10.01).\n\nC\u00f3digos fora das listas s\u00e3o recusados. N\u00e3o h\u00e1 \"Pular por agora\" (D-19):\nela escolhe pelo menos um tema ou \"Ainda n\u00e3o sei, me mostra de tudo\", e a\netapa de estudo \u00e9 obrigat\u00f3ria."
+      },
+      "InviteOut": {
+        "properties": {
+          "groupName": { "type": "string", "title": "Groupname" }
+        },
+        "type": "object",
+        "required": ["groupName"],
+        "title": "InviteOut",
+        "description": "O que a rota p\u00fablica do convite mostra, para a tela A01b.\n\nS\u00f3 o nome do grupo, de prop\u00f3sito: a rota \u00e9 p\u00fablica, e devolver aqui algo\nda menina (como o e-mail de um registro importado) deixaria quem adivinha\num c\u00f3digo ler dados de menores. O v\u00ednculo com o registro importado\nacontece no cadastro, pelo e-mail que ela digita (RF-F2.02)."
+      },
+      "LoginIn": {
+        "properties": {
+          "email": { "type": "string", "format": "email", "title": "Email" },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": ["email", "password"],
+        "title": "LoginIn"
+      },
+      "OpportunityEmailsIn": {
+        "properties": { "enabled": { "type": "boolean", "title": "Enabled" } },
+        "type": "object",
+        "required": ["enabled"],
+        "title": "OpportunityEmailsIn",
+        "description": "A escolha dela na A04\u00b72: quer ou n\u00e3o receber oportunidades por e-mail (RF-F7.06).\n\nStrictBool: s\u00f3 aceita true ou false. Um texto como \"false\" \u00e9 recusado em\nvez de virar True."
+      },
+      "OptionOut": {
+        "properties": {
+          "code": { "type": "string", "title": "Code" },
+          "label": { "type": "string", "title": "Label" }
+        },
+        "type": "object",
+        "required": ["code", "label"],
+        "title": "OptionOut",
+        "description": "Uma op\u00e7\u00e3o de lista fechada: o c\u00f3digo vai para o back, o nome vai para a tela."
+      },
+      "PendingRatingOut": {
+        "properties": {
+          "actionId": { "type": "integer", "title": "Actionid" },
+          "actionName": { "type": "string", "title": "Actionname" },
+          "groupName": { "type": "string", "title": "Groupname" },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "title": "Startson"
+          },
+          "cityName": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Cityname"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actionId",
+          "actionName",
+          "groupName",
+          "startsOn",
+          "cityName"
+        ],
+        "title": "PendingRatingOut",
+        "description": "A a\u00e7\u00e3o que a menina pode avaliar na A03 (#58).\n\nO front l\u00ea em camelCase (PendingRating em frontend/lib/signup-api.ts) e\nmonta a data e a cidade como no Figma (\"S\u00e1b, 11 de out \u00b7 Macei\u00f3\")."
+      },
+      "PendingSignupOut": {
+        "properties": {
+          "name": { "type": "string", "title": "Name" },
+          "email": { "type": "string", "title": "Email" },
+          "invite": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Invite"
+          }
+        },
+        "type": "object",
+        "required": ["name", "email", "invite"],
+        "title": "PendingSignupOut",
+        "description": "O que veio do Google, para a A02b mostrar (#52). S\u00f3 leitura."
+      },
+      "RatingIn": {
+        "properties": {
+          "actionId": { "type": "integer", "title": "Actionid" },
+          "score": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score"
+          },
+          "comment": {
+            "anyOf": [
+              { "type": "string", "maxLength": 500 },
+              { "type": "null" }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": ["actionId", "score"],
+        "title": "RatingIn",
+        "description": "A nota de 1 a 5 e o coment\u00e1rio opcional da A03 (RF-F4.03a).\n\nO front manda em camelCase (actionId). Quem confere se ela pode avaliar a\na\u00e7\u00e3o \u00e9 o servi\u00e7o."
+      },
+      "Role": {
+        "type": "string",
+        "enum": ["girl", "coordinator", "nise_team"],
+        "title": "Role"
+      },
+      "SelfOrigin": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "self",
+            "title": "Kind",
+            "default": "self"
+          }
+        },
+        "type": "object",
+        "title": "SelfOrigin",
+        "description": "Ela chegou sozinha (M2): os grupos s\u00f3 veem n\u00fameros gerais (RN-04)."
+      },
+      "SignupOut": {
+        "properties": {
+          "id": { "type": "integer", "title": "Id" },
+          "email": { "type": "string", "title": "Email" },
+          "name": { "type": "string", "title": "Name" },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "nextStep": {
+            "type": "string",
+            "const": "terms",
+            "title": "Nextstep",
+            "default": "terms"
+          }
+        },
+        "type": "object",
+        "required": ["id", "email", "name", "role"],
+        "title": "SignupOut"
+      },
+      "StudyStage": {
+        "type": "string",
+        "enum": ["fundamental", "medio", "tecnico", "graduacao", "formada"],
+        "title": "StudyStage"
+      },
+      "TermsAcceptanceIn": {
+        "properties": {
+          "version": { "type": "string", "maxLength": 32, "title": "Version" }
+        },
+        "type": "object",
+        "required": ["version"],
+        "title": "TermsAcceptanceIn",
+        "description": "A vers\u00e3o dos termos que ela leu e aceitou na A04\u00b71 (RF-F7.05).\n\nO servidor s\u00f3 aceita a vers\u00e3o atual; quem confere \u00e9 o servi\u00e7o."
+      },
+      "TermsSummaryOut": {
+        "properties": {
+          "version": { "type": "string", "title": "Version" },
+          "origin": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/GroupOrigin" },
+              { "$ref": "#/components/schemas/SelfOrigin" }
+            ],
+            "title": "Origin",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "group": "#/components/schemas/GroupOrigin",
+                "self": "#/components/schemas/SelfOrigin"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": ["version", "origin"],
+        "title": "TermsSummaryOut",
+        "description": "O que a A04\u00b71 precisa para montar o resumo dos termos (RF-F7.03, RF-F7.04).\n\nO texto fica no front; aqui v\u00e3o s\u00f3 a vers\u00e3o que ela vai aceitar e a origem,\nque decide qual vers\u00e3o do resumo ela l\u00ea."
+      },
+      "Topic": {
+        "type": "string",
+        "enum": [
+          "programacao",
+          "robotica",
+          "ia",
+          "dados",
+          "ciberseguranca",
+          "jogos",
+          "sites",
+          "design"
+        ],
+        "title": "Topic"
+      },
+      "UserOut": {
+        "properties": {
+          "id": { "type": "integer", "title": "Id" },
+          "email": { "type": "string", "title": "Email" },
+          "name": { "type": "string", "title": "Name" },
+          "role": { "$ref": "#/components/schemas/Role" }
+        },
+        "type": "object",
+        "required": ["id", "email", "name", "role"],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" },
+          "input": { "title": "Input" },
+          "ctx": { "type": "object", "title": "Context" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

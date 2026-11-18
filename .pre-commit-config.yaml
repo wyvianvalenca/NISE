@@ -57,6 +57,16 @@ repos:
         files: ^backend/.*\.py$
         pass_filenames: false
 
+      # Contrato front/back: quando o back muda, regenera o cliente da API do
+      # front (frontend/lib/api/) a partir do OpenAPI. Se o cliente mudou, o
+      # commit para; confira e adicione os arquivos gerados.
+      - id: generate-client
+        name: cliente da API (front a partir do back)
+        entry: bash scripts/generate-client.sh
+        language: system
+        files: ^(backend/app/.*\.py|backend/pyproject\.toml|uv\.lock|frontend/openapi-ts\.config\.ts|scripts/generate-client\.sh)$
+        pass_filenames: false
+
       # Front-end
       - id: prettier
         name: prettier (front)
