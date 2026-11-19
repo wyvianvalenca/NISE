@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
-import type { BandCode } from "@/lib/descobrir";
-import { getSuggestions, sendChoice, undoChoice, type Choice, type ReasonCode, type Suggestion } from "@/lib/sugestoes";
+import { useCallback, useEffect, useReducer } from "react";
+import { sendChoice, undoChoice, type Choice, type ReasonCode, type Suggestion, type SuggestionsData } from "@/lib/sugestoes";
 
 // Estado da tela de sugestões: a lista da faixa, qual está à mostra e o total do filé.
+// Quem busca a faixa é a SuggestionsScreen, com a espera da #81; este hook recebe o resultado.
 
 export type DeckState = {
-  /** "error": a busca da faixa falhou; a tela mostra o aviso com "Tentar de novo". */
-  status: "loading" | "ready" | "error";
+  /** "loading" até a faixa chegar; enquanto isso, a tela não mostra nada no meio. */
+  status: "loading" | "ready";
   items: Suggestion[];
   /** Posição da sugestão à mostra; igual a items.length depois da última. */
   index: number;
@@ -19,9 +19,7 @@ export type DeckState = {
 };
 
 export type DeckAction =
-  | { type: "loading" }
   | { type: "loaded"; items: Suggestion[]; fileTotal: number }
-  | { type: "loadFailed" }
   | { type: "choosing" }
   | { type: "chosen"; fileTotal: number }
   | { type: "undone"; id: string; fileTotal: number }
@@ -39,12 +37,8 @@ export const initialDeck: DeckState = {
 
 export function deckReducer(state: DeckState, action: DeckAction): DeckState {
   switch (action.type) {
-    case "loading":
-      return initialDeck;
     case "loaded":
       return { ...initialDeck, status: "ready", items: action.items, fileTotal: action.fileTotal };
-    case "loadFailed":
-      return { ...initialDeck, status: "error" };
     case "choosing":
       return { ...state, pending: true, choiceFailed: false };
     case "chosen":
@@ -71,32 +65,13 @@ type Options = {
   onChoiceConfirmed?: (item: Suggestion, choice: Choice) => void;
 };
 
-export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options = {}) {
+/** `data` é a faixa que o back devolveu (#104); null enquanto ela não chega. */
+export function useSuggestionDeck(data: SuggestionsData | null, { onChoiceConfirmed }: Options = {}) {
   const [state, dispatch] = useReducer(deckReducer, initialDeck);
-  // Cada "Tentar de novo" soma 1 e refaz a busca.
-  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    let current = true;
-    getSuggestions(band).then(
-      (data) => {
-        if (current) dispatch({ type: "loaded", items: data.items, fileTotal: data.fileTotal });
-      },
-      (error: unknown) => {
-        console.warn("Não foi possível carregar as sugestões.", error);
-        if (current) dispatch({ type: "loadFailed" });
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [band, attempt]);
-
-  /** Refaz a busca da faixa depois de um erro. */
-  const reload = useCallback(() => {
-    dispatch({ type: "loading" });
-    setAttempt((count) => count + 1);
-  }, []);
+    if (data) dispatch({ type: "loaded", items: data.items, fileTotal: data.fileTotal });
+  }, [data]);
 
   const item: Suggestion | undefined = state.items[state.index];
 
@@ -143,7 +118,6 @@ export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options
     position: state.index + 1,
     total: state.items.length,
     choose,
-    reload,
     undo,
   };
 }

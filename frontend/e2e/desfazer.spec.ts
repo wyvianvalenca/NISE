@@ -1,17 +1,27 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockSuggestionsApi } from "./suggestions-api";
 
-// #107 · Aviso "Desfazer" na A06·2. Usa os dados de teste de lib/sugestoes.ts.
+// #107 · Aviso "Desfazer" na A06·2. As sugestões e a escolha vêm das rotas da #104, simuladas em
+// suggestions-api.ts; o "Desfazer" ainda usa os dados de teste de lib/sugestoes.ts, até a #106.
 
-type Mock = { count?: number; fileTotal?: number; delayMs?: number; undoFailures?: number };
+type Options = {
+  count?: number;
+  /** Atraso das rotas simuladas (a busca e a escolha), em ms. */
+  delayMs?: number;
+  /** Quantas vezes seguidas o "Desfazer" falha. */
+  undoFailures?: number;
+};
 
-async function open(page: Page, mock: Mock = {}) {
+async function open(page: Page, { count, delayMs, undoFailures }: Options = {}) {
+  await mockSuggestionsApi(page, { count, delayMs });
   await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = value as typeof globalThis.__NISE_MOCK_SUGESTOES__;
-  }, mock);
+    globalThis.__NISE_MOCK_SUGESTOES__ = value;
+  }, { undoFailures });
   await page.goto("/descobrir/uma-tarde");
   await expect(page.getByText(/^Sugestão 1 de/)).toBeVisible();
 }
 
+/** As escolhas que o "Desfazer" de teste ainda pode apagar (lib/sugestoes.ts). */
 function choices(page: Page) {
   return page.evaluate(() => globalThis.__NISE_ESCOLHAS__ ?? []);
 }
@@ -82,7 +92,7 @@ test("uma escolha nova troca o aviso: só a última pode ser desfeita", async ({
   await expect(page.getByRole("heading", { name: SECOND })).toBeVisible();
   // A primeira escolha continua guardada.
   await expect(pill(page)).toContainText("6");
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "quero-fazer" }]);
+  expect(await choices(page)).toEqual([{ id: "curadoria-1", choice: "quero-fazer" }]);
 });
 
 test("o aviso só aparece depois que a escolha é confirmada", async ({ page }) => {

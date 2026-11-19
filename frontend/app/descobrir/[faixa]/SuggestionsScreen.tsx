@@ -2,23 +2,75 @@
 
 // A06·2 · Sugestões: uma de cada vez, com "Não é pra mim", "Talvez depois" e "Quero fazer",
 // e o aviso com "Desfazer" depois de cada escolha.
-// Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107). Usa os dados de teste de lib/sugestoes.ts.
+// Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107), pelas rotas da #104
+// (integração na #105). O "Desfazer" ainda usa os dados de teste de lib/sugestoes.ts (#106).
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, LinkButton } from "@/components/Button";
+import { LinkButton } from "@/components/Button";
 import { Icon, type IconName } from "@/components/Icon";
+import { LoadFailed } from "@/components/LoadFailed";
 import { SuggestionCard } from "@/components/SuggestionCard";
 import { Tag, TagList } from "@/components/Tag";
+import { TecendoFile } from "@/components/TecendoFile";
 import { TextLink } from "@/components/TextLink";
 import { BANDS, type BandCode } from "@/lib/descobrir";
-import type { Choice, ReasonCode, Suggestion } from "@/lib/sugestoes";
+import { useLongWait } from "@/lib/loading";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { WITHOUT_SESSION } from "@/lib/signup-api";
+import {
+  getSuggestions,
+  type Choice,
+  type ReasonCode,
+  type Suggestion,
+  type SuggestionsData,
+  type SuggestionsResult,
+} from "@/lib/sugestoes";
 import { ReasonSheet } from "./ReasonSheet";
 import { UndoToast, type UndoNotice } from "./UndoToast";
 import { useSuggestionDeck } from "./useSuggestionDeck";
 import styles from "./SuggestionsScreen.module.css";
 
+/** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
+function redirectFor(result: SuggestionsResult | null): string | null {
+  if (!result || result.ok) return null;
+  if (result.reason === "terms_not_accepted") return SIGNUP_PATHS.terms;
+  if (result.reason === "failed") return null;
+  return WITHOUT_SESSION[result.reason];
+}
+
+// Uma falha vira erro, para useLongWait mostrar a E04 com "Tentar novamente".
+async function fetchBand(band: BandCode): Promise<SuggestionsResult> {
+  const result = await getSuggestions(band);
+  if (!result.ok && result.reason === "failed") {
+    throw new Error("As sugestões não carregaram");
+  }
+  return result;
+}
+
+/**
+ * Busca a faixa com a espera da #81: uma espera curta não mostra nada, uma longa mostra o
+ * "Tecendo seu filé…" (E03) e uma falha mostra a E04 (RNF-F10.02).
+ */
 export function SuggestionsScreen({ band }: { band: BandCode }) {
+  const router = useRouter();
+  // useLongWait recomeça a busca quando a função muda; useCallback a mantém a mesma por faixa.
+  const fetcher = useCallback(() => fetchBand(band), [band]);
+  const { phase, data: result, retry } = useLongWait(fetcher);
+  const redirect = redirectFor(result);
+
+  useEffect(() => {
+    if (redirect) router.replace(redirect);
+  }, [redirect, router]);
+
+  if (phase === "weaving") return <TecendoFile />;
+  if (phase === "error") return <LoadFailed onRetry={retry} />;
+
+  return <BandSuggestions band={band} data={result?.ok ? result.data : null} />;
+}
+
+function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData | null }) {
   const title = BANDS[band].title;
   const [notice, setNotice] = useState<UndoNotice | null>(null);
   const noticeKey = useRef(0);
@@ -30,7 +82,7 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
   }, []);
   const hideNotice = useCallback(() => setNotice(null), []);
 
-  const { state, item, position, total, choose, undo, reload } = useSuggestionDeck(band, { onChoiceConfirmed: showNotice });
+  const { state, item, position, total, choose, undo } = useSuggestionDeck(data, { onChoiceConfirmed: showNotice });
   const [reasonOpen, setReasonOpen] = useState(false);
   // O fim da faixa só puxa o foco quando ela chega lá escolhendo, não quando a página já abre nele.
   const [decided, setDecided] = useState(false);
@@ -94,14 +146,8 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
         {/* Espaço do aviso no Figma; o aviso fica por cima dele (.toastArea), para não empurrar o card. */}
         <div className={styles.noticeSlot} />
 
-        {state.status === "loading" ? (
-          // Provisório: a tela "Tecendo seu filé…" (E03) é da issue #81 e entra aqui quando existir.
-          <p className={styles.status} aria-live="polite">
-            Carregando…
-          </p>
-        ) : state.status === "error" ? (
-          <LoadError onRetry={reload} />
-        ) : item ? (
+        {/* Antes de 1 s não aparece nada no meio, para a tela não piscar (#81). */}
+        {state.status === "loading" ? null : item ? (
           <>
             {state.choiceFailed && (
               <p className={styles.error} role="alert">
@@ -149,10 +195,13 @@ function Deck({ item, behind }: { item: Suggestion; behind: number }) {
             <TagList>
               <Tag variant="chip">{item.format}</Tag>
               <Tag variant="chip">{item.duration}</Tag>
-              <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>{item.cost}</Tag>
-              <Tag variant="chip">
-                {item.minAge}+<span className={styles.srOnly}> anos</span>
-              </Tag>
+              {/* Custo e idade mínima podem faltar (as ações dos grupos não têm): sem eles, sem chip. */}
+              {item.cost !== null && <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>{item.cost}</Tag>}
+              {item.minAge !== null && (
+                <Tag variant="chip">
+                  {item.minAge}+<span className={styles.srOnly}> anos</span>
+                </Tag>
+              )}
             </TagList>
           }
         />
@@ -187,22 +236,6 @@ function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice:
           </button>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * A busca da faixa falhou. PROVISÓRIO: quando a #81 entrar, a E04 "Não foi possível carregar"
- * ocupa este lugar, com o mesmo "Tentar de novo".
- */
-function LoadError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className={styles.end} role="alert">
-      <h2 className={styles.endTitle}>Não foi possível carregar as sugestões.</h2>
-      <p className={styles.endText}>Confira sua conexão e tente de novo.</p>
-      <Button onClick={onRetry} className={styles.retry}>
-        Tentar de novo
-      </Button>
     </div>
   );
 }
