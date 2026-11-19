@@ -8,7 +8,7 @@ from app.modules.catalog.service import is_suggestible
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
 from app.modules.girl_file.schemas import ChoiceIn, ChoiceOut
-from app.modules.girl_file.service import file_total, save_choice
+from app.modules.girl_file.service import file_total, remove_choice, save_choice
 from app.modules.girls.service import get_girl_of_user
 from app.modules.girls.utils import today_in_maceio
 
@@ -59,4 +59,40 @@ async def choose(
         return not_found("item_not_found")
 
     await save_choice(session, girl.id, origin, number, data.choice, data.reason)
+    return ChoiceOut(file_total=await file_total(session, girl.id))
+
+
+UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
+    status.HTTP_403_FORBIDDEN: RESPONSES[status.HTTP_403_FORBIDDEN],
+    status.HTTP_404_NOT_FOUND: {
+        "description": (
+            'A conta não tem registro de menina: {"error": "profile_not_found"}.'
+            ' O id não é de um item do catálogo: {"error": "item_not_found"}'
+        )
+    },
+}
+
+
+# A06·2 · "Desfazer" (#106, RF-F10.05): apaga a escolha dela sobre um item, com
+# o motivo do "Não é pra mim", e o item volta a poder ser sugerido. Responde o
+# novo total do filé, para a pílula "Meu filé".
+#
+# Não confere se o item ainda aparece nas sugestões: uma ação que fechou entre a
+# escolha e o "Desfazer" também precisa ser desfeita. Um item sem escolha dela
+# responde 200 sem mudar nada, então chamar duas vezes dá o mesmo resultado.
+# A menina é sempre a da sessão; a linha de outra menina nunca é achada (RNF-G.03).
+@router.delete("/{item_id}", response_model=ChoiceOut, responses=UNDO_RESPONSES)
+async def undo_choice(
+    item_id: str, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ChoiceOut | JSONResponse:
+    girl = await get_girl_of_user(session, user.id)
+    if girl is None:
+        return not_found("profile_not_found")
+
+    parsed = parse_item_id(item_id)
+    if parsed is None:
+        return not_found("item_not_found")
+    origin, number = parsed
+
+    await remove_choice(session, girl.id, origin, number)
     return ChoiceOut(file_total=await file_total(session, girl.id))

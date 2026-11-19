@@ -1,29 +1,22 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockSuggestionsApi } from "./suggestions-api";
+import { mockSuggestionsApi, type SuggestionsApi } from "./suggestions-api";
 
-// #107 · Aviso "Desfazer" na A06·2. As sugestões e a escolha vêm das rotas da #104, simuladas em
-// suggestions-api.ts; o "Desfazer" ainda usa os dados de teste de lib/sugestoes.ts, até a #106.
+// #107 e #109 · Aviso "Desfazer" na A06·2. As sugestões, a escolha e o "Desfazer" vêm das rotas da
+// #104 e da #108, simuladas em suggestions-api.ts.
 
 type Options = {
   count?: number;
-  /** Atraso das rotas simuladas (a busca e a escolha), em ms. */
+  /** Atraso das rotas simuladas (a busca, a escolha e o "Desfazer"), em ms. */
   delayMs?: number;
   /** Quantas vezes seguidas o "Desfazer" falha. */
   undoFailures?: number;
 };
 
-async function open(page: Page, { count, delayMs, undoFailures }: Options = {}) {
-  await mockSuggestionsApi(page, { count, delayMs });
-  await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = value;
-  }, { undoFailures });
+async function open(page: Page, options: Options = {}): Promise<SuggestionsApi> {
+  const api = await mockSuggestionsApi(page, options);
   await page.goto("/descobrir/uma-tarde");
   await expect(page.getByText(/^Sugestão 1 de/)).toBeVisible();
-}
-
-/** As escolhas que o "Desfazer" de teste ainda pode apagar (lib/sugestoes.ts). */
-function choices(page: Page) {
-  return page.evaluate(() => globalThis.__NISE_ESCOLHAS__ ?? []);
+  return api;
 }
 
 const pill = (page: Page) => page.getByRole("link", { name: /^Meu filé/ });
@@ -35,7 +28,7 @@ const FIRST = "Crie seu primeiro site com HTML";
 const SECOND = "Um jogo da velha no navegador";
 
 test("\"Quero fazer\" mostra o aviso e \"Desfazer\" traz a mesma sugestão de volta", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Quero fazer").click();
   await expect(toast(page)).toHaveText(`${FIRST} entrou no seu filéDesfazer`);
@@ -47,13 +40,15 @@ test("\"Quero fazer\" mostra o aviso e \"Desfazer\" traz a mesma sugestão de vo
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
   await expect(page.getByRole("heading", { name: FIRST })).toBeVisible();
   await expect(pill(page)).toContainText("5");
-  expect(await choices(page)).toEqual([]);
+  // O "Desfazer" manda o id do item ao back, que apaga a escolha.
+  expect(api.undone).toEqual(["curadoria-1"]);
+  expect(api.saved).toEqual([]);
   // O foco vai para o contador, que diz qual sugestão voltou.
   await expect(page.getByText("Sugestão 1 de 8")).toBeFocused();
 });
 
 test("\"Talvez depois\" mostra \"foi pro Ver depois\" e o desfazer apaga a escolha", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Talvez depois").click();
   await expect(toast(page)).toContainText(`${FIRST} foi pro Ver depois`);
@@ -61,25 +56,27 @@ test("\"Talvez depois\" mostra \"foi pro Ver depois\" e o desfazer apaga a escol
   await undoButton(page).click();
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
   await expect(pill(page)).toContainText("5");
-  expect(await choices(page)).toEqual([]);
+  expect(api.undone).toEqual(["curadoria-1"]);
+  expect(api.saved).toEqual([]);
 });
 
 test("\"Não é pra mim\" mostra \"foi dispensada\" e o desfazer apaga a escolha e o motivo", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Não é pra mim").click();
   await page.getByRole("button", { name: "Muito difícil" }).click();
   await page.getByRole("button", { name: "Enviar" }).click();
   await expect(toast(page)).toContainText(`${FIRST} foi dispensada`);
-  expect(await choices(page)).toHaveLength(1);
+  expect(api.saved).toEqual([{ id: "curadoria-1", choice: "nao-e-pra-mim", reason: "muito-dificil" }]);
 
   await undoButton(page).click();
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
-  expect(await choices(page)).toEqual([]);
+  expect(api.undone).toEqual(["curadoria-1"]);
+  expect(api.saved).toEqual([]);
 });
 
 test("uma escolha nova troca o aviso: só a última pode ser desfeita", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Quero fazer").click();
   await expect(toast(page)).toContainText(FIRST);
@@ -92,7 +89,8 @@ test("uma escolha nova troca o aviso: só a última pode ser desfeita", async ({
   await expect(page.getByRole("heading", { name: SECOND })).toBeVisible();
   // A primeira escolha continua guardada.
   await expect(pill(page)).toContainText("6");
-  expect(await choices(page)).toEqual([{ id: "curadoria-1", choice: "quero-fazer" }]);
+  expect(api.undone).toEqual(["curadoria-2"]);
+  expect(api.saved).toEqual([{ id: "curadoria-1", choice: "quero-fazer" }]);
 });
 
 test("o aviso só aparece depois que a escolha é confirmada", async ({ page }) => {
@@ -107,14 +105,12 @@ test("o aviso só aparece depois que a escolha é confirmada", async ({ page }) 
 });
 
 test("enquanto desfaz, os botões ficam bloqueados", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
   await button(page, "Quero fazer").click();
   await expect(toast(page)).toBeVisible();
 
   // Daqui em diante as respostas demoram.
-  await page.evaluate(() => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = { ...globalThis.__NISE_MOCK_SUGESTOES__, delayMs: 600 };
-  });
+  api.delayMs = 600;
   await undoButton(page).click();
   await expect(undoButton(page)).toHaveAttribute("aria-disabled", "true");
   await expect(button(page, "Quero fazer")).toBeDisabled();
@@ -198,7 +194,7 @@ test.describe("tempo do aviso", () => {
 });
 
 test("dá para desfazer só com o teclado, com foco visível", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   // Voltar, Meu filé, Não é pra mim, Talvez depois, Quero fazer.
   for (let i = 0; i < 5; i++) await page.keyboard.press("Tab");
@@ -213,7 +209,22 @@ test("dá para desfazer só com o teclado, com foco visível", async ({ page }) 
 
   await page.keyboard.press("Enter");
   await expect(page.getByText("Sugestão 1 de 8")).toBeFocused();
-  expect(await choices(page)).toEqual([]);
+  expect(api.saved).toEqual([]);
+});
+
+test("com o back demorando, o foco fica no botão e o Shift+Tab chega ao Desfazer", async ({ page }) => {
+  await open(page, { delayMs: 400 });
+
+  for (let i = 0; i < 5; i++) await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  // Enquanto guarda, o botão fica bloqueado, mas não perde o foco.
+  await expect(button(page, "Quero fazer")).toHaveAttribute("aria-disabled", "true");
+  await expect(button(page, "Quero fazer")).toBeFocused();
+
+  await expect(toast(page)).toBeVisible();
+  await expect(button(page, "Quero fazer")).toBeFocused();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+Tab");
+  await expect(undoButton(page)).toBeFocused();
 });
 
 for (const width of [360, 1366]) {
