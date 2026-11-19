@@ -162,7 +162,7 @@
   outline-offset: 4px;
 }
 
-.action:disabled {
+.action[aria-disabled="true"] {
   cursor: progress;
 }
 
@@ -181,7 +181,7 @@
   color: var(--nise-pink);
 }
 
-.action:hover:not(:disabled) .actionCircle {
+.action:hover:not([aria-disabled="true"]) .actionCircle {
   border-color: var(--nise-teal);
 }
 
@@ -198,7 +198,7 @@
   box-shadow: 0 8px 24px rgba(10, 59, 71, 0.1);
 }
 
-.actionMain:hover:not(:disabled) .actionCircle {
+.actionMain:hover:not([aria-disabled="true"]) .actionCircle {
   background: var(--nise-teal);
 }
 

@@ -1,11 +1,10 @@
 // Sugestões de uma faixa, uma de cada vez (A06·2), o motivo do "Não é pra mim" (A06·2a)
-// e o "Desfazer" da última escolha. Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107).
+// e o "Desfazer" da última escolha. Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103, #107 e #109).
 //
-// As rotas são GET /api/discover/{faixa} e PUT /api/file/{id} (#104). Os tipos
-// abaixo são escritos à mão, iguais ao OpenAPI do back (/docs no FastAPI), como
-// em lib/descobrir.ts: a equipe decidiu não ter um gerador de tipos por enquanto.
-//
-// TEMPORÁRIO: undoChoice() ainda usa dados de teste, até a rota do "Desfazer" (#106) existir.
+// As rotas são GET /api/discover/{faixa} e PUT /api/file/{id} (#104), e DELETE /api/file/{id}
+// para o "Desfazer" (#108). Os tipos abaixo são escritos à mão, iguais ao OpenAPI do back
+// (/docs no FastAPI), como em lib/descobrir.ts: a equipe decidiu não ter um gerador de tipos
+// por enquanto.
 
 import type { BandCode } from "./descobrir";
 import { errorCode, sessionProblem, type SessionProblem } from "./signup-api";
@@ -153,57 +152,19 @@ export async function sendChoice(id: string, choice: Choice, reason?: ReasonCode
     throw new Error("Não foi possível guardar a escolha.");
   }
 
-  const data = (await response.json()) as ChoiceResponse;
-  rememberForUndo(id, choice, data.fileTotal, reason);
-  return data;
-}
-
-// --- TEMPORÁRIO: "Desfazer" com dados de teste, até a rota da #106 -----------------------------
-//
-// undoChoice() ainda não fala com o back: ele só desfaz no navegador. Para isso, sendChoice()
-// anota aqui as escolhas guardadas e o último total do filé. Quando a rota do "Desfazer" existir,
-// esta parte toda sai e undoChoice() passa a chamá-la.
-//
-// Os testes e2e leem as escolhas anotadas em __NISE_ESCOLHAS__, e fazem o "Desfazer" demorar ou
-// falhar definindo __NISE_MOCK_SUGESTOES__ antes da página abrir.
-declare global {
-  var __NISE_MOCK_SUGESTOES__:
-    | {
-        /** Atraso do "Desfazer", em ms, para testar o bloqueio dos botões. */
-        delayMs?: number;
-        /** Quantas vezes seguidas o "Desfazer" falha, para testar o erro. */
-        undoFailures?: number;
-      }
-    | undefined;
-  var __NISE_ESCOLHAS__: { id: string; choice: Choice; reason?: ReasonCode }[] | undefined;
-}
-
-let lastFileTotal = 0;
-
-function rememberForUndo(id: string, choice: Choice, fileTotal: number, reason?: ReasonCode) {
-  lastFileTotal = fileTotal;
-  const saved = (globalThis.__NISE_ESCOLHAS__ ?? []).filter((entry) => entry.id !== id);
-  globalThis.__NISE_ESCOLHAS__ = [...saved, reason ? { id, choice, reason } : { id, choice }];
-}
-
-function wait(ms: number | undefined) {
-  return ms ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+  return (await response.json()) as ChoiceResponse;
 }
 
 /**
- * Desfaz a escolha dela sobre um item (#106): apaga a escolha guardada (e o motivo, se houver)
- * e devolve o novo total do filé. Para um item sem escolha, não faz nada.
+ * Desfaz a escolha dela sobre um item (#108): o back apaga a escolha guardada (e o motivo, se
+ * houver) e devolve o novo total do filé. Para um item sem escolha, o back não faz nada.
+ * Qualquer resposta que não seja 200 vira erro: o aviso mostra "Tentar de novo".
  */
 export async function undoChoice(id: string): Promise<ChoiceResponse> {
-  const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
-  await wait(mock.delayMs);
-  if (mock.undoFailures) {
-    mock.undoFailures -= 1;
+  const response = await fetch(`/api/file/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!response.ok) {
     throw new Error("Não foi possível desfazer a escolha.");
   }
-  const saved = globalThis.__NISE_ESCOLHAS__ ?? [];
-  const removed = saved.find((entry) => entry.id === id);
-  globalThis.__NISE_ESCOLHAS__ = saved.filter((entry) => entry.id !== id);
-  if (removed?.choice === "quero-fazer") lastFileTotal -= 1;
-  return { fileTotal: lastFileTotal };
+
+  return (await response.json()) as ChoiceResponse;
 }

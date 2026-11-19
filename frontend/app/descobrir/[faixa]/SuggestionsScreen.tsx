@@ -3,7 +3,7 @@
 // A06·2 · Sugestões: uma de cada vez, com "Não é pra mim", "Talvez depois" e "Quero fazer",
 // e o aviso com "Desfazer" depois de cada escolha.
 // Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107), pelas rotas da #104
-// (integração na #105). O "Desfazer" ainda usa os dados de teste de lib/sugestoes.ts (#106).
+// (integração na #105) e a do "Desfazer" da #108 (integração na #109).
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -216,6 +216,11 @@ const ACTIONS: { choice: Choice; label: string; icon: IconName }[] = [
   { choice: "quero-fazer", label: "Quero fazer", icon: "plus" },
 ];
 
+/**
+ * Os três botões. Enquanto a escolha é guardada, ficam bloqueados com aria-disabled, e não com
+ * disabled: um botão com disabled perde o foco, e quem usa o teclado voltaria para o começo da
+ * página (como o "Desfazer" do Toast).
+ */
 function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice: Choice) => void }) {
   return (
     <div className={styles.actions}>
@@ -226,8 +231,10 @@ function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice:
             key={action.choice}
             type="button"
             className={`${styles.action} ${main ? styles.actionMain : ""}`}
-            disabled={disabled}
-            onClick={() => onChoose(action.choice)}
+            aria-disabled={disabled || undefined}
+            onClick={() => {
+              if (!disabled) onChoose(action.choice);
+            }}
           >
             <span className={styles.actionCircle}>
               <Icon name={action.icon} size={main ? 30 : 24} />
