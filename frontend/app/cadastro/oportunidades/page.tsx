@@ -40,7 +40,10 @@ export default function OpportunitiesPage() {
 
     setSaving(null);
 
-    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+    if (
+      result?.reason === "unauthenticated" ||
+      result?.reason === "incomplete_signup"
+    ) {
       router.replace(WITHOUT_SESSION[result.reason]);
       return;
     }
@@ -66,8 +69,12 @@ export default function OpportunitiesPage() {
       <div className={styles.tile}>
         <Icon name="mail" />
       </div>
-      <h1 className={styles.titleLoose}>Quer receber oportunidades por e‑mail?</h1>
-      <p className={styles.lead}>Avisos de oficinas, cursos e bolsas que combinam com você.</p>
+      <h1 className={styles.titleLoose}>
+        Quer receber oportunidades por e‑mail?
+      </h1>
+      <p className={styles.lead}>
+        Avisos de oficinas, cursos e bolsas que combinam com você.
+      </p>
 
       <div className={styles.block}>
         <IconList
@@ -104,7 +111,9 @@ export default function OpportunitiesPage() {
           {error}
         </p>
       )}
-      <p className={styles.footnote}>Dá pra mudar quando quiser no seu perfil.</p>
+      <p className={styles.footnote}>
+        Dá pra mudar quando quiser no seu perfil.
+      </p>
     </div>
   );
 }

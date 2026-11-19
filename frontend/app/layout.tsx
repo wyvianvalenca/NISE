@@ -16,8 +16,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "NISE",
-  description:
-    "Núcleo de Incentivo e Suporte para Egressas e Estudantes",
+  description: "Núcleo de Incentivo e Suporte para Egressas e Estudantes",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -18,7 +18,13 @@ type FileCardProps = {
 };
 
 /** Arquivo com nome, detalhes e uma ação. */
-export function FileCard({ fileName, details, variant = "uploaded", format, action }: FileCardProps) {
+export function FileCard({
+  fileName,
+  details,
+  variant = "uploaded",
+  format,
+  action,
+}: FileCardProps) {
   return (
     <div className={`${styles.card} ${styles[variant]}`}>
       {variant === "uploaded" ? (

@@ -15,7 +15,13 @@ type BottomSheetProps = {
 };
 
 /** Painel que sobe de baixo no celular da menina (Figma: Painel / Motivo). */
-export function BottomSheet({ open, onClose, title, description, children }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+}: BottomSheetProps) {
   const ref = useDialog(open, onClose);
   const titleId = useId();
 

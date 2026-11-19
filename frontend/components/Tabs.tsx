@@ -19,7 +19,12 @@ type TabsProps<K extends string> = {
  * Abas com sublinhado teal (Figma: Abas, em K05e e K11).
  * Só troca a aba; o conteúdo de cada uma fica com a página.
  */
-export function Tabs<K extends string>({ tabs, active, onChange, label }: TabsProps<K>) {
+export function Tabs<K extends string>({
+  tabs,
+  active,
+  onChange,
+  label,
+}: TabsProps<K>) {
   return (
     <div role="tablist" aria-label={label} className={styles.tabs}>
       {tabs.map((tab) => (
@@ -32,7 +37,9 @@ export function Tabs<K extends string>({ tabs, active, onChange, label }: TabsPr
           onClick={() => onChange(tab.key)}
         >
           {tab.label}
-          {tab.count !== undefined && <span className={styles.count}>{tab.count}</span>}
+          {tab.count !== undefined && (
+            <span className={styles.count}>{tab.count}</span>
+          )}
         </button>
       ))}
     </div>

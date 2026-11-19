@@ -44,7 +44,10 @@ function readSaved(): Record<string, ActivityFeedback> {
 }
 
 /** Envia a nota e o pedido de sugestões da atividade concluída. */
-export async function sendActivityFeedback(activityId: string, feedback: ActivityFeedback): Promise<void> {
+export async function sendActivityFeedback(
+  activityId: string,
+  feedback: ActivityFeedback,
+): Promise<void> {
   const { score, similar } = feedback;
   if (score !== null && (!Number.isInteger(score) || score < 1 || score > 5)) {
     throw new Error("Escolha uma nota de 1 a 5.");
@@ -63,7 +66,10 @@ export async function sendActivityFeedback(activityId: string, feedback: Activit
   }
 
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readSaved(), [activityId]: feedback }));
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...readSaved(), [activityId]: feedback }),
+    );
   } catch {
     // Sem sessionStorage (aba anônima bloqueada): os dados de teste só não ficam salvos.
   }

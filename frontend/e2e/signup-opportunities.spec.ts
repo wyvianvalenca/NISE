@@ -32,7 +32,9 @@ test("Sim, quero receber liga a preferência e segue", async ({ page }) => {
   expect(sentChoices).toEqual([true]);
 });
 
-test("Não, obrigada deixa a preferência desligada e segue", async ({ page }) => {
+test("Não, obrigada deixa a preferência desligada e segue", async ({
+  page,
+}) => {
   const sentChoices = await mockOpportunitiesApi(page);
   await openStep2(page);
 
@@ -73,10 +75,16 @@ test("se não dá pra salvar, avisa e deixa tentar de novo", async ({ page }) =>
 
   await page.getByRole("button", { name: "Sim, quero receber" }).click();
 
-  await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
+  await expect(
+    page.getByText("Não deu pra salvar. Tente de novo."),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/cadastro\/oportunidades$/);
-  await expect(page.getByRole("button", { name: "Sim, quero receber" })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Não, obrigada" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Sim, quero receber" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Não, obrigada" }),
+  ).toBeEnabled();
 
   // A rota volta a responder: a nova simulação vale no lugar da anterior.
   const sentChoices = await mockOpportunitiesApi(page);
@@ -88,11 +96,15 @@ test("se não dá pra salvar, avisa e deixa tentar de novo", async ({ page }) =>
 
 test("sem rede, avisa e fica na Etapa 2", async ({ page }) => {
   await openStep2(page);
-  await page.route("**/api/preferences/opportunity-emails", (route) => route.abort());
+  await page.route("**/api/preferences/opportunity-emails", (route) =>
+    route.abort(),
+  );
 
   await page.getByRole("button", { name: "Não, obrigada" }).click();
 
-  await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
+  await expect(
+    page.getByText("Não deu pra salvar. Tente de novo."),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/cadastro\/oportunidades$/);
 });
 
@@ -105,10 +117,14 @@ test("se a sessão acabou, volta para a página inicial", async ({ page }) => {
   await expect(page).toHaveURL(/localhost:3000\/$/);
 });
 
-test("com o cadastro do Google incompleto, volta para completar", async ({ page }) => {
+test("com o cadastro do Google incompleto, volta para completar", async ({
+  page,
+}) => {
   await mockOpportunitiesApi(page, { response: "incomplete_signup" });
   // A A02b busca o cadastro pendente; aqui basta ela abrir.
-  await page.route("**/api/auth/signup/pending", (route) => route.fulfill({ status: 404, json: {} }));
+  await page.route("**/api/auth/signup/pending", (route) =>
+    route.fulfill({ status: 404, json: {} }),
+  );
   await openStep2(page);
 
   await page.getByRole("button", { name: "Sim, quero receber" }).click();
@@ -123,5 +139,7 @@ test("sem o aceite dos termos, volta para a Etapa 1", async ({ page }) => {
   await page.getByRole("button", { name: "Não, obrigada" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
-  await expect(page.getByRole("checkbox", { name: /Li e concordo/ })).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: /Li e concordo/ }),
+  ).toBeVisible();
 });

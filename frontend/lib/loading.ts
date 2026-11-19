@@ -71,7 +71,10 @@ export function useLongWait<T>(
   const minimum = times.minimum ?? MINIMUM_MS;
   const maximum = times.maximum ?? MAXIMUM_MS;
 
-  const [state, setState] = useState<WaitState<T>>({ phase: "early", data: null });
+  const [state, setState] = useState<WaitState<T>>({
+    phase: "early",
+    data: null,
+  });
   const [attempt, setAttempt] = useState(0);
   const [seenFetcher, setSeenFetcher] = useState(() => fetcher);
   const shownAt = useRef<number | null>(null);
@@ -89,7 +92,9 @@ export function useLongWait<T>(
    */
   if (seenFetcher !== fetcher) {
     setSeenFetcher(() => fetcher);
-    setState((current) => (current.phase === "weaving" ? current : { phase: "early", data: null }));
+    setState((current) =>
+      current.phase === "weaving" ? current : { phase: "early", data: null },
+    );
   }
 
   /**
@@ -129,14 +134,22 @@ export function useLongWait<T>(
     timers.push(
       setTimeout(() => {
         if (!active) return;
-        setState((current) => (current.phase === "early" ? { ...current, phase: "weaving" } : current));
+        setState((current) =>
+          current.phase === "early"
+            ? { ...current, phase: "weaving" }
+            : current,
+        );
       }, threshold),
     );
 
     timers.push(
       setTimeout(() => {
         if (active) {
-          setState((current) => (current.phase === "ready" ? current : { ...current, phase: "error" }));
+          setState((current) =>
+            current.phase === "ready"
+              ? current
+              : { ...current, phase: "error" },
+          );
         }
       }, maximum),
     );
@@ -151,7 +164,9 @@ export function useLongWait<T>(
      */
     const afterMinimum = (apply: () => void) => {
       const visibleSince = shownAt.current;
-      const remaining = visibleSince ? minimum - (Date.now() - visibleSince) : 0;
+      const remaining = visibleSince
+        ? minimum - (Date.now() - visibleSince)
+        : 0;
 
       if (remaining <= 0) {
         apply();
@@ -169,12 +184,18 @@ export function useLongWait<T>(
       .then((value) => {
         if (!active) return;
         afterMinimum(() => {
-          setState((current) => (current.phase === "error" ? current : { phase: "ready", data: value }));
+          setState((current) =>
+            current.phase === "error"
+              ? current
+              : { phase: "ready", data: value },
+          );
         });
       })
       .catch(() => {
         if (!active) return;
-        afterMinimum(() => setState((current) => ({ ...current, phase: "error" })));
+        afterMinimum(() =>
+          setState((current) => ({ ...current, phase: "error" })),
+        );
       });
 
     return () => {

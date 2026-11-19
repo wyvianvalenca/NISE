@@ -67,7 +67,8 @@
   justify-content: center;
   height: 130px;
   border-radius: var(--radius-16);
-  background: var(--nise-tealSoft) url(/malha.svg) left top / 420px 180px repeat-x;
+  background: var(--nise-tealSoft) url(/malha.svg) left top / 420px 180px
+    repeat-x;
   overflow: hidden;
 }
 

@@ -49,13 +49,16 @@ export default function SavedForLaterPage() {
     };
   }, []);
 
-  const visible = items?.filter((item) => filter === "todos" || item.band === filter) ?? [];
+  const visible =
+    items?.filter((item) => filter === "todos" || item.band === filter) ?? [];
 
   // Quando um cartão sai, o foco vai para o próximo (ou para o título, se a lista esvaziou),
   // para quem usa teclado não voltar ao começo da página.
   useEffect(() => {
     if (focusNext.current === null) return;
-    const target = focusNext.current ? wantButtons.current.get(focusNext.current) : null;
+    const target = focusNext.current
+      ? wantButtons.current.get(focusNext.current)
+      : null;
     (target ?? titleRef.current)?.focus();
     focusNext.current = null;
   }, [items]);
@@ -73,7 +76,9 @@ export default function SavedForLaterPage() {
     setItems((list) => list?.filter((other) => other.id !== item.id) ?? null);
     setBusyId(null);
     setStatus(
-      action === "want" ? `${item.title} foi pro seu filé.` : `${item.title} saiu do Ver depois.`,
+      action === "want"
+        ? `${item.title} foi pro seu filé.`
+        : `${item.title} saiu do Ver depois.`,
     );
   }
 
@@ -91,7 +96,9 @@ export default function SavedForLaterPage() {
           <h1 ref={titleRef} tabIndex={-1} className={styles.title}>
             Ver depois
           </h1>
-          <p className={styles.subtitle}>O que você guardou pra decidir com calma.</p>
+          <p className={styles.subtitle}>
+            O que você guardou pra decidir com calma.
+          </p>
 
           {!items ? (
             // Provisório: o esqueleto de carregamento das listas (nota "Estados da Alana") ainda não existe.
@@ -100,8 +107,17 @@ export default function SavedForLaterPage() {
             <EmptySaved />
           ) : (
             <>
-              <div role="group" aria-label="Filtrar por faixa" className={styles.filters}>
-                <Chip variant="filter" size="lg" selected={filter === "todos"} onClick={() => setFilter("todos")}>
+              <div
+                role="group"
+                aria-label="Filtrar por faixa"
+                className={styles.filters}
+              >
+                <Chip
+                  variant="filter"
+                  size="lg"
+                  selected={filter === "todos"}
+                  onClick={() => setFilter("todos")}
+                >
                   Todos
                 </Chip>
                 {BAND_CODES.map((code) => (
@@ -139,7 +155,10 @@ export default function SavedForLaterPage() {
                 ))}
               </ul>
 
-              <p className={styles.hint}>Toque em “Talvez depois” num cartão de sugestão pra guardar aqui.</p>
+              <p className={styles.hint}>
+                Toque em “Talvez depois” num cartão de sugestão pra guardar
+                aqui.
+              </p>
             </>
           )}
 
@@ -163,9 +182,14 @@ function EmptySaved() {
         Nada guardado por enquanto
       </h2>
       <p className={styles.emptyText}>
-        Quando uma sugestão parecer legal mas não for a hora, toque em “Talvez depois” e ela fica aqui.
+        Quando uma sugestão parecer legal mas não for a hora, toque em “Talvez
+        depois” e ela fica aqui.
       </p>
-      <LinkButton href="/descobrir" variant="secondary" className={styles.emptyAction}>
+      <LinkButton
+        href="/descobrir"
+        variant="secondary"
+        className={styles.emptyAction}
+      >
         Ver sugestões
       </LinkButton>
     </section>
@@ -175,20 +199,49 @@ function EmptySaved() {
 // O símbolo da NISE só no contorno, com o centro cheio (Figma: Ilustração / Filé do V01).
 const SYMBOL_CELLS = [
   [2, 0],
-  [1, 1], [2, 1], [3, 1],
-  [0, 2], [1, 2], [3, 2], [4, 2],
-  [1, 3], [2, 3], [3, 3],
+  [1, 1],
+  [2, 1],
+  [3, 1],
+  [0, 2],
+  [1, 2],
+  [3, 2],
+  [4, 2],
+  [1, 3],
+  [2, 3],
+  [3, 3],
   [2, 4],
 ];
 
 function SymbolOutline() {
   return (
-    <svg width="84" height="84" viewBox="0 0 84 84" fill="none" aria-hidden="true" className={styles.emptyArt}>
+    <svg
+      width="84"
+      height="84"
+      viewBox="0 0 84 84"
+      fill="none"
+      aria-hidden="true"
+      className={styles.emptyArt}
+    >
       {SYMBOL_CELLS.map(([col, row]) => (
-        <rect key={`${col}-${row}`} x={2.5 + col * 16} y={2.5 + row * 16} width="11" height="11" stroke="currentColor" strokeDasharray="3 2" />
+        <rect
+          key={`${col}-${row}`}
+          x={2.5 + col * 16}
+          y={2.5 + row * 16}
+          width="11"
+          height="11"
+          stroke="currentColor"
+          strokeDasharray="3 2"
+        />
       ))}
       <rect x="34" y="34" width="12" height="12" fill="var(--nise-ink)" />
-      <rect x="66" y="66" width="11" height="11" fill="var(--nise-pink)" transform="rotate(15 71.5 71.5)" />
+      <rect
+        x="66"
+        y="66"
+        width="11"
+        height="11"
+        fill="var(--nise-pink)"
+        transform="rotate(15 71.5 71.5)"
+      />
     </svg>
   );
 }

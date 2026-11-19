@@ -14,7 +14,13 @@ export function EventCard({ group, title, details }: EventCardProps) {
   return (
     <div className={styles.card}>
       <span className={styles.icon}>
-        <Image src="/icons/simbolo-nise.svg" alt="" width={26} height={26} unoptimized />
+        <Image
+          src="/icons/simbolo-nise.svg"
+          alt=""
+          width={26}
+          height={26}
+          unoptimized
+        />
       </span>
       <div className={styles.texts}>
         <p className={styles.group}>{group}</p>

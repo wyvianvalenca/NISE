@@ -22,7 +22,11 @@ export function StackedBar({ segments, tall = false, label }: StackedBarProps) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0) || 1;
 
   return (
-    <span role="img" aria-label={label} className={tall ? `${styles.bar} ${styles.tall}` : styles.bar}>
+    <span
+      role="img"
+      aria-label={label}
+      className={tall ? `${styles.bar} ${styles.tall}` : styles.bar}
+    >
       {segments.map((segment) => (
         <span
           key={segment.kind}

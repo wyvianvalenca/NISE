@@ -11,7 +11,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { ActivityFeedback } from "@/components/ActivityFeedback";
-import { getActivity, getFirstName, type ActivityDetail } from "@/lib/atividade";
+import {
+  getActivity,
+  getFirstName,
+  type ActivityDetail,
+} from "@/lib/atividade";
 import styles from "../atividade.module.css";
 import celebration from "./concluida.module.css";
 
@@ -48,7 +52,9 @@ function Loading() {
 function Celebration() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [activity, setActivity] = useState<ActivityDetail | null | undefined>(undefined);
+  const [activity, setActivity] = useState<ActivityDetail | null | undefined>(
+    undefined,
+  );
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -67,7 +73,10 @@ function Celebration() {
   }, [activity]);
 
   if (activity === undefined) return <Loading />;
-  if (activity === null) return <p className={styles.status}>Essa atividade não está no seu filé.</p>;
+  if (activity === null)
+    return (
+      <p className={styles.status}>Essa atividade não está no seu filé.</p>
+    );
   return (
     <>
       <Image
@@ -86,7 +95,10 @@ function Celebration() {
 
       <div className={celebration.feedback}>
         {/* replace: voltar depois de "Pular" ou "Enviar" não reabre o formulário vazio. */}
-        <ActivityFeedback activityId={activity.id} onDone={() => router.replace(FILE_PATH)} />
+        <ActivityFeedback
+          activityId={activity.id}
+          onDone={() => router.replace(FILE_PATH)}
+        />
       </div>
     </>
   );

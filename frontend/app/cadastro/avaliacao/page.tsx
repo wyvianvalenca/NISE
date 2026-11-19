@@ -11,7 +11,12 @@ import { Loading } from "@/components/Loading";
 import { RatingScale } from "@/components/RatingScale";
 import { TextArea } from "@/components/TextArea";
 import { eventDetails, SIGNUP_PATHS } from "@/lib/signup";
-import { getPendingRating, type PendingRating, submitRating, WITHOUT_SESSION } from "@/lib/signup-api";
+import {
+  getPendingRating,
+  type PendingRating,
+  submitRating,
+  WITHOUT_SESSION,
+} from "@/lib/signup-api";
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
 
@@ -69,18 +74,27 @@ export default function RatingPage() {
     setSaving(true);
     setError(null);
 
-    const result = await submitRating(pending.actionId, score, comment).catch(() => null);
+    const result = await submitRating(pending.actionId, score, comment).catch(
+      () => null,
+    );
 
     // Já avaliada (em outra aba, por exemplo) ou sem nada para avaliar: não há o
     // que fazer aqui, e ela segue como se tivesse enviado.
-    if (result?.ok || result?.reason === "already_rated" || result?.reason === "nothing_to_rate") {
+    if (
+      result?.ok ||
+      result?.reason === "already_rated" ||
+      result?.reason === "nothing_to_rate"
+    ) {
       router.push(SIGNUP_PATHS.interests);
       return;
     }
 
     setSaving(false);
 
-    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+    if (
+      result?.reason === "unauthenticated" ||
+      result?.reason === "incomplete_signup"
+    ) {
       router.replace(WITHOUT_SESSION[result.reason]);
       return;
     }
@@ -102,7 +116,11 @@ export default function RatingPage() {
           <div role="alert">
             <p className={shared.error}>Não deu pra carregar a oficina.</p>
             <div className={styles.actions}>
-              <Button variant="secondary" className={shared.fullWidth} onClick={retryLoad}>
+              <Button
+                variant="secondary"
+                className={shared.fullWidth}
+                onClick={retryLoad}
+              >
                 Tentar de novo
               </Button>
               {/* Avaliar é opcional: ela pode seguir, e a avaliação fica para o link do e-mail. */}
@@ -131,9 +149,15 @@ export default function RatingPage() {
       />
 
       <h1 className={styles.title}>E aí, curtiu a oficina?</h1>
-      <p className={styles.lead}>Dá uma nota de 1 a 5. Leva só uns segundinhos.</p>
+      <p className={styles.lead}>
+        Dá uma nota de 1 a 5. Leva só uns segundinhos.
+      </p>
 
-      <RatingScale label="Sua nota para a oficina, de 1 a 5" value={score} onChange={setScore} />
+      <RatingScale
+        label="Sua nota para a oficina, de 1 a 5"
+        value={score}
+        onChange={setScore}
+      />
 
       <TextArea
         label="Quer contar mais?"

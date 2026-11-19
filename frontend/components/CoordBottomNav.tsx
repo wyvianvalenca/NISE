@@ -7,16 +7,36 @@ import styles from "./BottomNav.module.css";
 type CoordSection = "visao-geral" | "acoes" | "acompanhamento" | "relatorios";
 
 const SECTIONS = [
-  { key: "visao-geral", label: "Visão geral", href: "/coordenacao", icon: "dashboard" },
-  { key: "acoes", label: "Ações", href: "/coordenacao/acoes", icon: "calendar" },
+  {
+    key: "visao-geral",
+    label: "Visão geral",
+    href: "/coordenacao",
+    icon: "dashboard",
+  },
+  {
+    key: "acoes",
+    label: "Ações",
+    href: "/coordenacao/acoes",
+    icon: "calendar",
+  },
   {
     key: "acompanhamento",
     label: "Acompanhamento",
     href: "/coordenacao/acompanhamento",
     icon: "users-lg",
   },
-  { key: "relatorios", label: "Relatórios", href: "/coordenacao/relatorios", icon: "reports" },
-] as const satisfies readonly { key: CoordSection; label: string; href: string; icon: IconName }[];
+  {
+    key: "relatorios",
+    label: "Relatórios",
+    href: "/coordenacao/relatorios",
+    icon: "reports",
+  },
+] as const satisfies readonly {
+  key: CoordSection;
+  label: string;
+  href: string;
+  icon: IconName;
+}[];
 
 type CoordBottomNavProps = {
   active?: CoordSection;
@@ -28,7 +48,10 @@ type CoordBottomNavProps = {
  */
 export function CoordBottomNav({ active }: CoordBottomNavProps) {
   return (
-    <nav aria-label="Seções" className={`${styles.bar} ${styles.compact} ${styles.mobileOnly}`}>
+    <nav
+      aria-label="Seções"
+      className={`${styles.bar} ${styles.compact} ${styles.mobileOnly}`}
+    >
       {SECTIONS.map((section) => (
         <Link
           key={section.key}

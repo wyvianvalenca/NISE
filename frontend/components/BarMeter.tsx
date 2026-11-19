@@ -17,7 +17,13 @@ type BarMeterProps = {
 };
 
 /** Barra horizontal com rótulo e valor (Figma: Card / Onde mais perdemos). */
-export function BarMeter({ label, value, fraction, tone = "teal", layout = "stacked" }: BarMeterProps) {
+export function BarMeter({
+  label,
+  value,
+  fraction,
+  tone = "teal",
+  layout = "stacked",
+}: BarMeterProps) {
   const percent = Math.max(0, Math.min(1, fraction)) * 100;
 
   return (
@@ -25,7 +31,10 @@ export function BarMeter({ label, value, fraction, tone = "teal", layout = "stac
       <span className={styles.label}>{label}</span>
       <span className={styles.value}>{value}</span>
       <span className={styles.track} aria-hidden="true">
-        <span className={`${styles.fill} ${styles[tone]}`} style={{ width: `${percent}%` }} />
+        <span
+          className={`${styles.fill} ${styles[tone]}`}
+          style={{ width: `${percent}%` }}
+        />
       </span>
     </div>
   );

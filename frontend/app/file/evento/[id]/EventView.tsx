@@ -71,7 +71,11 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
         <SummaryRow
           icon="pin"
           main={event.city ?? "Online"}
-          sub={event.city ? "Local divulgado na inscrição" : "Link divulgado na inscrição"}
+          sub={
+            event.city
+              ? "Local divulgado na inscrição"
+              : "Link divulgado na inscrição"
+          }
         />
         {event.registrationsOpen ? (
           <SummaryRow
@@ -90,7 +94,13 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
       </ul>
 
       <ul className={shared.chips} aria-label="Detalhes">
-        <li>{event.cost ? <span className={shared.chip}>{event.cost}</span> : <Tag variant="pink">Grátis</Tag>}</li>
+        <li>
+          {event.cost ? (
+            <span className={shared.chip}>{event.cost}</span>
+          ) : (
+            <Tag variant="pink">Grátis</Tag>
+          )}
+        </li>
         {event.stage && <li className={shared.chip}>{event.stage}</li>}
         {event.prerequisites.map((item) => (
           <li key={item} className={shared.chip}>
@@ -100,7 +110,10 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
       </ul>
 
       {/* RN-19: a inscrição acontece fora da NISE, e a NISE não envia os dados dela. */}
-      <Notice>A inscrição é feita no site dos organizadores. Seus dados da NISE não são enviados.</Notice>
+      <Notice>
+        A inscrição é feita no site dos organizadores. Seus dados da NISE não
+        são enviados.
+      </Notice>
 
       <div className={`${shared.actions} ${styles.actions}`}>
         <a
@@ -115,11 +128,21 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
         </a>
 
         <div className={styles.footer}>
-          <button type="button" className={styles.signedUp} onClick={onMarkSignedUp} disabled={!onMarkSignedUp}>
+          <button
+            type="button"
+            className={styles.signedUp}
+            onClick={onMarkSignedUp}
+            disabled={!onMarkSignedUp}
+          >
             <Icon name="check" />
             Já me inscrevi
           </button>
-          <button type="button" className={shared.remove} onClick={onRemove} disabled={!onRemove}>
+          <button
+            type="button"
+            className={shared.remove}
+            onClick={onRemove}
+            disabled={!onRemove}
+          >
             Tirar do filé
           </button>
         </div>

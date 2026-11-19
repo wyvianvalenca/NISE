@@ -7,24 +7,42 @@ const ACTIVITY_ID = "logica-de-programacao-com-python";
 const PAGE = `/file/${ACTIVITY_ID}/concluida`;
 
 async function savedFeedback(page: Page) {
-  return page.evaluate(() => JSON.parse(sessionStorage.getItem("nise-mock-feedback") ?? "{}"));
+  return page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("nise-mock-feedback") ?? "{}"),
+  );
 }
 
-test("mostra a nota de 1 a 5 com os extremos e as quatro sugestões, tudo opcional", async ({ page }) => {
+test("mostra a nota de 1 a 5 com os extremos e as quatro sugestões, tudo opcional", async ({
+  page,
+}) => {
   await page.goto(PAGE);
 
-  await expect(page.getByRole("heading", { name: "O que achou? (opcional)" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "O que achou? (opcional)" }),
+  ).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(5);
   await expect(page.getByText("1 · Não curti")).toBeVisible();
   await expect(page.getByText("5 · Amei!")).toBeVisible();
 
-  const similar = page.getByRole("group", { name: "Quer sugestões parecidas? (opcional)" });
-  for (const label of ["Algo mais avançado", "Mais do mesmo nível", "Outro tema", "Por enquanto, tá bom"]) {
-    await expect(similar.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
+  const similar = page.getByRole("group", {
+    name: "Quer sugestões parecidas? (opcional)",
+  });
+  for (const label of [
+    "Algo mais avançado",
+    "Mais do mesmo nível",
+    "Outro tema",
+    "Por enquanto, tá bom",
+  ]) {
+    await expect(similar.getByRole("button", { name: label })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   }
 });
 
-test("Enviar só libera depois de escolher algo; Pular está sempre disponível", async ({ page }) => {
+test("Enviar só libera depois de escolher algo; Pular está sempre disponível", async ({
+  page,
+}) => {
   await page.goto(PAGE);
 
   await expect(page.getByRole("button", { name: "Enviar" })).toBeDisabled();
@@ -34,7 +52,9 @@ test("Enviar só libera depois de escolher algo; Pular está sempre disponível"
   await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled();
 });
 
-test("só uma sugestão fica marcada, e tocar de novo desmarca", async ({ page }) => {
+test("só uma sugestão fica marcada, e tocar de novo desmarca", async ({
+  page,
+}) => {
   await page.goto(PAGE);
   const advanced = page.getByRole("button", { name: "Algo mais avançado" });
   const sameLevel = page.getByRole("button", { name: "Mais do mesmo nível" });
@@ -59,7 +79,9 @@ test("Enviar guarda a nota e a sugestão e leva ao filé", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar" }).click();
 
   await expect(page).toHaveURL(/\/file$/);
-  expect(await savedFeedback(page)).toEqual({ [ACTIVITY_ID]: { score: 4, similar: "mais-avancado" } });
+  expect(await savedFeedback(page)).toEqual({
+    [ACTIVITY_ID]: { score: 4, similar: "mais-avancado" },
+  });
 });
 
 test("dá para enviar só a nota, sem sugestão", async ({ page }) => {
@@ -69,10 +91,14 @@ test("dá para enviar só a nota, sem sugestão", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar" }).click();
 
   await expect(page).toHaveURL(/\/file$/);
-  expect(await savedFeedback(page)).toEqual({ [ACTIVITY_ID]: { score: 2, similar: null } });
+  expect(await savedFeedback(page)).toEqual({
+    [ACTIVITY_ID]: { score: 2, similar: null },
+  });
 });
 
-test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({ page }) => {
+test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({
+  page,
+}) => {
   await page.goto(PAGE);
 
   await page.getByRole("radio", { name: /^5 · / }).check();
@@ -83,7 +109,9 @@ test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({ p
 });
 
 for (const action of ["Enviar", "Pular"]) {
-  test(`depois de ${action}, voltar não reabre o formulário`, async ({ page }) => {
+  test(`depois de ${action}, voltar não reabre o formulário`, async ({
+    page,
+  }) => {
     // Ela chega à celebração a partir do detalhe da atividade.
     await page.goto(`/file/${ACTIVITY_ID}`);
     await page.goto(PAGE);
@@ -106,14 +134,22 @@ test("se o envio falhar, avisa e deixa tentar de novo", async ({ page }) => {
   await page.getByRole("button", { name: "Outro tema" }).click();
   await page.getByRole("button", { name: "Enviar" }).click();
 
-  await expect(page.getByRole("alert").filter({ hasText: "Não deu pra enviar. Tente de novo." })).toBeVisible();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Não deu pra enviar. Tente de novo." }),
+  ).toBeVisible();
   // O detalhe técnico do erro fica só no console.
-  await expect(page.getByRole("main").getByText("Failed to fetch")).toHaveCount(0);
+  await expect(page.getByRole("main").getByText("Failed to fetch")).toHaveCount(
+    0,
+  );
   await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
   await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled();
 });
 
-test("durante o envio mostra Enviando… e bloqueia os dois botões", async ({ page }) => {
+test("durante o envio mostra Enviando… e bloqueia os dois botões", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     globalThis.__NISE_MOCK_FEEDBACK__ = { delayMs: 1500 };
   });
@@ -136,7 +172,9 @@ test("funciona só com o teclado, com foco visível", async ({ page }) => {
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("radio", { name: /^3 · / })).toBeChecked();
-  const option = page.locator("label", { has: page.getByRole("radio", { name: /^3 · / }) });
+  const option = page.locator("label", {
+    has: page.getByRole("radio", { name: /^3 · / }),
+  });
   await expect(option).toHaveCSS("outline-style", "solid");
 
   await page.keyboard.press("Tab");
@@ -161,7 +199,9 @@ for (const width of [360, 1366]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(PAGE);
     await expect(page.getByRole("button", { name: "Enviar" })).toBeVisible();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
     expect(overflow).toBeLessThanOrEqual(0);
   });
 }

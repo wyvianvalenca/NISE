@@ -45,9 +45,12 @@ export default function QuestionnairesPage() {
       <div className={styles.tile}>
         <Icon name="clipboard" />
       </div>
-      <h1 className={styles.titleLoose}>Você vai receber questionários por e-mail</h1>
+      <h1 className={styles.titleLoose}>
+        Você vai receber questionários por e-mail
+      </h1>
       <p className={styles.lead}>
-        Como a avaliação de uma oficina e pesquisas sobre sua trajetória, depois de 3 e de 6 meses.
+        Como a avaliação de uma oficina e pesquisas sobre sua trajetória, depois
+        de 3 e de 6 meses.
       </p>
 
       <div className={styles.block}>
@@ -62,7 +65,11 @@ export default function QuestionnairesPage() {
       <div className={styles.spacer} />
 
       <div className={styles.actions}>
-        <Button className={styles.fullWidth} loading={saving} onClick={handleContinue}>
+        <Button
+          className={styles.fullWidth}
+          loading={saving}
+          onClick={handleContinue}
+        >
           Entendi, continuar
         </Button>
       </div>

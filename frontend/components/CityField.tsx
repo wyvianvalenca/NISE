@@ -34,7 +34,12 @@ function comparable(text: string): string {
  * "sao jose" hid "São José da Tapera, AL" even though the API found it. Here
  * the list shows exactly what the API returned.
  */
-export function CityField({ value, onChange, onSelect, error }: CityFieldProps) {
+export function CityField({
+  value,
+  onChange,
+  onSelect,
+  error,
+}: CityFieldProps) {
   const inputId = useId();
   const listId = useId();
   const [cities, setCities] = useState<City[]>([]);
@@ -149,7 +154,12 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
       {showList && (
         // "Sugestões", not "Cidades": a label containing "Cidade" would make the
         // list compete with the input for the field's name.
-        <ul id={listId} role="listbox" aria-label="Sugestões" className={styles.list}>
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="Sugestões"
+          className={styles.list}
+        >
           {cities.map((city, index) => (
             <li
               key={city.id}

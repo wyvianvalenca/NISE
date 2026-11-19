@@ -4,7 +4,13 @@ import styles from "./RatingScale.module.css";
 
 // Texto de cada nota. O Figma só mostra "4 · Curti bastante!" e os extremos;
 // as notas 2 e 3 precisam ser confirmadas com o design.
-const LABELS = ["Não curti", "Curti pouco", "Foi ok", "Curti bastante!", "Amei!"] as const;
+const LABELS = [
+  "Não curti",
+  "Curti pouco",
+  "Foi ok",
+  "Curti bastante!",
+  "Amei!",
+] as const;
 
 type RatingScaleProps = {
   /** Pergunta, para leitor de tela (o título visível fica na página). */

@@ -1,7 +1,13 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { LoadFailed } from "@/components/LoadFailed";
 import { TecendoFile } from "@/components/TecendoFile";
 import { useLongWait } from "@/lib/loading";
@@ -29,7 +35,10 @@ declare global {
 const subscribeNothing = () => () => {};
 
 /** Reads one number from the query string, or undefined when absent. */
-function numberParam(params: URLSearchParams, name: string): number | undefined {
+function numberParam(
+  params: URLSearchParams,
+  name: string,
+): number | undefined {
   const raw = params.get(name);
   const value = raw === null ? NaN : Number(raw);
   return Number.isFinite(value) ? value : undefined;
@@ -56,7 +65,11 @@ function numberParam(params: URLSearchParams, name: string): number | undefined 
  *   /dev-wait?switch=1&delay=400&threshold=300&minimum=900    E03, then the result; switch holds a new minimum
  */
 export function WaitHarness() {
-  const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
+  const hydrated = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
   const [band, setBand] = useState(0);
   const [round, setRound] = useState(0);
   const params = useSearchParams();
@@ -156,8 +169,8 @@ export function WaitHarness() {
   if (phase === "ready") {
     screen = (
       <p style={{ padding: 24 }} data-testid="ready">
-        Carregou ({String(data)}). Numa tela de verdade, o conteúdo entraria aqui —
-        a E03 não aparece quando a espera é curta.
+        Carregou ({String(data)}). Numa tela de verdade, o conteúdo entraria
+        aqui — a E03 não aparece quando a espera é curta.
       </p>
     );
   }

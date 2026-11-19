@@ -7,7 +7,11 @@ import { useId, useState } from "react";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
 import { RatingScale } from "./RatingScale";
-import { sendActivityFeedback, SIMILAR_OPTIONS, type SimilarChoice } from "@/lib/atividade-feedback";
+import {
+  sendActivityFeedback,
+  SIMILAR_OPTIONS,
+  type SimilarChoice,
+} from "@/lib/atividade-feedback";
 import styles from "./ActivityFeedback.module.css";
 
 type ActivityFeedbackProps = {
@@ -20,7 +24,10 @@ type ActivityFeedbackProps = {
  * "O que achou?" e "Quer sugestões parecidas?", as duas opcionais.
  * "Pular" e "Enviar" têm o mesmo tamanho: avaliar nunca é cobrança.
  */
-export function ActivityFeedback({ activityId, onDone }: ActivityFeedbackProps) {
+export function ActivityFeedback({
+  activityId,
+  onDone,
+}: ActivityFeedbackProps) {
   const ratingTitle = useId();
   const [score, setScore] = useState<number | null>(null);
   const [similar, setSimilar] = useState<SimilarChoice | null>(null);
@@ -49,12 +56,17 @@ export function ActivityFeedback({ activityId, onDone }: ActivityFeedbackProps) 
         <h2 id={ratingTitle} className={styles.title}>
           O que achou? <span className={styles.optional}>(opcional)</span>
         </h2>
-        <RatingScale label="O que achou da atividade, de 1 a 5" value={score} onChange={setScore} />
+        <RatingScale
+          label="O que achou da atividade, de 1 a 5"
+          value={score}
+          onChange={setScore}
+        />
       </div>
 
       <fieldset className={styles.part}>
         <legend className={styles.title}>
-          Quer sugestões parecidas? <span className={styles.optional}>(opcional)</span>
+          Quer sugestões parecidas?{" "}
+          <span className={styles.optional}>(opcional)</span>
         </legend>
         <div className={styles.chips}>
           {SIMILAR_OPTIONS.map((option) => (
@@ -63,7 +75,9 @@ export function ActivityFeedback({ activityId, onDone }: ActivityFeedbackProps) 
               size="lg"
               selected={similar === option.code}
               // Só uma opção por vez; tocar de novo na escolhida desmarca.
-              onClick={() => setSimilar(similar === option.code ? null : option.code)}
+              onClick={() =>
+                setSimilar(similar === option.code ? null : option.code)
+              }
             >
               {option.label}
             </Chip>
@@ -78,10 +92,20 @@ export function ActivityFeedback({ activityId, onDone }: ActivityFeedbackProps) 
         </p>
       )}
       <div className={styles.actions}>
-        <Button variant="secondary" className={styles.action} disabled={sending} onClick={onDone}>
+        <Button
+          variant="secondary"
+          className={styles.action}
+          disabled={sending}
+          onClick={onDone}
+        >
           Pular
         </Button>
-        <Button className={styles.action} disabled={nothingChosen} loading={sending} onClick={handleSend}>
+        <Button
+          className={styles.action}
+          disabled={nothingChosen}
+          loading={sending}
+          onClick={handleSend}
+        >
           Enviar
         </Button>
       </div>

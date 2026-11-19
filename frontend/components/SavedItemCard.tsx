@@ -36,7 +36,11 @@ export function SavedItemCard({
   wantRef,
 }: SavedItemCardProps) {
   return (
-    <article className={styles.card} aria-label={title} aria-busy={busy || undefined}>
+    <article
+      className={styles.card}
+      aria-label={title}
+      aria-busy={busy || undefined}
+    >
       <div className={styles.top}>
         <span className={`${styles.iconTile} ${styles[tone]}`}>
           <Icon name={icon} size={22} />
@@ -57,7 +61,12 @@ export function SavedItemCard({
         <Button ref={wantRef} size="sm" disabled={busy} onClick={onWant}>
           + Quero fazer
         </Button>
-        <button type="button" className={styles.remove} disabled={busy} onClick={onRemove}>
+        <button
+          type="button"
+          className={styles.remove}
+          disabled={busy}
+          onClick={onRemove}
+        >
           <Icon name="trash" />
           Remover
         </button>

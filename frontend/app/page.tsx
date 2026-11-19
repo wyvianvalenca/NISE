@@ -23,8 +23,8 @@ export default function Home() {
           Núcleo de Incentivo e Suporte às Egressas e Estudantes
         </h1>
         <p className={styles.lead}>
-          Uma plataforma para conectar experiências, próximos passos e grupos
-          de apoio.
+          Uma plataforma para conectar experiências, próximos passos e grupos de
+          apoio.
         </p>
 
         <FileIllustration />

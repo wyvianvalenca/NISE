@@ -17,7 +17,13 @@ type PanelProps = {
  * Cartão de dados do painel da coordenadora
  * (Figma: Card / Do convite ao ingresso, Card / Funil por ação, Card / Onde mais perdemos).
  */
-export function Panel({ title, description, action, footnote, children }: PanelProps) {
+export function Panel({
+  title,
+  description,
+  action,
+  footnote,
+  children,
+}: PanelProps) {
   return (
     <section className={styles.panel}>
       <div className={styles.header}>

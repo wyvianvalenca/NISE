@@ -23,7 +23,9 @@ async function finishConsent(page: Page) {
   await page.getByRole("button", { name: "Entendi, continuar" }).click();
 }
 
-test("no M1, a avaliação vem depois dos termos e mostra grupo, ação, data e cidade", async ({ page }) => {
+test("no M1, a avaliação vem depois dos termos e mostra grupo, ação, data e cidade", async ({
+  page,
+}) => {
   await mockRatingsApi(page);
   await finishConsent(page);
 
@@ -40,7 +42,9 @@ test("ação online aparece sem cidade", async ({ page }) => {
   await expect(page.getByText("Sáb, 10 de out · Online")).toBeVisible();
 });
 
-test("a nota escolhida aparece com o texto e libera o envio", async ({ page }) => {
+test("a nota escolhida aparece com o texto e libera o envio", async ({
+  page,
+}) => {
   await mockRatingsApi(page);
   await finishConsent(page);
 
@@ -52,7 +56,9 @@ test("a nota escolhida aparece com o texto e libera o envio", async ({ page }) =
   await expect(send).toBeEnabled();
 });
 
-test("avaliar sem comentário envia a nota ligada à ação e segue para os interesses", async ({ page }) => {
+test("avaliar sem comentário envia a nota ligada à ação e segue para os interesses", async ({
+  page,
+}) => {
   const sentRatings = await mockRatingsApi(page);
   await finishConsent(page);
 
@@ -68,11 +74,15 @@ test("o comentário é opcional e vai junto com a nota", async ({ page }) => {
   await finishConsent(page);
 
   await page.getByRole("radio", { name: /^3 · / }).check();
-  await page.getByLabel(/Quer contar mais/).fill("Montar o robô foi o melhor momento.");
+  await page
+    .getByLabel(/Quer contar mais/)
+    .fill("Montar o robô foi o melhor momento.");
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/interesses$/);
-  expect(sentRatings).toEqual([{ actionId: 7, score: 3, comment: "Montar o robô foi o melhor momento." }]);
+  expect(sentRatings).toEqual([
+    { actionId: 7, score: 3, comment: "Montar o robô foi o melhor momento." },
+  ]);
 });
 
 test("Agora não pula a avaliação sem enviar nada", async ({ page }) => {
@@ -85,7 +95,9 @@ test("Agora não pula a avaliação sem enviar nada", async ({ page }) => {
   expect(sentRatings).toEqual([]);
 });
 
-test("no M2 não há avaliação: dos termos vai direto para os interesses", async ({ page }) => {
+test("no M2 não há avaliação: dos termos vai direto para os interesses", async ({
+  page,
+}) => {
   await mockRatingsApi(page, { pending: null });
   await finishConsent(page);
 
@@ -104,7 +116,9 @@ test("quem já avaliou não vê a tela de novo", async ({ page }) => {
   await expect(page).toHaveURL(/\/cadastro\/interesses$/);
 });
 
-test("avaliação já enviada em outra aba segue para os interesses", async ({ page }) => {
+test("avaliação já enviada em outra aba segue para os interesses", async ({
+  page,
+}) => {
   await mockRatingsApi(page, { submit: "already_rated" });
   await page.goto("/cadastro/avaliacao");
 
@@ -121,9 +135,13 @@ test("se o envio falha, avisa e deixa tentar de novo", async ({ page }) => {
   await page.getByRole("radio", { name: /^4 · / }).check();
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
 
-  await expect(page.getByText("Não deu pra enviar. Tente de novo.")).toBeVisible();
+  await expect(
+    page.getByText("Não deu pra enviar. Tente de novo."),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/cadastro\/avaliacao$/);
-  await expect(page.getByRole("button", { name: "Enviar avaliação" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Enviar avaliação" }),
+  ).toBeEnabled();
   await expect(page.getByRole("button", { name: "Agora não" })).toBeEnabled();
 
   // A rota mais nova vale: agora o envio dá certo.
@@ -133,7 +151,9 @@ test("se o envio falha, avisa e deixa tentar de novo", async ({ page }) => {
   expect(sentRatings).toEqual([{ actionId: 7, score: 4, comment: null }]);
 });
 
-test("se a oficina não carrega, deixa tentar de novo ou seguir", async ({ page }) => {
+test("se a oficina não carrega, deixa tentar de novo ou seguir", async ({
+  page,
+}) => {
   await mockRatingsApi(page, { pending: 500 });
   await page.goto("/cadastro/avaliacao");
 
@@ -144,7 +164,9 @@ test("se a oficina não carrega, deixa tentar de novo ou seguir", async ({ page 
   await expect(page.getByText("Introdução à robótica")).toBeVisible();
 });
 
-test("se a oficina não carrega, Agora não segue para os interesses", async ({ page }) => {
+test("se a oficina não carrega, Agora não segue para os interesses", async ({
+  page,
+}) => {
   await mockRatingsApi(page, { pending: 500 });
   await page.goto("/cadastro/avaliacao");
 
@@ -160,10 +182,14 @@ test("sem sessão, volta para a página inicial", async ({ page }) => {
   await expect(page).toHaveURL(/localhost:3000\/$/);
 });
 
-test("com o cadastro do Google incompleto, volta para a A02b", async ({ page }) => {
+test("com o cadastro do Google incompleto, volta para a A02b", async ({
+  page,
+}) => {
   await mockRatingsApi(page, { pending: "incomplete_signup" });
   // A A02b busca o cadastro pendente; aqui basta ela abrir.
-  await page.route("**/api/auth/signup/pending", (route) => route.fulfill({ status: 404, json: {} }));
+  await page.route("**/api/auth/signup/pending", (route) =>
+    route.fulfill({ status: 404, json: {} }),
+  );
   await page.goto("/cadastro/avaliacao");
 
   await expect(page).toHaveURL(/\/cadastro\/google$/);
@@ -177,7 +203,9 @@ test("sem o aceite dos termos, volta para a A04·1", async ({ page }) => {
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
 
-test("se a sessão cai antes do envio, volta para a página inicial", async ({ page }) => {
+test("se a sessão cai antes do envio, volta para a página inicial", async ({
+  page,
+}) => {
   await mockRatingsApi(page, { submit: 401 });
   await page.goto("/cadastro/avaliacao");
 

@@ -34,7 +34,11 @@ export default function FilePage() {
       <AppHeader>
         {data && (
           // O perfil ainda não existe; por enquanto o link dá 404.
-          <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
+          <Link
+            href="/perfil"
+            className={styles.profile}
+            aria-label="Seu perfil"
+          >
             <Avatar name={data.firstName} size={36} />
           </Link>
         )}
@@ -65,13 +69,18 @@ export default function FilePage() {
  * list. Both come back on her first "Quero fazer".
  */
 function File({ data }: { data: FileData }) {
-  const isEmpty = data.done.length + data.inProgress.length + data.next.length === 0;
+  const isEmpty =
+    data.done.length + data.inProgress.length + data.next.length === 0;
 
   return (
     <>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>Seu filé</h1>
-        <Link href="/por-que-file" className={styles.help} aria-label="O que é o filé?">
+        <Link
+          href="/por-que-file"
+          className={styles.help}
+          aria-label="O que é o filé?"
+        >
           <Icon name="question" />
         </Link>
       </div>
@@ -79,14 +88,15 @@ function File({ data }: { data: FileData }) {
         <div className={styles.empty}>
           <h2 className={styles.emptyTitle}>Seu filé tá só começando</h2>
           <p className={styles.emptyText}>
-            Ele vai ganhando forma com o que você escolhe: cada atividade vira um quadradinho, e quando você
-            conclui, ele é colorido.
+            Ele vai ganhando forma com o que você escolhe: cada atividade vira
+            um quadradinho, e quando você conclui, ele é colorido.
           </p>
         </div>
       ) : (
         <p className={styles.intro}>
-          Ele vai ganhando forma com o que você escolhe. Cada atividade é um quadradinho do seu filé, e quando
-          você conclui, ele é colorido. No seu ritmo, sem pressa.
+          Ele vai ganhando forma com o que você escolhe. Cada atividade é um
+          quadradinho do seu filé, e quando você conclui, ele é colorido. No seu
+          ritmo, sem pressa.
         </p>
       )}
       <Link href="/descobrir" className={styles.discover}>

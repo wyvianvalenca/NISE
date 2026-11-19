@@ -26,11 +26,18 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
   // O aviso só aparece depois que o back confirma a escolha; assim o "Desfazer" nunca vem antes.
   const showNotice = useCallback((chosen: Suggestion, choice: Choice) => {
     noticeKey.current += 1;
-    setNotice({ key: noticeKey.current, id: chosen.id, title: chosen.title, choice, status: "ready" });
+    setNotice({
+      key: noticeKey.current,
+      id: chosen.id,
+      title: chosen.title,
+      choice,
+      status: "ready",
+    });
   }, []);
   const hideNotice = useCallback(() => setNotice(null), []);
 
-  const { state, item, position, total, choose, undo, reload } = useSuggestionDeck(band, { onChoiceConfirmed: showNotice });
+  const { state, item, position, total, choose, undo, reload } =
+    useSuggestionDeck(band, { onChoiceConfirmed: showNotice });
   const [reasonOpen, setReasonOpen] = useState(false);
   // O fim da faixa só puxa o foco quando ela chega lá escolhendo, não quando a página já abre nele.
   const [decided, setDecided] = useState(false);
@@ -81,13 +88,23 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
             Meu filé
             <span className={styles.fileCount}>
               {state.fileTotal}
-              <span className={styles.srOnly}> {state.fileTotal === 1 ? "item" : "itens"}</span>
+              <span className={styles.srOnly}>
+                {" "}
+                {state.fileTotal === 1 ? "item" : "itens"}
+              </span>
             </span>
           </Link>
         )}
       </header>
 
-      {notice && <UndoToast key={notice.key} notice={notice} onUndo={undoLast} onTimeout={hideNotice} />}
+      {notice && (
+        <UndoToast
+          key={notice.key}
+          notice={notice}
+          onUndo={undoLast}
+          onTimeout={hideNotice}
+        />
+      )}
 
       <main className={styles.main}>
         <h1 className={styles.srOnly}>Sugestões de {title}</h1>
@@ -108,7 +125,12 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
                 Não deu pra guardar. Tente de novo.
               </p>
             )}
-            <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
+            <p
+              ref={counterRef}
+              tabIndex={-1}
+              className={styles.counter}
+              aria-live="polite"
+            >
               Sugestão {position} de {total}
               <span className={styles.srOnly}>: {item.title}</span>
             </p>
@@ -126,7 +148,11 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
         )}
       </main>
 
-      <ReasonSheet open={reasonOpen} onSubmit={sendReason} onCancel={() => setReasonOpen(false)} />
+      <ReasonSheet
+        open={reasonOpen}
+        onSubmit={sendReason}
+        onCancel={() => setReasonOpen(false)}
+      />
     </div>
   );
 }
@@ -135,8 +161,18 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
 function Deck({ item, behind }: { item: Suggestion; behind: number }) {
   return (
     <div className={styles.deck}>
-      {behind >= 2 && <div className={`${styles.backCard} ${styles.backLeft}`} aria-hidden="true" />}
-      {behind >= 1 && <div className={`${styles.backCard} ${styles.backRight}`} aria-hidden="true" />}
+      {behind >= 2 && (
+        <div
+          className={`${styles.backCard} ${styles.backLeft}`}
+          aria-hidden="true"
+        />
+      )}
+      {behind >= 1 && (
+        <div
+          className={`${styles.backCard} ${styles.backRight}`}
+          aria-hidden="true"
+        />
+      )}
       <div className={styles.front}>
         <SuggestionCard
           // A chave nova a cada sugestão faz o leitor de tela tratar o card como conteúdo novo.
@@ -149,7 +185,9 @@ function Deck({ item, behind }: { item: Suggestion; behind: number }) {
             <TagList>
               <Tag variant="chip">{item.format}</Tag>
               <Tag variant="chip">{item.duration}</Tag>
-              <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>{item.cost}</Tag>
+              <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>
+                {item.cost}
+              </Tag>
               <Tag variant="chip">
                 {item.minAge}+<span className={styles.srOnly}> anos</span>
               </Tag>
@@ -167,7 +205,13 @@ const ACTIONS: { choice: Choice; label: string; icon: IconName }[] = [
   { choice: "quero-fazer", label: "Quero fazer", icon: "plus" },
 ];
 
-function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice: Choice) => void }) {
+function Actions({
+  disabled,
+  onChoose,
+}: {
+  disabled: boolean;
+  onChoose: (choice: Choice) => void;
+}) {
   return (
     <div className={styles.actions}>
       {ACTIONS.map((action) => {
@@ -198,7 +242,9 @@ function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice:
 function LoadError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className={styles.end} role="alert">
-      <h2 className={styles.endTitle}>Não foi possível carregar as sugestões.</h2>
+      <h2 className={styles.endTitle}>
+        Não foi possível carregar as sugestões.
+      </h2>
       <p className={styles.endText}>Confira sua conexão e tente de novo.</p>
       <Button onClick={onRetry} className={styles.retry}>
         Tentar de novo
@@ -212,7 +258,15 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
  * Depois da última escolha, o foco vai para o título, porque os botões de escolha saíram da tela.
  * Se a página já abre aqui, o foco fica onde está.
  */
-function End({ title, empty, takeFocus }: { title: string; empty: boolean; takeFocus: boolean }) {
+function End({
+  title,
+  empty,
+  takeFocus,
+}: {
+  title: string;
+  empty: boolean;
+  takeFocus: boolean;
+}) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (takeFocus) titleRef.current?.focus();
@@ -222,14 +276,22 @@ function End({ title, empty, takeFocus }: { title: string; empty: boolean; takeF
     <div className={styles.end}>
       <EmptyDeck />
       <h2 ref={titleRef} tabIndex={-1} className={styles.endTitle}>
-        {empty ? "Por enquanto, nada marcado." : `Você viu todas as sugestões de ${title}`}
+        {empty
+          ? "Por enquanto, nada marcado."
+          : `Você viu todas as sugestões de ${title}`}
       </h2>
-      {!empty && <p className={styles.endText}>Por enquanto, é isso por aqui.</p>}
+      {!empty && (
+        <p className={styles.endText}>Por enquanto, é isso por aqui.</p>
+      )}
       <div className={styles.endActions}>
         <LinkButton href="/descobrir" className={styles.endAction}>
           Escolher outra categoria
         </LinkButton>
-        <LinkButton href="/ver-depois" variant="secondary" className={`${styles.endAction} ${styles.endSecondary}`}>
+        <LinkButton
+          href="/ver-depois"
+          variant="secondary"
+          className={`${styles.endAction} ${styles.endSecondary}`}
+        >
           Ver o que salvei pra depois
         </LinkButton>
       </div>
@@ -240,11 +302,39 @@ function End({ title, empty, takeFocus }: { title: string; empty: boolean; takeF
 /** Três cards tracejados, sem nada dentro (Figma: Card / Acabaram as sugestões · Ícone). */
 function EmptyDeck() {
   return (
-    <svg className={styles.endArt} width="130" height="110" viewBox="0 0 130 110" fill="none" aria-hidden="true">
+    <svg
+      className={styles.endArt}
+      width="130"
+      height="110"
+      viewBox="0 0 130 110"
+      fill="none"
+      aria-hidden="true"
+    >
       <g stroke="currentColor" strokeWidth="2" strokeDasharray="5 4">
-        <rect x="22" y="14" width="44" height="78" rx="5" transform="rotate(-8 44 53)" />
-        <rect x="64" y="14" width="44" height="78" rx="5" transform="rotate(8 86 53)" />
-        <rect x="43" y="10" width="44" height="78" rx="5" transform="rotate(-3 65 49)" />
+        <rect
+          x="22"
+          y="14"
+          width="44"
+          height="78"
+          rx="5"
+          transform="rotate(-8 44 53)"
+        />
+        <rect
+          x="64"
+          y="14"
+          width="44"
+          height="78"
+          rx="5"
+          transform="rotate(8 86 53)"
+        />
+        <rect
+          x="43"
+          y="10"
+          width="44"
+          height="78"
+          rx="5"
+          transform="rotate(-3 65 49)"
+        />
       </g>
     </svg>
   );

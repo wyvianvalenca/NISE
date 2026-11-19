@@ -16,7 +16,8 @@ type Mock = { items?: Item[]; delayMs?: number };
 
 async function openWith(page: Page, mock: Mock) {
   await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_FILE__ = value as typeof globalThis.__NISE_MOCK_FILE__;
+    globalThis.__NISE_MOCK_FILE__ =
+      value as typeof globalThis.__NISE_MOCK_FILE__;
   }, mock);
   await page.goto("/file");
 }
@@ -26,36 +27,64 @@ function section(page: Page, name: string) {
 }
 
 function item(page: Page, title: string) {
-  return page.getByRole("article").filter({ has: page.getByRole("heading", { level: 3, name: title }) });
+  return page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { level: 3, name: title }) });
 }
 
-function makeItem(id: string, status: Item["status"], theme = "programacao"): Item {
-  return { id, title: `Item ${id}`, theme, type: "Curso online", details: "Online · ~1 h", status };
+function makeItem(
+  id: string,
+  status: Item["status"],
+  theme = "programacao",
+): Item {
+  return {
+    id,
+    title: `Item ${id}`,
+    theme,
+    type: "Curso online",
+    details: "Online · ~1 h",
+    status,
+  };
 }
 
-test("mostra o título, o texto e os links para o Descobrir e para Por que filé?", async ({ page }) => {
+test("mostra o título, o texto e os links para o Descobrir e para Por que filé?", async ({
+  page,
+}) => {
   await page.goto("/file");
 
-  await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Seu filé" }),
+  ).toBeVisible();
   await expect(page.getByText("No seu ritmo, sem pressa.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "O que é o filé?" })).toHaveAttribute("href", "/por-que-file");
+  await expect(
+    page.getByRole("link", { name: "O que é o filé?" }),
+  ).toHaveAttribute("href", "/por-que-file");
 
   await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
 });
 
-test("as três seções têm contador; Concluídos começa fechada", async ({ page }) => {
+test("as três seções têm contador; Concluídos começa fechada", async ({
+  page,
+}) => {
   await page.goto("/file");
 
   const sections = page.getByRole("main").getByRole("heading", { level: 2 });
-  await expect(sections).toHaveText(["Em andamento1", "Próximas aventuras3", "Concluídos3"]);
+  await expect(sections).toHaveText([
+    "Em andamento1",
+    "Próximas aventuras3",
+    "Concluídos3",
+  ]);
 
-  await expect(page.getByRole("button", { name: "Recolher Em andamento" })).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("button", { name: "Recolher Próximas aventuras" })).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
-  await expect(page.getByRole("button", { name: "Mostrar Concluídos" })).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    page.getByRole("button", { name: "Recolher Em andamento" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.getByRole("button", { name: "Recolher Próximas aventuras" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.getByRole("button", { name: "Mostrar Concluídos" }),
+  ).toHaveAttribute("aria-expanded", "false");
 
   await expect(item(page, "Lógica de programação com Python")).toBeVisible();
   await expect(item(page, "IA para iniciantes")).toBeVisible();
@@ -65,19 +94,24 @@ test("as três seções têm contador; Concluídos começa fechada", async ({ pa
 test("Recolher e Mostrar abrem e fecham a seção", async ({ page }) => {
   await page.goto("/file");
 
-  await page.getByRole("button", { name: "Recolher Próximas aventuras" }).click();
+  await page
+    .getByRole("button", { name: "Recolher Próximas aventuras" })
+    .click();
   await expect(item(page, "IA para iniciantes")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Mostrar Próximas aventuras" })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  await expect(
+    page.getByRole("button", { name: "Mostrar Próximas aventuras" }),
+  ).toHaveAttribute("aria-expanded", "false");
 
   await page.getByRole("button", { name: "Mostrar Concluídos" }).click();
   await expect(item(page, "Oficina de Scratch")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Recolher Concluídos" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Recolher Concluídos" }),
+  ).toBeVisible();
 });
 
-test("cada item mostra tema e tipo, título e detalhes; o evento mostra o prazo", async ({ page }) => {
+test("cada item mostra tema e tipo, título e detalhes; o evento mostra o prazo", async ({
+  page,
+}) => {
   await page.goto("/file");
 
   const course = item(page, "Lógica de programação com Python");
@@ -92,47 +126,73 @@ test("cada item mostra tema e tipo, título e detalhes; o evento mostra o prazo"
   await expect(page.getByText(/Inscrições até/)).toHaveCount(1);
 });
 
-test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluídos", async ({ page }) => {
+test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluídos", async ({
+  page,
+}) => {
   await page.goto("/file");
   await page.getByRole("button", { name: "Mostrar Concluídos" }).click();
 
   await expect(
-    section(page, "Em andamento").getByRole("link", { name: "Continuar: Lógica de programação com Python" }),
+    section(page, "Em andamento").getByRole("link", {
+      name: "Continuar: Lógica de programação com Python",
+    }),
   ).toHaveAttribute("href", "/file/logica-de-programacao-com-python");
-  await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(3);
-  await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(3);
+  await expect(
+    section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ }),
+  ).toHaveCount(3);
+  await expect(
+    section(page, "Concluídos").getByRole("link", { name: /^Ver:/ }),
+  ).toHaveCount(3);
 
   await section(page, "Próximas aventuras")
     .getByRole("link", { name: "Abrir: Hackathon Meninas na Tecnologia" })
     .click();
   // O hackathon é evento: abre a A06·4b (#178), não o detalhe da atividade.
-  await expect(page).toHaveURL(/\/file\/evento\/hackathon-meninas-na-tecnologia$/);
+  await expect(page).toHaveURL(
+    /\/file\/evento\/hackathon-meninas-na-tecnologia$/,
+  );
 });
 
 test("cada item fica na seção do seu status", async ({ page }) => {
   await openWith(page, {
-    items: [makeItem("a", "concluido"), makeItem("b", "proxima"), makeItem("c", "concluido")],
+    items: [
+      makeItem("a", "concluido"),
+      makeItem("b", "proxima"),
+      makeItem("c", "concluido"),
+    ],
   });
 
-  await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText([
-    "Em andamento0",
-    "Próximas aventuras1",
-    "Concluídos2",
-  ]);
-  await expect(section(page, "Próximas aventuras").getByRole("heading", { name: "Item b" })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByRole("heading", { level: 2 }),
+  ).toHaveText(["Em andamento0", "Próximas aventuras1", "Concluídos2"]);
+  await expect(
+    section(page, "Próximas aventuras").getByRole("heading", {
+      name: "Item b",
+    }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Mostrar Concluídos" }).click();
-  await expect(section(page, "Concluídos").getByRole("heading", { level: 3 })).toHaveText(["Item a", "Item c"]);
+  await expect(
+    section(page, "Concluídos").getByRole("heading", { level: 3 }),
+  ).toHaveText(["Item a", "Item c"]);
 });
 
-test("seção vazia mostra 0 e não tem Recolher nem Mostrar", async ({ page }) => {
+test("seção vazia mostra 0 e não tem Recolher nem Mostrar", async ({
+  page,
+}) => {
   await openWith(page, { items: [makeItem("a", "proxima")] });
 
-  await expect(section(page, "Em andamento").getByRole("heading", { level: 2 })).toHaveText("Em andamento0");
-  await expect(section(page, "Em andamento").getByRole("button")).toHaveCount(0);
+  await expect(
+    section(page, "Em andamento").getByRole("heading", { level: 2 }),
+  ).toHaveText("Em andamento0");
+  await expect(section(page, "Em andamento").getByRole("button")).toHaveCount(
+    0,
+  );
   await expect(section(page, "Concluídos").getByRole("button")).toHaveCount(0);
 });
 
-test("o desenho pinta com a cor do tema só o que foi concluído", async ({ page }) => {
+test("o desenho pinta com a cor do tema só o que foi concluído", async ({
+  page,
+}) => {
   await openWith(page, {
     items: [
       makeItem("a", "concluido", "robotica"),
@@ -146,26 +206,44 @@ test("o desenho pinta com a cor do tema só o que foi concluído", async ({ page
   });
   await expect(drawing).toBeVisible();
   // Só o concluído usa uma cor de tema; o centro é "Seu começo".
-  await expect(drawing.locator('rect[fill^="var(--nise-theme"]')).toHaveCount(1);
-  await expect(drawing.locator('rect[fill="var(--nise-theme-robotica)"]')).toHaveCount(1);
+  await expect(drawing.locator('rect[fill^="var(--nise-theme"]')).toHaveCount(
+    1,
+  );
+  await expect(
+    drawing.locator('rect[fill="var(--nise-theme-robotica)"]'),
+  ).toHaveCount(1);
   await expect(drawing.locator('rect[fill="var(--nise-ink)"]')).toHaveCount(1);
   // Em andamento: metade teal. Próxima: borda teal. Sobram 11 casas vazias.
   await expect(drawing.locator("path")).toHaveCount(1);
-  await expect(drawing.locator('rect[stroke="var(--nise-teal)"]')).toHaveCount(2);
+  await expect(drawing.locator('rect[stroke="var(--nise-teal)"]')).toHaveCount(
+    2,
+  );
   await expect(drawing.locator("rect[stroke-dasharray]")).toHaveCount(11);
 });
 
-test("com mais de 14 itens, o desenho mostra 14 e as listas mostram todos", async ({ page }) => {
-  const items = Array.from({ length: 16 }, (_, index) => makeItem(`n${index}`, "proxima"));
+test("com mais de 14 itens, o desenho mostra 14 e as listas mostram todos", async ({
+  page,
+}) => {
+  const items = Array.from({ length: 16 }, (_, index) =>
+    makeItem(`n${index}`, "proxima"),
+  );
   await openWith(page, { items });
 
-  const drawing = page.getByRole("img", { name: /^Seu filé: 0 concluídos, 0 em andamento e 16 próximas aventuras\.$/ });
-  await expect(drawing.locator('rect[stroke="var(--nise-teal)"]')).toHaveCount(14);
+  const drawing = page.getByRole("img", {
+    name: /^Seu filé: 0 concluídos, 0 em andamento e 16 próximas aventuras\.$/,
+  });
+  await expect(drawing.locator('rect[stroke="var(--nise-teal)"]')).toHaveCount(
+    14,
+  );
   await expect(drawing.locator("rect[stroke-dasharray]")).toHaveCount(0);
-  await expect(section(page, "Próximas aventuras").getByRole("article")).toHaveCount(16);
+  await expect(
+    section(page, "Próximas aventuras").getByRole("article"),
+  ).toHaveCount(16);
 });
 
-test("a legenda explica o desenho e mostra os temas do filé", async ({ page }) => {
+test("a legenda explica o desenho e mostra os temas do filé", async ({
+  page,
+}) => {
   await page.goto("/file");
 
   const legend = page.getByRole("list", { name: "Legenda do filé" });
@@ -190,21 +268,36 @@ test("não há barra de progresso nem porcentagem (RN-28)", async ({ page }) => 
   await expect(page.getByRole("main")).not.toContainText("%");
 });
 
-test("a barra inferior marca Filé; Agenda e o avatar têm destino provisório", async ({ page }) => {
+test("a barra inferior marca Filé; Agenda e o avatar têm destino provisório", async ({
+  page,
+}) => {
   await page.goto("/file");
   const nav = page.getByRole("navigation", { name: "Navegação principal" });
 
-  await expect(nav.getByRole("link", { name: "Filé" })).toHaveAttribute("aria-current", "page");
-  await expect(nav.getByRole("link", { name: "Descobrir" })).not.toHaveAttribute("aria-current", "page");
-  await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/agenda");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute("href", "/perfil");
+  await expect(nav.getByRole("link", { name: "Filé" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(
+    nav.getByRole("link", { name: "Descobrir" }),
+  ).not.toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute(
+    "href",
+    "/agenda",
+  );
+  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute(
+    "href",
+    "/perfil",
+  );
 });
 
 test("mostra o carregamento enquanto o filé chega", async ({ page }) => {
   await openWith(page, { delayMs: 1000 });
 
   await expect(page.getByText("Carregando…")).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Seu filé" }),
+  ).toBeVisible();
   await expect(page.getByText("Carregando…")).toHaveCount(0);
 });
 
@@ -215,20 +308,30 @@ test("dá para usar só com o teclado, com foco visível", async ({ page }) => {
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Seu perfil" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "O que é o filé?" })).toBeFocused();
+  await expect(
+    page.getByRole("link", { name: "O que é o filé?" }),
+  ).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Descobrir mais sugestões" })).toBeFocused();
+  await expect(
+    page.getByRole("link", { name: "Descobrir mais sugestões" }),
+  ).toBeFocused();
   await page.keyboard.press("Tab");
   const toggle = page.getByRole("button", { name: "Recolher Em andamento" });
   await expect(toggle).toBeFocused();
-  const outline = await toggle.evaluate((element) => getComputedStyle(element).outlineStyle);
+  const outline = await toggle.evaluate(
+    (element) => getComputedStyle(element).outlineStyle,
+  );
   expect(outline).toBe("solid");
 
   await page.keyboard.press("Enter");
   await expect(item(page, "Lógica de programação com Python")).toBeHidden();
   await page.keyboard.press("Enter");
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Continuar: Lógica de programação com Python" })).toBeFocused();
+  await expect(
+    page.getByRole("link", {
+      name: "Continuar: Lógica de programação com Python",
+    }),
+  ).toBeFocused();
 });
 
 test("os alvos de toque têm pelo menos 44 px", async ({ page }) => {
@@ -238,7 +341,9 @@ test("os alvos de toque têm pelo menos 44 px", async ({ page }) => {
   const targets = [
     page.getByRole("link", { name: "O que é o filé?" }),
     page.getByRole("button", { name: "Recolher Em andamento" }),
-    page.getByRole("link", { name: "Continuar: Lógica de programação com Python" }),
+    page.getByRole("link", {
+      name: "Continuar: Lógica de programação com Python",
+    }),
     page.getByRole("link", { name: "Ver: Oficina de Scratch" }),
   ];
   for (const target of targets) {
@@ -254,19 +359,33 @@ for (const width of [360, 1366]) {
     await page.getByRole("button", { name: "Mostrar Concluídos" }).click();
     await expect(item(page, "Quiz: IA no dia a dia")).toBeVisible();
 
-    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth,
+    );
     expect(scrollWidth).toBeLessThanOrEqual(width);
   });
 }
 
-test("with no activity, shows the empty card, the link and the drawing, and hides the sections", async ({ page }) => {
+test("with no activity, shows the empty card, the link and the drawing, and hides the sections", async ({
+  page,
+}) => {
   await openWith(page, { items: [] });
 
-  await expect(page.getByRole("heading", { level: 2, name: "Seu filé tá só começando" })).toBeVisible();
-  await expect(page.getByText("cada atividade vira um quadradinho")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Seu filé tá só começando" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("cada atividade vira um quadradinho"),
+  ).toBeVisible();
   await expect(page.getByText("No seu ritmo, sem pressa.")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /Descobrir mais sugestões/ })).toBeVisible();
-  await expect(page.getByRole("img", { name: /0 concluídos, 0 em andamento e 0 próximas aventuras/ })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Descobrir mais sugestões/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", {
+      name: /0 concluídos, 0 em andamento e 0 próximas aventuras/,
+    }),
+  ).toBeVisible();
   for (const name of ["Em andamento", "Próximas aventuras", "Concluídos"]) {
     await expect(section(page, name)).toHaveCount(0);
   }
@@ -275,7 +394,9 @@ test("with no activity, shows the empty card, the link and the drawing, and hide
 test("with a single activity, the regular screen is back", async ({ page }) => {
   await openWith(page, { items: [makeItem("a", "proxima")] });
 
-  await expect(page.getByRole("heading", { name: "Seu filé tá só começando" })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Seu filé tá só começando" }),
+  ).toHaveCount(0);
   await expect(page.getByText("No seu ritmo, sem pressa.")).toBeVisible();
   await expect(section(page, "Próximas aventuras")).toBeVisible();
 });

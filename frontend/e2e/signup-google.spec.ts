@@ -351,7 +351,11 @@ test("convite vencido: avisa e o próximo toque segue sem ele", async ({
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
   expect(corpos).toEqual([
-    { birthDate: turnsThirteenToday(), cityId: "2704302", withoutInvite: false },
+    {
+      birthDate: turnsThirteenToday(),
+      cityId: "2704302",
+      withoutInvite: false,
+    },
     { birthDate: turnsThirteenToday(), cityId: "2704302", withoutInvite: true },
   ]);
 });

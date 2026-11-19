@@ -19,7 +19,13 @@ export function AccountCard({ name, email, provider }: AccountCardProps) {
         <p className={styles.email}>{email}</p>
       </div>
       {provider === "google" && (
-        <Image src="/icons/google.svg" alt="Conta Google" width={20} height={20} unoptimized />
+        <Image
+          src="/icons/google.svg"
+          alt="Conta Google"
+          width={20}
+          height={20}
+          unoptimized
+        />
       )}
     </div>
   );

@@ -17,7 +17,14 @@ type DrawerProps = {
 };
 
 /** Painel lateral da coordenadora (Figma: Painel / Adicionar inscrita). */
-export function Drawer({ open, onClose, title, subtitle, children, footer }: DrawerProps) {
+export function Drawer({
+  open,
+  onClose,
+  title,
+  subtitle,
+  children,
+  footer,
+}: DrawerProps) {
   const ref = useDialog(open, onClose);
   const titleId = useId();
 

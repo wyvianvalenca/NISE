@@ -21,24 +21,35 @@ type Options = {
    */
   pending?: PendingRating | null | "terms_not_accepted" | Failure;
   /** Como o POST responde. Padrão: 204. */
-  submit?: 204 | "nothing_to_rate" | "already_rated" | "terms_not_accepted" | Failure;
+  submit?:
+    204 | "nothing_to_rate" | "already_rated" | "terms_not_accepted" | Failure;
 };
 
-export type SentRating = { actionId: number; score: number; comment: string | null };
+export type SentRating = {
+  actionId: number;
+  score: number;
+  comment: string | null;
+};
 
 /**
  * Responde GET /api/ratings/pending e POST /api/ratings.
  * Depois de um envio que deu certo, o GET passa a responder null, como o back.
  * Devolve a lista das avaliações enviadas, para o teste conferir.
  */
-export async function mockRatingsApi(page: Page, options: Options = {}): Promise<SentRating[]> {
+export async function mockRatingsApi(
+  page: Page,
+  options: Options = {},
+): Promise<SentRating[]> {
   const { pending = ROBOTICS, submit = 204 } = options;
   const sentRatings: SentRating[] = [];
   let rated = false;
 
   await page.route("**/api/ratings/pending", (route) => {
     if (pending === "terms_not_accepted") {
-      return route.fulfill({ status: 403, json: { error: "terms_not_accepted" } });
+      return route.fulfill({
+        status: 403,
+        json: { error: "terms_not_accepted" },
+      });
     }
     if (pending === 401 || pending === 500 || pending === "incomplete_signup") {
       return fail(route, pending);
@@ -60,7 +71,10 @@ export async function mockRatingsApi(page: Page, options: Options = {}): Promise
       return route.fulfill({ status: 409, json: { error: "already_rated" } });
     }
     if (submit === "terms_not_accepted") {
-      return route.fulfill({ status: 403, json: { error: "terms_not_accepted" } });
+      return route.fulfill({
+        status: 403,
+        json: { error: "terms_not_accepted" },
+      });
     }
     return fail(route, submit);
   });

@@ -42,7 +42,9 @@ export default function MinimumAge() {
         <span className={styles.check}>
           <Icon name="check" />
         </span>
-        <p className={styles.item}>Não guardamos os dados que você preencheu.</p>
+        <p className={styles.item}>
+          Não guardamos os dados que você preencheu.
+        </p>
       </div>
 
       <div className={styles.actions} />

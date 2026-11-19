@@ -15,7 +15,14 @@ import type { BandCode } from "./descobrir";
 export type EventStatus = "next" | "in_progress" | "concluded";
 
 /** Tipos de ação, os mesmos do back (ActionType, RF-F17.01). */
-export type EventType = "oficina" | "palestra" | "minicurso" | "hackathon" | "visita" | "acolhimento" | "outro";
+export type EventType =
+  | "oficina"
+  | "palestra"
+  | "minicurso"
+  | "hackathon"
+  | "visita"
+  | "acolhimento"
+  | "outro";
 
 export type EventDetail = {
   id: string;
@@ -69,14 +76,19 @@ export function typeLabel(type: EventType): string {
 }
 
 /** Ícone do selo e do quadrado. Só o hackathon tem ícone próprio no Figma. */
-export function typeIcon(type: EventType): { small: IconName; large: IconName } {
+export function typeIcon(type: EventType): {
+  small: IconName;
+  large: IconName;
+} {
   if (type === "hackathon") return { small: "rocket-sm", large: "rocket" };
   return { small: "calendar-sm", large: "calendar" };
 }
 
 /** "Organizado por um grupo parceiro" ou "Organizado pelas <grupo> · grupo da NISE" (#178). */
 export function organizerLine(event: EventDetail): string {
-  return event.group ? `Organizado pelas ${event.group} · grupo da NISE` : "Organizado por um grupo parceiro";
+  return event.group
+    ? `Organizado pelas ${event.group} · grupo da NISE`
+    : "Organizado por um grupo parceiro";
 }
 
 const MONTHS = [
@@ -94,7 +106,15 @@ const MONTHS = [
   "dezembro",
 ];
 
-const WEEKDAYS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const WEEKDAYS = [
+  "domingo",
+  "segunda",
+  "terça",
+  "quarta",
+  "quinta",
+  "sexta",
+  "sábado",
+];
 
 /** Lê "AAAA-MM-DD" sem fuso, para o dia não mudar. */
 function parse(isoDate: string): Date {
@@ -122,14 +142,19 @@ function capitalize(text: string): string {
  * Os dias do evento: "8 de novembro", "8 e 9 de novembro", "8 a 12 de novembro"
  * ou "31 de outubro e 1º de novembro". `short` usa o mês curto ("8 e 9 de nov"), como na A09.
  */
-export function formatEventDays(startsOn: string, endsOn: string, short = false): string {
+export function formatEventDays(
+  startsOn: string,
+  endsOn: string,
+  short = false,
+): string {
   const start = parse(startsOn);
   const end = parse(endsOn);
   const days = Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1;
   const endText = `${dayNumber(end)} de ${month(end, short)}`;
   if (days <= 1) return endText;
   const joiner = days === 2 ? "e" : "a";
-  if (start.getUTCMonth() === end.getUTCMonth()) return `${dayNumber(start)} ${joiner} ${endText}`;
+  if (start.getUTCMonth() === end.getUTCMonth())
+    return `${dayNumber(start)} ${joiner} ${endText}`;
   return `${dayNumber(start)} de ${month(start, short)} ${joiner} ${endText}`;
 }
 
@@ -166,7 +191,10 @@ export function daysLeftText(daysLeft: number): string {
 // Dados de teste
 
 /** Um evento de teste, com as datas em dias a partir de hoje, para não envelhecer. */
-type MockEvent = Omit<EventDetail, "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen"> & {
+type MockEvent = Omit<
+  EventDetail,
+  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen"
+> & {
   /** Dias de hoje até o fim das inscrições; negativo se já fecharam. */
   deadlineIn: number;
   /** Dias de hoje até o primeiro dia do evento. */
@@ -206,7 +234,8 @@ const MOCK_EVENTS: MockEvent[] = [
     cost: null,
     stage: "Ensino médio",
     prerequisites: ["Não precisa saber programar"],
-    registrationUrl: "https://example.com/eventos/hackathon-meninas-na-tecnologia",
+    registrationUrl:
+      "https://example.com/eventos/hackathon-meninas-na-tecnologia",
   },
   {
     id: "oficina-de-robotica-rendeiras",
@@ -264,7 +293,9 @@ function today(): Date {
   const fixed = globalThis.__NISE_MOCK_EVENTO__?.today;
   if (fixed) return parse(fixed);
   const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
 }
 
 function toIso(date: Date): string {

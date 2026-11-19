@@ -67,7 +67,8 @@ export const BANDS: Record<BandCode, BandInfo> = {
   },
   "grande-desafio": {
     title: "Grande desafio",
-    description: "Mais tempo e esforço: hackathons, olimpíadas, estágios, clubes e cursos com turma",
+    description:
+      "Mais tempo e esforço: hackathons, olimpíadas, estágios, clubes e cursos com turma",
     icon: "band-grande-desafio",
     group: "em-grupo",
   },

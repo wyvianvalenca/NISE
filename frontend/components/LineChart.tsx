@@ -38,7 +38,13 @@ const BOTTOM = 44;
  * Gráfico de linhas em % (Figma: Gráfico de linhas, telas K07 Linhas).
  * Desenhado em SVG puro, sem biblioteca de gráficos.
  */
-export function LineChart({ series, xLabels, highlighted, onSelect, label }: LineChartProps) {
+export function LineChart({
+  series,
+  xLabels,
+  highlighted,
+  onSelect,
+  label,
+}: LineChartProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
 
@@ -76,7 +82,12 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
 
   return (
     <div ref={ref} className={styles.wrapper}>
-      <svg className={styles.chart} viewBox={`0 0 ${width} ${HEIGHT}`} role="img" aria-label={label}>
+      <svg
+        className={styles.chart}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
+        role="img"
+        aria-label={label}
+      >
         {highlighted !== undefined && (
           <rect
             x={x(highlighted) - 14}
@@ -90,7 +101,13 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
 
         {[0, 50, 100].map((tick) => (
           <g key={tick}>
-            <line x1={LEFT} x2={width - RIGHT} y1={y(tick)} y2={y(tick)} className={styles.grid} />
+            <line
+              x1={LEFT}
+              x2={width - RIGHT}
+              y1={y(tick)}
+              y2={y(tick)}
+              className={styles.grid}
+            />
             <text x={LEFT - 6} y={y(tick) + 3} className={styles.yLabel}>
               {tick}%
             </text>
@@ -106,7 +123,13 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
             />
             {line.values.map((value, index) =>
               value === null ? null : (
-                <circle key={index} cx={x(index)} cy={y(value)} r={4} className={styles.dot} />
+                <circle
+                  key={index}
+                  cx={x(index)}
+                  cy={y(value)}
+                  r={4}
+                  className={styles.dot}
+                />
               ),
             )}
           </g>
@@ -121,7 +144,9 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
               className={onSelect ? styles.xButton : undefined}
               role={onSelect ? "button" : undefined}
               tabIndex={onSelect ? 0 : undefined}
-              aria-label={onSelect ? `Ver detalhes da etapa ${text}` : undefined}
+              aria-label={
+                onSelect ? `Ver detalhes da etapa ${text}` : undefined
+              }
               aria-pressed={onSelect ? isHighlighted : undefined}
               onClick={select}
               onKeyDown={
@@ -139,7 +164,9 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
                 cx={x(index)}
                 cy={axisY}
                 r={10}
-                className={isHighlighted ? styles.xCircleActive : styles.xCircle}
+                className={
+                  isHighlighted ? styles.xCircleActive : styles.xCircle
+                }
               />
               <text
                 x={x(index)}
@@ -174,11 +201,20 @@ export function ChartLegend({ items }: { items: LegendItem[] }) {
           {item.kind === "swatch" || item.kind === "stripes" ? (
             <span
               aria-hidden="true"
-              className={item.kind === "stripes" ? styles.stripes : styles.swatch}
-              style={item.kind === "swatch" ? { background: item.color } : undefined}
+              className={
+                item.kind === "stripes" ? styles.stripes : styles.swatch
+              }
+              style={
+                item.kind === "swatch" ? { background: item.color } : undefined
+              }
             />
           ) : (
-            <svg width="22" height="10" aria-hidden="true" style={{ color: item.color }}>
+            <svg
+              width="22"
+              height="10"
+              aria-hidden="true"
+              style={{ color: item.color }}
+            >
               <line
                 x1="1"
                 x2="21"
@@ -191,7 +227,9 @@ export function ChartLegend({ items }: { items: LegendItem[] }) {
             </svg>
           )}
           <span>{item.label}</span>
-          {item.count !== undefined && <span className={styles.legendCount}>{item.count}</span>}
+          {item.count !== undefined && (
+            <span className={styles.legendCount}>{item.count}</span>
+          )}
         </li>
       ))}
     </ul>

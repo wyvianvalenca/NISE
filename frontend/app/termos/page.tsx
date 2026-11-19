@@ -14,27 +14,33 @@ export default function FullTermsPage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
-        <h1 className={styles.title}>Termos de uso e Política de privacidade</h1>
+        <h1 className={styles.title}>
+          Termos de uso e Política de privacidade
+        </h1>
         <p className={styles.version}>Versão {TERMS_VERSION}</p>
         <p className={styles.draft} role="note">
-          Texto provisório. A versão final está sendo escrita pela equipe e vai substituir este conteúdo.
+          Texto provisório. A versão final está sendo escrita pela equipe e vai
+          substituir este conteúdo.
         </p>
 
         <h2 id="uso" className={styles.heading}>
           Termos de uso
         </h2>
         <p>
-          A NISE liga grupos de incentivo à computação em Alagoas às meninas que participam das ações deles. Ao
-          criar uma conta, você concorda em usar a plataforma para acompanhar seu caminho na computação.
+          A NISE liga grupos de incentivo à computação em Alagoas às meninas que
+          participam das ações deles. Ao criar uma conta, você concorda em usar
+          a plataforma para acompanhar seu caminho na computação.
         </p>
 
         <h2 id="privacidade" className={styles.heading}>
           Política de privacidade
         </h2>
         <p>
-          Guardamos as ações de que você participa, o seu filé, suas respostas a questionários e avaliações e se você
-          entrou num curso ou trabalho na área. Se você veio pelo convite de um grupo, a liderança desse grupo vê
-          essas informações; os outros grupos só veem números gerais, sem identificar você.
+          Guardamos as ações de que você participa, o seu filé, suas respostas a
+          questionários e avaliações e se você entrou num curso ou trabalho na
+          área. Se você veio pelo convite de um grupo, a liderança desse grupo
+          vê essas informações; os outros grupos só veem números gerais, sem
+          identificar você.
         </p>
       </main>
     </div>

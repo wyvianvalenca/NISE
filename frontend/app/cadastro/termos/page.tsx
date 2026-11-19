@@ -12,7 +12,12 @@ import { Loading } from "@/components/Loading";
 import { StepProgress } from "@/components/StepProgress";
 import { TextLink } from "@/components/TextLink";
 import { SIGNUP_PATHS } from "@/lib/signup";
-import { acceptTerms, getTermsSummary, type TermsSummary, WITHOUT_SESSION } from "@/lib/signup-api";
+import {
+  acceptTerms,
+  getTermsSummary,
+  type TermsSummary,
+  WITHOUT_SESSION,
+} from "@/lib/signup-api";
 import styles from "../cadastro.module.css";
 
 const WHAT_WE_COLLECT = [
@@ -27,9 +32,10 @@ function whoSees(summary: TermsSummary) {
   if (summary.origin.kind === "group") {
     return (
       <>
-        <strong>A liderança do grupo {summary.origin.groupName}</strong> vê seu filé, suas respostas aos
-        questionários e suas avaliações das ações, pra saber se elas estão funcionando. Outros grupos só veem
-        números gerais, sem identificar você.
+        <strong>A liderança do grupo {summary.origin.groupName}</strong> vê seu
+        filé, suas respostas aos questionários e suas avaliações das ações, pra
+        saber se elas estão funcionando. Outros grupos só veem números gerais,
+        sem identificar você.
       </>
     );
   }
@@ -95,14 +101,19 @@ export default function TermsPage() {
 
     setSaving(false);
 
-    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+    if (
+      result?.reason === "unauthenticated" ||
+      result?.reason === "incomplete_signup"
+    ) {
       router.replace(WITHOUT_SESSION[result.reason]);
       return;
     }
 
     if (result?.reason === "outdated") {
       // Ela leu um texto que já mudou: mostra o resumo atual antes de ela aceitar.
-      setError("Os termos mudaram. Leia o resumo de novo e marque Li e concordo.");
+      setError(
+        "Os termos mudaram. Leia o resumo de novo e marque Li e concordo.",
+      );
       reloadSummary();
       return;
     }
@@ -119,7 +130,9 @@ export default function TermsPage() {
       <div className={styles.screen}>
         {loadFailed ? (
           <div role="alert">
-            <p className={styles.error}>Não deu pra carregar quem vê seus dados.</p>
+            <p className={styles.error}>
+              Não deu pra carregar quem vê seus dados.
+            </p>
             <Button variant="secondary" onClick={reloadSummary}>
               Tentar de novo
             </Button>
@@ -135,16 +148,27 @@ export default function TermsPage() {
     <div className={styles.screen}>
       <StepProgress current={1} total={3} />
       <h1 className={styles.title}>Como usamos seus dados</h1>
-      <p className={styles.lead}>Veja o que a NISE guarda sobre você e pra quê.</p>
+      <p className={styles.lead}>
+        Veja o que a NISE guarda sobre você e pra quê.
+      </p>
 
       <h2 className={styles.sectionTitle}>O que coletamos</h2>
-      <IconList items={WHAT_WE_COLLECT.map((text) => ({ icon: "check", content: text }))} />
+      <IconList
+        items={WHAT_WE_COLLECT.map((text) => ({
+          icon: "check",
+          content: text,
+        }))}
+      />
 
       <h2 className={styles.sectionTitle}>Pra que usamos</h2>
       <IconList
         items={[
           { icon: "arrow-right", content: whoSees(summary) },
-          { icon: "arrow-right", content: "Sugerir atividades com base no que você curtiu, fez ou não quis" },
+          {
+            icon: "arrow-right",
+            content:
+              "Sugerir atividades com base no que você curtiu, fez ou não quis",
+          },
         ]}
       />
 
@@ -183,7 +207,9 @@ export default function TermsPage() {
           {error}
         </p>
       )}
-      <p className={styles.footnote}>Você pode rever suas escolhas quando quiser, em Perfil.</p>
+      <p className={styles.footnote}>
+        Você pode rever suas escolhas quando quiser, em Perfil.
+      </p>
     </div>
   );
 }

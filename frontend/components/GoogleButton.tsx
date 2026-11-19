@@ -19,7 +19,13 @@ export function GoogleButton({
 }: GoogleButtonProps) {
   return (
     <a className={styles.button} href={googleStartUrl({ invite })}>
-      <Image src="/icons/google.svg" alt="" width={20} height={20} unoptimized />
+      <Image
+        src="/icons/google.svg"
+        alt=""
+        width={20}
+        height={20}
+        unoptimized
+      />
       {label}
     </a>
   );

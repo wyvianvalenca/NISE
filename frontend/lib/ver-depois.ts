@@ -42,7 +42,11 @@ export function itemMeta(item: SavedItem): string {
 /** "Inscrições até 30 de outubro". A data é lida em UTC para não voltar um dia no fuso de Maceió. */
 export function deadlineLabel(deadline: string): string {
   const date = new Date(`${deadline}T00:00:00Z`);
-  const day = date.toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "UTC" });
+  const day = date.toLocaleDateString("pt-BR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
   return `Inscrições até ${day}`;
 }
 

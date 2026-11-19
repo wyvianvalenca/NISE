@@ -26,7 +26,12 @@ type DataTableProps<T> = {
  * Tabela simples com divisórias (Figma: Tabela, Cabeçalho da tabela, Linha / ...).
  * Em telas estreitas a tabela rola de lado.
  */
-export function DataTable<T>({ columns, rows, rowKey, caption }: DataTableProps<T>) {
+export function DataTable<T>({
+  columns,
+  rows,
+  rowKey,
+  caption,
+}: DataTableProps<T>) {
   return (
     <div className={styles.wrapper}>
       <table className={styles.table}>

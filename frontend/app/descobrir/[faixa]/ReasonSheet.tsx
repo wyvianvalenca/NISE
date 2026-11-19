@@ -40,13 +40,19 @@ export function ReasonSheet({ open, onSubmit, onCancel }: ReasonSheetProps) {
             size="lg"
             selected={reason === option.code}
             // Tocar de novo no motivo marcado desmarca.
-            onClick={() => setReason(reason === option.code ? null : option.code)}
+            onClick={() =>
+              setReason(reason === option.code ? null : option.code)
+            }
           >
             {option.label}
           </Chip>
         ))}
       </div>
-      <Button className={styles.send} disabled={!reason} onClick={() => reason && onSubmit(reason)}>
+      <Button
+        className={styles.send}
+        disabled={!reason}
+        onClick={() => reason && onSubmit(reason)}
+      >
         Enviar
       </Button>
       <button type="button" className={styles.skip} onClick={() => onSubmit()}>

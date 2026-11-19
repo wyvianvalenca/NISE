@@ -12,7 +12,12 @@ type InfoHintProps = {
  */
 export function InfoHint({ text }: InfoHintProps) {
   return (
-    <button type="button" className={styles.hint} aria-label={text} title={text}>
+    <button
+      type="button"
+      className={styles.hint}
+      aria-label={text}
+      title={text}
+    >
       <Icon name="info" />
     </button>
   );

@@ -28,7 +28,11 @@ type CoordHeaderProps = {
 };
 
 /** Coordinator site header (Figma: Header of the K screens). */
-export function CoordHeader({ active, groupName, accountInitial }: CoordHeaderProps) {
+export function CoordHeader({
+  active,
+  groupName,
+  accountInitial,
+}: CoordHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.left}>

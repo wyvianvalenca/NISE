@@ -20,7 +20,14 @@ function countLabel(count: number) {
 }
 
 /** Faixa de esforço do Descobrir (Figma: Nível, tela A06·1). */
-export function BandCard({ icon, title, description, count, href, lastUsed = false }: BandCardProps) {
+export function BandCard({
+  icon,
+  title,
+  description,
+  count,
+  href,
+  lastUsed = false,
+}: BandCardProps) {
   const empty = count === 0;
   // Faixa vazia não abre, então a tag de atalho "da última vez" não aparece nela.
   const showLastUsed = lastUsed && !empty;
@@ -35,7 +42,9 @@ export function BandCard({ icon, title, description, count, href, lastUsed = fal
           <span className={styles.title}>{title}</span>
           {showLastUsed && <Tag variant="soft">da última vez</Tag>}
         </span>
-        <span className={styles.description}>{empty ? "Por enquanto, nada marcado." : description}</span>
+        <span className={styles.description}>
+          {empty ? "Por enquanto, nada marcado." : description}
+        </span>
       </span>
       <span className={styles.count}>{countLabel(count)}</span>
     </>
@@ -47,7 +56,10 @@ export function BandCard({ icon, title, description, count, href, lastUsed = fal
   }
 
   return (
-    <Link href={href} className={`${styles.card} ${showLastUsed ? styles.lastUsed : ""}`}>
+    <Link
+      href={href}
+      className={`${styles.card} ${showLastUsed ? styles.lastUsed : ""}`}
+    >
       {content}
     </Link>
   );

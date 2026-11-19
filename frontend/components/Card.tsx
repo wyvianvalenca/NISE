@@ -20,7 +20,9 @@ export function Card({
   className,
 }: CardProps) {
   return (
-    <section className={className ? `${styles.card} ${className}` : styles.card}>
+    <section
+      className={className ? `${styles.card} ${className}` : styles.card}
+    >
       {meta && <p className={styles.meta}>{meta}</p>}
       {title && <Title className={styles.title}>{title}</Title>}
       {children && <div className={styles.body}>{children}</div>}

@@ -13,7 +13,13 @@ type TextLinkProps = LinkProps & {
 };
 
 /** Link de texto teal com alvo de 44px (Figma: Link target / ...). */
-export function TextLink({ children, back = false, external = false, className, ...rest }: TextLinkProps) {
+export function TextLink({
+  children,
+  back = false,
+  external = false,
+  className,
+  ...rest
+}: TextLinkProps) {
   return (
     <Link
       {...rest}
