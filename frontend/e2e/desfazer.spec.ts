@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { SuggestionCard } from "../lib/sugestoes";
+import { mockDiscoverApi } from "./discover-api";
 import { mockSuggestionsApi, type SuggestionsApi } from "./suggestions-api";
 
 // #107 e #109 · Aviso "Desfazer" na A06·2. As sugestões, a escolha e o "Desfazer" vêm das rotas da
@@ -26,6 +28,26 @@ const undoButton = (page: Page) => button(page, "Desfazer");
 
 const FIRST = "Crie seu primeiro site com HTML";
 const SECOND = "Um jogo da velha no navegador";
+
+// A segunda e a terceira de "Uma tarde", como a rota devolve depois que ela escolheu a primeira.
+const SECOND_CARD: SuggestionCard = {
+  id: "curadoria-2",
+  typeLabel: "Mini-projeto",
+  title: SECOND,
+  source: "Comunidade de jogos · exemplo",
+  format: "online",
+  duration: "~4 horas",
+  costCents: 0,
+  minAge: 13,
+  why: null,
+};
+const THIRD_CARD: SuggestionCard = {
+  ...SECOND_CARD,
+  id: "curadoria-3",
+  typeLabel: "Curso online",
+  title: "Lógica de programação com Python",
+  source: "Plataforma de cursos gratuitos · exemplo",
+};
 
 test("\"Quero fazer\" mostra o aviso e \"Desfazer\" traz a mesma sugestão de volta", async ({ page }) => {
   const api = await open(page);
@@ -191,6 +213,40 @@ test.describe("tempo do aviso", () => {
     await page.clock.runFor(1500);
     await expect(toast(page)).toHaveCount(0);
   });
+});
+
+test("ao voltar para a faixa, começa do zero: sem o aviso nem o contador de antes", async ({ page }) => {
+  await mockDiscoverApi(page);
+  await open(page, { count: 3 });
+  await button(page, "Talvez depois").click();
+  await expect(toast(page)).toBeVisible();
+  await expect(page.getByText("Sugestão 2 de 3")).toBeVisible();
+
+  // Daqui em diante a faixa só responde quando o teste soltar, já sem a que ela escolheu.
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/discover\/uma-tarde$/, async (route) => {
+    await released;
+    await route.fulfill({ json: { band: "uma-tarde", fileTotal: 5, items: [SECOND_CARD, THIRD_CARD] } });
+  });
+
+  // Vai ao Descobrir pelo cabeçalho e entra de novo na mesma faixa. Com cacheComponents
+  // o Next guarda a faixa escondida; na volta ela busca de novo.
+  await page.getByRole("link", { name: /^Uma tarde/ }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  const refetch = page.waitForRequest(/\/api\/discover\/uma-tarde$/);
+  await page.getByRole("link", { name: /^Uma tarde/ }).click();
+  await refetch;
+
+  // Enquanto a resposta não chega, nada de antes aparece.
+  await expect(page).toHaveURL(/\/descobrir\/uma-tarde$/);
+  await expect(toast(page)).toHaveCount(0);
+  await expect(page.getByText(/^Sugestão \d+ de \d+/)).toHaveCount(0);
+
+  release();
+  await expect(page.getByText("Sugestão 1 de 2")).toBeVisible();
+  await expect(page.getByRole("heading", { name: SECOND })).toBeVisible();
+  await expect(toast(page)).toHaveCount(0);
 });
 
 test("dá para desfazer só com o teclado, com foco visível", async ({ page }) => {
