@@ -41,6 +41,20 @@ class DismissReason(enum.Enum):
     OUTRO_MOTIVO = "outro-motivo"
 
 
+class SimilarChoice(enum.Enum):
+    """Resposta do "Quer sugestões parecidas?" da atividade concluída (A06·5, RF-F10.09).
+
+    Os valores são os mesmos de `SIMILAR_OPTIONS` no front
+    (frontend/lib/atividade-feedback.ts). Como cada um muda as próximas
+    sugestões está em app/modules/suggestions/service.py (#80).
+    """
+
+    MAIS_AVANCADO = "mais-avancado"
+    MESMO_NIVEL = "mesmo-nivel"
+    OUTRO_TEMA = "outro-tema"
+    POR_ENQUANTO_NAO = "por-enquanto-nao"  # "Por enquanto, tá bom"
+
+
 class FileEntry(TimestampMixin, Base):
     """O que a menina fez com um item do catálogo: uma linha por menina e item.
 
@@ -61,6 +75,13 @@ class FileEntry(TimestampMixin, Base):
             "status = 'DISMISSED' OR dismiss_reason IS NULL",
             name="ck_file_entries_reason_only_when_dismissed",
         ),
+        CheckConstraint(
+            "rating BETWEEN 1 AND 5", name="ck_file_entries_rating_from_1_to_5"
+        ),
+        CheckConstraint(
+            "status = 'CONCLUDED' OR (rating IS NULL AND similar_choice IS NULL)",
+            name="ck_file_entries_feedback_only_when_concluded",
+        ),
     )
 
     girl_id: Mapped[int] = mapped_column(
@@ -77,3 +98,7 @@ class FileEntry(TimestampMixin, Base):
     status: Mapped[FileStatus] = mapped_column()
     # Só no "Não é pra mim", e opcional mesmo nele (RF-F10.04).
     dismiss_reason: Mapped[DismissReason | None] = mapped_column()
+    # Só numa atividade concluída, e as duas são opcionais (RF-F10.09, RN-28).
+    # Quem grava é a rota da #125; as sugestões (#80) leem as duas.
+    rating: Mapped[int | None] = mapped_column()
+    similar_choice: Mapped[SimilarChoice | None] = mapped_column()

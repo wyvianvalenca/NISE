@@ -5,7 +5,7 @@ from sqlalchemy import UniqueConstraint
 
 from app.db.base import Base
 from app.modules.catalog.models import ItemOrigin
-from app.modules.girl_file.models import DismissReason, FileStatus
+from app.modules.girl_file.models import DismissReason, FileStatus, SimilarChoice
 from app.modules.girl_file.service import entry_item_id, new_entry
 
 TABLE = Base.metadata.tables["file_entries"]
@@ -33,6 +33,29 @@ def test_motivos_sao_os_que_o_front_manda() -> None:
         "sem-tempo-agora",
         "outro-motivo",
     ]
+
+
+def test_sugestoes_parecidas_sao_as_que_o_front_manda() -> None:
+    # Os mesmos de SIMILAR_OPTIONS em frontend/lib/atividade-feedback.ts (#80).
+    assert [choice.value for choice in SimilarChoice] == [
+        "mais-avancado",
+        "mesmo-nivel",
+        "outro-tema",
+        "por-enquanto-nao",
+    ]
+
+
+def test_avaliacao_e_parecidas_so_numa_atividade_concluida() -> None:
+    # Nota de 1 a 5, e as duas respostas só no concluído (RF-F10.09).
+    checks = {
+        getattr(constraint, "name", None): str(getattr(constraint, "sqltext", ""))
+        for constraint in TABLE.constraints
+    }
+
+    assert checks["ck_file_entries_rating_from_1_to_5"] == "rating BETWEEN 1 AND 5"
+    assert checks["ck_file_entries_feedback_only_when_concluded"] == (
+        "status = 'CONCLUDED' OR (rating IS NULL AND similar_choice IS NULL)"
+    )
 
 
 def test_item_da_curadoria_vai_na_coluna_da_curadoria() -> None:
@@ -106,4 +129,6 @@ def test_nenhum_dado_pessoal_nem_link_no_file() -> None:
         "action_id",
         "status",
         "dismiss_reason",
+        "rating",
+        "similar_choice",
     }
