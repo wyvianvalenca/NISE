@@ -535,8 +535,9 @@ async def test_convocacao_vira_aprovacao_nunca_ingresso(
 
     monkeypatch.setattr(search, "_official_list", lista)
     sessao_falsa = _sessao([(3, nome_ficticio(0))])
-    # O lock da rodada e, depois, a checagem de create_match (nada da chamada).
-    sessao_falsa.scalar.side_effect = [True, False]
+    # O lock da rodada, a checagem de create_match (nada da chamada) e, com o
+    # e-mail do #275, a conta da menina (nenhuma: não entra e-mail na fila).
+    sessao_falsa.scalar.side_effect = [True, False, None]
     cliente, _ = _cliente([(1, CLASSIFICADOS, lista_pdf([Linha(nome_ficticio(0))]))])
 
     await run_ifal_round(sessao_falsa, cliente, _sem_espera, AGORA)
