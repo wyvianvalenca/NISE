@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BandCard } from "@/components/BandCard";
@@ -18,7 +18,6 @@ import {
   getDiscover,
   getFirstName,
   saveLastBand,
-  type BandCode,
   type BandGroup,
   type DiscoverData,
   type DiscoverResult,
@@ -96,24 +95,9 @@ export default function DiscoverPage() {
   );
 }
 
+// Na volta de uma faixa, as contagens e a tag "da última vez" vêm da busca nova:
+// useLongWait descarta os dados quando o Next esconde a tela (lib/loading.ts).
 function Bands({ data }: { data: DiscoverData }) {
-  // A faixa que ela acabou de abrir. Com cacheComponents, o Next guarda esta tela
-  // escondida (Activity) e, na volta, mostra os dados de antes até a nova busca
-  // chegar. Guardando o toque aqui, a tag "da última vez" já volta no lugar certo.
-  const tapped = useRef<BandCode | null>(null);
-  const [opened, setOpened] = useState<BandCode | null>(null);
-  const lastBand = opened ?? data.lastBand;
-
-  // A tag só muda quando a tela some. No toque o Descobrir ainda está à vista até
-  // a faixa abrir, e a tag pularia de faixa na frente dela. A limpeza de um
-  // useLayoutEffect roda quando o Activity esconde a tela (guia "preserving-ui-state"
-  // do Next).
-  useLayoutEffect(() => {
-    return () => {
-      if (tapped.current) setOpened(tapped.current);
-    };
-  }, []);
-
   return (
     <>
       <p className={styles.greeting}>Oi, {data.firstName}!</p>
@@ -133,12 +117,9 @@ function Bands({ data }: { data: DiscoverData }) {
                 description={info.description}
                 count={band.count}
                 href={bandPath(band.code)}
-                lastUsed={band.code === lastBand}
+                lastUsed={band.code === data.lastBand}
                 // Grava a faixa para a tag "da última vez" da próxima visita (#88).
-                onOpen={() => {
-                  tapped.current = band.code;
-                  saveLastBand(band.code);
-                }}
+                onOpen={() => saveLastBand(band.code)}
               />
             </div>
           );

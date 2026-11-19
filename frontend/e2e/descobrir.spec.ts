@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockDiscoverApi } from "./discover-api";
+import { BAND_CODES } from "../lib/descobrir";
+import { FIGMA_COUNTS, mockDiscoverApi } from "./discover-api";
+import { mockSuggestionsApi } from "./suggestions-api";
 
 // #87 e #89 · A06·1 Descobrir, com as rotas do back (#88) simuladas em discover-api.ts.
 
@@ -152,19 +154,43 @@ test("tocar numa faixa grava a faixa para a tag da próxima visita", async ({ pa
   await expect.poll(() => saved).toEqual(["no-meu-ritmo"]);
 });
 
-test("ao voltar de uma faixa, a tag já está nela, sem esperar o back", async ({ page }) => {
+test("ao voltar de uma faixa, não mostra as contagens nem a tag de antes", async ({ page }) => {
+  await mockSuggestionsApi(page);
   await openWith(page, { lastBand: "uma-tarde" });
-  await expect(band(page, "Uma tarde")).toContainText("da última vez");
+  await expect(band(page, "No meu ritmo")).toContainText("6 sugestões");
 
-  // Daqui em diante o GET não responde. Com cacheComponents, a volta mostra a
-  // tela guardada, e a tag tem de mudar sem a resposta nova.
-  await page.route("**/api/discover", () => {});
+  // Daqui em diante o GET só responde quando o teste soltar, já com a escolha
+  // feita na faixa: uma sugestão a menos e a tag nela.
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/api/discover", async (route) => {
+    await released;
+    await route.fulfill({
+      json: {
+        firstName: "Alana",
+        bands: BAND_CODES.map((code) => ({
+          code,
+          count: code === "no-meu-ritmo" ? 5 : FIGMA_COUNTS[code],
+        })),
+        lastBand: "no-meu-ritmo",
+      },
+    });
+  });
 
   await band(page, "No meu ritmo").click();
   await expect(page).toHaveURL(/\/descobrir\/no-meu-ritmo$/);
+  // Com cacheComponents o Next guarda o Descobrir escondido; na volta ele busca de novo.
+  const refetch = page.waitForRequest("**/api/discover");
   await page.goBack();
+  await refetch;
 
+  // Enquanto a resposta não chega, nada de antes aparece no meio.
   await expect(page).toHaveURL(/\/descobrir$/);
+  await expect(band(page, "No meu ritmo")).toHaveCount(0);
+  await expect(page.getByText("da última vez")).toHaveCount(0);
+
+  release();
+  await expect(band(page, "No meu ritmo")).toContainText("5 sugestões");
   await expect(band(page, "No meu ritmo")).toContainText("da última vez");
   await expect(page.getByText("da última vez")).toHaveCount(1);
 });

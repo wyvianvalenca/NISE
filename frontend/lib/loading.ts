@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * Long-wait handling for suggestions (E03/E04, issue #81).
@@ -103,6 +103,20 @@ export function useLongWait<T>(
   const retry = useCallback(() => {
     setState({ phase: "weaving", data: null });
     setAttempt((n) => n + 1);
+  }, []);
+
+  /**
+   * Drops the outcome when the screen is hidden.
+   *
+   * With cacheComponents, Next hides a page it leaves (React Activity) instead
+   * of unmounting it. On the way back the old data would show until the new
+   * fetch lands: old counts in Descobrir, an old "Sugestão 2 de 8" in a band.
+   * A useLayoutEffect cleanup runs when Activity hides the page (Next's
+   * "preserving-ui-state" guide), so she comes back to what a first visit
+   * shows. The fetch effect below runs again when the page shows.
+   */
+  useLayoutEffect(() => {
+    return () => setState({ phase: "early", data: null });
   }, []);
 
   /**
