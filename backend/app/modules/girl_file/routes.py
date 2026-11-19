@@ -13,6 +13,7 @@ from app.modules.girl_file.schemas import (
     ActivityOut,
     ChoiceIn,
     ChoiceOut,
+    FeedbackIn,
     FileOut,
     LaterOut,
     StatusIn,
@@ -26,6 +27,7 @@ from app.modules.girl_file.service import (
     load_later,
     remove_choice,
     save_choice,
+    save_feedback,
 )
 from app.modules.girls.models import Girl
 from app.modules.girls.service import get_girl_of_user
@@ -247,6 +249,49 @@ async def change_status(
             content={"error": "invalid_status_change"},
         )
     return activity_of(entry, item, girl)
+
+
+# A06·5 · "O que achou?" e "Quer sugestões parecidas?" (#123, RF-F10.09): a
+# nota de 1 a 5 e o pedido de sugestões parecidas de uma atividade concluída.
+# As duas são opcionais, mas o "Enviar" manda pelo menos uma; o "Pular" não
+# chama a rota, então não guarda nada (RN-28). Enviar de novo troca a resposta
+# anterior. As sugestões (#80) usam as duas na próxima rodada (RF-F11.05).
+#
+# Só numa atividade concluída: nas outras seções responde 409. A menina é
+# sempre a da sessão: a linha de outra menina nunca é achada, e responde 404
+# (RNF-G.03).
+@router.put(
+    "/{item_id}/feedback",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    responses={
+        **ACTIVITY_RESPONSES,
+        status.HTTP_409_CONFLICT: {
+            "description": (
+                "A atividade ainda não foi concluída:"
+                ' {"error": "activity_not_concluded"}'
+            )
+        },
+    },
+)
+async def send_feedback(
+    item_id: str, data: FeedbackIn, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> JSONResponse | None:
+    girl = await get_girl_of_user(session, user.id)
+    if girl is None:
+        return not_found("profile_not_found")
+
+    found = await find_activity(session, girl.id, item_id)
+    if found is None:
+        return not_found("item_not_found")
+    entry, _ = found
+
+    if not await save_feedback(session, entry, data.rating, data.similar):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"error": "activity_not_concluded"},
+        )
+    return None
 
 
 # O Ver depois fica em /api/later, fora de /api/file, para não disputar o

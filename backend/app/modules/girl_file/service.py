@@ -21,7 +21,12 @@ from app.modules.catalog.utils import (
     parse_item_id,
 )
 from app.modules.cities.models import City
-from app.modules.girl_file.models import DismissReason, FileEntry, FileStatus
+from app.modules.girl_file.models import (
+    DismissReason,
+    FileEntry,
+    FileStatus,
+    SimilarChoice,
+)
 from app.modules.girl_file.schemas import (
     ActivityOut,
     Choice,
@@ -576,5 +581,31 @@ async def advance_status(
     entry.status = target
     if target is FileStatus.CONCLUDED:
         entry.concluded_on = today
+    await session.commit()
+    return True
+
+
+# --- Avaliação da atividade concluída (A06·5, #123) ---------------------------
+
+
+async def save_feedback(
+    session: AsyncSession,
+    entry: FileEntry,
+    rating: int | None,
+    similar: SimilarChoice | None,
+) -> bool:
+    """Guarda a nota e as "sugestões parecidas" de uma atividade concluída (RF-F10.09).
+
+    Enviar de novo troca a resposta anterior inteira: o que vier vazio fica
+    vazio. As sugestões (#80) leem as duas na próxima rodada (RF-F11.05).
+
+    Só vale numa atividade concluída: nas outras seções devolve False sem mudar
+    nada (o banco também confere, em ck_file_entries_feedback_only_when_concluded).
+    """
+    if entry.status is not FileStatus.CONCLUDED:
+        return False
+
+    entry.rating = rating
+    entry.similar_choice = similar
     await session.commit()
     return True

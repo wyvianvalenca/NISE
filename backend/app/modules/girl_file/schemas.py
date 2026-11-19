@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.modules.actions.models import ActionFormat
 from app.modules.catalog.models import CuratedType, EffortBand, ItemKind
-from app.modules.girl_file.models import DismissReason
+from app.modules.girl_file.models import DismissReason, SimilarChoice
 from app.modules.girls.models import Topic
 
 
@@ -188,3 +188,25 @@ class StatusIn(BaseModel):
     """
 
     status: FileSection
+
+
+# --- Avaliação da atividade concluída (A06·5, #123) ---------------------------
+
+
+class FeedbackIn(BaseModel):
+    """O "O que achou?" e o "Quer sugestões parecidas?" de uma atividade concluída.
+
+    As duas partes são opcionais (RN-28), mas o "Enviar" só existe com pelo menos
+    uma escolhida: o "Pular" não chama a rota. As duas vazias, ou uma nota fora
+    de 1 a 5, respondem 422. Os valores de `similar` são os de `SIMILAR_OPTIONS`
+    no front (frontend/lib/atividade-feedback.ts).
+    """
+
+    rating: int | None = Field(default=None, ge=1, le=5)
+    similar: SimilarChoice | None = None
+
+    @model_validator(mode="after")
+    def something_chosen(self) -> Self:
+        if self.rating is None and self.similar is None:
+            raise ValueError("Escolha uma nota ou um tipo de sugestão")
+        return self
