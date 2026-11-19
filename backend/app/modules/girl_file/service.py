@@ -64,6 +64,23 @@ async def file_total(session: AsyncSession, girl_id: int) -> int:
     return total or 0
 
 
+async def find_entry(
+    session: AsyncSession, girl_id: int, origin: ItemOrigin, number: int
+) -> FileEntry | None:
+    """A linha dela para um item do catálogo, ou None se ela ainda não escolheu nada.
+
+    A busca usa o id dela, então a linha de outra menina nunca é achada (RNF-G.03).
+    """
+    if origin is ItemOrigin.CURATED:
+        same_item = FileEntry.curated_item_id == number
+    else:
+        same_item = FileEntry.action_id == number
+
+    return await session.scalar(
+        select(FileEntry).where(FileEntry.girl_id == girl_id, same_item)
+    )
+
+
 async def save_choice(
     session: AsyncSession,
     girl_id: int,
@@ -75,18 +92,10 @@ async def save_choice(
     """Grava o que ela decidiu sobre um item (RF-F10.04).
 
     Uma linha por menina e item: escolher de novo troca a escolha anterior, sem
-    criar outra linha. A busca usa o id dela, então a linha de outra menina
-    nunca é tocada (RNF-G.03).
+    criar outra linha.
     """
     status = CHOICE_STATUS[choice]
-    if origin is ItemOrigin.CURATED:
-        same_item = FileEntry.curated_item_id == number
-    else:
-        same_item = FileEntry.action_id == number
-
-    entry = await session.scalar(
-        select(FileEntry).where(FileEntry.girl_id == girl_id, same_item)
-    )
+    entry = await find_entry(session, girl_id, origin, number)
     if entry is None:
         session.add(new_entry(girl_id, origin, number, status, reason))
     else:
@@ -96,4 +105,20 @@ async def save_choice(
         # (ck_file_entries_feedback_only_when_concluded).
         entry.rating = None
         entry.similar_choice = None
+    await session.commit()
+
+
+async def remove_choice(
+    session: AsyncSession, girl_id: int, origin: ItemOrigin, number: int
+) -> None:
+    """Apaga a escolha dela sobre um item: o "Desfazer" da A06·2 (RF-F10.05).
+
+    Apagar a linha leva junto o motivo do "Não é pra mim", e o item volta a
+    poder ser sugerido. Se ela não tem escolha nesse item (ou já desfez), não
+    faz nada.
+    """
+    entry = await find_entry(session, girl_id, origin, number)
+    if entry is None:
+        return
+    await session.delete(entry)
     await session.commit()
