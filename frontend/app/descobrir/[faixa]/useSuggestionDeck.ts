@@ -19,6 +19,7 @@ export type DeckState = {
 };
 
 export type DeckAction =
+  | { type: "reset" }
   | { type: "loaded"; items: Suggestion[]; fileTotal: number }
   | { type: "choosing" }
   | { type: "chosen"; fileTotal: number }
@@ -37,6 +38,8 @@ export const initialDeck: DeckState = {
 
 export function deckReducer(state: DeckState, action: DeckAction): DeckState {
   switch (action.type) {
+    case "reset":
+      return initialDeck;
     case "loaded":
       return { ...initialDeck, status: "ready", items: action.items, fileTotal: action.fileTotal };
     case "choosing":
@@ -70,7 +73,9 @@ export function useSuggestionDeck(data: SuggestionsData | null, { onChoiceConfir
   const [state, dispatch] = useReducer(deckReducer, initialDeck);
 
   useEffect(() => {
-    if (data) dispatch({ type: "loaded", items: data.items, fileTotal: data.fileTotal });
+    // Sem dados (a tela foi escondida e vai buscar de novo), volta a "loading", para não
+    // mostrar a lista e o "Sugestão N de M" de antes.
+    dispatch(data ? { type: "loaded", items: data.items, fileTotal: data.fileTotal } : { type: "reset" });
   }, [data]);
 
   const item: Suggestion | undefined = state.items[state.index];
