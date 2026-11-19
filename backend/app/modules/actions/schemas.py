@@ -119,3 +119,41 @@ class ActionOut(BaseModel):
     topics: list[Topic]
     audiences: list[StudyStage]
     status: ActionStatus
+
+
+class ActionListItemOut(BaseModel):
+    """One row of the "Ações" list (K10, RF-F30.10).
+
+    `attended_count` is null while there is no attendance to count (RN-37), so the
+    row can tell "22 de 30 presentes" from "26 inscritas".
+    """
+
+    id: int
+    name: str
+    type: ActionType
+    starts_on: date
+    ends_on: date
+    format: ActionFormat
+    city_label: str | None
+    visibility: ActionVisibility
+    registrations_open: bool
+    status: ActionStatus
+    registered_count: int
+    attended_count: int | None
+
+
+class ActionStatusCountsOut(BaseModel):
+    """The numbers on the filter chips: "Todas 10", "Aguardando inscrições 3"..."""
+
+    all: int
+    awaiting_registrations: int
+    awaiting_event: int
+    awaiting_attendance: int
+    concluded: int
+
+
+class ActionListOut(BaseModel):
+    """The actions of the group that pass the filters, and the chip counts."""
+
+    items: list[ActionListItemOut]
+    counts: ActionStatusCountsOut
