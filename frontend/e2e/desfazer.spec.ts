@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { SuggestionCard } from "../lib/sugestoes";
 import { mockDiscoverApi } from "./discover-api";
+import { watchFrames } from "./frames";
 import { mockSuggestionsApi, type SuggestionsApi } from "./suggestions-api";
 
 // #107 e #109 · Aviso "Desfazer" na A06·2. As sugestões, a escolha e o "Desfazer" vêm das rotas da
@@ -230,10 +231,12 @@ test("ao voltar para a faixa, começa do zero: sem o aviso nem o contador de ant
     await route.fulfill({ json: { band: "uma-tarde", fileTotal: 5, items: [SECOND_CARD, THIRD_CARD] } });
   });
 
-  // Vai ao Descobrir pelo cabeçalho e entra de novo na mesma faixa. Com cacheComponents
-  // o Next guarda a faixa escondida; na volta ela busca de novo.
+  // Vai ao Descobrir pelo cabeçalho e entra logo de novo na mesma faixa. Com cacheComponents
+  // o Next guarda a faixa escondida; na volta ela busca de novo. Nem por um quadro a tela
+  // de antes pode aparecer.
   await page.getByRole("link", { name: /^Uma tarde/ }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
+  const seen = await watchFrames(page, ["Sugestão 2 de 3", "foi pro Ver depois"]);
   const refetch = page.waitForRequest(/\/api\/discover\/uma-tarde$/);
   await page.getByRole("link", { name: /^Uma tarde/ }).click();
   await refetch;
@@ -247,6 +250,41 @@ test("ao voltar para a faixa, começa do zero: sem o aviso nem o contador de ant
   await expect(page.getByText("Sugestão 1 de 2")).toBeVisible();
   await expect(page.getByRole("heading", { name: SECOND })).toBeVisible();
   await expect(toast(page)).toHaveCount(0);
+  expect(await seen()).toEqual([]);
+});
+
+test("voltando pelo navegador e entrando logo na faixa, a tela de antes não pisca", async ({ page }) => {
+  await mockDiscoverApi(page);
+  await mockSuggestionsApi(page, { count: 3 });
+  await page.goto("/descobrir");
+  const bandCard = page.getByRole("link", { name: /^Uma tarde.*sugestões/ });
+  await bandCard.click();
+  await expect(page.getByText("Sugestão 1 de 3")).toBeVisible();
+  await button(page, "Talvez depois").click();
+  await expect(toast(page)).toBeVisible();
+
+  await page.goBack();
+  await expect(bandCard).toBeVisible();
+  // A faixa escondida pode ainda guardar a tela de antes: o React adia as atualizações de
+  // uma tela escondida. Ao voltar, ela tem de começar do zero já no primeiro quadro.
+  // Sem a correção, o quadro antigo só aparece às vezes (com a máquina ocupada); com ela,
+  // nunca. Por isso este teste pega a falha de vez em quando, mas nunca falha à toa.
+  const seen = await watchFrames(page, ["Sugestão 2 de 3", "foi pro Ver depois"]);
+  await bandCard.click();
+
+  await expect(page.getByText("Sugestão 1 de 3")).toBeVisible();
+  expect(await seen()).toEqual([]);
+});
+
+test("\"Desfazer\" traz o card de volta pelo lado de onde saiu", async ({ page }) => {
+  await open(page);
+
+  await button(page, "Quero fazer").click();
+  await undoButton(page).click();
+
+  // "Quero fazer" leva o card para a direita; ele volta por lá (movimento.spec.ts tem a saída).
+  await expect(page.locator("[data-motion='volta-direita']")).toContainText(FIRST);
+  await expect(page.locator("[data-motion^='sai-']")).toHaveCount(0);
 });
 
 test("dá para desfazer só com o teclado, com foco visível", async ({ page }) => {
