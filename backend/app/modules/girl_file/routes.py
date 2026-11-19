@@ -4,7 +4,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
-from app.modules.catalog.models import CuratedItem
+from app.modules.catalog.models import CuratedItem, EffortBand
 from app.modules.catalog.service import from_curated, is_suggestible
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
@@ -14,6 +14,7 @@ from app.modules.girl_file.schemas import (
     ChoiceIn,
     ChoiceOut,
     FileOut,
+    LaterOut,
     StatusIn,
 )
 from app.modules.girl_file.service import (
@@ -22,6 +23,7 @@ from app.modules.girl_file.service import (
     file_total,
     find_activity,
     load_file,
+    load_later,
     remove_choice,
     save_choice,
 )
@@ -245,3 +247,41 @@ async def change_status(
             content={"error": "invalid_status_change"},
         )
     return activity_of(entry, item, girl)
+
+
+# O Ver depois fica em /api/later, fora de /api/file, para não disputar o
+# caminho com /api/file/{item_id}.
+later_router = APIRouter(prefix="/later", tags=["File"])
+
+
+# A06·2b · Ver depois (#110, RF-F10.06): o que ela guardou com "Talvez depois",
+# do mais recente para o mais antigo, com o que o cartão mostra. `band` é o
+# filtro por faixa; uma faixa fora das 5 responde 422. Um item vencido não
+# aparece (RF-F11.07).
+#
+# Só lê: "+ Quero fazer" usa PUT /api/file/{id} (#104), que troca o "Talvez
+# depois" por "Quero fazer", e "Remover" usa DELETE /api/file/{id} (#108), que
+# apaga a escolha e deixa o item ser sugerido de novo. Não há id da menina na
+# URL: ela só vê a própria lista, a da sessão (RNF-G.03).
+@later_router.get(
+    "",
+    response_model=LaterOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: RESPONSES[status.HTTP_403_FORBIDDEN],
+        status.HTTP_404_NOT_FOUND: {
+            "description": (
+                'A conta não tem registro de menina: {"error": "profile_not_found"}'
+            )
+        },
+    },
+)
+async def my_later(
+    user: AcceptedGirlDep, session: AsyncSessionDep, band: EffortBand | None = None
+) -> LaterOut | JSONResponse:
+    data = await load_later(session, user.id, today_in_maceio(), band)
+
+    if data is None:
+        # Não deveria acontecer: o cadastro (#51, #52) sempre cria ou liga um registro.
+        return not_found("profile_not_found")
+
+    return data

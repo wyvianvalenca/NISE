@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import func, select
@@ -5,8 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.actions.models import Action, ActionFormat
-from app.modules.catalog.models import CuratedItem, ItemKind, ItemOrigin
-from app.modules.catalog.service import action_duration
+from app.modules.catalog.models import CuratedItem, EffortBand, ItemKind, ItemOrigin
+from app.modules.catalog.service import (
+    action_duration,
+    action_effort_band,
+    action_is_visible,
+    curated_is_visible,
+    reaches_city,
+)
 from app.modules.catalog.utils import (
     ACTION_TYPE_LABELS,
     CURATED_TYPE_LABELS,
@@ -23,6 +30,8 @@ from app.modules.girl_file.schemas import (
     FileOut,
     FileSection,
     FileSquareOut,
+    LaterItemOut,
+    LaterOut,
 )
 from app.modules.girls.models import Topic
 from app.modules.girls.service import get_girl_of_user
@@ -285,8 +294,43 @@ async def load_file(session: AsyncSession, user_id: int) -> FileOut | None:
             .order_by(FileEntry.id)
         )
     )
+    items = await load_entry_items(session, entries)
 
-    # Os itens das linhas, das duas fontes, com os temas que dão a cor.
+    placed = []
+    for entry in entries:
+        if entry.curated_item_id is not None:
+            item = items.curated[entry.curated_item_id]
+            file_item = curated_file_item(item, items.city_name(item.city_ibge_code))
+        else:
+            # A restrição ck_file_entries_one_source garante uma das duas colunas.
+            assert entry.action_id is not None
+            action = items.actions[entry.action_id]
+            file_item = action_file_item(action, items.city_name(action.city_ibge_code))
+        placed.append((SECTION_OF[entry.status], file_item))
+
+    return build_file(girl.name, placed)
+
+
+@dataclass
+class EntryItems:
+    """Os itens de algumas linhas do filé, pelo id, e os nomes das cidades deles."""
+
+    curated: dict[int, CuratedItem]
+    actions: dict[int, Action]
+    cities: dict[int, str]
+
+    def city_name(self, code: int | None) -> str | None:
+        return self.cities.get(code) if code is not None else None
+
+
+async def load_entry_items(
+    session: AsyncSession, entries: list[FileEntry]
+) -> EntryItems:
+    """Busca os itens das linhas, das duas fontes, com os temas, e as cidades deles.
+
+    Os temas dão a cor no filé; as cidades vão na linha de detalhes dos
+    presenciais. Só consulta o banco quando há o que buscar.
+    """
     curated_ids = [e.curated_item_id for e in entries if e.curated_item_id is not None]
     action_ids = [e.action_id for e in entries if e.action_id is not None]
     curated: dict[int, CuratedItem] = {}
@@ -310,7 +354,6 @@ async def load_file(session: AsyncSession, user_id: int) -> FileOut | None:
             )
         }
 
-    # Os nomes das cidades, para a linha de detalhes dos presenciais.
     city_ids = {
         item.city_ibge_code
         for item in curated.values()
@@ -327,22 +370,119 @@ async def load_file(session: AsyncSession, user_id: int) -> FileOut | None:
         )
         cities = {city_id: city_name for city_id, city_name in rows}
 
-    def city_name(code: int | None) -> str | None:
-        return cities.get(code) if code is not None else None
+    return EntryItems(curated=curated, actions=actions, cities=cities)
 
-    placed = []
+
+# --- Ver depois (A06·2b, #110) ------------------------------------------------
+
+
+def later_details_line(
+    item_format: ActionFormat, duration: str, city: str | None
+) -> str:
+    """A linha de detalhes do cartão do Ver depois, como no Figma (A06·2b).
+
+    Online mostra a duração ("Online · ~40 min"); presencial mostra também a
+    cidade ("Presencial · Maceió · 2 dias"), para ela decidir se dá para ir.
+    """
+    if item_format is ActionFormat.ONLINE:
+        return f"Online · {duration}"
+    if city is None:
+        return f"Presencial · {duration}"
+    return f"Presencial · {city} · {duration}"
+
+
+def curated_later_item(item: CuratedItem, city: str | None) -> LaterItemOut:
+    """Um item da curadoria como aparece no Ver depois."""
+    deadline = None
+    if item.kind is ItemKind.EVENT:
+        deadline = item.registration_deadline
+    return LaterItemOut(
+        id=item_id(ItemOrigin.CURATED, item.id),
+        kind=item.kind,
+        band=item.effort_band,
+        type_label=CURATED_TYPE_LABELS[item.type],
+        title=item.title,
+        details=later_details_line(item.format, item.duration, city),
+        deadline=deadline,
+    )
+
+
+def action_later_item(action: Action, city: str | None) -> LaterItemOut:
+    """Uma ação de grupo como aparece no Ver depois.
+
+    Toda ação é um evento, mas não tem prazo de inscrição, só "inscrições
+    abertas" ou não.
+    """
+    return LaterItemOut(
+        id=item_id(ItemOrigin.GROUP_ACTION, action.id),
+        kind=ItemKind.EVENT,
+        band=action_effort_band(action),
+        type_label=ACTION_TYPE_LABELS[action.type],
+        title=action.name,
+        details=later_details_line(action.format, action_duration(action), city),
+        deadline=None,
+    )
+
+
+async def load_later(
+    session: AsyncSession,
+    user_id: int,
+    today: date,
+    band: EffortBand | None = None,
+) -> LaterOut | None:
+    """O Ver depois da menina da sessão: o que ela guardou com "Talvez depois" (RF-F10.06).
+
+    Do guardado mais recente para o mais antigo. Com `band`, só os itens dessa
+    faixa. Um item que não pode mais ser sugerido (venceu, foi desativado, a
+    ação fechou ou já passou, o presencial é de outra cidade) não aparece
+    (RF-F11.07), mas a escolha dela fica guardada: são as mesmas regras que o
+    "+ Quero fazer" confere (`is_suggestible`).
+
+    A menina é sempre a da sessão, e as linhas são buscadas pelo id dela
+    (RNF-G.03). Devolve None quando a conta não tem registro de menina.
+    """
+    girl = await get_girl_of_user(session, user_id)
+    if girl is None:
+        return None
+
+    entries = list(
+        await session.scalars(
+            select(FileEntry)
+            .where(FileEntry.girl_id == girl.id, FileEntry.status == FileStatus.LATER)
+            .order_by(FileEntry.updated_at.desc(), FileEntry.id.desc())
+        )
+    )
+    items = await load_entry_items(session, entries)
+
+    later = []
     for entry in entries:
         if entry.curated_item_id is not None:
-            item = curated[entry.curated_item_id]
-            file_item = curated_file_item(item, city_name(item.city_ibge_code))
+            item = items.curated[entry.curated_item_id]
+            if not (
+                curated_is_visible(item, today)
+                and reaches_city(item.format, item.city_ibge_code, girl.city_ibge_code)
+            ):
+                continue
+            later_item = curated_later_item(item, items.city_name(item.city_ibge_code))
         else:
             # A restrição ck_file_entries_one_source garante uma das duas colunas.
             assert entry.action_id is not None
-            action = actions[entry.action_id]
-            file_item = action_file_item(action, city_name(action.city_ibge_code))
-        placed.append((SECTION_OF[entry.status], file_item))
+            action = items.actions[entry.action_id]
+            if not (
+                action_is_visible(action, today)
+                and reaches_city(
+                    action.format, action.city_ibge_code, girl.city_ibge_code
+                )
+            ):
+                continue
+            later_item = action_later_item(
+                action, items.city_name(action.city_ibge_code)
+            )
 
-    return build_file(girl.name, placed)
+        if band is None or later_item.band is band:
+            later.append(later_item)
+
+    return LaterOut(first_name=first_name(girl.name), items=later)
 
 
 # --- Atividade (A06·4a, #119) -------------------------------------------------

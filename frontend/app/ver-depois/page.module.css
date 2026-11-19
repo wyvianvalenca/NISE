@@ -72,6 +72,13 @@
   color: var(--nise-muted);
 }
 
+/* "Não deu pra guardar": o cartão fica na lista e ela pode tocar de novo. */
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+  text-align: center;
+}
+
 /* V01 · Ver depois vazio (#167): cartão tracejado com o símbolo, o texto e a volta às sugestões. */
 .empty {
   display: flex;
