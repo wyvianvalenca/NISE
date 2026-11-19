@@ -1,0 +1,106 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: var(--nise-surface);
+}
+
+.row + .row {
+  border-top: 1px solid var(--nise-track);
+}
+
+.attention {
+  background: var(--nise-pinkTint);
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  background: var(--nise-teal);
+}
+
+.date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 60px;
+  height: 64px;
+  border-radius: 12px;
+  background: var(--nise-paper);
+  line-height: 1.4;
+}
+
+.day {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.month {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.weekday {
+  color: var(--nise-muted);
+  font-size: 11px;
+}
+
+.info {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.reminder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+  color: var(--nise-pink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.girls,
+.girlsEmpty {
+  flex-shrink: 0;
+  width: 230px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.girlsEmpty {
+  color: var(--nise-muted);
+}
+
+.buttons {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  min-width: 190px;
+}
