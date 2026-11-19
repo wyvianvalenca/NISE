@@ -67,6 +67,9 @@ class Girl(TimestampMixin, Base):
     # "Ainda não sei, me mostra de tudo". Nunca vem junto com temas; quem salva
     # o perfil confere isso.
     all_topics: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # Ela já viu "Por que filé?" (A06·0). Depois disso a tela não abre mais
+    # sozinha, só pelo "?" ao lado de "Seu filé" (RF-F10.02).
+    file_intro_seen: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     # Assíncrono: carregue com selectinload(Girl.topics).
     topics: Mapped[list["GirlTopic"]] = relationship(cascade="all, delete-orphan")

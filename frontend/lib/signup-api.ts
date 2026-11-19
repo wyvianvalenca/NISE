@@ -322,7 +322,7 @@ export type AcceptTermsResult =
   | { ok: false; reason: SessionProblem | "outdated" | "failed" };
 
 /** Reads the 401 body: get_current_user answers "Cadastro incompleto" in that case. */
-async function sessionProblem(response: Response): Promise<SessionProblem> {
+export async function sessionProblem(response: Response): Promise<SessionProblem> {
   const body = (await response.json().catch(() => null)) as {
     detail?: string;
   } | null;
@@ -419,7 +419,7 @@ export async function setOpportunityEmails(
 }
 
 /** Reads the {"error": "<code>"} body the back-end answers with, if any. */
-async function errorCode(response: Response): Promise<string | undefined> {
+export async function errorCode(response: Response): Promise<string | undefined> {
   const body = (await response.json().catch(() => null)) as {
     error?: string;
   } | null;
