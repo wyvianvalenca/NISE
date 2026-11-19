@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockFileApi } from "./file-api";
 
 // #120 · A06·4a Atividade e a celebração da A06·5. Usa os dados de teste de lib/atividade.ts.
+
+// "Fechar" e "Tirar do filé" levam ao filé (A06·3), que lê GET /api/file (#116).
+test.beforeEach(async ({ page }) => {
+  await mockFileApi(page);
+});
 
 type Mock = {
   status?: Record<string, "next" | "in_progress" | "concluded">;

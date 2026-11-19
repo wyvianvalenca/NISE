@@ -1,29 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { FileSection, ThemeCode } from "../lib/file";
 import { mockDiscoverApi } from "./discover-api";
+import { type MockFileItem, mockFileApi } from "./file-api";
 
+// #115 e #117 · A06·3 Seu filé, pela rota GET /api/file (#116), simulada em file-api.ts.
 // Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
 test.beforeEach(async ({ page }) => {
   await mockDiscoverApi(page);
+  await mockFileApi(page);
 });
 
-// #115 · A06·3 Seu filé. Usa os dados de teste de lib/file.ts.
-
-type Item = {
-  id: string;
-  title: string;
-  theme: string;
-  type: string;
-  details: string;
-  deadline?: string;
-  status: "em-andamento" | "proxima" | "concluido";
-};
-
-type Mock = { items?: Item[]; delayMs?: number };
-
-async function openWith(page: Page, mock: Mock) {
-  await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_FILE__ = value as typeof globalThis.__NISE_MOCK_FILE__;
-  }, mock);
+/** Abre o filé com outra resposta do back. A rota mais nova vale. */
+async function openWith(page: Page, options: Parameters<typeof mockFileApi>[1]) {
+  await mockFileApi(page, options);
   await page.goto("/file");
 }
 
@@ -35,8 +24,16 @@ function item(page: Page, title: string) {
   return page.getByRole("article").filter({ has: page.getByRole("heading", { level: 3, name: title }) });
 }
 
-function makeItem(id: string, status: Item["status"], theme = "programacao"): Item {
-  return { id, title: `Item ${id}`, theme, type: "Curso online", details: "Online · ~1 h", status };
+function makeItem(id: string, itemSection: FileSection, theme: ThemeCode | null = "programacao"): MockFileItem {
+  return {
+    id: `curadoria-${id}`,
+    title: `Item ${id}`,
+    theme,
+    typeLabel: "Curso online",
+    details: "Online · ~1 h",
+    deadline: null,
+    section: itemSection,
+  };
 }
 
 test("mostra o título, o texto e os links para o Descobrir e para Por que filé?", async ({ page }) => {
@@ -104,19 +101,19 @@ test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluí
 
   await expect(
     section(page, "Em andamento").getByRole("link", { name: "Continuar: Lógica de programação com Python" }),
-  ).toHaveAttribute("href", "/file/logica-de-programacao-com-python");
+  ).toHaveAttribute("href", "/file/curadoria-1");
   await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(3);
   await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(3);
 
   await section(page, "Próximas aventuras")
     .getByRole("link", { name: "Abrir: Hackathon Meninas na Tecnologia" })
     .click();
-  await expect(page).toHaveURL(/\/file\/hackathon-meninas-na-tecnologia$/);
+  await expect(page).toHaveURL(/\/file\/curadoria-2$/);
 });
 
 test("cada item fica na seção do seu status", async ({ page }) => {
   await openWith(page, {
-    items: [makeItem("a", "concluido"), makeItem("b", "proxima"), makeItem("c", "concluido")],
+    items: [makeItem("a", "concluded"), makeItem("b", "next"), makeItem("c", "concluded")],
   });
 
   await expect(page.getByRole("main").getByRole("heading", { level: 2 })).toHaveText([
@@ -130,7 +127,7 @@ test("cada item fica na seção do seu status", async ({ page }) => {
 });
 
 test("seção vazia mostra 0 e não tem Recolher nem Mostrar", async ({ page }) => {
-  await openWith(page, { items: [makeItem("a", "proxima")] });
+  await openWith(page, { items: [makeItem("a", "next")] });
 
   await expect(section(page, "Em andamento").getByRole("heading", { level: 2 })).toHaveText("Em andamento0");
   await expect(section(page, "Em andamento").getByRole("button")).toHaveCount(0);
@@ -140,9 +137,9 @@ test("seção vazia mostra 0 e não tem Recolher nem Mostrar", async ({ page }) 
 test("o desenho pinta com a cor do tema só o que foi concluído", async ({ page }) => {
   await openWith(page, {
     items: [
-      makeItem("a", "concluido", "robotica"),
-      makeItem("b", "em-andamento", "ia"),
-      makeItem("c", "proxima", "ia"),
+      makeItem("a", "concluded", "robotica"),
+      makeItem("b", "in_progress", "ia"),
+      makeItem("c", "next", "ia"),
     ],
   });
 
@@ -161,7 +158,7 @@ test("o desenho pinta com a cor do tema só o que foi concluído", async ({ page
 });
 
 test("com mais de 14 itens, o desenho mostra 14 e as listas mostram todos", async ({ page }) => {
-  const items = Array.from({ length: 16 }, (_, index) => makeItem(`n${index}`, "proxima"));
+  const items = Array.from({ length: 16 }, (_, index) => makeItem(`${index}`, "next"));
   await openWith(page, { items });
 
   const drawing = page.getByRole("img", { name: /^Seu filé: 0 concluídos, 0 em andamento e 16 próximas aventuras\.$/ });
@@ -211,6 +208,49 @@ test("mostra o carregamento enquanto o filé chega", async ({ page }) => {
   await expect(page.getByText("Carregando…")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
   await expect(page.getByText("Carregando…")).toHaveCount(0);
+});
+
+test("o desenho segue a ordem e os temas que o back manda", async ({ page }) => {
+  // Fora de ordem de propósito: o back devolve os quadradinhos já na ordem do desenho.
+  await openWith(page, {
+    items: [makeItem("a", "next", "ia"), makeItem("b", "concluded", "ia"), makeItem("c", "concluded", "programacao")],
+  });
+
+  const drawing = page.getByRole("img", { name: /^Seu filé:/ });
+  // As duas primeiras casas (as de cima do centro) são os concluídos, Programação antes de IA.
+  await expect(drawing.locator('rect[x="138"][y="92"]')).toHaveAttribute("fill", "var(--nise-theme-programacao)");
+  await expect(drawing.locator('rect[x="92"][y="92"]')).toHaveAttribute("fill", "var(--nise-theme-ia)");
+});
+
+test("item sem tema usa a cor neutra e mostra só o tipo", async ({ page }) => {
+  await openWith(page, { items: [makeItem("a", "concluded", null)] });
+  await page.getByRole("button", { name: "Mostrar Concluídos" }).click();
+
+  const card = item(page, "Item a");
+  await expect(card.getByText("Curso online", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: /^Seu filé:/ }).locator('rect[fill="var(--nise-muted)"]')).toHaveCount(1);
+});
+
+test("quando o filé não carrega, mostra o erro e tenta de novo", async ({ page }) => {
+  await openWith(page, { failure: 500 });
+
+  await expect(page.getByRole("heading", { name: "Não foi possível carregar" })).toBeVisible();
+  await mockFileApi(page);
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
+  await expect(item(page, "IA para iniciantes")).toBeVisible();
+});
+
+test("sem sessão, volta para o início", async ({ page }) => {
+  await openWith(page, { failure: 401 });
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  await openWith(page, { failure: "terms_not_accepted" });
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
 
 test("dá para usar só com o teclado, com foco visível", async ({ page }) => {
@@ -278,7 +318,7 @@ test("with no activity, shows the empty card, the link and the drawing, and hide
 });
 
 test("with a single activity, the regular screen is back", async ({ page }) => {
-  await openWith(page, { items: [makeItem("a", "proxima")] });
+  await openWith(page, { items: [makeItem("a", "next")] });
 
   await expect(page.getByRole("heading", { name: "Seu filé tá só começando" })).toHaveCount(0);
   await expect(page.getByText("No seu ritmo, sem pressa.")).toBeVisible();
