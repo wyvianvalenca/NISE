@@ -4,6 +4,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.modules.catalog.models import EffortBand, ItemKind
 from app.modules.girl_file.models import DismissReason
 from app.modules.girls.models import Topic
 
@@ -104,3 +105,34 @@ class FileOut(BaseModel):
     # Os quadradinhos do desenho, na ordem em que ocupam o filé: concluídos,
     # em andamento e próximas, e em cada seção agrupados por tema (RF-F10.07).
     squares: list[FileSquareOut]
+
+
+# --- Ver depois (A06·2b, #110) ------------------------------------------------
+
+
+class LaterItemOut(BaseModel):
+    """Um cartão do Ver depois (A06·2b). O front lê em camelCase (SavedItem)."""
+
+    # "curadoria-12" ou "acao-7": o id que "+ Quero fazer" e "Remover" usam.
+    id: str
+    # Evento ou atividade: o evento tem data e prazo de inscrição (RF-F10.13).
+    kind: ItemKind
+    # A faixa de esforço, para o selo "Hackathon · Grande desafio" e o filtro.
+    band: EffortBand
+    # O tipo como aparece na tela, ex.: "Playlist", "Hackathon".
+    type_label: str = Field(serialization_alias="typeLabel")
+    title: str
+    # A linha de detalhes, já escrita para a tela: "Online · ~40 min" ou
+    # "Presencial · Maceió · 2 dias".
+    details: str
+    # O último dia de inscrição, só nos eventos que informam um prazo.
+    deadline: date | None
+
+
+class LaterOut(BaseModel):
+    """A tela Ver depois (A06·2b, #110). O front lê em camelCase."""
+
+    # Para o avatar. É o nome dela mesma, a da sessão.
+    first_name: str = Field(serialization_alias="firstName")
+    # Do guardado mais recente para o mais antigo, sem os vencidos (RF-F11.07).
+    items: list[LaterItemOut]
