@@ -14,12 +14,14 @@ from sqlalchemy.orm import selectinload
 from app.modules.actions.models import Action, ActionFormat, ActionVisibility
 from app.modules.catalog.models import (
     CuratedItem,
+    CuratedItemAudience,
+    CuratedItemTopic,
     EffortBand,
     ItemKind,
     ItemLevel,
     ItemOrigin,
 )
-from app.modules.catalog.schemas import CatalogItem, EventInfo
+from app.modules.catalog.schemas import CatalogItem, CuratedItemIn, EventInfo
 from app.modules.catalog.utils import (
     ACTION_TYPE_LABELS,
     CURATED_TYPE_LABELS,
@@ -210,3 +212,80 @@ async def load_catalog(
         for item in items
         if reaches_city(item.format, item.city_ibge_code, girl_city)
     ]
+
+
+def apply_entry(item: CuratedItem, entry: CuratedItemIn) -> None:
+    """Copia para o item o que está no arquivo da curadoria.
+
+    Temas e etapas que continuam no arquivo ficam com a mesma linha; só os novos
+    são criados e só os que saíram são apagados. Trocar a lista inteira apagaria
+    e recriaria as mesmas linhas, e a restrição de único reclamaria no flush.
+    O item precisa de topics e audiences carregados.
+    """
+    item.kind = entry.kind
+    item.type = entry.type
+    item.title = entry.title
+    item.source = entry.source
+    item.description = entry.description
+    item.url = entry.url
+    item.effort_band = entry.effort_band
+    item.level = entry.level
+    item.format = entry.format
+    item.city_ibge_code = entry.city_ibge_code
+    item.min_age = entry.min_age
+    item.cost_cents = entry.cost_cents
+    item.duration = entry.duration
+    item.expires_on = entry.expires_on
+    item.active = entry.active
+    item.starts_on = entry.starts_on
+    item.ends_on = entry.ends_on
+    item.registration_deadline = entry.registration_deadline
+    item.prerequisites = entry.prerequisites
+
+    kept_topics = [row for row in item.topics if row.topic in entry.topics]
+    current_topics = {row.topic for row in kept_topics}
+    item.topics = kept_topics + [
+        CuratedItemTopic(topic=topic)
+        for topic in entry.topics
+        if topic not in current_topics
+    ]
+
+    kept_stages = [row for row in item.audiences if row.stage in entry.stages]
+    current_stages = {row.stage for row in kept_stages}
+    item.audiences = kept_stages + [
+        CuratedItemAudience(stage=stage)
+        for stage in entry.stages
+        if stage not in current_stages
+    ]
+
+
+async def save_curated_items(
+    session: AsyncSession, entries: list[CuratedItemIn]
+) -> tuple[int, int]:
+    """Cria ou atualiza os itens da curadoria pelo slug. Devolve (criados, atualizados).
+
+    Rodar de novo com o mesmo arquivo não duplica nada: o slug já existe e o
+    item só é atualizado. Item que saiu do arquivo não é apagado (o filé das
+    meninas aponta para ele); para tirá-lo das sugestões, use "active": false.
+    """
+    existing = {
+        item.slug: item
+        for item in await session.scalars(
+            select(CuratedItem).options(
+                selectinload(CuratedItem.topics), selectinload(CuratedItem.audiences)
+            )
+        )
+    }
+
+    created = 0
+    for entry in entries:
+        item = existing.get(entry.slug)
+        if item is None:
+            item = CuratedItem(slug=entry.slug, topics=[], audiences=[])
+            session.add(item)
+            existing[entry.slug] = item
+            created += 1
+        apply_entry(item, entry)
+
+    await session.commit()
+    return created, len(entries) - created

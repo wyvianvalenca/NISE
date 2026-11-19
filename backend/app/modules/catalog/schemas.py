@@ -1,9 +1,16 @@
 from datetime import date
+from typing import Annotated, Self
 
-from pydantic import BaseModel
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.actions.models import ActionFormat
-from app.modules.catalog.models import EffortBand, ItemKind, ItemLevel, ItemOrigin
+from app.modules.catalog.models import (
+    CuratedType,
+    EffortBand,
+    ItemKind,
+    ItemLevel,
+    ItemOrigin,
+)
 from app.modules.girls.models import StudyStage, Topic
 
 
@@ -54,3 +61,74 @@ class CatalogItem(BaseModel):
     duration: str
     # Só nos eventos.
     event: EventInfo | None
+
+
+def _without_repeats[T](values: list[T]) -> list[T]:
+    # O mesmo código duas vezes vale como um, na ordem do arquivo.
+    return list(dict.fromkeys(values))
+
+
+class CuratedItemIn(BaseModel):
+    """Um item do arquivo da curadoria (scripts/dados/curadoria.json, RF-F11.06).
+
+    Os códigos são os valores dos enums: "atividade", "primeiros-passos",
+    "iniciante", "programacao", "online" etc. Um campo a mais é recusado, para
+    um erro de digitação no nome não passar calado.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Só letras minúsculas, números e hífens, ex.: "scratch-primeiro-projeto".
+    slug: Annotated[str, Field(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]
+    kind: ItemKind
+    type: CuratedType
+    title: Annotated[str, Field(min_length=1)]
+    source: Annotated[str, Field(min_length=1)]
+    description: Annotated[str, Field(min_length=1)]
+    url: Annotated[str, Field(pattern=r"^https://\S+$")]
+    effort_band: EffortBand
+    level: ItemLevel
+    topics: Annotated[
+        list[Topic], Field(min_length=1), AfterValidator(_without_repeats)
+    ]
+    # Vazio: serve para todas as etapas de estudo.
+    stages: Annotated[list[StudyStage], AfterValidator(_without_repeats)] = []
+    format: ActionFormat
+    city_ibge_code: int | None = None
+    min_age: Annotated[int, Field(ge=0)] | None = None
+    cost_cents: Annotated[int, Field(ge=0)] = 0
+    duration: Annotated[str, Field(min_length=1)]
+    expires_on: date | None = None
+    active: bool = True
+    starts_on: date | None = None
+    ends_on: date | None = None
+    registration_deadline: date | None = None
+    prerequisites: str | None = None
+
+    @model_validator(mode="after")
+    def city_and_event_fields(self) -> Self:
+        # As mesmas regras das restrições da tabela, com mensagens legíveis.
+        if self.format is ActionFormat.IN_PERSON and self.city_ibge_code is None:
+            raise ValueError("Item presencial precisa de city_ibge_code")
+        if self.format is ActionFormat.ONLINE and self.city_ibge_code is not None:
+            raise ValueError("Item online não tem cidade")
+
+        event_fields = (
+            self.starts_on,
+            self.ends_on,
+            self.registration_deadline,
+            self.prerequisites,
+        )
+        if self.kind is ItemKind.ACTIVITY:
+            if any(value is not None for value in event_fields):
+                raise ValueError(
+                    "Só evento tem starts_on, ends_on, registration_deadline"
+                    " e prerequisites"
+                )
+            return self
+
+        if self.starts_on is None or self.ends_on is None:
+            raise ValueError("Evento precisa de starts_on e ends_on")
+        if self.ends_on < self.starts_on:
+            raise ValueError("ends_on não pode ser antes de starts_on")
+        return self
