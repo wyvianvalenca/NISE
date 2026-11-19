@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mockInterestsApi } from "./interests-api";
 import { mockDiscoverApi } from "./discover-api";
 import { mockProfileApi } from "./profile-api";
+import { mockTermsApi } from "./terms-api";
 
 /**
  * A06·0 "Por que filé?" (#83, #85). As rotas do perfil (#84) são simuladas em
@@ -103,6 +104,9 @@ test("sem sessão, vai para o início", async ({ page }) => {
 
 test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
   await mockProfileApi(page, { profile: "terms_not_accepted" });
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
 
   await page.goto("/por-que-file");
 
