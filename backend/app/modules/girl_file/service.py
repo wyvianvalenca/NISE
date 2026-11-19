@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -5,10 +7,16 @@ from sqlalchemy.orm import selectinload
 from app.modules.actions.models import Action, ActionFormat
 from app.modules.catalog.models import CuratedItem, ItemKind, ItemOrigin
 from app.modules.catalog.service import action_duration
-from app.modules.catalog.utils import ACTION_TYPE_LABELS, CURATED_TYPE_LABELS, item_id
+from app.modules.catalog.utils import (
+    ACTION_TYPE_LABELS,
+    CURATED_TYPE_LABELS,
+    item_id,
+    parse_item_id,
+)
 from app.modules.cities.models import City
 from app.modules.girl_file.models import DismissReason, FileEntry, FileStatus
 from app.modules.girl_file.schemas import (
+    ActivityOut,
     Choice,
     FileGroupOut,
     FileItemOut,
@@ -119,23 +127,31 @@ async def save_choice(
         # (ck_file_entries_feedback_only_when_concluded).
         entry.rating = None
         entry.similar_choice = None
+        # O dia da conclusão também (ck_file_entries_concluded_on_only_when_concluded).
+        entry.concluded_on = None
     await session.commit()
 
 
 async def remove_choice(
     session: AsyncSession, girl_id: int, origin: ItemOrigin, number: int
-) -> None:
-    """Apaga a escolha dela sobre um item: o "Desfazer" da A06·2 (RF-F10.05).
+) -> bool:
+    """Apaga a escolha dela sobre um item, e o item volta a poder ser sugerido.
 
-    Apagar a linha leva junto o motivo do "Não é pra mim", e o item volta a
-    poder ser sugerido. Se ela não tem escolha nesse item (ou já desfez), não
-    faz nada.
+    É o "Desfazer" da A06·2 (RF-F10.05), o "Remover" do Ver depois e o "Tirar
+    do filé" da atividade (#119). Apagar a linha leva junto o motivo do "Não é
+    pra mim". Se ela não tem escolha nesse item (ou já desfez), não faz nada.
+
+    Uma atividade concluída não sai do filé: devolve False sem apagar nada
+    (tabela de status da #78).
     """
     entry = await find_entry(session, girl_id, origin, number)
     if entry is None:
-        return
+        return True
+    if entry.status is FileStatus.CONCLUDED:
+        return False
     await session.delete(entry)
     await session.commit()
+    return True
 
 
 # --- Seu filé (A06·3, #114) ---------------------------------------------------
@@ -327,3 +343,98 @@ async def load_file(session: AsyncSession, user_id: int) -> FileOut | None:
         placed.append((SECTION_OF[entry.status], file_item))
 
     return build_file(girl.name, placed)
+
+
+# --- Atividade (A06·4a, #119) -------------------------------------------------
+
+# Os três lugares de uma atividade no filé. Ela anda de um para o seguinte,
+# nessa ordem, e o concluído é o fim (tabela de status da #78).
+NEXT_STEP: dict[FileStatus, FileStatus | None] = {
+    FileStatus.NEXT: FileStatus.IN_PROGRESS,
+    FileStatus.IN_PROGRESS: FileStatus.CONCLUDED,
+    FileStatus.CONCLUDED: None,
+}
+
+
+async def find_activity(
+    session: AsyncSession, girl_id: int, text_id: str
+) -> tuple[FileEntry, CuratedItem] | None:
+    """A linha dela e o item de uma atividade do filé, ou None se não há.
+
+    `text_id` é o id do catálogo, "curadoria-12". Fica de fora o que não é uma
+    atividade no filé dela: o "Ver depois", o "Não é pra mim", um item sem
+    escolha e os eventos, que abrem a A06·4b (#118). Uma ação de grupo é sempre
+    um evento, então nem é buscada.
+
+    A linha é buscada pelo id dela, então a de outra menina nunca é achada
+    (RNF-G.03). O item vem com os temas e as etapas, para o "Por que pra você".
+    """
+    parsed = parse_item_id(text_id)
+    if parsed is None:
+        return None
+    origin, number = parsed
+    if origin is not ItemOrigin.CURATED:
+        return None
+
+    entry = await find_entry(session, girl_id, origin, number)
+    if entry is None or entry.status not in NEXT_STEP:
+        return None
+
+    item = await session.scalar(
+        select(CuratedItem)
+        .where(CuratedItem.id == number)
+        .options(selectinload(CuratedItem.topics), selectinload(CuratedItem.audiences))
+    )
+    if item is None or item.kind is not ItemKind.ACTIVITY:
+        return None
+    return entry, item
+
+
+def activity_out(
+    entry: FileEntry, item: CuratedItem, why: str | None, name: str
+) -> ActivityOut:
+    """O detalhe da atividade como a tela mostra (A06·4a, RF-F10.08).
+
+    Precisa de topics carregados. `why` é o "Por que pra você", montado pelas
+    regras das sugestões (RF-F11.04); `name` é o nome da menina da sessão.
+    """
+    return ActivityOut(
+        id=item_id(ItemOrigin.CURATED, item.id),
+        status=SECTION_OF[entry.status],
+        type=item.type,
+        type_label=CURATED_TYPE_LABELS[item.type],
+        theme=main_theme([row.topic for row in item.topics]),
+        band=item.effort_band,
+        title=item.title,
+        source=item.source,
+        description=item.description,
+        url=item.url,
+        format=item.format,
+        duration=item.duration,
+        cost_cents=item.cost_cents,
+        min_age=item.min_age,
+        why=why,
+        concluded_on=entry.concluded_on,
+        first_name=first_name(name),
+    )
+
+
+async def advance_status(
+    session: AsyncSession, entry: FileEntry, status: FileSection, today: date
+) -> bool:
+    """Leva a atividade para a seção seguinte: "Marcar como iniciada" ou "concluída".
+
+    Só o próximo passo vale: da próxima para em andamento, e de em andamento
+    para concluída, que guarda o dia (`today`, em Maceió). Outro salto (pular
+    direto para concluída, voltar, ou repetir a seção atual) devolve False sem
+    mudar nada.
+    """
+    target = NEXT_STEP[entry.status]
+    if target is None or SECTION_OF[target] is not status:
+        return False
+
+    entry.status = target
+    if target is FileStatus.CONCLUDED:
+        entry.concluded_on = today
+    await session.commit()
+    return True

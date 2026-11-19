@@ -4,6 +4,8 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.modules.actions.models import ActionFormat
+from app.modules.catalog.models import CuratedType, EffortBand
 from app.modules.girl_file.models import DismissReason
 from app.modules.girls.models import Topic
 
@@ -104,3 +106,54 @@ class FileOut(BaseModel):
     # Os quadradinhos do desenho, na ordem em que ocupam o filé: concluídos,
     # em andamento e próximas, e em cada seção agrupados por tema (RF-F10.07).
     squares: list[FileSquareOut]
+
+
+# --- Atividade (A06·4a, #119) -------------------------------------------------
+
+
+class ActivityOut(BaseModel):
+    """O detalhe de uma atividade do filé (A06·4a, RF-F10.08). O front lê em camelCase.
+
+    O formato e o custo vão como código e número, como no card da sugestão; o
+    texto da tela ("Online", "Grátis") é montado no front (frontend/lib/atividade.ts).
+    """
+
+    # "curadoria-12": o id do catálogo, o mesmo do filé.
+    id: str
+    # A seção do filé em que ela está; é o que decide os botões da tela.
+    status: FileSection
+    # Código do tipo (CuratedType), ex.: "course". Um curso diz "site do curso".
+    type: CuratedType
+    # O selo do topo, ex.: "Curso online".
+    type_label: str = Field(serialization_alias="typeLabel")
+    # O tema que dá a cor e o nome na linha "Programação · No meu ritmo". Vazio
+    # quando o item não tem tema.
+    theme: Topic | None
+    band: EffortBand
+    title: str
+    source: str
+    description: str
+    # O site externo. Abrir o site não muda o status (tabela de status da #78).
+    url: str
+    format: ActionFormat
+    duration: str
+    # Em centavos; 0 é grátis.
+    cost_cents: int | None = Field(serialization_alias="costCents")
+    # Vazia quando o item não tem idade mínima.
+    min_age: int | None = Field(serialization_alias="minAge")
+    # "Por que pra você" (RF-F11.04); vazio quando nenhuma regra explica.
+    why: str | None
+    # O dia em que ela marcou como concluída; vazio nas outras seções.
+    concluded_on: date | None = Field(serialization_alias="concludedOn")
+    # Para o "Você conseguiu, <nome>!" da celebração (A06·5). É o nome dela mesma.
+    first_name: str = Field(serialization_alias="firstName")
+
+
+class StatusIn(BaseModel):
+    """A seção para onde ela quer levar a atividade.
+
+    Só o próximo passo é aceito: "in_progress" a partir de "next" e
+    "concluded" a partir de "in_progress". Outro salto responde 409.
+    """
+
+    status: FileSection

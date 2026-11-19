@@ -342,7 +342,8 @@ async def test_ve_so_o_file_da_menina_da_sessao() -> None:
 
 
 async def test_nao_da_para_pedir_o_file_de_outra_menina_pela_url() -> None:
-    # Não existe GET com id: o filé é sempre o da sessão.
+    # O filé é sempre o da sessão. GET /api/file/{id} é o detalhe de uma
+    # atividade dela (#119), pelo id do catálogo; um número solto não é um item.
     response = await chamar_rota(
         app,
         "GET",
@@ -351,7 +352,8 @@ async def test_nao_da_para_pedir_o_file_de_outra_menina_pela_url() -> None:
         token=create_access_token(1),
     )
 
-    assert response.status_code == 405
+    assert response.status_code == 404
+    assert response.json() == {"error": "item_not_found"}
 
 
 async def test_conta_sem_registro_de_menina_responde_404() -> None:
