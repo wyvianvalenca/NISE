@@ -3,7 +3,7 @@
 // A06·2 · Sugestões: uma de cada vez, com "Não é pra mim", "Talvez depois" e "Quero fazer",
 // e o aviso com "Desfazer" depois de cada escolha.
 // Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107), pelas rotas da #104
-// (integração na #105). O "Desfazer" ainda usa os dados de teste de lib/sugestoes.ts (#106).
+// (integração na #105) e a do "Desfazer" da #108 (integração na #109).
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";

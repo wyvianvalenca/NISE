@@ -4,7 +4,8 @@ import type { BandSuggestionsResponse, Choice, ChoiceResponse, ReasonCode, Sugge
 import { type Failure, fail } from "./terms-api";
 
 // Simula as rotas das sugestões do back (#104), GET /api/discover/{faixa} e PUT /api/file/{id},
-// para os testes não dependerem do FastAPI. Dados fictícios.
+// e a do "Desfazer" (#108), DELETE /api/file/{id}, para os testes não dependerem do FastAPI.
+// Dados fictícios.
 
 /** Um item como a tela mostra; vira o SuggestionCard do back em toCard(). */
 type MockItem = {
@@ -107,6 +108,8 @@ type Options = {
   failure?: Failure | "terms_not_accepted";
   /** Quantas vezes seguidas o PUT da escolha responde 500. */
   choiceFailures?: number;
+  /** Quantas vezes seguidas o DELETE do "Desfazer" responde 500. */
+  undoFailures?: number;
   /** Cards que trocam os da lista de teste, ex.: uma ação de grupo, sem custo nem idade mínima. */
   items?: SuggestionCard[];
 };
@@ -114,8 +117,14 @@ type Options = {
 export type SuggestionsApi = {
   /** As escolhas recebidas no PUT, em ordem. */
   choices: SentChoice[];
+  /** As escolhas que o back guardaria agora: o PUT troca a do item e o DELETE a apaga. */
+  saved: SentChoice[];
+  /** Os ids recebidos no DELETE do "Desfazer", em ordem. */
+  undone: string[];
   /** Trocar no meio do teste muda a próxima resposta do GET (ex.: a conexão volta). */
   failure?: Failure | "terms_not_accepted";
+  /** Atraso das respostas, em ms; trocar no meio do teste vale para as próximas. */
+  delayMs: number;
 };
 
 const BAND_URL = new RegExp(`/api/discover/(${BAND_CODES.join("|")})$`);
@@ -126,18 +135,26 @@ function wait(ms: number) {
 }
 
 /**
- * Responde GET /api/discover/{faixa} e PUT /api/file/{id}. Devolve um objeto com as escolhas
- * recebidas, que o teste confere, e o erro do GET, que o teste pode trocar.
+ * Responde GET /api/discover/{faixa}, PUT /api/file/{id} e DELETE /api/file/{id}. Devolve um
+ * objeto com as escolhas recebidas e guardadas, que o teste confere, e o erro do GET e o atraso,
+ * que o teste pode trocar.
  */
 export async function mockSuggestionsApi(page: Page, options: Options = {}): Promise<SuggestionsApi> {
-  const { count, delayMs = 0 } = options;
+  const { count } = options;
   let fileTotal = options.fileTotal ?? 5;
   let choiceFailures = options.choiceFailures ?? 0;
-  const api: SuggestionsApi = { choices: [], failure: options.failure };
+  let undoFailures = options.undoFailures ?? 0;
+  const api: SuggestionsApi = {
+    choices: [],
+    saved: [],
+    undone: [],
+    failure: options.failure,
+    delayMs: options.delayMs ?? 0,
+  };
 
   await page.route(BAND_URL, async (route) => {
     const band = BAND_URL.exec(new URL(route.request().url()).pathname)![1] as BandCode;
-    await wait(delayMs);
+    await wait(api.delayMs);
     if (api.failure === "terms_not_accepted") {
       return route.fulfill({ status: 403, json: { error: "terms_not_accepted" } });
     }
@@ -153,14 +170,33 @@ export async function mockSuggestionsApi(page: Page, options: Options = {}): Pro
   });
 
   await page.route(CHOICE_URL, async (route) => {
-    await wait(delayMs);
+    await wait(api.delayMs);
+    const id = decodeURIComponent(CHOICE_URL.exec(new URL(route.request().url()).pathname)![1]);
+    const previous = api.saved.find((entry) => entry.id === id);
+
+    // "Desfazer": apaga a escolha guardada, com o motivo. Sem escolha, não muda nada.
+    if (route.request().method() === "DELETE") {
+      if (undoFailures > 0) {
+        undoFailures -= 1;
+        return route.fulfill({ status: 500, body: "" });
+      }
+      api.undone.push(id);
+      api.saved = api.saved.filter((entry) => entry !== previous);
+      if (previous?.choice === "quero-fazer") fileTotal -= 1;
+      const data: ChoiceResponse = { fileTotal };
+      return route.fulfill({ json: data });
+    }
+
     if (choiceFailures > 0) {
       choiceFailures -= 1;
       return route.fulfill({ status: 500, body: "" });
     }
-    const id = decodeURIComponent(CHOICE_URL.exec(new URL(route.request().url()).pathname)![1]);
     const body = route.request().postDataJSON() as { choice: Choice; reason?: ReasonCode };
-    api.choices.push({ id, ...body });
+    const sent: SentChoice = { id, ...body };
+    api.choices.push(sent);
+    // Escolher de novo no mesmo item troca a escolha, como no back.
+    api.saved = [...api.saved.filter((entry) => entry !== previous), sent];
+    if (previous?.choice === "quero-fazer") fileTotal -= 1;
     if (body.choice === "quero-fazer") fileTotal += 1;
     const data: ChoiceResponse = { fileTotal };
     return route.fulfill({ json: data });
