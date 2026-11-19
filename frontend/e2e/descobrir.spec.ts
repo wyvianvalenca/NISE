@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { BAND_CODES } from "../lib/descobrir";
 import { FIGMA_COUNTS, mockDiscoverApi } from "./discover-api";
+import { watchFrames } from "./frames";
 import { mockSuggestionsApi } from "./suggestions-api";
+import { mockTermsApi } from "./terms-api";
 
 // #87 e #89 · A06·1 Descobrir, com as rotas do back (#88) simuladas em discover-api.ts.
 
@@ -9,6 +11,9 @@ type Options = Parameters<typeof mockDiscoverApi>[1];
 
 async function openWith(page: Page, options: Options = {}) {
   const saved = await mockDiscoverApi(page, options);
+  // Vários testes abrem uma faixa; sem simular a rota dela, a tela da faixa consultaria um
+  // back local, se houver um rodando.
+  await mockSuggestionsApi(page);
   await page.goto("/descobrir");
   return saved;
 }
@@ -140,6 +145,9 @@ test("sem sessão, volta para o início", async ({ page }) => {
 });
 
 test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
   await openWith(page, { failure: "terms_not_accepted" });
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
@@ -155,7 +163,6 @@ test("tocar numa faixa grava a faixa para a tag da próxima visita", async ({ pa
 });
 
 test("ao voltar de uma faixa, não mostra as contagens nem a tag de antes", async ({ page }) => {
-  await mockSuggestionsApi(page);
   await openWith(page, { lastBand: "uma-tarde" });
   await expect(band(page, "No meu ritmo")).toContainText("6 sugestões");
 
@@ -180,6 +187,8 @@ test("ao voltar de uma faixa, não mostra as contagens nem a tag de antes", asyn
   await band(page, "No meu ritmo").click();
   await expect(page).toHaveURL(/\/descobrir\/no-meu-ritmo$/);
   // Com cacheComponents o Next guarda o Descobrir escondido; na volta ele busca de novo.
+  // Nem por um quadro a contagem de antes pode aparecer.
+  const seen = await watchFrames(page, ["6 sugestões"]);
   const refetch = page.waitForRequest("**/api/discover");
   await page.goBack();
   await refetch;
@@ -193,6 +202,7 @@ test("ao voltar de uma faixa, não mostra as contagens nem a tag de antes", asyn
   await expect(band(page, "No meu ritmo")).toContainText("5 sugestões");
   await expect(band(page, "No meu ritmo")).toContainText("da última vez");
   await expect(page.getByText("da última vez")).toHaveCount(1);
+  expect(await seen()).toEqual([]);
 });
 
 test("no toque, a tag não pula de faixa enquanto o Descobrir está à vista", async ({ page }) => {

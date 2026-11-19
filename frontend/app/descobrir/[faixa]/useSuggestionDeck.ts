@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useLayoutEffect, useReducer } from "react";
 import { sendChoice, undoChoice, type Choice, type ReasonCode, type Suggestion, type SuggestionsData } from "@/lib/sugestoes";
 
 // Estado da tela de sugestões: a lista da faixa, qual está à mostra e o total do filé.
@@ -72,9 +72,11 @@ type Options = {
 export function useSuggestionDeck(data: SuggestionsData | null, { onChoiceConfirmed }: Options = {}) {
   const [state, dispatch] = useReducer(deckReducer, initialDeck);
 
-  useEffect(() => {
-    // Sem dados (a tela foi escondida e vai buscar de novo), volta a "loading", para não
-    // mostrar a lista e o "Sugestão N de M" de antes.
+  // Sem dados (a tela foi escondida e vai buscar de novo), volta a "loading", para não mostrar
+  // a lista e o "Sugestão N de M" de antes. Efeitos não rodam com a tela escondida: este só
+  // roda quando ela volta. Como useLayoutEffect, roda antes de o navegador pintar; como
+  // useEffect, rodava depois, e a lista antiga aparecia por um quadro.
+  useLayoutEffect(() => {
     dispatch(data ? { type: "loaded", items: data.items, fileTotal: data.fileTotal } : { type: "reset" });
   }, [data]);
 
