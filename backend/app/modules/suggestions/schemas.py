@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
-from app.modules.catalog.models import EffortBand
 from app.modules.catalog.schemas import CatalogItem
+from app.modules.girls.models import EffortBand
 
 
 class Suggestion(CatalogItem):
