@@ -63,6 +63,8 @@
   min-height: 0;
   margin: 0 auto;
   padding: 14px 24px 24px;
+  /* O card que sai para o lado não pode abrir uma rolagem horizontal no caminho. */
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -84,9 +86,42 @@
   position: absolute;
   top: calc(68px + 14px);
   left: 50%;
-  z-index: 1;
+  /* Acima do card que sai para cima (.leaving). */
+  z-index: 2;
   width: min(100% - 48px, 342px);
   transform: translateX(-50%);
+  /* Entra descendo um pouco, a cada escolha (o aviso é recriado a cada uma). */
+  animation: toast-in 200ms ease-out both;
+}
+
+/* Quando o tempo acaba, sobe e some; o fim da animação tira o aviso da tela (UndoToast.tsx). */
+.toastLeaving {
+  animation: toast-out 160ms ease-in both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+
+/* Com menos movimento, o aviso só aparece e some, sem deslizar. */
+@media (prefers-reduced-motion: reduce) {
+  .toastArea {
+    animation-name: card-fade-in;
+  }
+
+  .toastLeaving {
+    animation-name: card-fade-out;
+  }
 }
 
 .counter {
@@ -129,6 +164,128 @@
 
 .backRight {
   transform: rotate(2.5deg);
+}
+
+/*
+ * Movimento do card. O que foi escolhido sai por cima do baralho para o lado do botão
+ * (Não é pra mim à esquerda, Quero fazer à direita, Talvez depois para cima), e o próximo
+ * sobe do baralho. Com o "Desfazer", o card volta pelo lado de onde saiu: é a mesma
+ * animação da saída, de trás para frente. O lado vem no data-motion (SuggestionsScreen.tsx).
+ */
+.leaving {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  left: 4px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Depois da última escolha não há card embaixo: o que sai ocupa o lugar dele. */
+.leavingLast {
+  position: relative;
+  right: auto;
+  left: auto;
+}
+
+.front[data-motion="chega"] {
+  animation: card-arrive 220ms ease-out both;
+}
+
+.leaving[data-motion="sai-esquerda"] {
+  animation: card-out-left 320ms ease-in both;
+}
+
+.leaving[data-motion="sai-direita"] {
+  animation: card-out-right 320ms ease-in both;
+}
+
+.leaving[data-motion="sai-cima"] {
+  animation: card-out-up 320ms ease-in both;
+}
+
+.front[data-motion="volta-esquerda"] {
+  animation: card-out-left 320ms ease-in reverse both;
+}
+
+.front[data-motion="volta-direita"] {
+  animation: card-out-right 320ms ease-in reverse both;
+}
+
+.front[data-motion="volta-cima"] {
+  animation: card-out-up 320ms ease-in reverse both;
+}
+
+@keyframes card-arrive {
+  from {
+    opacity: 0.6;
+    scale: 0.96;
+    translate: 0 8px;
+  }
+}
+
+/* O card fica opaco na primeira metade do caminho, para o texto dele não se misturar
+ * com o do card que chega embaixo, e some na segunda. */
+@keyframes card-out-left {
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    translate: -115% 0;
+    rotate: -12deg;
+  }
+}
+
+@keyframes card-out-right {
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    translate: 115% 0;
+    rotate: 12deg;
+  }
+}
+
+@keyframes card-out-up {
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: 0.92;
+    translate: 0 -60%;
+  }
+}
+
+/*
+ * Quem pediu menos movimento vê o card só sumir e aparecer, sem deslizar. A saída continua
+ * sendo uma animação (curta, só de opacidade): é o fim dela que tira o card da tela.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .front[data-motion] {
+    animation: card-fade-in 150ms ease-out both;
+  }
+
+  .leaving[data-motion] {
+    animation: card-fade-out 150ms ease-out both;
+  }
+}
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes card-fade-out {
+  to {
+    opacity: 0;
+  }
 }
 
 /* Os três botões (Figma: Ações). O espaço entre eles encolhe no celular estreito. */
