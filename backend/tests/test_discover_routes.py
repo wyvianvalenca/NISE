@@ -30,8 +30,8 @@ from app.modules.catalog.models import (
 )
 from app.modules.girl_file.models import FileEntry, FileStatus
 from app.modules.girls.models import Girl, GirlTopic, StudyStage, Topic
+from app.modules.girls.utils import first_name
 from app.modules.suggestions.models import LastBand
-from app.modules.suggestions.service import first_name
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 

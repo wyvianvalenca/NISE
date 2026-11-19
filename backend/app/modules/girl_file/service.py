@@ -1,10 +1,24 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.modules.catalog.models import ItemOrigin
-from app.modules.catalog.utils import item_id
+from app.modules.actions.models import Action, ActionFormat
+from app.modules.catalog.models import CuratedItem, ItemKind, ItemOrigin
+from app.modules.catalog.service import action_duration
+from app.modules.catalog.utils import ACTION_TYPE_LABELS, CURATED_TYPE_LABELS, item_id
+from app.modules.cities.models import City
 from app.modules.girl_file.models import DismissReason, FileEntry, FileStatus
-from app.modules.girl_file.schemas import Choice
+from app.modules.girl_file.schemas import (
+    Choice,
+    FileGroupOut,
+    FileItemOut,
+    FileOut,
+    FileSection,
+    FileSquareOut,
+)
+from app.modules.girls.models import Topic
+from app.modules.girls.service import get_girl_of_user
+from app.modules.girls.utils import first_name
 
 # Onde cada botão da sugestão põe o item (tabela de status da #78).
 CHOICE_STATUS: dict[Choice, FileStatus] = {
@@ -97,3 +111,194 @@ async def save_choice(
         entry.rating = None
         entry.similar_choice = None
     await session.commit()
+
+
+# --- Seu filé (A06·3, #114) ---------------------------------------------------
+
+# Em que seção da tela cada status aparece (tabela de status da #78). O evento
+# em que ela se inscreveu ainda vai acontecer, então fica em "Próximas
+# aventuras" (como ele aparece na lista ainda está a confirmar com o design).
+SECTION_OF: dict[FileStatus, FileSection] = {
+    FileStatus.NEXT: FileSection.NEXT,
+    FileStatus.SIGNED_UP: FileSection.NEXT,
+    FileStatus.IN_PROGRESS: FileSection.IN_PROGRESS,
+    FileStatus.CONCLUDED: FileSection.CONCLUDED,
+}
+
+# A ordem em que os quadradinhos ocupam o desenho: concluídos primeiro, depois
+# em andamento, depois próximas (FILE_CELLS em frontend/lib/file.ts).
+DRAWING_ORDER: list[FileSection] = [
+    FileSection.CONCLUDED,
+    FileSection.IN_PROGRESS,
+    FileSection.NEXT,
+]
+
+# A ordem dos temas é a da tela de interesses (A05).
+TOPIC_ORDER: list[Topic] = list(Topic)
+
+
+def main_theme(topics: list[Topic]) -> Topic | None:
+    """O tema que dá a cor ao item: o primeiro dele na ordem da tela de interesses.
+
+    Um item pode ter vários temas, mas o quadradinho tem uma cor só. Vazio
+    quando o item não tem tema.
+    """
+    for topic in TOPIC_ORDER:
+        if topic in topics:
+            return topic
+    return None
+
+
+def details_line(item_format: ActionFormat, duration: str, city: str | None) -> str:
+    """A linha de detalhes do item, como no Figma (A06·3).
+
+    Online mostra a duração ("Online · ~10 horas"); presencial mostra a cidade
+    ("Presencial · Maceió"), que é o que ela precisa saber para ir.
+    """
+    if item_format is ActionFormat.ONLINE:
+        return f"Online · {duration}"
+    if city is None:
+        return "Presencial"
+    return f"Presencial · {city}"
+
+
+def curated_file_item(item: CuratedItem, city: str | None) -> FileItemOut:
+    """Um item da curadoria como aparece no filé. Precisa de topics carregados."""
+    deadline = None
+    if item.kind is ItemKind.EVENT:
+        deadline = item.registration_deadline
+    return FileItemOut(
+        id=item_id(ItemOrigin.CURATED, item.id),
+        theme=main_theme([row.topic for row in item.topics]),
+        type_label=CURATED_TYPE_LABELS[item.type],
+        title=item.title,
+        details=details_line(item.format, item.duration, city),
+        deadline=deadline,
+    )
+
+
+def action_file_item(action: Action, city: str | None) -> FileItemOut:
+    """Uma ação de grupo como aparece no filé. Precisa de topics carregados.
+
+    A ação não tem prazo de inscrição, só "inscrições abertas" ou não.
+    """
+    return FileItemOut(
+        id=item_id(ItemOrigin.GROUP_ACTION, action.id),
+        theme=main_theme([row.topic for row in action.topics]),
+        type_label=ACTION_TYPE_LABELS[action.type],
+        title=action.name,
+        details=details_line(action.format, action_duration(action), city),
+        deadline=None,
+    )
+
+
+def build_file(name: str, placed: list[tuple[FileSection, FileItemOut]]) -> FileOut:
+    """Monta a tela a partir dos itens, cada um já com a sua seção.
+
+    Os itens ficam na ordem recebida (a ordem em que entraram no filé). Os
+    quadradinhos seguem `DRAWING_ORDER` e, em cada seção, ficam agrupados por
+    tema, na ordem da tela de interesses (RF-F10.07); item sem tema vai por
+    último. Nada de porcentagem nem de comparação com outras meninas (RN-28).
+    """
+
+    def group(section: FileSection) -> FileGroupOut:
+        items = [item for item_section, item in placed if item_section is section]
+        return FileGroupOut(count=len(items), items=items)
+
+    def drawing_position(square: FileSquareOut) -> tuple[int, int]:
+        theme_position = len(TOPIC_ORDER)
+        if square.theme is not None:
+            theme_position = TOPIC_ORDER.index(square.theme)
+        return DRAWING_ORDER.index(square.section), theme_position
+
+    squares = [
+        FileSquareOut(theme=item.theme, section=section) for section, item in placed
+    ]
+    return FileOut(
+        first_name=first_name(name),
+        in_progress=group(FileSection.IN_PROGRESS),
+        next=group(FileSection.NEXT),
+        concluded=group(FileSection.CONCLUDED),
+        squares=sorted(squares, key=drawing_position),
+    )
+
+
+async def load_file(session: AsyncSession, user_id: int) -> FileOut | None:
+    """O filé da menina da sessão, nas três seções e com o desenho (RF-F10.07).
+
+    Só lê o status de cada item: quem muda são os botões das outras telas
+    (tabela de status da #78). O "Ver depois" e o "Não é pra mim" ficam de
+    fora. Um item que saiu das sugestões (vencido, desativado) continua no filé.
+
+    A menina é sempre a da sessão, e as linhas são buscadas pelo id dela
+    (RNF-G.03). Devolve None quando a conta não tem registro de menina.
+    """
+    girl = await get_girl_of_user(session, user_id)
+    if girl is None:
+        return None
+
+    entries = list(
+        await session.scalars(
+            select(FileEntry)
+            .where(FileEntry.girl_id == girl.id, FileEntry.status.in_(IN_FILE))
+            .order_by(FileEntry.id)
+        )
+    )
+
+    # Os itens das linhas, das duas fontes, com os temas que dão a cor.
+    curated_ids = [e.curated_item_id for e in entries if e.curated_item_id is not None]
+    action_ids = [e.action_id for e in entries if e.action_id is not None]
+    curated: dict[int, CuratedItem] = {}
+    actions: dict[int, Action] = {}
+    if curated_ids:
+        curated = {
+            item.id: item
+            for item in await session.scalars(
+                select(CuratedItem)
+                .where(CuratedItem.id.in_(curated_ids))
+                .options(selectinload(CuratedItem.topics))
+            )
+        }
+    if action_ids:
+        actions = {
+            action.id: action
+            for action in await session.scalars(
+                select(Action)
+                .where(Action.id.in_(action_ids))
+                .options(selectinload(Action.topics))
+            )
+        }
+
+    # Os nomes das cidades, para a linha de detalhes dos presenciais.
+    city_ids = {
+        item.city_ibge_code
+        for item in curated.values()
+        if item.city_ibge_code is not None
+    } | {
+        action.city_ibge_code
+        for action in actions.values()
+        if action.city_ibge_code is not None
+    }
+    cities: dict[int, str] = {}
+    if city_ids:
+        rows = await session.execute(
+            select(City.id, City.name).where(City.id.in_(city_ids))
+        )
+        cities = {city_id: city_name for city_id, city_name in rows}
+
+    def city_name(code: int | None) -> str | None:
+        return cities.get(code) if code is not None else None
+
+    placed = []
+    for entry in entries:
+        if entry.curated_item_id is not None:
+            item = curated[entry.curated_item_id]
+            file_item = curated_file_item(item, city_name(item.city_ibge_code))
+        else:
+            # A restrição ck_file_entries_one_source garante uma das duas colunas.
+            assert entry.action_id is not None
+            action = actions[entry.action_id]
+            file_item = action_file_item(action, city_name(action.city_ibge_code))
+        placed.append((SECTION_OF[entry.status], file_item))
+
+    return build_file(girl.name, placed)

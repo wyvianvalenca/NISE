@@ -7,8 +7,8 @@ from app.db.engine import AsyncSessionDep
 from app.modules.catalog.service import is_suggestible
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
-from app.modules.girl_file.schemas import ChoiceIn, ChoiceOut
-from app.modules.girl_file.service import file_total, save_choice
+from app.modules.girl_file.schemas import ChoiceIn, ChoiceOut, FileOut
+from app.modules.girl_file.service import file_total, load_file, save_choice
 from app.modules.girls.service import get_girl_of_user
 from app.modules.girls.utils import today_in_maceio
 
@@ -30,6 +30,37 @@ RESPONSES: dict[int | str, dict[str, Any]] = {
 
 def not_found(error: str) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": error})
+
+
+# A06·3 · Seu filé (#114, RF-F10.07): as seções "Em andamento", "Próximas
+# aventuras" e "Concluídos", com o contador e os itens de cada uma, e os
+# quadradinhos do desenho, pelo tema e pela seção. Só lê o status; quem muda
+# são os botões das outras telas (tabela de status da #78).
+#
+# Sem porcentagem nem comparação com outras meninas (RN-28). Não há id na URL:
+# ela só vê o próprio filé, o da sessão (RNF-G.03).
+@router.get(
+    "",
+    response_model=FileOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: RESPONSES[status.HTTP_403_FORBIDDEN],
+        status.HTTP_404_NOT_FOUND: {
+            "description": (
+                'A conta não tem registro de menina: {"error": "profile_not_found"}'
+            )
+        },
+    },
+)
+async def my_file(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> FileOut | JSONResponse:
+    data = await load_file(session, user.id)
+
+    if data is None:
+        # Não deveria acontecer: o cadastro (#51, #52) sempre cria ou liga um registro.
+        return not_found("profile_not_found")
+
+    return data
 
 
 # A06·2 · Os três botões de uma sugestão (#102, RF-F10.04): "Quero fazer" põe o
