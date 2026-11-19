@@ -117,6 +117,16 @@ test("o \"?\" reabre a explicação mesmo depois de vista", async ({ page }) => 
   await expect(page).toHaveURL(/rever=1$/);
 });
 
+test("o \"?\" de Seu filé mostra a explicação a quem já viu", async ({ page }) => {
+  await mockProfileApi(page, { seen: true });
+  await page.goto("/file");
+
+  await page.getByRole("link", { name: "O que é o filé?" }).click();
+
+  await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
+  await expect(page).toHaveURL(/\/por-que-file\?rever=1$/);
+});
+
 test("depois de começar, o voltar sai do filé de uma vez só", async ({
   page,
 }) => {

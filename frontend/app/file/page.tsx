@@ -14,6 +14,7 @@ import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
 import { getFile, type FileData, type FileItem } from "@/lib/file";
+import { REVIEW_PATH } from "@/lib/file-intro";
 import styles from "./page.module.css";
 
 export default function FilePage() {
@@ -71,7 +72,7 @@ function File({ data }: { data: FileData }) {
     <>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>Seu filé</h1>
-        <Link href="/por-que-file" className={styles.help} aria-label="O que é o filé?">
+        <Link href={REVIEW_PATH} className={styles.help} aria-label="O que é o filé?">
           <Icon name="question" />
         </Link>
       </div>

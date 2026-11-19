@@ -38,7 +38,7 @@ test("mostra o título, o texto e os links para o Descobrir e para Por que filé
 
   await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
   await expect(page.getByText("No seu ritmo, sem pressa.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "O que é o filé?" })).toHaveAttribute("href", "/por-que-file");
+  await expect(page.getByRole("link", { name: "O que é o filé?" })).toHaveAttribute("href", "/por-que-file?rever=1");
 
   await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);

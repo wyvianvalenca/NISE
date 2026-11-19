@@ -26,6 +26,9 @@ export const FILE_PATHS = {
 /** Query that forces the explanation to show again, for the "?" of #114. */
 export const REVIEW_PARAM = "rever";
 
+/** Where the "?" next to "Seu filé" goes: the explanation, even if she has seen it. */
+export const REVIEW_PATH = `${FILE_PATHS.intro}?${REVIEW_PARAM}=1`;
+
 /** GET /api/profile (ProfileOut in the back-end). Only what the filé needs. */
 export type Profile = {
   /** She has already seen "Por que filé?" (RF-F10.02). */
