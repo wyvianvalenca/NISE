@@ -18,6 +18,7 @@ import {
   getDiscover,
   getFirstName,
   saveLastBand,
+  type BandCode,
   type BandGroup,
   type DiscoverData,
   type DiscoverResult,
@@ -96,6 +97,12 @@ export default function DiscoverPage() {
 }
 
 function Bands({ data }: { data: DiscoverData }) {
+  // A faixa que ela acabou de abrir. Com cacheComponents, o Next guarda esta tela
+  // escondida (Activity) e, na volta, mostra os dados de antes até a nova busca
+  // chegar. Guardando o toque aqui, a tag "da última vez" já volta no lugar certo.
+  const [opened, setOpened] = useState<BandCode | null>(null);
+  const lastBand = opened ?? data.lastBand;
+
   return (
     <>
       <p className={styles.greeting}>Oi, {data.firstName}!</p>
@@ -115,9 +122,12 @@ function Bands({ data }: { data: DiscoverData }) {
                 description={info.description}
                 count={band.count}
                 href={bandPath(band.code)}
-                lastUsed={band.code === data.lastBand}
+                lastUsed={band.code === lastBand}
                 // Grava a faixa para a tag "da última vez" da próxima visita (#88).
-                onOpen={() => saveLastBand(band.code)}
+                onOpen={() => {
+                  setOpened(band.code);
+                  saveLastBand(band.code);
+                }}
               />
             </div>
           );
