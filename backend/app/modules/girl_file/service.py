@@ -1,6 +1,26 @@
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.modules.catalog.models import ItemOrigin
 from app.modules.catalog.utils import item_id
 from app.modules.girl_file.models import DismissReason, FileEntry, FileStatus
+from app.modules.girl_file.schemas import Choice
+
+# Onde cada botão da sugestão põe o item (tabela de status da #78).
+CHOICE_STATUS: dict[Choice, FileStatus] = {
+    Choice.QUERO_FAZER: FileStatus.NEXT,
+    Choice.TALVEZ_DEPOIS: FileStatus.LATER,
+    Choice.NAO_E_PRA_MIM: FileStatus.DISMISSED,
+}
+
+# O que conta na pílula "Meu filé": tudo o que entrou no filé. O "Ver depois"
+# e o "Não é pra mim" ficam de fora.
+IN_FILE: list[FileStatus] = [
+    FileStatus.NEXT,
+    FileStatus.IN_PROGRESS,
+    FileStatus.CONCLUDED,
+    FileStatus.SIGNED_UP,
+]
 
 
 def new_entry(
@@ -32,3 +52,48 @@ def entry_item_id(entry: FileEntry) -> str:
     # A restrição ck_file_entries_one_source garante uma das duas colunas.
     assert entry.action_id is not None
     return item_id(ItemOrigin.GROUP_ACTION, entry.action_id)
+
+
+async def file_total(session: AsyncSession, girl_id: int) -> int:
+    """Quantos itens estão no filé dela, para a pílula "Meu filé" (A06·2)."""
+    total = await session.scalar(
+        select(func.count())
+        .select_from(FileEntry)
+        .where(FileEntry.girl_id == girl_id, FileEntry.status.in_(IN_FILE))
+    )
+    return total or 0
+
+
+async def save_choice(
+    session: AsyncSession,
+    girl_id: int,
+    origin: ItemOrigin,
+    number: int,
+    choice: Choice,
+    reason: DismissReason | None = None,
+) -> None:
+    """Grava o que ela decidiu sobre um item (RF-F10.04).
+
+    Uma linha por menina e item: escolher de novo troca a escolha anterior, sem
+    criar outra linha. A busca usa o id dela, então a linha de outra menina
+    nunca é tocada (RNF-G.03).
+    """
+    status = CHOICE_STATUS[choice]
+    if origin is ItemOrigin.CURATED:
+        same_item = FileEntry.curated_item_id == number
+    else:
+        same_item = FileEntry.action_id == number
+
+    entry = await session.scalar(
+        select(FileEntry).where(FileEntry.girl_id == girl_id, same_item)
+    )
+    if entry is None:
+        session.add(new_entry(girl_id, origin, number, status, reason))
+    else:
+        entry.status = status
+        entry.dismiss_reason = reason
+        # A nota e as "sugestões parecidas" só valem numa atividade concluída
+        # (ck_file_entries_feedback_only_when_concluded).
+        entry.rating = None
+        entry.similar_choice = None
+    await session.commit()

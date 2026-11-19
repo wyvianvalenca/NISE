@@ -4,10 +4,15 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
+from app.modules.catalog.models import EffortBand
 from app.modules.consents.permissions import AcceptedGirlDep
 from app.modules.girls.utils import today_in_maceio
-from app.modules.suggestions.schemas import DiscoverOut, LastBandIn
-from app.modules.suggestions.service import load_discover, save_last_band
+from app.modules.suggestions.schemas import (
+    BandSuggestionsOut,
+    DiscoverOut,
+    LastBandIn,
+)
+from app.modules.suggestions.service import load_band, load_discover, save_last_band
 
 router = APIRouter(prefix="/discover", tags=["Discover"])
 
@@ -66,3 +71,20 @@ async def update_last_band(
         return profile_not_found()
 
     return None
+
+
+# A06·2 · As sugestões de uma faixa, uma de cada vez (#102, RF-F10.04), na ordem
+# das regras da #80, com o "Por que pra você" (RF-F11.04) e o total do filé para
+# a pílula "Meu filé". Uma faixa fora das 5 responde 422.
+#
+# A menina é sempre a da sessão (RNF-G.03).
+@router.get("/{band}", response_model=BandSuggestionsOut, responses=RESPONSES)
+async def band_suggestions(
+    band: EffortBand, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> BandSuggestionsOut | JSONResponse:
+    data = await load_band(session, user.id, band, today_in_maceio())
+
+    if data is None:
+        return profile_not_found()
+
+    return data
