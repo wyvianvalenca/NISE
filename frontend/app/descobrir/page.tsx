@@ -1,15 +1,30 @@
 "use client";
 
 // A06·1 · Descobrir: ela escolhe quanto quer mergulhar agora, entre 5 faixas de esforço.
-// Atende RF-F10.03 (issues #86 e #87). Usa os dados de teste de lib/descobrir.ts até a #89.
+// Atende RF-F10.03 (issues #86 e #87), pelas rotas da #88 (integração na #89).
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BandCard } from "@/components/BandCard";
 import { BottomNav } from "@/components/BottomNav";
-import { BANDS, bandPath, getDiscover, type BandGroup, type DiscoverData } from "@/lib/descobrir";
+import { LoadFailed } from "@/components/LoadFailed";
+import { TecendoFile } from "@/components/TecendoFile";
+import {
+  BANDS,
+  bandPath,
+  getDiscover,
+  getFirstName,
+  saveLastBand,
+  type BandGroup,
+  type DiscoverData,
+  type DiscoverResult,
+} from "@/lib/descobrir";
+import { useLongWait } from "@/lib/loading";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
 const GROUP_LABELS: Record<Exclude<BandGroup, null>, string> = {
@@ -17,18 +32,48 @@ const GROUP_LABELS: Record<Exclude<BandGroup, null>, string> = {
   "em-grupo": "Em grupo",
 };
 
+/** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
+function redirectFor(result: DiscoverResult | null): string | null {
+  if (!result || result.ok) return null;
+  if (result.reason === "terms_not_accepted") return SIGNUP_PATHS.terms;
+  if (result.reason === "failed") return null;
+  return WITHOUT_SESSION[result.reason];
+}
+
+// Uma falha vira erro, para useLongWait mostrar a E04 com "Tentar novamente".
+// Fica fora do componente para ser sempre a mesma função: useLongWait recomeça
+// a busca quando ela muda.
+async function fetchDiscover(): Promise<DiscoverResult> {
+  const result = await getDiscover();
+  if (!result.ok && result.reason === "failed") {
+    throw new Error("O Descobrir não carregou");
+  }
+  return result;
+}
+
 export default function DiscoverPage() {
-  const [data, setData] = useState<DiscoverData | null>(null);
+  const router = useRouter();
+  // Só para o "Quase lá, <nome>" da espera (E03), que aparece antes das contagens.
+  const [waitName, setWaitName] = useState<string | null>(null);
+  const { phase, data: result, retry } = useLongWait(fetchDiscover);
+  const redirect = redirectFor(result);
 
   useEffect(() => {
-    let current = true;
-    getDiscover().then((result) => {
-      if (current) setData(result);
-    });
-    return () => {
-      current = false;
-    };
+    const controller = new AbortController();
+    getFirstName(controller.signal).then(setWaitName, () => {});
+    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (redirect) router.replace(redirect);
+  }, [redirect, router]);
+
+  // A espera longa e a falha são as telas da #81 (E03 e E04).
+  if (phase === "weaving") return <TecendoFile name={waitName} />;
+  if (phase === "error") return <LoadFailed onRetry={retry} />;
+
+  // Antes de 1 s não aparece nada no meio, para a tela não piscar.
+  const data = result?.ok ? result.data : null;
 
   return (
     <div className={styles.page}>
@@ -42,16 +87,7 @@ export default function DiscoverPage() {
       </AppHeader>
 
       <div className={styles.scroll}>
-        <main className={styles.main}>
-          {data ? (
-            <Bands data={data} />
-          ) : (
-            // Provisório: a tela "Tecendo seu filé…" (E03) é da issue #81 e entra aqui quando existir.
-            <p className={styles.status} aria-live="polite">
-              Carregando…
-            </p>
-          )}
-        </main>
+        <main className={styles.main}>{data && <Bands data={data} />}</main>
       </div>
 
       <BottomNav active="descobrir" />
@@ -80,6 +116,8 @@ function Bands({ data }: { data: DiscoverData }) {
                 count={band.count}
                 href={bandPath(band.code)}
                 lastUsed={band.code === data.lastBand}
+                // Grava a faixa para a tag "da última vez" da próxima visita (#88).
+                onOpen={() => saveLastBand(band.code)}
               />
             </div>
           );

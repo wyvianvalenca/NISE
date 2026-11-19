@@ -17,6 +17,7 @@ from app.modules.consents.models import TermsAcceptance  # noqa: F401
 from app.modules.girl_file.models import FileEntry  # noqa: F401
 from app.modules.girls.models import Girl, GirlTopic  # noqa: F401
 from app.modules.groups.models import Group, GroupCoordinator, Invite  # noqa: F401
+from app.modules.suggestions.models import LastBand  # noqa: F401
 from app.users.models import OAuthAccount, User  # noqa: F401 (registra as tabelas para o autogenerate)
 
 # this is the Alembic Config object, which provides

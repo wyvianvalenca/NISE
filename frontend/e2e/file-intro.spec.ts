@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mockInterestsApi } from "./interests-api";
+import { mockDiscoverApi } from "./discover-api";
 import { mockProfileApi } from "./profile-api";
 
 /**
@@ -9,8 +10,10 @@ import { mockProfileApi } from "./profile-api";
 
 // Por padrão ela ainda não viu a explicação. Um teste que chama mockProfileApi
 // de novo troca as respostas (a rota mais nova vale).
+// Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
 test.beforeEach(async ({ page }) => {
   await mockProfileApi(page);
+  await mockDiscoverApi(page);
 });
 
 test("na primeira vez, explica a metáfora do filé", async ({ page }) => {
