@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BandCard } from "@/components/BandCard";
@@ -100,8 +100,19 @@ function Bands({ data }: { data: DiscoverData }) {
   // A faixa que ela acabou de abrir. Com cacheComponents, o Next guarda esta tela
   // escondida (Activity) e, na volta, mostra os dados de antes até a nova busca
   // chegar. Guardando o toque aqui, a tag "da última vez" já volta no lugar certo.
+  const tapped = useRef<BandCode | null>(null);
   const [opened, setOpened] = useState<BandCode | null>(null);
   const lastBand = opened ?? data.lastBand;
+
+  // A tag só muda quando a tela some. No toque o Descobrir ainda está à vista até
+  // a faixa abrir, e a tag pularia de faixa na frente dela. A limpeza de um
+  // useLayoutEffect roda quando o Activity esconde a tela (guia "preserving-ui-state"
+  // do Next).
+  useLayoutEffect(() => {
+    return () => {
+      if (tapped.current) setOpened(tapped.current);
+    };
+  }, []);
 
   return (
     <>
@@ -125,7 +136,7 @@ function Bands({ data }: { data: DiscoverData }) {
                 lastUsed={band.code === lastBand}
                 // Grava a faixa para a tag "da última vez" da próxima visita (#88).
                 onOpen={() => {
-                  setOpened(band.code);
+                  tapped.current = band.code;
                   saveLastBand(band.code);
                 }}
               />
