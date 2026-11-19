@@ -152,6 +152,23 @@ test("tocar numa faixa grava a faixa para a tag da próxima visita", async ({ pa
   await expect.poll(() => saved).toEqual(["no-meu-ritmo"]);
 });
 
+test("ao voltar de uma faixa, a tag já está nela, sem esperar o back", async ({ page }) => {
+  await openWith(page, { lastBand: "uma-tarde" });
+  await expect(band(page, "Uma tarde")).toContainText("da última vez");
+
+  // Daqui em diante o GET não responde. Com cacheComponents, a volta mostra a
+  // tela guardada, e a tag tem de mudar sem a resposta nova.
+  await page.route("**/api/discover", () => {});
+
+  await band(page, "No meu ritmo").click();
+  await expect(page).toHaveURL(/\/descobrir\/no-meu-ritmo$/);
+  await page.goBack();
+
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await expect(band(page, "No meu ritmo")).toContainText("da última vez");
+  await expect(page.getByText("da última vez")).toHaveCount(1);
+});
+
 test("faixa vazia não grava nada ao ser tocada", async ({ page }) => {
   const saved = await openWith(page, { counts: { "uma-tarde": 0 } });
 
