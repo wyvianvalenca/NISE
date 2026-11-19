@@ -57,3 +57,14 @@ class InterestsIn(BaseModel):
         if not self.everything and not self.topics:
             raise ValueError('Escolha pelo menos um tema ou "me mostra de tudo"')
         return self
+
+
+class ProfileOut(BaseModel):
+    """O perfil da menina da sessão, do jeito que o app lê.
+
+    Por enquanto só o que o filé precisa: se ela já viu "Por que filé?"
+    (RF-F10.02, #84). O front lê em camelCase (Profile em
+    frontend/lib/file-intro.ts). Sem nome, e-mail nem data de nascimento.
+    """
+
+    file_intro_seen: bool = Field(serialization_alias="fileIntroSeen")

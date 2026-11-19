@@ -1,16 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { mockInterestsApi } from "./interests-api";
 import { mockDiscoverApi } from "./discover-api";
-
-// Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
-test.beforeEach(async ({ page }) => {
-  await mockDiscoverApi(page);
-});
+import { mockProfileApi } from "./profile-api";
 
 /**
- * A06·0 "Por que filé?" (#83). Uses the test data in lib/file-intro.ts.
- * Fictional data, as CONTRIBUTING requires.
+ * A06·0 "Por que filé?" (#83, #85). As rotas do perfil (#84) são simuladas em
+ * profile-api.ts. Fictional data, as CONTRIBUTING requires.
  */
+
+// Por padrão ela ainda não viu a explicação. Um teste que chama mockProfileApi
+// de novo troca as respostas (a rota mais nova vale).
+// Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
+test.beforeEach(async ({ page }) => {
+  await mockProfileApi(page);
+  await mockDiscoverApi(page);
+});
 
 test("na primeira vez, explica a metáfora do filé", async ({ page }) => {
   await page.goto("/por-que-file");
@@ -46,6 +50,63 @@ test("depois de vista, não aparece de novo: vai direto para o Descobrir", async
   await expect(
     page.getByRole("heading", { name: "Por que filé?" }),
   ).toHaveCount(0);
+});
+
+test("quem já viu vai direto para o Descobrir, sem ver a explicação", async ({
+  page,
+}) => {
+  await mockProfileApi(page, { seen: true });
+
+  await page.goto("/por-que-file");
+
+  await expect(page).toHaveURL(/\/descobrir$/);
+});
+
+test("\"Começar meu filé\" guarda no perfil que ela viu", async ({ page }) => {
+  const calls = await mockProfileApi(page);
+  await page.goto("/por-que-file");
+
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+
+  await expect(page).toHaveURL(/\/descobrir$/);
+  expect(calls.marks).toBe(1);
+});
+
+test("se não der pra marcar, avisa e deixa tentar de novo", async ({ page }) => {
+  await mockProfileApi(page, { mark: 500 });
+  await page.goto("/por-que-file");
+
+  await page.getByRole("button", { name: "Começar meu filé" }).click();
+
+  await expect(
+    page.getByText("Não deu pra continuar agora. Tente de novo."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/por-que-file$/);
+  await expect(page.getByRole("button", { name: "Começar meu filé" })).toBeEnabled();
+});
+
+test("se o perfil não carregar, mostra a explicação", async ({ page }) => {
+  await mockProfileApi(page, { profile: 500 });
+
+  await page.goto("/por-que-file");
+
+  await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
+});
+
+test("sem sessão, vai para o início", async ({ page }) => {
+  await mockProfileApi(page, { profile: 401 });
+
+  await page.goto("/por-que-file");
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  await mockProfileApi(page, { profile: "terms_not_accepted" });
+
+  await page.goto("/por-que-file");
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
 
 test("o \"?\" reabre a explicação mesmo depois de vista", async ({ page }) => {

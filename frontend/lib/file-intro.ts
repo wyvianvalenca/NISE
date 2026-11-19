@@ -1,13 +1,19 @@
 // "Por que filé?" (A06·0): the explanation that opens the filé the first time
 // (#82, #83).
 //
-// TEMPORARY: the "already seen" flag lives in sessionStorage. The type follows
-// the route described in issue #84 (flag on the profile) and will be replaced
-// by the types generated from OpenAPI; swapping it for the /api call is issue
-// #85. The data is fictional; nothing leaves the browser.
+// Whether she has seen it lives in her profile on the back-end (#84): GET
+// /api/profile says so and PUT /api/profile/file-intro-seen marks it (#85).
+// The types below are written by hand, matching the back-end's OpenAPI (/docs
+// on the FastAPI server), like the ones in lib/signup-api.ts.
 //
 // Named file-intro and not file to leave lib/file.ts for the "Seu filé"
 // screen (#115), which is a different thing.
+
+import {
+  errorCode,
+  type SessionProblem,
+  sessionProblem,
+} from "@/lib/signup-api";
 
 /** The filé's paths, in the order she goes through them. */
 export const FILE_PATHS = {
@@ -20,32 +26,62 @@ export const FILE_PATHS = {
 /** Query that forces the explanation to show again, for the "?" of #114. */
 export const REVIEW_PARAM = "rever";
 
-const STORAGE_KEY = "nise-mock-file-intro";
+/** GET /api/profile (ProfileOut in the back-end). Only what the filé needs. */
+export type Profile = {
+  /** She has already seen "Por que filé?" (RF-F10.02). */
+  fileIntroSeen: boolean;
+};
 
-function readSeen(): boolean {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY) === "seen";
-  } catch {
-    return false;
+/** Why a profile route said no. The filé comes after the terms (#53). */
+export type ProfileProblem = SessionProblem | "terms_not_accepted" | "failed";
+
+export type IntroSeenResult =
+  | { ok: true; seen: boolean }
+  | { ok: false; reason: ProfileProblem };
+
+export type MarkIntroSeenResult = { ok: true } | { ok: false; reason: ProfileProblem };
+
+/** Turns a refused profile route into the reason the screen acts on. */
+async function profileProblem(response: Response): Promise<ProfileProblem> {
+  if (response.status === 401) {
+    return sessionProblem(response);
   }
+
+  // 403 {"error": "terms_not_accepted"}. Any other 403 (not a girl's account)
+  // is a failure.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return "terms_not_accepted";
+  }
+
+  return "failed";
+}
+
+/** Whether she has already seen the explanation, from her profile (#84). */
+export async function introAlreadySeen(
+  signal?: AbortSignal,
+): Promise<IntroSeenResult> {
+  const response = await fetch("/api/profile", { signal });
+
+  if (response.ok) {
+    const profile = (await response.json()) as Profile;
+    return { ok: true, seen: profile.fileIntroSeen };
+  }
+
+  return { ok: false, reason: await profileProblem(response) };
 }
 
 /**
- * Whether she has already seen the explanation. It will come from the profile
- * once #84 exists; here it is only the test data.
+ * Marks the explanation as seen, so it does not open on its own again
+ * (RF-F10.02). Marking twice is fine: the server changes nothing.
  */
-export async function introAlreadySeen(): Promise<boolean> {
-  return readSeen();
-}
+export async function markIntroSeen(): Promise<MarkIntroSeenResult> {
+  const response = await fetch("/api/profile/file-intro-seen", { method: "PUT" });
 
-/** Marks the explanation as seen, so it does not show again (RF-F10.02). */
-export async function markIntroSeen(): Promise<void> {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, "seen");
-  } catch {
-    // No sessionStorage (a blocked private window): the explanation shows
-    // again, which is the safe way to be wrong.
+  if (response.ok) {
+    return { ok: true };
   }
+
+  return { ok: false, reason: await profileProblem(response) };
 }
 
 /** One step of the filé metaphor, in the order it appears on screen. */
