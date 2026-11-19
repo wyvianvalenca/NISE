@@ -169,6 +169,23 @@ test("ao voltar de uma faixa, a tag já está nela, sem esperar o back", async (
   await expect(page.getByText("da última vez")).toHaveCount(1);
 });
 
+test("no toque, a tag não pula de faixa enquanto o Descobrir está à vista", async ({ page }) => {
+  const saved = await openWith(page, { lastBand: "uma-tarde" });
+  await expect(band(page, "Uma tarde")).toContainText("da última vez");
+
+  // Segura a navegação: o toque acontece (o Link vê o defaultPrevented e não
+  // navega), mas o Descobrir continua na tela, como no instante antes da troca.
+  await page.evaluate(() =>
+    document.addEventListener("click", (event) => event.preventDefault(), { capture: true }),
+  );
+  await band(page, "No meu ritmo").click();
+
+  await expect.poll(() => saved).toEqual(["no-meu-ritmo"]);
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await expect(band(page, "Uma tarde")).toContainText("da última vez");
+  await expect(page.getByText("da última vez")).toHaveCount(1);
+});
+
 test("faixa vazia não grava nada ao ser tocada", async ({ page }) => {
   const saved = await openWith(page, { counts: { "uma-tarde": 0 } });
 
