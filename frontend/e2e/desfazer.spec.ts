@@ -216,6 +216,21 @@ test("dá para desfazer só com o teclado, com foco visível", async ({ page }) 
   expect(await choices(page)).toEqual([]);
 });
 
+test("com o back demorando, o foco fica no botão e o Shift+Tab chega ao Desfazer", async ({ page }) => {
+  await open(page, { delayMs: 400 });
+
+  for (let i = 0; i < 5; i++) await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  // Enquanto guarda, o botão fica bloqueado, mas não perde o foco.
+  await expect(button(page, "Quero fazer")).toHaveAttribute("aria-disabled", "true");
+  await expect(button(page, "Quero fazer")).toBeFocused();
+
+  await expect(toast(page)).toBeVisible();
+  await expect(button(page, "Quero fazer")).toBeFocused();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+Tab");
+  await expect(undoButton(page)).toBeFocused();
+});
+
 for (const width of [360, 1366]) {
   test(`em ${width} px o aviso cabe na tela, abaixo do cabeçalho, sem cobrir os botões`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 360 ? 740 : 768 });

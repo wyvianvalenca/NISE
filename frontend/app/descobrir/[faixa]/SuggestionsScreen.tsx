@@ -216,6 +216,11 @@ const ACTIONS: { choice: Choice; label: string; icon: IconName }[] = [
   { choice: "quero-fazer", label: "Quero fazer", icon: "plus" },
 ];
 
+/**
+ * Os três botões. Enquanto a escolha é guardada, ficam bloqueados com aria-disabled, e não com
+ * disabled: um botão com disabled perde o foco, e quem usa o teclado voltaria para o começo da
+ * página (como o "Desfazer" do Toast).
+ */
 function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice: Choice) => void }) {
   return (
     <div className={styles.actions}>
@@ -226,8 +231,10 @@ function Actions({ disabled, onChoose }: { disabled: boolean; onChoose: (choice:
             key={action.choice}
             type="button"
             className={`${styles.action} ${main ? styles.actionMain : ""}`}
-            disabled={disabled}
-            onClick={() => onChoose(action.choice)}
+            aria-disabled={disabled || undefined}
+            onClick={() => {
+              if (!disabled) onChoose(action.choice);
+            }}
           >
             <span className={styles.actionCircle}>
               <Icon name={action.icon} size={main ? 30 : 24} />
