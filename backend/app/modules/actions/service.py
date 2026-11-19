@@ -6,7 +6,10 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.actions.exceptions import ActionValidationError
+from app.modules.actions.exceptions import (
+    ActionValidationError,
+    AttendanceAlreadyRegisteredError,
+)
 from app.modules.actions.models import (
     Action,
     ActionAudience,
@@ -337,3 +340,26 @@ def _list_item(row: ActionRow, status: ActionStatus) -> ActionListItemOut:
         registered_count=row.registered_count,
         attended_count=row.attended_count if has_attendance else None,
     )
+
+
+async def delete_action(session: AsyncSession, action: Action) -> None:
+    """Delete an action of the coordinator's group while no attendance is saved.
+
+    The rule is checked here, on the server, so a direct request is refused like
+    the screen would (RF-F30.12, RN-15). The registrations go with the action
+    through the `ondelete="CASCADE"` of `participations.action_id`, and so do its
+    tags and audiences. Nothing touches `girls`: the import never created
+    accounts, so the records of the girls stay.
+
+    Two parts of #227 have nowhere to happen yet, and this function does not
+    invent them. The action leaving the girls' filé (RN-36, D-46) needs the filé
+    route (#116): when it exists it must read `actions` through a join, so the
+    deleted row simply stops appearing. Cancelling the reminders not yet sent
+    (RF-F4.12, #188) needs the reminder table: when it exists, its cancellation
+    goes in this same transaction, before the commit below.
+    """
+    if action.attendance_registered_at is not None:
+        raise AttendanceAlreadyRegisteredError
+
+    await session.delete(action)
+    await session.commit()

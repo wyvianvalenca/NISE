@@ -1,9 +1,10 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.db.engine import AsyncSessionDep
 from app.modules.actions.dependencies import CoordinatorGroupIdDep, GroupActionDep
+from app.modules.actions.exceptions import AttendanceAlreadyRegisteredError
 from app.modules.actions.models import ActionStatus
 from app.modules.actions.schemas import ActionIn, ActionListOut, ActionOut
 from app.modules.actions.service import (
@@ -11,6 +12,7 @@ from app.modules.actions.service import (
     build_action_list,
     count_registered,
     create_action,
+    delete_action,
     fetch_action_rows,
     today_in_maceio,
     update_action,
@@ -83,3 +85,27 @@ async def update_action_route(
     registered = await count_registered(session, action.id)
 
     return action_to_out(action, city, registered, today_in_maceio())
+
+
+# "Excluir ação" in the modal (#225, RF-F30.12). It takes the registrations with it
+# and keeps the girls' records (RN-15). After the attendance is saved it is
+# refused with 409 even on a direct request. An action of another group is a 404
+# (RNF-G.03).
+@router.delete(
+    "/{action_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Ação não encontrada"},
+        status.HTTP_409_CONFLICT: {
+            "description": "A presença já foi registrada, a ação não pode ser excluída"
+        },
+    },
+)
+async def delete_action_route(action: GroupActionDep, session: AsyncSessionDep) -> None:
+    try:
+        await delete_action(session, action)
+    except AttendanceAlreadyRegisteredError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "A presença já foi registrada, então a ação não pode ser excluída",
+        ) from None

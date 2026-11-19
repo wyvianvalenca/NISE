@@ -27,3 +27,7 @@ async def action_validation_handler(request: Request, exc: Exception) -> JSONRes
             ]
         },
     )
+
+
+class AttendanceAlreadyRegisteredError(Exception):
+    """The action has its attendance saved, so it can no longer be deleted (RN-15)."""
