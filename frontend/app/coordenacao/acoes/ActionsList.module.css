@@ -23,6 +23,14 @@
   font-size: 15px;
 }
 
+.failure {
+  margin-top: 20px;
+}
+
+.title:focus {
+  outline: none;
+}
+
 .filters {
   display: flex;
   align-items: center;
