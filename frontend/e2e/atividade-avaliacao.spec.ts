@@ -1,15 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockActivityApi } from "./activity-api";
 import { mockFileApi } from "./file-api";
 
 // #124 · A06·5, parte opcional: "O que achou?" e "Quer sugestões parecidas?".
-// Usa os dados de teste de lib/atividade.ts (#120) e lib/atividade-feedback.ts.
+// A atividade vem de GET /api/file/{id} (#121), simulada em activity-api.ts; a
+// avaliação ainda usa os dados de teste de lib/atividade-feedback.ts.
 
 // "Enviar" e "Pular" voltam ao filé (A06·3), que lê GET /api/file (#116).
 test.beforeEach(async ({ page }) => {
   await mockFileApi(page);
+  await mockActivityApi(page, { status: { [ACTIVITY_ID]: "concluded" } });
 });
 
-const ACTIVITY_ID = "logica-de-programacao-com-python";
+const ACTIVITY_ID = "curadoria-1";
 const PAGE = `/file/${ACTIVITY_ID}/concluida`;
 
 async function savedFeedback(page: Page) {
