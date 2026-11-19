@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { BAND_CODES } from "../lib/descobrir";
 import { FIGMA_COUNTS, mockDiscoverApi } from "./discover-api";
+import { watchFrames } from "./frames";
 import { mockSuggestionsApi } from "./suggestions-api";
 import { mockTermsApi } from "./terms-api";
 
@@ -186,6 +187,8 @@ test("ao voltar de uma faixa, não mostra as contagens nem a tag de antes", asyn
   await band(page, "No meu ritmo").click();
   await expect(page).toHaveURL(/\/descobrir\/no-meu-ritmo$/);
   // Com cacheComponents o Next guarda o Descobrir escondido; na volta ele busca de novo.
+  // Nem por um quadro a contagem de antes pode aparecer.
+  const seen = await watchFrames(page, ["6 sugestões"]);
   const refetch = page.waitForRequest("**/api/discover");
   await page.goBack();
   await refetch;
@@ -199,6 +202,7 @@ test("ao voltar de uma faixa, não mostra as contagens nem a tag de antes", asyn
   await expect(band(page, "No meu ritmo")).toContainText("5 sugestões");
   await expect(band(page, "No meu ritmo")).toContainText("da última vez");
   await expect(page.getByText("da última vez")).toHaveCount(1);
+  expect(await seen()).toEqual([]);
 });
 
 test("no toque, a tag não pula de faixa enquanto o Descobrir está à vista", async ({ page }) => {
