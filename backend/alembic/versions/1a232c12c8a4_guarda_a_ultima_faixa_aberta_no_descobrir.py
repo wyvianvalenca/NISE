@@ -1,7 +1,7 @@
 """guarda a ultima faixa aberta no descobrir
 
 Revision ID: 1a232c12c8a4
-Revises: 3699229ffafe
+Revises: 5d1e8a7c2b90
 Create Date: 2026-11-19 10:00:00.000000
 
 """
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "1a232c12c8a4"
-down_revision: str | Sequence[str] | None = "3699229ffafe"
+down_revision: str | Sequence[str] | None = "5d1e8a7c2b90"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
