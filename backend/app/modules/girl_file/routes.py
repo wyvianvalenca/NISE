@@ -4,7 +4,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
-from app.modules.catalog.models import CuratedItem, EffortBand
+from app.modules.catalog.models import CuratedItem
 from app.modules.catalog.service import from_curated, is_suggestible
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
@@ -27,7 +27,7 @@ from app.modules.girl_file.service import (
     remove_choice,
     save_choice,
 )
-from app.modules.girls.models import Girl
+from app.modules.girls.models import EffortBand, Girl
 from app.modules.girls.service import get_girl_of_user
 from app.modules.girls.utils import today_in_maceio
 from app.modules.suggestions.service import (

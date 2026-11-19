@@ -4,8 +4,8 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
-from app.modules.catalog.models import EffortBand
 from app.modules.consents.permissions import AcceptedGirlDep
+from app.modules.girls.models import EffortBand
 from app.modules.girls.utils import today_in_maceio
 from app.modules.suggestions.schemas import (
     BandSuggestionsOut,
