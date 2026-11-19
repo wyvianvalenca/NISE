@@ -214,6 +214,35 @@ async def load_catalog(
     ]
 
 
+async def is_suggestible(
+    session: AsyncSession,
+    origin: ItemOrigin,
+    number: int,
+    girl_city: int | None,
+    today: date,
+) -> bool:
+    """O item existe e pode ser sugerido hoje a quem mora em `girl_city`.
+
+    As mesmas regras de `load_catalog`, para um item só. Serve para recusar a
+    escolha num item que ela não veria nas sugestões: desativado, vencido, ação
+    fechada ou passada, presencial de outra cidade (RF-F11.07, RN-16).
+    """
+    if origin is ItemOrigin.CURATED:
+        item = await session.scalar(select(CuratedItem).where(CuratedItem.id == number))
+        return (
+            item is not None
+            and curated_is_visible(item, today)
+            and reaches_city(item.format, item.city_ibge_code, girl_city)
+        )
+
+    action = await session.scalar(select(Action).where(Action.id == number))
+    return (
+        action is not None
+        and action_is_visible(action, today)
+        and reaches_city(action.format, action.city_ibge_code, girl_city)
+    )
+
+
 def apply_entry(item: CuratedItem, entry: CuratedItemIn) -> None:
     """Copia para o item o que está no arquivo da curadoria.
 

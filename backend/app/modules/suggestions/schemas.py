@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from app.modules.actions.models import ActionFormat
 from app.modules.catalog.models import EffortBand
 from app.modules.catalog.schemas import CatalogItem
 
@@ -49,3 +50,35 @@ class LastBandIn(BaseModel):
     """A faixa que ela acabou de abrir no Descobrir."""
 
     band: EffortBand
+
+
+class SuggestionCardOut(BaseModel):
+    """O que o card de uma sugestão mostra (A06·2, #102). O front lê em camelCase.
+
+    O formato e o custo vão como código e número; o texto da tela ("Online",
+    "Grátis", "R$ 20") é montado no front (frontend/lib/sugestoes.ts).
+    """
+
+    # "curadoria-12" ou "acao-7": é o id que a escolha usa (PUT /api/file/{id}).
+    id: str
+    # O selo do topo do card, ex.: "Curso online".
+    type_label: str = Field(serialization_alias="typeLabel")
+    title: str
+    source: str
+    format: ActionFormat
+    duration: str
+    # Em centavos; 0 é grátis e vazio é "não informado" (as ações não têm custo).
+    cost_cents: int | None = Field(serialization_alias="costCents")
+    # Vazia quando o item não tem idade mínima.
+    min_age: int | None = Field(serialization_alias="minAge")
+    # "Por que pra você" (RF-F11.04); vazio quando nenhuma regra explica.
+    why: str | None
+
+
+class BandSuggestionsOut(BaseModel):
+    """As sugestões de uma faixa, na ordem da #80, e o total do filé (A06·2)."""
+
+    band: EffortBand
+    # Para a pílula "Meu filé".
+    file_total: int = Field(serialization_alias="fileTotal")
+    items: list[SuggestionCardOut]

@@ -37,15 +37,17 @@ from app.modules.girl_file.models import (
     FileStatus,
     SimilarChoice,
 )
-from app.modules.girl_file.service import entry_item_id
+from app.modules.girl_file.service import entry_item_id, file_total
 from app.modules.girls.models import Girl, StudyStage, Topic
 from app.modules.girls.utils import TOPIC_LABELS, age_on
 from app.modules.suggestions.models import LastBand
 from app.modules.suggestions.schemas import (
     BandCountOut,
     BandSuggestions,
+    BandSuggestionsOut,
     DiscoverOut,
     Suggestion,
+    SuggestionCardOut,
 )
 
 # Quanto cada escolha sobe ou desce um item. "Sugestões parecidas" e os motivos
@@ -331,9 +333,7 @@ async def load_discover(
     A menina é sempre a da sessão (RNF-G.03). Devolve None quando a conta não
     tem registro de menina.
     """
-    girl = await session.scalar(
-        select(Girl).where(Girl.user_id == user_id).options(selectinload(Girl.topics))
-    )
+    girl = await get_girl_with_topics(session, user_id)
     if girl is None:
         return None
 
@@ -345,6 +345,55 @@ async def load_discover(
         first_name=first_name(girl.name),
         bands=[BandCountOut(code=band.band, count=band.count) for band in bands],
         last_band=last_band,
+    )
+
+
+async def get_girl_with_topics(session: AsyncSession, user_id: int) -> Girl | None:
+    """O registro da menina da sessão, com os temas que as regras usam."""
+    return await session.scalar(
+        select(Girl).where(Girl.user_id == user_id).options(selectinload(Girl.topics))
+    )
+
+
+# --- Sugestões de uma faixa (A06·2, #102) -------------------------------------
+
+
+def card_of(suggestion: Suggestion) -> SuggestionCardOut:
+    """Só o que o card mostra; o resto do item (link, descrição) fica no back."""
+    return SuggestionCardOut(
+        id=suggestion.id,
+        type_label=suggestion.type_label,
+        title=suggestion.title,
+        source=suggestion.source,
+        format=suggestion.format,
+        duration=suggestion.duration,
+        cost_cents=suggestion.cost_cents,
+        min_age=suggestion.min_age,
+        why=suggestion.why,
+    )
+
+
+async def load_band(
+    session: AsyncSession, user_id: int, band: EffortBand, today: date
+) -> BandSuggestionsOut | None:
+    """As sugestões de uma faixa, na ordem da #80, e o total do filé dela.
+
+    São as mesmas listas de `load_suggestions`, então a quantidade bate com a
+    contagem do Descobrir. Os itens que ela já escolheu não voltam.
+
+    A menina é sempre a da sessão (RNF-G.03). Devolve None quando a conta não
+    tem registro de menina.
+    """
+    girl = await get_girl_with_topics(session, user_id)
+    if girl is None:
+        return None
+
+    bands = await load_suggestions(session, girl, today)
+    items = next(found.items for found in bands if found.band is band)
+    return BandSuggestionsOut(
+        band=band,
+        file_total=await file_total(session, girl.id),
+        items=[card_of(item) for item in items],
     )
 
 
