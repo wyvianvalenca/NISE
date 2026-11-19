@@ -16,7 +16,6 @@ from app.modules.catalog.models import (
     CuratedItem,
     CuratedItemAudience,
     CuratedItemTopic,
-    EffortBand,
     ItemKind,
     ItemLevel,
     ItemOrigin,
@@ -27,6 +26,7 @@ from app.modules.catalog.utils import (
     CURATED_TYPE_LABELS,
     item_id,
 )
+from app.modules.girls.models import EffortBand
 from app.modules.groups.models import Group
 
 # A coordenadora não informa o nível de uma ação. As ações dos grupos são

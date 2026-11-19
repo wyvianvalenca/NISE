@@ -15,7 +15,7 @@ from httpx2 import Response
 from app.auth.utils import create_access_token
 from app.main import app
 from app.modules.actions.models import Action, ActionFormat, ActionVisibility
-from app.modules.catalog.models import CuratedItem, EffortBand
+from app.modules.catalog.models import CuratedItem
 from app.modules.girl_file.models import (
     DismissReason,
     FileEntry,
@@ -24,7 +24,7 @@ from app.modules.girl_file.models import (
 )
 from app.modules.girl_file.schemas import Choice
 from app.modules.girl_file.service import CHOICE_STATUS, IN_FILE
-from app.modules.girls.models import Girl
+from app.modules.girls.models import EffortBand, Girl
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 from tests.test_discover_routes import ARAPIRACA, MACEIO, acao, curado, menina, usuaria
