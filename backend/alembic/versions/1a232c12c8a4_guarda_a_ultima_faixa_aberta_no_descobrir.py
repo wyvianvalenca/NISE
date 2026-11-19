@@ -33,30 +33,10 @@ effort_band = postgresql.ENUM(
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.create_table(
-        "last_bands",
-        sa.Column("girl_id", sa.Integer(), nullable=False),
-        sa.Column("band", effort_band, nullable=False),
-        sa.Column(
-            "updated_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["girl_id"], ["girls.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("girl_id"),
-    )
+    op.add_column("girls", sa.Column("last_band", effort_band, nullable=True))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # O tipo effortband fica: curated_items ainda usa.
-    op.drop_table("last_bands")
+    op.drop_column("girls", "last_band")

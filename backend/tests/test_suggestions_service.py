@@ -20,7 +20,6 @@ from app.modules.catalog.models import (
     CuratedItem,
     CuratedItemTopic,
     CuratedType,
-    EffortBand,
     ItemKind,
     ItemLevel,
     ItemOrigin,
@@ -33,7 +32,7 @@ from app.modules.girl_file.models import (
     FileStatus,
     SimilarChoice,
 )
-from app.modules.girls.models import Girl, GirlTopic, StudyStage, Topic
+from app.modules.girls.models import EffortBand, Girl, GirlTopic, StudyStage, Topic
 from app.modules.suggestions.service import (
     GirlProfile,
     PastChoice,

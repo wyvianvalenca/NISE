@@ -4,9 +4,9 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.modules.catalog.models import EffortBand, ItemKind
+from app.modules.catalog.models import ItemKind
 from app.modules.girl_file.models import DismissReason
-from app.modules.girls.models import Topic
+from app.modules.girls.models import EffortBand, Topic
 
 
 class Choice(enum.Enum):

@@ -6,12 +6,11 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validat
 from app.modules.actions.models import ActionFormat
 from app.modules.catalog.models import (
     CuratedType,
-    EffortBand,
     ItemKind,
     ItemLevel,
     ItemOrigin,
 )
-from app.modules.girls.models import StudyStage, Topic
+from app.modules.girls.models import EffortBand, StudyStage, Topic
 
 
 class EventInfo(BaseModel):

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
 from app.modules.actions.models import ActionFormat
-from app.modules.girls.models import StudyStage, Topic
+from app.modules.girls.models import EffortBand, StudyStage, Topic
 
 
 class ItemOrigin(enum.Enum):
@@ -25,19 +25,6 @@ class ItemKind(enum.Enum):
 
     ACTIVITY = "atividade"
     EVENT = "evento"
-
-
-class EffortBand(enum.Enum):
-    """As 5 faixas de esforço, na ordem da tela Descobrir (RF-F10.03).
-
-    Os valores são os mesmos de `BAND_CODES` no front (frontend/lib/descobrir.ts).
-    """
-
-    PRIMEIROS_PASSOS = "primeiros-passos"  # até 15 min
-    UMA_TARDE = "uma-tarde"  # até 1 dia, sozinha
-    NO_MEU_RITMO = "no-meu-ritmo"  # vários dias, sozinha
-    ROLE_COM_A_GALERA = "role-com-a-galera"  # até 1 dia, em grupo
-    GRANDE_DESAFIO = "grande-desafio"  # em grupo, mais tempo
 
 
 class ItemLevel(enum.Enum):

@@ -15,10 +15,10 @@ from httpx2 import Response
 from app.auth.utils import create_access_token
 from app.main import app
 from app.modules.actions.models import Action, ActionFormat
-from app.modules.catalog.models import CuratedItem, CuratedType, EffortBand, ItemKind
+from app.modules.catalog.models import CuratedItem, CuratedType, ItemKind
 from app.modules.girl_file.models import FileEntry, FileStatus
 from app.modules.girl_file.service import later_details_line
-from app.modules.girls.models import Girl
+from app.modules.girls.models import EffortBand, Girl
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 from tests.test_discover_routes import (
