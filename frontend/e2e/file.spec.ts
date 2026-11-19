@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { FileSection, ThemeCode } from "../lib/file";
 import { mockDiscoverApi } from "./discover-api";
 import { type MockFileItem, mockFileApi } from "./file-api";
+import { mockTermsApi } from "./terms-api";
 
 // #115 e #117 · A06·3 Seu filé, pela rota GET /api/file (#116), simulada em file-api.ts.
 // Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
@@ -248,6 +249,9 @@ test("sem sessão, volta para o início", async ({ page }) => {
 });
 
 test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
   await openWith(page, { failure: "terms_not_accepted" });
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
