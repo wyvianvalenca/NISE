@@ -11,6 +11,7 @@ from app.config import settings
 from app.db.base import Base
 from app.modules.actions.models import Action, Participation  # noqa: F401
 from app.modules.answers.models import Answer  # noqa: F401
+from app.modules.catalog.models import CuratedItem  # noqa: F401
 from app.modules.cities.models import City  # noqa: F401
 from app.modules.consents.models import TermsAcceptance  # noqa: F401
 from app.modules.girls.models import Girl, GirlTopic  # noqa: F401
