@@ -58,6 +58,18 @@ def test_avaliacao_e_parecidas_so_numa_atividade_concluida() -> None:
     )
 
 
+def test_dia_da_conclusao_so_numa_atividade_concluida() -> None:
+    # "Marcar como concluída" guarda o dia (#119); nas outras seções fica vazio.
+    checks = {
+        getattr(constraint, "name", None): str(getattr(constraint, "sqltext", ""))
+        for constraint in TABLE.constraints
+    }
+
+    assert checks["ck_file_entries_concluded_on_only_when_concluded"] == (
+        "status = 'CONCLUDED' OR concluded_on IS NULL"
+    )
+
+
 def test_item_da_curadoria_vai_na_coluna_da_curadoria() -> None:
     entry = new_entry(3, ItemOrigin.CURATED, 12, FileStatus.NEXT)
 
@@ -131,4 +143,5 @@ def test_nenhum_dado_pessoal_nem_link_no_file() -> None:
         "dismiss_reason",
         "rating",
         "similar_choice",
+        "concluded_on",
     }

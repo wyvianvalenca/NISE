@@ -236,6 +236,7 @@ async def test_trocar_uma_atividade_concluida_apaga_a_avaliacao() -> None:
         status=FileStatus.CONCLUDED,
         rating=5,
         similar_choice=SimilarChoice.MAIS_AVANCADO,
+        concluded_on=date(2026, 11, 1),
     )
     sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha)
 
@@ -245,6 +246,8 @@ async def test_trocar_uma_atividade_concluida_apaga_a_avaliacao() -> None:
     assert linha.status is FileStatus.LATER
     assert linha.rating is None
     assert linha.similar_choice is None
+    # O dia da conclusão também só vale no concluído (#119).
+    assert linha.concluded_on is None
 
 
 # --- Permissões (RNF-G.03) ----------------------------------------------------

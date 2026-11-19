@@ -4,20 +4,37 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
-from app.modules.catalog.models import EffortBand
-from app.modules.catalog.service import is_suggestible
+from app.modules.catalog.models import CuratedItem, EffortBand
+from app.modules.catalog.service import from_curated, is_suggestible
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
-from app.modules.girl_file.schemas import ChoiceIn, ChoiceOut, FileOut, LaterOut
+from app.modules.girl_file.models import FileEntry
+from app.modules.girl_file.schemas import (
+    ActivityOut,
+    ChoiceIn,
+    ChoiceOut,
+    FileOut,
+    LaterOut,
+    StatusIn,
+)
 from app.modules.girl_file.service import (
+    activity_out,
+    advance_status,
     file_total,
+    find_activity,
     load_file,
     load_later,
     remove_choice,
     save_choice,
 )
+from app.modules.girls.models import Girl
 from app.modules.girls.service import get_girl_of_user
 from app.modules.girls.utils import today_in_maceio
+from app.modules.suggestions.service import (
+    get_girl_with_topics,
+    profile_of,
+    why_for_you,
+)
 
 router = APIRouter(prefix="/file", tags=["File"])
 
@@ -108,16 +125,24 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
             ' O id não é de um item do catálogo: {"error": "item_not_found"}'
         )
     },
+    status.HTTP_409_CONFLICT: {
+        "description": (
+            "Uma atividade concluída não sai do filé:"
+            ' {"error": "concluded_cannot_be_removed"}'
+        )
+    },
 }
 
 
 # A06·2 · "Desfazer" (#106, RF-F10.05): apaga a escolha dela sobre um item, com
 # o motivo do "Não é pra mim", e o item volta a poder ser sugerido. Responde o
-# novo total do filé, para a pílula "Meu filé".
+# novo total do filé, para a pílula "Meu filé". É também o "Remover" do Ver
+# depois e o "Tirar do filé" de uma atividade próxima ou em andamento (#119).
 #
 # Não confere se o item ainda aparece nas sugestões: uma ação que fechou entre a
 # escolha e o "Desfazer" também precisa ser desfeita. Um item sem escolha dela
 # responde 200 sem mudar nada, então chamar duas vezes dá o mesmo resultado.
+# Uma atividade concluída não sai do filé: responde 409 (tabela de status da #78).
 # A menina é sempre a da sessão; a linha de outra menina nunca é achada (RNF-G.03).
 @router.delete("/{item_id}", response_model=ChoiceOut, responses=UNDO_RESPONSES)
 async def undo_choice(
@@ -132,8 +157,96 @@ async def undo_choice(
         return not_found("item_not_found")
     origin, number = parsed
 
-    await remove_choice(session, girl.id, origin, number)
+    if not await remove_choice(session, girl.id, origin, number):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"error": "concluded_cannot_be_removed"},
+        )
     return ChoiceOut(file_total=await file_total(session, girl.id))
+
+
+ACTIVITY_RESPONSES: dict[int | str, dict[str, Any]] = {
+    status.HTTP_403_FORBIDDEN: RESPONSES[status.HTTP_403_FORBIDDEN],
+    status.HTTP_404_NOT_FOUND: {
+        "description": (
+            'A conta não tem registro de menina: {"error": "profile_not_found"}.'
+            " O item não é uma atividade do filé dela (sem escolha, no Ver"
+            ' depois, no "Não é pra mim" ou um evento): {"error": "item_not_found"}'
+        )
+    },
+}
+
+
+def activity_of(entry: FileEntry, item: CuratedItem, girl: Girl) -> ActivityOut:
+    """O detalhe, com o "Por que pra você" pelas mesmas regras das sugestões.
+
+    A menina precisa de topics carregados (get_girl_with_topics).
+    """
+    profile = profile_of(girl, today_in_maceio())
+    why = why_for_you(from_curated(item), profile)
+    return activity_out(entry, item, why, girl.name)
+
+
+# A06·4a · Atividade (#119, RF-F10.08, RF-F11.04): o detalhe de uma atividade
+# do filé dela, com a seção em que está (que decide os botões) e o "Por que pra
+# você". Um item que saiu das sugestões (vencido, desativado) continua abrindo,
+# porque continua no filé.
+#
+# `item_id` é o id do catálogo, "curadoria-12". A menina é sempre a da sessão: a
+# linha de outra menina nunca é achada, e responde 404 (RNF-G.03).
+@router.get("/{item_id}", response_model=ActivityOut, responses=ACTIVITY_RESPONSES)
+async def activity_detail(
+    item_id: str, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ActivityOut | JSONResponse:
+    girl = await get_girl_with_topics(session, user.id)
+    if girl is None:
+        return not_found("profile_not_found")
+
+    found = await find_activity(session, girl.id, item_id)
+    if found is None:
+        return not_found("item_not_found")
+    entry, item = found
+
+    return activity_of(entry, item, girl)
+
+
+# A06·4a · "Marcar como iniciada" e "Marcar como concluída" (#119). A atividade
+# anda uma seção por vez: da próxima para em andamento, e de em andamento para
+# concluída, que guarda o dia. Outro salto responde 409. Responde o detalhe já
+# com a seção nova, para a tela trocar o selo e os botões.
+#
+# A menina é sempre a da sessão: ela só muda o próprio filé (RNF-G.03).
+@router.put(
+    "/{item_id}/status",
+    response_model=ActivityOut,
+    responses={
+        **ACTIVITY_RESPONSES,
+        status.HTTP_409_CONFLICT: {
+            "description": (
+                "Não é o próximo passo da atividade (ex.: da próxima direto para"
+                ' concluída): {"error": "invalid_status_change"}'
+            )
+        },
+    },
+)
+async def change_status(
+    item_id: str, data: StatusIn, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ActivityOut | JSONResponse:
+    girl = await get_girl_with_topics(session, user.id)
+    if girl is None:
+        return not_found("profile_not_found")
+
+    found = await find_activity(session, girl.id, item_id)
+    if found is None:
+        return not_found("item_not_found")
+    entry, item = found
+
+    if not await advance_status(session, entry, data.status, today_in_maceio()):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"error": "invalid_status_change"},
+        )
+    return activity_of(entry, item, girl)
 
 
 # O Ver depois fica em /api/later, fora de /api/file, para não disputar o

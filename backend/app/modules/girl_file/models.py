@@ -1,4 +1,5 @@
 import enum
+from datetime import date
 
 from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -82,6 +83,10 @@ class FileEntry(TimestampMixin, Base):
             "status = 'CONCLUDED' OR (rating IS NULL AND similar_choice IS NULL)",
             name="ck_file_entries_feedback_only_when_concluded",
         ),
+        CheckConstraint(
+            "status = 'CONCLUDED' OR concluded_on IS NULL",
+            name="ck_file_entries_concluded_on_only_when_concluded",
+        ),
     )
 
     girl_id: Mapped[int] = mapped_column(
@@ -102,3 +107,6 @@ class FileEntry(TimestampMixin, Base):
     # Quem grava é a rota da #125; as sugestões (#80) leem as duas.
     rating: Mapped[int | None] = mapped_column()
     similar_choice: Mapped[SimilarChoice | None] = mapped_column()
+    # O dia em que ela tocou "Marcar como concluída" (A06·4a, #119), no fuso de
+    # Maceió. Só numa atividade concluída.
+    concluded_on: Mapped[date | None] = mapped_column()

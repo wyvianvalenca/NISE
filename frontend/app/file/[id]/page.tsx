@@ -1,17 +1,17 @@
 "use client";
 
 // A06·4a · Atividade: o detalhe de uma atividade do filé e os botões de status.
-// Atende RF-F10.08 e RF-F11.04 (issues #119 e #120). Usa os dados de teste de lib/atividade.ts.
+// Atende RF-F10.08 e RF-F11.04 (issues #119 e #120), pelas rotas GET /api/file/{id},
+// PUT /api/file/{id}/status e DELETE /api/file/{id} (integração na #122).
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Notice } from "@/components/Notice";
 import { Tag } from "@/components/Tag";
 import {
-  getActivity,
   removeActivity,
   setActivityStatus,
   type ActivityDetail,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/atividade";
 import { BANDS } from "@/lib/descobrir";
 import styles from "./atividade.module.css";
+import { useActivity } from "./useActivity";
 
 const FILE_PATH = "/file";
 
@@ -54,22 +55,20 @@ function Loading() {
 
 function ActivityLoader() {
   const { id } = useParams<{ id: string }>();
-  // undefined: carregando. null: não está no filé.
-  const [activity, setActivity] = useState<ActivityDetail | null | undefined>(undefined);
+  const { result, redirecting, update, retry } = useActivity(id);
 
-  useEffect(() => {
-    let current = true;
-    getActivity(id).then((result) => {
-      if (current) setActivity(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [id]);
-
-  if (activity === undefined) return <Loading />;
-  if (activity === null) return <p className={styles.status}>Essa atividade não está no seu filé.</p>;
-  return <Detail activity={activity} onChange={setActivity} />;
+  // Sem sessão ou sem o aceite dos termos, o hook já leva para a tela certa.
+  if (!result || redirecting) return <Loading />;
+  if (result.ok) return <Detail activity={result.data} onChange={update} />;
+  if (result.reason === "not_found") {
+    return <p className={styles.status}>Essa atividade não está no seu filé.</p>;
+  }
+  return (
+    <div role="alert">
+      <p className={styles.status}>Não foi possível carregar. Sua conexão pode ter sido interrompida.</p>
+      <Button onClick={retry}>Tentar novamente</Button>
+    </div>
+  );
 }
 
 const STATUS_LABELS: Record<ActivityStatus, string> = {
@@ -90,7 +89,7 @@ function Detail({ activity, onChange }: DetailProps) {
   const [error, setError] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
-  const site = activity.kindCode === "course" ? "site do curso" : "site";
+  const site = activity.isCourse ? "site do curso" : "site";
   const siteLabel = {
     next: `Ir pro ${site}`,
     in_progress: `Continuar no ${site}`,
@@ -156,7 +155,8 @@ function Detail({ activity, onChange }: DetailProps) {
 
       <p className={styles.topic}>
         <span className={styles.dot} aria-hidden="true" />
-        {activity.topic} · {BANDS[activity.band].title}
+        {/* Um item sem tema mostra só a faixa. */}
+        {[activity.topic, BANDS[activity.band].title].filter(Boolean).join(" · ")}
       </p>
       <h1 ref={titleRef} tabIndex={-1} className={styles.title}>
         {activity.title}
