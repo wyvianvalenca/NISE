@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LinkButton } from "@/components/Button";
 import { Icon, type IconName } from "@/components/Icon";
 import { LoadFailed } from "@/components/LoadFailed";
@@ -86,6 +86,18 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
   const [reasonOpen, setReasonOpen] = useState(false);
   // O fim da faixa só puxa o foco quando ela chega lá escolhendo, não quando a página já abre nele.
   const [decided, setDecided] = useState(false);
+
+  // Cada volta à faixa começa do zero: sem o aviso "Desfazer" nem o motivo aberto de antes.
+  // Com cacheComponents, o Next esconde a tela (Activity) em vez de desmontá-la, e a limpeza
+  // de um useLayoutEffect roda nessa hora. A lista e a posição, quem zera é o
+  // useSuggestionDeck, quando o useLongWait descarta os dados.
+  useLayoutEffect(() => {
+    return () => {
+      setNotice(null);
+      setReasonOpen(false);
+      setDecided(false);
+    };
+  }, []);
 
   // Depois de desfazer, o foco vai para o contador, que lê "Sugestão N de M: <título>".
   const counterRef = useRef<HTMLParagraphElement>(null);
