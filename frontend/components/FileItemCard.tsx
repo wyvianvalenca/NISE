@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icon } from "./Icon";
-import { THEMES, formatDeadline, itemIcon, itemPath, type FileItem } from "@/lib/file";
+import { formatDeadline, itemIcon, itemPath, themeOf, type FileItem } from "@/lib/file";
 import styles from "./FileItemCard.module.css";
 
 // Ação de cada status (Figma A06·3): "Continuar" no que está em andamento,
@@ -13,7 +13,9 @@ const ACTIONS = {
 
 /** Item do filé (Figma: Item / ..., A06·3). */
 export function FileItemCard({ item }: { item: FileItem }) {
-  const theme = THEMES[item.theme];
+  const theme = themeOf(item.theme);
+  // Sem tema, o selo mostra só o tipo.
+  const meta = theme.label ? `${theme.label} · ${item.type}` : item.type;
   const inProgress = item.status === "em-andamento";
 
   return (
@@ -24,7 +26,7 @@ export function FileItemCard({ item }: { item: FileItem }) {
       <div className={styles.text}>
         <p className={styles.meta}>
           <span className={styles.dot} style={{ background: theme.color }} aria-hidden="true" />
-          {theme.label} · {item.type}
+          {meta}
         </p>
         <h3 className={styles.title}>{item.title}</h3>
         <p className={styles.details}>{item.details}</p>

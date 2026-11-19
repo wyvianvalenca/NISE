@@ -1,10 +1,11 @@
 // Tela Seu filé (A06·3): o filé da menina e as três seções (#114, #115).
 //
-// TEMPORÁRIO: getFile() usa dados de teste. Os tipos seguem a rota descrita na
-// issue #114 e serão trocados pelos tipos gerados do OpenAPI quando ela existir.
-// Os dados são fictícios; nada sai do navegador.
+// A rota é GET /api/file (#116). Os tipos abaixo são escritos à mão, iguais ao
+// OpenAPI do back (/docs no FastAPI), como em lib/descobrir.ts: a equipe decidiu
+// não ter um gerador de tipos por enquanto.
 
 import type { IconName } from "@/components/Icon";
+import { errorCode, sessionProblem, type SessionProblem } from "./signup-api";
 
 /** Status de um item no filé (tabela "Status of an item in the filé" da #78). */
 export type FileStatus = "em-andamento" | "proxima" | "concluido";
@@ -20,10 +21,51 @@ export type ThemeCode =
   | "sites"
   | "design";
 
+// ---------------------------------------------------------------------------
+// O que o back devolve
+
+/** A seção como o back manda (FileSection). */
+export type FileSection = "in_progress" | "next" | "concluded";
+
+/** Um item como o back manda (FileItemOut). */
+export type FileItemResponse = {
+  /** "curadoria-12" ou "acao-7". */
+  id: string;
+  /** Tema que dá a cor; null quando o item não tem tema. */
+  theme: ThemeCode | null;
+  /** Tipo, já escrito para a tela, ex.: "Curso online", "Hackathon". */
+  typeLabel: string;
+  title: string;
+  /** Linha de detalhes, ex.: "Online · ~10 horas" ou "Presencial · Maceió". */
+  details: string;
+  /** Fim das inscrições (AAAA-MM-DD), só nos eventos que têm prazo. */
+  deadline: string | null;
+};
+
+/** Uma seção como o back manda (FileGroupOut). */
+export type FileGroupResponse = { count: number; items: FileItemResponse[] };
+
+/** Um quadradinho do desenho como o back manda (FileSquareOut). */
+export type FileSquareResponse = { theme: ThemeCode | null; section: FileSection };
+
+/** A resposta de GET /api/file (FileOut). Sem porcentagem nem comparação (RN-28). */
+export type FileResponse = {
+  /** Primeiro nome dela, para o avatar. É o da sessão. */
+  firstName: string;
+  inProgress: FileGroupResponse;
+  next: FileGroupResponse;
+  concluded: FileGroupResponse;
+  /** Os quadradinhos na ordem em que ocupam o desenho: concluídos, em andamento e próximas, agrupados por tema. */
+  squares: FileSquareResponse[];
+};
+
+// ---------------------------------------------------------------------------
+// O que a tela usa
+
 export type FileItem = {
   id: string;
   title: string;
-  theme: ThemeCode;
+  theme: ThemeCode | null;
   /** Tipo do item, já escrito para a tela, ex.: "Curso online", "Hackathon". */
   type: string;
   /** Linha de detalhes, ex.: "Online · ~10 h". */
@@ -33,14 +75,79 @@ export type FileItem = {
   status: FileStatus;
 };
 
+/** Um quadradinho do desenho: o tema dá a cor e o status, a forma. */
+export type FileSquareData = { theme: ThemeCode | null; status: FileStatus };
+
 export type FileData = {
-  /** Primeira letra do avatar. Virá da sessão. */
+  /** Primeira letra do avatar. */
   firstName: string;
   /** Itens agrupados pelo status, na ordem em que o back devolve. */
   inProgress: FileItem[];
   next: FileItem[];
   done: FileItem[];
+  /** Os quadradinhos do desenho, na ordem do back. */
+  squares: FileSquareData[];
 };
+
+const STATUS_OF: Record<FileSection, FileStatus> = {
+  in_progress: "em-andamento",
+  next: "proxima",
+  concluded: "concluido",
+};
+
+function toItem(item: FileItemResponse, section: FileSection): FileItem {
+  return {
+    id: item.id,
+    title: item.title,
+    theme: item.theme,
+    type: item.typeLabel,
+    details: item.details,
+    deadline: item.deadline ?? undefined,
+    status: STATUS_OF[section],
+  };
+}
+
+/** Passa a resposta do back para o formato da tela. */
+export function toFileData(response: FileResponse): FileData {
+  return {
+    firstName: response.firstName,
+    inProgress: response.inProgress.items.map((item) => toItem(item, "in_progress")),
+    next: response.next.items.map((item) => toItem(item, "next")),
+    done: response.concluded.items.map((item) => toItem(item, "concluded")),
+    squares: response.squares.map((square) => ({ theme: square.theme, status: STATUS_OF[square.section] })),
+  };
+}
+
+export type FileResult =
+  | { ok: true; data: FileData }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+/**
+ * O filé dela nas três seções, com os quadradinhos do desenho (#116). Quem
+ * decide em que seção cada item fica é o back, pelo status que os botões das
+ * outras telas gravam (tabela de status da #78).
+ */
+export async function getFile(signal?: AbortSignal): Promise<FileResult> {
+  const response = await fetch("/api/file", { signal });
+
+  if (response.ok) {
+    return { ok: true, data: toFileData((await response.json()) as FileResponse) };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // O filé vem depois do aceite dos termos: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+// ---------------------------------------------------------------------------
+// Temas
 
 export type ThemeInfo = {
   label: string;
@@ -86,10 +193,18 @@ export const THEMES: Record<ThemeCode, ThemeInfo> = {
   design: { label: "Design e criação", ...NEUTRAL },
 };
 
+/** Um item sem tema (uma ação de grupo sem tags) usa a cor neutra e não mostra o nome do tema. */
+const NO_THEME: ThemeInfo = { label: "", ...NEUTRAL };
+
+/** As cores e o nome do tema; um item sem tema usa a cor neutra. */
+export function themeOf(code: ThemeCode | null): ThemeInfo {
+  return code ? THEMES[code] : NO_THEME;
+}
+
 /** Ícone do item: o do tema, com exceção de tipos que têm ícone próprio no Figma. */
 export function itemIcon(item: FileItem): IconName {
   if (item.type === "Hackathon") return "rocket-sm";
-  return THEMES[item.theme].icon;
+  return themeOf(item.theme).icon;
 }
 
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -105,105 +220,6 @@ export function itemPath(id: string): string {
   return `/file/${id}`;
 }
 
-// Os testes e2e trocam os dados definindo __NISE_MOCK_FILE__ antes da página abrir.
-declare global {
-  var __NISE_MOCK_FILE__:
-    | {
-        items?: FileItem[];
-        /** Atraso da resposta, em ms, para testar o carregamento. */
-        delayMs?: number;
-      }
-    | undefined;
-}
-
-// Os itens do Figma (A06·3).
-const MOCK_ITEMS: FileItem[] = [
-  {
-    id: "logica-de-programacao-com-python",
-    title: "Lógica de programação com Python",
-    theme: "programacao",
-    type: "Curso online",
-    details: "Online · ~10 h",
-    status: "em-andamento",
-  },
-  {
-    id: "hackathon-meninas-na-tecnologia",
-    title: "Hackathon Meninas na Tecnologia",
-    theme: "programacao",
-    type: "Hackathon",
-    details: "Presencial · Maceió",
-    deadline: "2027-10-30",
-    status: "proxima",
-  },
-  {
-    id: "comunidade-de-robotica-no-discord",
-    title: "Comunidade de robótica no Discord",
-    theme: "robotica",
-    type: "Comunidade",
-    details: "Online · contínuo",
-    status: "proxima",
-  },
-  {
-    id: "ia-para-iniciantes",
-    title: "IA para iniciantes",
-    theme: "ia",
-    type: "Curso online",
-    details: "Online · ~6 h",
-    status: "proxima",
-  },
-  {
-    id: "oficina-de-scratch",
-    title: "Oficina de Scratch",
-    theme: "programacao",
-    type: "Oficina",
-    details: "Presencial · Maceió",
-    status: "concluido",
-  },
-  {
-    id: "como-funciona-um-robo",
-    title: "Como funciona um robô",
-    theme: "robotica",
-    type: "Vídeo",
-    details: "Online · ~15 min",
-    status: "concluido",
-  },
-  {
-    id: "quiz-ia-no-dia-a-dia",
-    title: "Quiz: IA no dia a dia",
-    theme: "ia",
-    type: "Quiz",
-    details: "Online · ~10 min",
-    status: "concluido",
-  },
-];
-
-/**
- * Her filé in three groups, by status (#114).
- *
- * Outside production, `?empty` on the URL returns no activity, so the empty A06·3
- * can be opened from the address bar. Guarded because this reads the real URL: once
- * the test data here is replaced by the API, an unguarded flag would let anyone
- * blank out their own filé.
- */
-export async function getFile(): Promise<FileData> {
-  const mock = globalThis.__NISE_MOCK_FILE__ ?? {};
-  if (mock.delayMs) {
-    await new Promise((resolve) => setTimeout(resolve, mock.delayMs));
-  }
-  const emptyByQuery =
-    process.env.NODE_ENV !== "production" &&
-    typeof location !== "undefined" &&
-    new URLSearchParams(location.search).has("empty");
-  const items = emptyByQuery ? [] : (mock.items ?? MOCK_ITEMS);
-  const byStatus = (status: FileStatus) => items.filter((item) => item.status === status);
-  return {
-    firstName: "Alana",
-    inProgress: byStatus("em-andamento"),
-    next: byStatus("proxima"),
-    done: byStatus("concluido"),
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Desenho do filé
 
@@ -214,9 +230,10 @@ export type Cell = readonly [number, number];
 export const START_CELL: Cell = [3, 3];
 
 /**
- * As 14 casas em volta do centro, na ordem em que vão sendo ocupadas: concluídos
- * primeiro, depois em andamento, depois próximas. Com os itens do Figma, cada
- * quadradinho cai no mesmo lugar do Figma (A06·3).
+ * As 14 casas em volta do centro, na ordem em que vão sendo ocupadas. O back
+ * manda os quadradinhos já na ordem: concluídos primeiro, depois em andamento,
+ * depois próximas. Com os itens do Figma, cada quadradinho cai no mesmo lugar
+ * do Figma (A06·3).
  */
 export const FILE_CELLS: readonly Cell[] = [
   [3, 2],
@@ -238,15 +255,14 @@ export const FILE_CELLS: readonly Cell[] = [
 export type FileSquare = {
   cell: Cell;
   /** null é casa vazia (tracejada). */
-  item: FileItem | null;
+  square: FileSquareData | null;
 };
 
 /**
- * Coloca os itens nas casas do desenho. O filé tem 14 casas; se ela tiver mais
- * itens, os que sobram não aparecem no desenho (só nas listas) até o design
- * definir como o filé cresce.
+ * Coloca os quadradinhos do back nas casas do desenho. O filé tem 14 casas; se
+ * ela tiver mais itens, os que sobram não aparecem no desenho (só nas listas)
+ * até o design definir como o filé cresce.
  */
 export function fileSquares(data: FileData): FileSquare[] {
-  const items = [...data.done, ...data.inProgress, ...data.next];
-  return FILE_CELLS.map((cell, index) => ({ cell, item: items[index] ?? null }));
+  return FILE_CELLS.map((cell, index) => ({ cell, square: data.squares[index] ?? null }));
 }

@@ -1,9 +1,11 @@
 import enum
+from datetime import date
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from app.modules.girl_file.models import DismissReason
+from app.modules.girls.models import Topic
 
 
 class Choice(enum.Enum):
@@ -38,3 +40,67 @@ class ChoiceOut(BaseModel):
     """A resposta da escolha: o novo total do filé, para a pílula "Meu filé"."""
 
     file_total: int = Field(serialization_alias="fileTotal")
+
+
+# --- Seu filé (A06·3, #114) ---------------------------------------------------
+
+
+class FileSection(enum.Enum):
+    """As três seções do filé, na ordem da tela (RF-F10.07).
+
+    "Próximas aventuras" é `NEXT`. Um evento em que ela se inscreveu
+    (`FileStatus.SIGNED_UP`) também fica nela, porque ainda vai acontecer.
+    """
+
+    IN_PROGRESS = "in_progress"  # "Em andamento"
+    NEXT = "next"  # "Próximas aventuras"
+    CONCLUDED = "concluded"  # "Concluídos"
+
+
+class FileItemOut(BaseModel):
+    """Um item de uma seção do filé (A06·3). O front lê em camelCase."""
+
+    # "curadoria-12" ou "acao-7": o id do catálogo, que "Continuar" e "Abrir" usam.
+    id: str
+    # O tema que dá a cor ao quadradinho e à bolinha do item. Vazio quando o
+    # item não tem tema; o front usa uma cor neutra.
+    theme: Topic | None
+    # O tipo como aparece na tela, ex.: "Curso online", "Hackathon".
+    type_label: str = Field(serialization_alias="typeLabel")
+    title: str
+    # A linha de detalhes, já escrita para a tela: "Online · ~10 horas" ou
+    # "Presencial · Maceió".
+    details: str
+    # O último dia de inscrição, só nos eventos que informam um prazo.
+    deadline: date | None
+
+
+class FileGroupOut(BaseModel):
+    """Uma seção do filé: o contador e os itens, na ordem em que entraram."""
+
+    count: int
+    items: list[FileItemOut]
+
+
+class FileSquareOut(BaseModel):
+    """Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma."""
+
+    theme: Topic | None
+    section: FileSection
+
+
+class FileOut(BaseModel):
+    """A tela Seu filé (A06·3, #114). O front lê em camelCase (FileData).
+
+    Não há porcentagem, barra de progresso nem nada que compare meninas (RN-28):
+    só os contadores das seções dela.
+    """
+
+    # Para o avatar. É o nome dela mesma, a da sessão.
+    first_name: str = Field(serialization_alias="firstName")
+    in_progress: FileGroupOut = Field(serialization_alias="inProgress")
+    next: FileGroupOut
+    concluded: FileGroupOut
+    # Os quadradinhos do desenho, na ordem em que ocupam o filé: concluídos,
+    # em andamento e próximas, e em cada seção agrupados por tema (RF-F10.07).
+    squares: list[FileSquareOut]

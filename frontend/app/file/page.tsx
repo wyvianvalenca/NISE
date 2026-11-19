@@ -1,10 +1,11 @@
 "use client";
 
 // A06·3 · Seu filé: o desenho do filé e as seções "Em andamento", "Próximas aventuras"
-// e "Concluídos". Atende RF-F10.07 e RN-28 (issues #114 e #115).
-// Usa os dados de teste de lib/file.ts até a rota da #114 existir.
+// e "Concluídos". Atende RF-F10.07 e RN-28 (issues #114 e #115), pela rota
+// GET /api/file da #116 (integração na #117).
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
@@ -13,21 +14,52 @@ import { FileDrawing } from "@/components/FileDrawing";
 import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
-import { getFile, type FileData, type FileItem } from "@/lib/file";
+import { LoadFailed } from "@/components/LoadFailed";
+import { getFile, type FileData, type FileItem, type FileResult } from "@/lib/file";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
+/** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
+function redirectFor(result: FileResult | null): string | null {
+  if (!result || result.ok) return null;
+  if (result.reason === "terms_not_accepted") return SIGNUP_PATHS.terms;
+  if (result.reason === "failed") return null;
+  return WITHOUT_SESSION[result.reason];
+}
+
 export default function FilePage() {
-  const [data, setData] = useState<FileData | null>(null);
+  const router = useRouter();
+  const [result, setResult] = useState<FileResult | null>(null);
+  // Muda a cada "Tentar novamente", para buscar de novo.
+  const [attempt, setAttempt] = useState(0);
+  const redirect = redirectFor(result);
 
   useEffect(() => {
-    let current = true;
-    getFile().then((result) => {
-      if (current) setData(result);
+    const controller = new AbortController();
+    getFile(controller.signal).then(setResult, () => {
+      // Sem conexão, a busca falha. Sair da tela também a cancela, mas isso não é uma falha.
+      if (!controller.signal.aborted) setResult({ ok: false, reason: "failed" });
     });
-    return () => {
-      current = false;
-    };
-  }, []);
+    return () => controller.abort();
+  }, [attempt]);
+
+  useEffect(() => {
+    if (redirect) router.replace(redirect);
+  }, [redirect, router]);
+
+  if (result && !result.ok && result.reason === "failed") {
+    return (
+      <LoadFailed
+        onRetry={() => {
+          setResult(null);
+          setAttempt(attempt + 1);
+        }}
+      />
+    );
+  }
+
+  const data = result?.ok ? result.data : null;
 
   return (
     <div className={styles.page}>
@@ -45,7 +77,8 @@ export default function FilePage() {
           {data ? (
             <File data={data} />
           ) : (
-            // Provisório: a tela de carregamento (E03) é da issue #81 e entra aqui quando existir.
+            // A E03 ("Tecendo seu filé…", #81) fala das sugestões sendo montadas; o filé
+            // só lê o que ela já escolheu, então a espera aqui é só este aviso.
             <p className={styles.status} aria-live="polite">
               Carregando…
             </p>

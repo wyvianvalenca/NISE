@@ -39,7 +39,7 @@ from app.modules.girl_file.models import (
 )
 from app.modules.girl_file.service import entry_item_id, file_total
 from app.modules.girls.models import Girl, StudyStage, Topic
-from app.modules.girls.utils import TOPIC_LABELS, age_on
+from app.modules.girls.utils import TOPIC_LABELS, age_on, first_name
 from app.modules.suggestions.models import LastBand
 from app.modules.suggestions.schemas import (
     BandCountOut,
@@ -313,12 +313,6 @@ async def load_suggestions(
 
 
 # --- Descobrir (A06·1, #86) ---------------------------------------------------
-
-
-def first_name(name: str) -> str:
-    """O primeiro nome, para o "Oi, <nome>!": "Alana Ficticia" vira "Alana"."""
-    words = name.split()
-    return words[0] if words else ""
 
 
 async def load_discover(
