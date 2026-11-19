@@ -13,9 +13,9 @@ from httpx2 import Response
 
 from app.auth.utils import create_access_token
 from app.main import app
-from app.modules.catalog.models import CuratedItem, CuratedType, EffortBand, ItemKind
+from app.modules.catalog.models import CuratedItem, CuratedType, ItemKind
 from app.modules.girl_file.models import FileEntry, FileStatus
-from app.modules.girls.models import Girl, Topic
+from app.modules.girls.models import EffortBand, Girl, Topic
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 from tests.test_discover_routes import FUTURO, curado, menina, usuaria

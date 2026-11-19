@@ -21,7 +21,6 @@ from app.modules.catalog.models import (
     CuratedItemAudience,
     CuratedItemTopic,
     CuratedType,
-    EffortBand,
     ItemKind,
     ItemLevel,
     ItemOrigin,
@@ -42,7 +41,7 @@ from app.modules.catalog.utils import (
     item_id,
     parse_item_id,
 )
-from app.modules.girls.models import StudyStage, Topic
+from app.modules.girls.models import EffortBand, StudyStage, Topic
 
 TODAY = date(2026, 11, 18)
 TOMORROW = TODAY + timedelta(days=1)

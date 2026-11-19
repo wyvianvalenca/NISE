@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.actions.models import Action, ActionFormat
-from app.modules.catalog.models import CuratedItem, EffortBand, ItemKind, ItemOrigin
+from app.modules.catalog.models import CuratedItem, ItemKind, ItemOrigin
 from app.modules.catalog.service import (
     action_duration,
     action_effort_band,
@@ -38,7 +38,7 @@ from app.modules.girl_file.schemas import (
     LaterItemOut,
     LaterOut,
 )
-from app.modules.girls.models import Topic
+from app.modules.girls.models import EffortBand, Topic
 from app.modules.girls.service import get_girl_of_user
 from app.modules.girls.utils import first_name
 

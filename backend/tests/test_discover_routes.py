@@ -24,14 +24,12 @@ from app.modules.catalog.models import (
     CuratedItem,
     CuratedItemTopic,
     CuratedType,
-    EffortBand,
     ItemKind,
     ItemLevel,
 )
 from app.modules.girl_file.models import FileEntry, FileStatus
-from app.modules.girls.models import Girl, GirlTopic, StudyStage, Topic
+from app.modules.girls.models import EffortBand, Girl, GirlTopic, StudyStage, Topic
 from app.modules.girls.utils import first_name
-from app.modules.suggestions.models import LastBand
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 
@@ -53,6 +51,7 @@ def menina(
     cidade: int | None = MACEIO,
     temas: list[Topic] | None = None,
     user_id: int = 1,
+    ultima: EffortBand | None = None,
 ) -> Girl:
     return Girl(
         id=3,
@@ -63,6 +62,7 @@ def menina(
         city_ibge_code=cidade,
         study_stage=StudyStage.MEDIO,
         all_topics=False,
+        last_band=ultima,
         topics=[GirlTopic(topic=tema) for tema in temas or [Topic.PROGRAMACAO]],
     )
 
@@ -120,16 +120,15 @@ def sessao_do_descobrir(
     registro: Girl | None,
     curados: list[CuratedItem] | None = None,
     acoes: list[tuple[Action, str]] | None = None,
-    ultima: EffortBand | None = None,
     file: list[FileEntry] | None = None,
     itens_do_file: list[CuratedItem] | None = None,
     usuario: User | None = None,
     aceite: int | None = 10,
 ) -> AsyncMock:
     sessao_falsa = sessao_com(usuario or usuaria())
-    # session.scalar responde, em ordem: o aceite dos termos, o registro da
-    # menina (com os temas) e a última faixa aberta.
-    sessao_falsa.scalar.side_effect = [aceite, registro, ultima]
+    # session.scalar responde, em ordem: o aceite dos termos e o registro da
+    # menina (com os temas e a última faixa aberta).
+    sessao_falsa.scalar.side_effect = [aceite, registro]
     # session.scalars: os itens da curadoria, as linhas do filé e os itens delas.
     sessao_falsa.scalars.side_effect = [
         curados or [],
@@ -160,13 +159,12 @@ def contagens(response: Response) -> dict[str, int]:
 
 async def test_cinco_faixas_na_ordem_com_nome_e_ultima_faixa() -> None:
     sessao_falsa = sessao_do_descobrir(
-        menina(),
+        menina(ultima=EffortBand.UMA_TARDE),
         curados=[
             curado(1, EffortBand.PRIMEIROS_PASSOS),
             curado(2, EffortBand.UMA_TARDE),
             curado(3, EffortBand.UMA_TARDE),
         ],
-        ultima=EffortBand.UMA_TARDE,
     )
 
     response = await abrir(sessao_falsa)
@@ -290,17 +288,16 @@ async def test_item_que_ja_esta_no_file_nao_conta() -> None:
 
 async def test_le_so_o_registro_da_menina_da_sessao() -> None:
     sessao_falsa = sessao_do_descobrir(
-        menina(user_id=2), usuario=usuaria(id=2), ultima=EffortBand.GRANDE_DESAFIO
+        menina(user_id=2, ultima=EffortBand.GRANDE_DESAFIO), usuario=usuaria(id=2)
     )
 
     response = await abrir(sessao_falsa, user_id=2)
 
     assert response.status_code == 200
-    # A busca do registro usa o id da sessão, e a da última faixa, o registro achado.
+    # A busca do registro usa o id da sessão; a última faixa vem desse registro.
     busca_da_menina = sessao_falsa.scalar.await_args_list[1].args[0]
     assert busca_da_menina.compile().params == {"user_id_1": 2}
-    busca_da_ultima = sessao_falsa.scalar.await_args_list[2].args[0]
-    assert busca_da_ultima.compile().params == {"girl_id_1": 3}
+    assert response.json()["lastBand"] == "grande-desafio"
 
 
 async def test_conta_sem_registro_de_menina_responde_404() -> None:
@@ -350,15 +347,13 @@ def test_primeiro_nome(nome: str, esperado: str) -> None:
 
 
 def sessao_da_gravacao(
-    girl_id: int | None,
-    ultima: LastBand | None = None,
+    registro: Girl | None,
     usuario: User | None = None,
     aceite: int | None = 10,
 ) -> AsyncMock:
-    # session.scalar responde, em ordem: o aceite dos termos, o id do registro
-    # da menina e a linha da última faixa (ou None, se ela nunca abriu nenhuma).
+    # session.scalar responde, em ordem: o aceite dos termos e o registro da menina.
     sessao_falsa = sessao_com(usuario or usuaria())
-    sessao_falsa.scalar.side_effect = [aceite, girl_id, ultima]
+    sessao_falsa.scalar.side_effect = [aceite, registro]
     # session.add é síncrono.
     sessao_falsa.add = MagicMock()
     return sessao_falsa
@@ -378,43 +373,42 @@ async def gravar(
 
 
 async def test_primeira_faixa_aberta_e_gravada() -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=3)
+    registro = menina()
+    sessao_falsa = sessao_da_gravacao(registro)
 
     response = await gravar(sessao_falsa, {"band": "no-meu-ritmo"})
 
     assert response.status_code == 204
-    gravada = sessao_falsa.add.call_args.args[0]
-    assert isinstance(gravada, LastBand)
-    assert gravada.girl_id == 3
-    assert gravada.band is EffortBand.NO_MEU_RITMO
+    assert registro.last_band is EffortBand.NO_MEU_RITMO
     sessao_falsa.commit.assert_awaited_once()
 
 
 async def test_abrir_outra_faixa_troca_a_gravada() -> None:
-    linha = LastBand(id=8, girl_id=3, band=EffortBand.UMA_TARDE)
-    sessao_falsa = sessao_da_gravacao(girl_id=3, ultima=linha)
+    registro = menina(ultima=EffortBand.UMA_TARDE)
+    sessao_falsa = sessao_da_gravacao(registro)
 
     response = await gravar(sessao_falsa, {"band": "grande-desafio"})
 
     assert response.status_code == 204
-    assert linha.band is EffortBand.GRANDE_DESAFIO
-    # Uma linha por menina: troca a que existe, sem criar outra.
+    assert registro.last_band is EffortBand.GRANDE_DESAFIO
+    # Troca a faixa no registro dela, sem criar nada.
     sessao_falsa.add.assert_not_called()
     sessao_falsa.commit.assert_awaited_once()
 
 
 async def test_grava_so_no_registro_da_menina_da_sessao() -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=7, usuario=usuaria(id=2))
+    registro = menina(user_id=2)
+    sessao_falsa = sessao_da_gravacao(registro, usuario=usuaria(id=2))
 
     # Um id de outra menina no corpo é ignorado: vale a sessão.
     response = await gravar(
-        sessao_falsa, {"band": "uma-tarde", "girlId": 3, "girl_id": 3}, user_id=2
+        sessao_falsa, {"band": "uma-tarde", "girlId": 4, "girl_id": 4}, user_id=2
     )
 
     assert response.status_code == 204
     busca_da_menina = sessao_falsa.scalar.await_args_list[1].args[0]
     assert busca_da_menina.compile().params == {"user_id_1": 2}
-    assert sessao_falsa.add.call_args.args[0].girl_id == 7
+    assert registro.last_band is EffortBand.UMA_TARDE
 
 
 @pytest.mark.parametrize(
@@ -422,7 +416,7 @@ async def test_grava_so_no_registro_da_menina_da_sessao() -> None:
     [{"band": "maratona"}, {"band": None}, {}],
 )
 async def test_faixa_fora_das_cinco_e_recusada(corpo: dict[str, object]) -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=3)
+    sessao_falsa = sessao_da_gravacao(menina())
 
     response = await gravar(sessao_falsa, corpo)
 
@@ -431,7 +425,7 @@ async def test_faixa_fora_das_cinco_e_recusada(corpo: dict[str, object]) -> None
 
 
 async def test_gravacao_sem_registro_de_menina_responde_404() -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=None)
+    sessao_falsa = sessao_da_gravacao(None)
 
     response = await gravar(sessao_falsa, {"band": "uma-tarde"})
 
@@ -441,7 +435,7 @@ async def test_gravacao_sem_registro_de_menina_responde_404() -> None:
 
 
 async def test_gravacao_sem_sessao_responde_401() -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=3)
+    sessao_falsa = sessao_da_gravacao(menina())
 
     response = await chamar_rota(
         app,
@@ -456,7 +450,7 @@ async def test_gravacao_sem_sessao_responde_401() -> None:
 
 
 async def test_gravacao_e_so_para_menina() -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=3, usuario=usuaria(role=Role.COORDINATOR))
+    sessao_falsa = sessao_da_gravacao(menina(), usuario=usuaria(role=Role.COORDINATOR))
 
     response = await gravar(sessao_falsa, {"band": "uma-tarde"})
 
@@ -465,7 +459,7 @@ async def test_gravacao_e_so_para_menina() -> None:
 
 
 async def test_gravacao_exige_o_aceite_dos_termos() -> None:
-    sessao_falsa = sessao_da_gravacao(girl_id=3, aceite=None)
+    sessao_falsa = sessao_da_gravacao(menina(), aceite=None)
 
     response = await gravar(sessao_falsa, {"band": "uma-tarde"})
 
