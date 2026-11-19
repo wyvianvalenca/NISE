@@ -114,6 +114,11 @@ export function useLongWait<T>(
    * A useLayoutEffect cleanup runs when Activity hides the page (Next's
    * "preserving-ui-state" guide), so she comes back to what a first visit
    * shows. The fetch effect below runs again when the page shows.
+   *
+   * Effects do not run while the page is hidden. Anything that reacts to this
+   * reset with an effect must use useLayoutEffect, which runs before the
+   * first paint on the way back; a useEffect runs after it, and the old screen
+   * shows for a frame (see useSuggestionDeck).
    */
   useLayoutEffect(() => {
     return () => setState({ phase: "early", data: null });

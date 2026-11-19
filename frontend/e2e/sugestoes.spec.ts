@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockDiscoverApi } from "./discover-api";
 import { mockSuggestionsApi } from "./suggestions-api";
+import { mockTermsApi } from "./terms-api";
 
 // #103 e #105 · A06·2 Sugestões e A06·2a Não é pra mim (motivo), com as rotas da #104 simuladas
 // em suggestions-api.ts.
@@ -148,6 +149,8 @@ test("depois da última sugestão mostra o fim da faixa com as duas saídas", as
   await expect(page.getByRole("button", { name: "Quero fazer" })).toHaveCount(0);
 
   await expect(page.getByRole("link", { name: "Ver o que salvei pra depois" })).toHaveAttribute("href", "/ver-depois");
+  // O Descobrir é o de verdade: sem simular a rota dele, consultaria um back local.
+  await mockDiscoverApi(page);
   await page.getByRole("link", { name: "Escolher outra categoria" }).click();
   await expect(page).toHaveURL("/descobrir");
 });
@@ -219,6 +222,9 @@ test("sem sessão, volta para o início", async ({ page }) => {
 });
 
 test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
   await open(page, "uma-tarde", { failure: "terms_not_accepted" });
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
