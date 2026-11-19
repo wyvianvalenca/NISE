@@ -40,7 +40,13 @@ from app.modules.girl_file.models import (
 from app.modules.girl_file.service import entry_item_id
 from app.modules.girls.models import Girl, StudyStage, Topic
 from app.modules.girls.utils import TOPIC_LABELS, age_on
-from app.modules.suggestions.schemas import BandSuggestions, Suggestion
+from app.modules.suggestions.models import LastBand
+from app.modules.suggestions.schemas import (
+    BandCountOut,
+    BandSuggestions,
+    DiscoverOut,
+    Suggestion,
+)
 
 # Quanto cada escolha sobe ou desce um item. "Sugestões parecidas" e os motivos
 # do "Não é pra mim" pesam mais que a nota, que só sobe ou desce "um pouco".
@@ -302,3 +308,60 @@ async def load_suggestions(
     catalog = await load_catalog(session, girl.city_ibge_code, today)
     choices = await load_choices(session, girl.id)
     return build_suggestions(catalog, profile_of(girl, today), choices)
+
+
+# --- Descobrir (A06·1, #86) ---------------------------------------------------
+
+
+def first_name(name: str) -> str:
+    """O primeiro nome, para o "Oi, <nome>!": "Alana Ficticia" vira "Alana"."""
+    words = name.split()
+    return words[0] if words else ""
+
+
+async def load_discover(
+    session: AsyncSession, user_id: int, today: date
+) -> DiscoverOut | None:
+    """As 5 faixas com quantas sugestões cada uma tem e a última faixa aberta.
+
+    As contagens são as mesmas de `load_suggestions`, então seguem as mesmas
+    regras: só as duas fontes, sem itens vencidos, ações só abertas e futuras,
+    presenciais só da cidade dela (RF-F11.01, RF-F11.07, RN-16, RF-F11.02).
+
+    A menina é sempre a da sessão (RNF-G.03). Devolve None quando a conta não
+    tem registro de menina.
+    """
+    girl = await session.scalar(
+        select(Girl).where(Girl.user_id == user_id).options(selectinload(Girl.topics))
+    )
+    if girl is None:
+        return None
+
+    bands = await load_suggestions(session, girl, today)
+    last_band = await session.scalar(
+        select(LastBand.band).where(LastBand.girl_id == girl.id)
+    )
+    return DiscoverOut(
+        first_name=first_name(girl.name),
+        bands=[BandCountOut(code=band.band, count=band.count) for band in bands],
+        last_band=last_band,
+    )
+
+
+async def save_last_band(session: AsyncSession, user_id: int, band: EffortBand) -> bool:
+    """Grava a faixa que ela acabou de abrir, para a tag "da última vez".
+
+    Uma linha por menina: abrir outra faixa troca a gravada. Devolve False
+    quando a conta não tem registro de menina.
+    """
+    girl_id = await session.scalar(select(Girl.id).where(Girl.user_id == user_id))
+    if girl_id is None:
+        return False
+
+    last = await session.scalar(select(LastBand).where(LastBand.girl_id == girl_id))
+    if last is None:
+        session.add(LastBand(girl_id=girl_id, band=band))
+    else:
+        last.band = band
+    await session.commit()
+    return True
