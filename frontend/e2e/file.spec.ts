@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { FileSection, ThemeCode } from "../lib/file";
+import { mockActivityApi } from "./activity-api";
 import { mockDiscoverApi } from "./discover-api";
 import { type MockFileItem, mockFileApi } from "./file-api";
 import { mockTermsApi } from "./terms-api";
@@ -106,6 +107,9 @@ test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluí
   await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(3);
   await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(3);
 
+  // A atividade (#119) é a tela de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando.
+  await mockActivityApi(page);
   await section(page, "Próximas aventuras")
     .getByRole("link", { name: "Abrir: Hackathon Meninas na Tecnologia" })
     .click();
