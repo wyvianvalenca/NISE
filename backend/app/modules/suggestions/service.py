@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.actions.models import Action
-from app.modules.catalog.models import CuratedItem, EffortBand, ItemLevel
+from app.modules.catalog.models import CuratedItem, ItemLevel
 from app.modules.catalog.schemas import CatalogItem
 from app.modules.catalog.service import ACTION_LEVEL, action_effort_band, load_catalog
 from app.modules.catalog.utils import LEVEL_ORDER
@@ -38,9 +38,8 @@ from app.modules.girl_file.models import (
     SimilarChoice,
 )
 from app.modules.girl_file.service import entry_item_id, file_total
-from app.modules.girls.models import Girl, StudyStage, Topic
+from app.modules.girls.models import EffortBand, Girl, StudyStage, Topic
 from app.modules.girls.utils import TOPIC_LABELS, age_on
-from app.modules.suggestions.models import LastBand
 from app.modules.suggestions.schemas import (
     BandCountOut,
     BandSuggestions,
@@ -338,13 +337,10 @@ async def load_discover(
         return None
 
     bands = await load_suggestions(session, girl, today)
-    last_band = await session.scalar(
-        select(LastBand.band).where(LastBand.girl_id == girl.id)
-    )
     return DiscoverOut(
         first_name=first_name(girl.name),
         bands=[BandCountOut(code=band.band, count=band.count) for band in bands],
-        last_band=last_band,
+        last_band=girl.last_band,
     )
 
 
@@ -400,17 +396,13 @@ async def load_band(
 async def save_last_band(session: AsyncSession, user_id: int, band: EffortBand) -> bool:
     """Grava a faixa que ela acabou de abrir, para a tag "da última vez".
 
-    Uma linha por menina: abrir outra faixa troca a gravada. Devolve False
-    quando a conta não tem registro de menina.
+    Abrir outra faixa troca a gravada. Devolve False quando a conta não tem
+    registro de menina.
     """
-    girl_id = await session.scalar(select(Girl.id).where(Girl.user_id == user_id))
-    if girl_id is None:
+    girl = await session.scalar(select(Girl).where(Girl.user_id == user_id))
+    if girl is None:
         return False
 
-    last = await session.scalar(select(LastBand).where(LastBand.girl_id == girl_id))
-    if last is None:
-        session.add(LastBand(girl_id=girl_id, band=band))
-    else:
-        last.band = band
+    girl.last_band = band
     await session.commit()
     return True
