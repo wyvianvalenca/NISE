@@ -1,23 +1,24 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { mockActivityApi } from "./activity-api";
+import { mockFeedbackApi } from "./feedback-api";
 import { mockFileApi } from "./file-api";
 
-// #124 · A06·5, parte opcional: "O que achou?" e "Quer sugestões parecidas?".
+// #124 e #126 · A06·5, parte opcional: "O que achou?" e "Quer sugestões parecidas?".
 // A atividade vem de GET /api/file/{id} (#121), simulada em activity-api.ts; a
-// avaliação ainda usa os dados de teste de lib/atividade-feedback.ts.
+// avaliação vai para PUT /api/file/{id}/feedback (#125), simulada em feedback-api.ts.
+
+const ACTIVITY_ID = "curadoria-1";
+const PAGE = `/file/${ACTIVITY_ID}/concluida`;
+
+// O que o back guardou, pelo id da atividade.
+let savedFeedback: Awaited<ReturnType<typeof mockFeedbackApi>>;
 
 // "Enviar" e "Pular" voltam ao filé (A06·3), que lê GET /api/file (#116).
 test.beforeEach(async ({ page }) => {
   await mockFileApi(page);
   await mockActivityApi(page, { status: { [ACTIVITY_ID]: "concluded" } });
+  savedFeedback = await mockFeedbackApi(page);
 });
-
-const ACTIVITY_ID = "curadoria-1";
-const PAGE = `/file/${ACTIVITY_ID}/concluida`;
-
-async function savedFeedback(page: Page) {
-  return page.evaluate(() => JSON.parse(sessionStorage.getItem("nise-mock-feedback") ?? "{}"));
-}
 
 test("mostra a nota de 1 a 5 com os extremos e as quatro sugestões, tudo opcional", async ({ page }) => {
   await page.goto(PAGE);
@@ -68,7 +69,7 @@ test("Enviar guarda a nota e a sugestão e leva ao filé", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar" }).click();
 
   await expect(page).toHaveURL(/\/file$/);
-  expect(await savedFeedback(page)).toEqual({ [ACTIVITY_ID]: { score: 4, similar: "mais-avancado" } });
+  expect(savedFeedback).toEqual({ [ACTIVITY_ID]: { rating: 4, similar: "mais-avancado" } });
 });
 
 test("dá para enviar só a nota, sem sugestão", async ({ page }) => {
@@ -78,7 +79,7 @@ test("dá para enviar só a nota, sem sugestão", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar" }).click();
 
   await expect(page).toHaveURL(/\/file$/);
-  expect(await savedFeedback(page)).toEqual({ [ACTIVITY_ID]: { score: 2, similar: null } });
+  expect(savedFeedback).toEqual({ [ACTIVITY_ID]: { rating: 2, similar: null } });
 });
 
 test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({ page }) => {
@@ -88,7 +89,7 @@ test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({ p
   await page.getByRole("button", { name: "Pular" }).click();
 
   await expect(page).toHaveURL(/\/file$/);
-  expect(await savedFeedback(page)).toEqual({});
+  expect(savedFeedback).toEqual({});
 });
 
 for (const action of ["Enviar", "Pular"]) {
@@ -107,9 +108,8 @@ for (const action of ["Enviar", "Pular"]) {
 }
 
 test("se o envio falhar, avisa e deixa tentar de novo", async ({ page }) => {
-  await page.addInitScript(() => {
-    globalThis.__NISE_MOCK_FEEDBACK__ = { fail: true };
-  });
+  // A rota mais nova vale: esta responde 500.
+  await mockFeedbackApi(page, { fail: true });
   await page.goto(PAGE);
 
   await page.getByRole("button", { name: "Outro tema" }).click();
@@ -117,15 +117,13 @@ test("se o envio falhar, avisa e deixa tentar de novo", async ({ page }) => {
 
   await expect(page.getByRole("alert").filter({ hasText: "Não deu pra enviar. Tente de novo." })).toBeVisible();
   // O detalhe técnico do erro fica só no console.
-  await expect(page.getByRole("main").getByText("Failed to fetch")).toHaveCount(0);
+  await expect(page.getByRole("main").getByText("Não foi possível enviar a avaliação.")).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
   await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled();
 });
 
 test("durante o envio mostra Enviando… e bloqueia os dois botões", async ({ page }) => {
-  await page.addInitScript(() => {
-    globalThis.__NISE_MOCK_FEEDBACK__ = { delayMs: 1500 };
-  });
+  await mockFeedbackApi(page, { delayMs: 1500 });
   await page.goto(PAGE);
 
   await page.getByRole("radio", { name: /^3 · / }).check();
