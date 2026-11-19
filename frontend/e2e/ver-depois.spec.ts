@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockDiscoverApi } from "./discover-api";
 import { mockLaterApi } from "./later-api";
+import { mockTermsApi } from "./terms-api";
 
 // #111 e #113 · A06·2b Ver depois, pela rota GET /api/later (#112) e pelas rotas da escolha
 // (PUT e DELETE /api/file/{id}), simuladas em later-api.ts.
@@ -184,6 +185,9 @@ test("sem sessão, volta para o início", async ({ page }) => {
 });
 
 test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
   await openWith(page, { failure: "terms_not_accepted" });
 
   await expect(page).toHaveURL(/\/cadastro\/termos$/);

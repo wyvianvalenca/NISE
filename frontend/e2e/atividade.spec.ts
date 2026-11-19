@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { ActivityStatus } from "../lib/atividade";
 import { mockActivityApi } from "./activity-api";
 import { mockFileApi } from "./file-api";
+import { mockTermsApi } from "./terms-api";
 
 // #120 · A06·4a Atividade e a celebração da A06·5, com as rotas da #121 simuladas
 // em activity-api.ts (integração na #122).
@@ -240,6 +241,9 @@ test("sem sessão, leva para a página inicial", async ({ page }) => {
 });
 
 test("sem o aceite dos termos, leva aos termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
   await mockActivityApi(page, { failure: "terms_not_accepted" });
   await page.goto(`/file/${PYTHON}`);
 
