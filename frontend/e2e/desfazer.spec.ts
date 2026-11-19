@@ -280,6 +280,17 @@ test("voltando pelo navegador e entrando logo na faixa, a tela de antes não pis
   expect(await seen()).toEqual([]);
 });
 
+test("\"Desfazer\" traz o card de volta pelo lado de onde saiu", async ({ page }) => {
+  await open(page);
+
+  await button(page, "Quero fazer").click();
+  await undoButton(page).click();
+
+  // "Quero fazer" leva o card para a direita; ele volta por lá (movimento.spec.ts tem a saída).
+  await expect(page.locator("[data-motion='volta-direita']")).toContainText(FIRST);
+  await expect(page.locator("[data-motion^='sai-']")).toHaveCount(0);
+});
+
 test("dá para desfazer só com o teclado, com foco visível", async ({ page }) => {
   await open(page);
 

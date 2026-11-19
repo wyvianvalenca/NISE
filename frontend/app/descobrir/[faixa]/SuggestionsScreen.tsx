@@ -75,14 +75,22 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
   const [notice, setNotice] = useState<UndoNotice | null>(null);
   const noticeKey = useRef(0);
 
-  // O aviso só aparece depois que o back confirma a escolha; assim o "Desfazer" nunca vem antes.
-  const showNotice = useCallback((chosen: Suggestion, choice: Choice) => {
+  // O card que acabou de ser escolhido, saindo para o lado da escolha (some quando a animação
+  // termina), e o que voltou com o "Desfazer", entrando pelo mesmo lado.
+  const [leaving, setLeaving] = useState<CardMotion | null>(null);
+  const [returning, setReturning] = useState<CardMotion | null>(null);
+
+  // O aviso e a saída do card só vêm depois que o back confirma a escolha; assim o
+  // "Desfazer" nunca vem antes, e o card não sai para voltar se der erro.
+  const onChoiceConfirmed = useCallback((chosen: Suggestion, choice: Choice) => {
     noticeKey.current += 1;
     setNotice({ key: noticeKey.current, id: chosen.id, title: chosen.title, choice, status: "ready" });
+    setLeaving({ key: noticeKey.current, item: chosen, choice });
+    setReturning(null);
   }, []);
   const hideNotice = useCallback(() => setNotice(null), []);
 
-  const { state, item, position, total, choose, undo } = useSuggestionDeck(data, { onChoiceConfirmed: showNotice });
+  const { state, item, position, total, choose, undo } = useSuggestionDeck(data, { onChoiceConfirmed });
   const [reasonOpen, setReasonOpen] = useState(false);
   // O fim da faixa só puxa o foco quando ela chega lá escolhendo, não quando a página já abre nele.
   const [decided, setDecided] = useState(false);
@@ -91,11 +99,15 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
   // Com cacheComponents, o Next esconde a tela (Activity) em vez de desmontá-la, e a limpeza
   // de um useLayoutEffect roda nessa hora. A lista e a posição, quem zera é o
   // useSuggestionDeck, quando o useLongWait descarta os dados.
+  // Uma animação interrompida pela troca de tela não termina, então os cards em movimento
+  // também saem aqui.
   useLayoutEffect(() => {
     return () => {
       setNotice(null);
       setReasonOpen(false);
       setDecided(false);
+      setLeaving(null);
+      setReturning(null);
     };
   }, []);
 
@@ -124,6 +136,10 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
     try {
       await undo(notice.id);
       setNotice(null);
+      // O card volta pelo lado de onde saiu. Se ele ainda estava saindo, a saída para ali.
+      const restoredItem = state.items.find((candidate) => candidate.id === notice.id);
+      setLeaving(null);
+      if (restoredItem) setReturning({ key: notice.key, item: restoredItem, choice: notice.choice });
       setRestored((count) => count + 1);
     } catch {
       // Ela vê o erro e pode tentar de novo enquanto o aviso estiver na tela.
@@ -158,21 +174,30 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
         {/* Espaço do aviso no Figma; o aviso fica por cima dele (.toastArea), para não empurrar o card. */}
         <div className={styles.noticeSlot} />
 
-        {/* Antes de 1 s não aparece nada no meio, para a tela não piscar (#81). */}
-        {state.status === "loading" ? null : item ? (
+        {/* Antes de 1 s não aparece nada no meio, para a tela não piscar (#81).
+            Depois da última escolha, o fim da faixa espera o último card terminar de sair. */}
+        {state.status === "loading" ? null : item || leaving ? (
           <>
             {state.choiceFailed && (
               <p className={styles.error} role="alert">
                 Não deu pra guardar. Tente de novo.
               </p>
             )}
-            <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
-              Sugestão {position} de {total}
-              <span className={styles.srOnly}>: {item.title}</span>
-            </p>
-            <Deck item={item} behind={Math.min(total - position, 2)} />
+            {item && (
+              <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
+                Sugestão {position} de {total}
+                <span className={styles.srOnly}>: {item.title}</span>
+              </p>
+            )}
+            <Deck
+              item={item}
+              behind={Math.min(total - position, 2)}
+              leaving={leaving}
+              returning={returning?.item.id === item?.id ? returning : null}
+              onLeft={() => setLeaving(null)}
+            />
             <Actions
-              disabled={state.pending}
+              disabled={state.pending || !item}
               onChoose={(choice) => {
                 if (choice === "nao-e-pra-mim") setReasonOpen(true);
                 else decide(choice);
@@ -189,36 +214,93 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
   );
 }
 
-/** O card da sugestão com até dois cards tortos atrás, quando ainda há mais (Figma: Baralho). */
-function Deck({ item, behind }: { item: Suggestion; behind: number }) {
+/** Um card em movimento: o que saiu com uma escolha, ou o que voltou com o "Desfazer". */
+type CardMotion = { key: number; item: Suggestion; choice: Choice };
+
+/**
+ * Para onde o card sai em cada escolha, o mesmo lado do botão: "Não é pra mim" à esquerda,
+ * "Quero fazer" à direita e "Talvez depois", no meio, para cima. Com o "Desfazer", ele volta
+ * pelo mesmo lado. Vai no data-motion, que o CSS e os testes leem.
+ */
+const MOTION: Record<Choice, "esquerda" | "direita" | "cima"> = {
+  "nao-e-pra-mim": "esquerda",
+  "quero-fazer": "direita",
+  "talvez-depois": "cima",
+};
+
+type DeckProps = {
+  /** A sugestão à mostra; undefined quando o último card está saindo. */
+  item: Suggestion | undefined;
+  behind: number;
+  leaving: CardMotion | null;
+  /**
+   * O "Desfazer" trouxe esta sugestão de volta; só vem quando é a que está à mostra. Fica até
+   * a próxima escolha: trocar o data-motion depois faria a animação de chegada rodar de novo.
+   */
+  returning: CardMotion | null;
+  onLeft: () => void;
+};
+
+/**
+ * O card da sugestão com até dois cards tortos atrás, quando ainda há mais (Figma: Baralho).
+ * O card que acabou de ser escolhido sai por cima dele, numa camada que o leitor de tela e o
+ * teclado ignoram (aria-hidden e inert): para eles, a sugestão já é a próxima.
+ */
+function Deck({ item, behind, leaving, returning, onLeft }: DeckProps) {
   return (
     <div className={styles.deck}>
-      {behind >= 2 && <div className={`${styles.backCard} ${styles.backLeft}`} aria-hidden="true" />}
-      {behind >= 1 && <div className={`${styles.backCard} ${styles.backRight}`} aria-hidden="true" />}
-      <div className={styles.front}>
-        <SuggestionCard
-          // A chave nova a cada sugestão faz o leitor de tela tratar o card como conteúdo novo.
+      {item && behind >= 2 && <div className={`${styles.backCard} ${styles.backLeft}`} aria-hidden="true" />}
+      {item && behind >= 1 && <div className={`${styles.backCard} ${styles.backRight}`} aria-hidden="true" />}
+      {item && (
+        <div
+          // A chave nova a cada sugestão faz o leitor de tela tratar o card como conteúdo novo,
+          // e a animação de chegada roda de novo.
           key={item.id}
-          kind={item.kind}
-          title={item.title}
-          source={item.source}
-          reason={item.why}
-          tags={
-            <TagList>
-              <Tag variant="chip">{item.format}</Tag>
-              <Tag variant="chip">{item.duration}</Tag>
-              {/* Custo e idade mínima podem faltar (as ações dos grupos não têm): sem eles, sem chip. */}
-              {item.cost !== null && <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>{item.cost}</Tag>}
-              {item.minAge !== null && (
-                <Tag variant="chip">
-                  {item.minAge}+<span className={styles.srOnly}> anos</span>
-                </Tag>
-              )}
-            </TagList>
-          }
-        />
-      </div>
+          className={styles.front}
+          data-motion={returning ? `volta-${MOTION[returning.choice]}` : "chega"}
+        >
+          <SuggestionFace item={item} />
+        </div>
+      )}
+      {leaving && (
+        <div
+          key={leaving.key}
+          className={`${styles.leaving} ${item ? "" : styles.leavingLast}`}
+          data-motion={`sai-${MOTION[leaving.choice]}`}
+          aria-hidden="true"
+          inert
+          onAnimationEnd={(event) => {
+            if (event.target === event.currentTarget) onLeft();
+          }}
+        >
+          <SuggestionFace item={leaving.item} />
+        </div>
+      )}
     </div>
+  );
+}
+
+function SuggestionFace({ item }: { item: Suggestion }) {
+  return (
+    <SuggestionCard
+      kind={item.kind}
+      title={item.title}
+      source={item.source}
+      reason={item.why}
+      tags={
+        <TagList>
+          <Tag variant="chip">{item.format}</Tag>
+          <Tag variant="chip">{item.duration}</Tag>
+          {/* Custo e idade mínima podem faltar (as ações dos grupos não têm): sem eles, sem chip. */}
+          {item.cost !== null && <Tag variant={item.cost === "Grátis" ? "pink" : "chip"}>{item.cost}</Tag>}
+          {item.minAge !== null && (
+            <Tag variant="chip">
+              {item.minAge}+<span className={styles.srOnly}> anos</span>
+            </Tag>
+          )}
+        </TagList>
+      }
+    />
   );
 }
 

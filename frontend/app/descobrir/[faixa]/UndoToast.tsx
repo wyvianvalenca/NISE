@@ -37,19 +37,24 @@ type UndoToastProps = {
  */
 export function UndoToast({ notice, onUndo, onTimeout }: UndoToastProps) {
   const [paused, setPaused] = useState(false);
+  // Quando o tempo acaba, o aviso some com uma animação curta; só no fim dela ele sai da tela.
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     if (paused || notice.status === "undoing") return;
     // Depois de um erro o tempo recomeça, para dar chance de tentar de novo.
-    const timer = setTimeout(onTimeout, UNDO_TIMEOUT_MS);
+    const timer = setTimeout(() => setLeaving(true), UNDO_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [notice.key, notice.status, paused, onTimeout]);
+  }, [notice.key, notice.status, paused]);
 
   const failed = notice.status === "error";
 
   return (
     <div
-      className={styles.toastArea}
+      className={`${styles.toastArea} ${leaving ? styles.toastLeaving : ""}`}
+      onAnimationEnd={(event) => {
+        if (leaving && event.target === event.currentTarget) onTimeout();
+      }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
