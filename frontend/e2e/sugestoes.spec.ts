@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockDiscoverApi } from "./discover-api";
 
 // #103 · A06·2 Sugestões e A06·2a Não é pra mim (motivo). Usa os dados de teste de lib/sugestoes.ts.
 
@@ -243,6 +244,7 @@ test("se guardar o \"Não é pra mim\" falha, a folha fecha e o aviso aparece", 
 });
 
 test("tocar numa faixa do Descobrir abre as sugestões dela", async ({ page }) => {
+  await mockDiscoverApi(page);
   await page.goto("/descobrir");
   await page.getByRole("link", { name: /^No meu ritmo/ }).click();
 

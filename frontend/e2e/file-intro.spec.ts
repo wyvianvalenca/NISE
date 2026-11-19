@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { mockInterestsApi } from "./interests-api";
+import { mockDiscoverApi } from "./discover-api";
+
+// Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
+test.beforeEach(async ({ page }) => {
+  await mockDiscoverApi(page);
+});
 
 /**
  * A06·0 "Por que filé?" (#83). Uses the test data in lib/file-intro.ts.

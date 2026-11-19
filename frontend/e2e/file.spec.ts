@@ -1,4 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockDiscoverApi } from "./discover-api";
+
+// Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
+test.beforeEach(async ({ page }) => {
+  await mockDiscoverApi(page);
+});
 
 // #115 · A06·3 Seu filé. Usa os dados de teste de lib/file.ts.
 
