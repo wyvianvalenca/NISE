@@ -18,6 +18,7 @@ import {
   AUDIENCES,
   createAction,
   DESCRIPTION_MAX_LENGTH,
+  updateAction,
   validateAction,
   type ActionFormValues,
   type ActionVisibility,
@@ -30,6 +31,8 @@ const LIST_PATH = "/coordenacao/acoes";
 type ActionFormProps = {
   /** What the fields start with: empty for a new action, the saved values to edit one. */
   initialValues: ActionFormValues;
+  /** Set when editing: the id of the action being changed. Absent when registering. */
+  actionId?: number;
 };
 
 /** Toggles `item` in `list`, keeping the order the options are shown in. */
@@ -52,7 +55,7 @@ function toggle<T>(list: T[], item: T): T[] {
  * confirmed the title, buttons and notice of that mode (#221), so it reuses the
  * registration ones.
  */
-export function ActionForm({ initialValues }: ActionFormProps) {
+export function ActionForm({ initialValues, actionId }: ActionFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const descriptionCounterId = useId();
@@ -114,7 +117,7 @@ export function ActionForm({ initialValues }: ActionFormProps) {
 
     setSaving(true);
     try {
-      const saved = await createAction(effective);
+      const saved = await (actionId === undefined ? createAction(effective) : updateAction(actionId, effective));
       router.push(`${LIST_PATH}?salva=${saved.id}`);
     } catch {
       setSaving(false);
