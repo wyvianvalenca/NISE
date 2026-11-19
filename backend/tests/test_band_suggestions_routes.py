@@ -17,10 +17,9 @@ from app.modules.catalog.models import (
     CuratedItem,
     CuratedItemTopic,
     CuratedType,
-    EffortBand,
 )
 from app.modules.girl_file.models import FileEntry, FileStatus
-from app.modules.girls.models import Girl, Topic
+from app.modules.girls.models import EffortBand, Girl, Topic
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 from tests.test_discover_routes import MACEIO, acao, curado, menina, usuaria

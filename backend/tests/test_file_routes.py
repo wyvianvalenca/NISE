@@ -17,7 +17,6 @@ from app.modules.actions.models import Action, ActionFormat, ActionTopic
 from app.modules.catalog.models import (
     CuratedItem,
     CuratedType,
-    EffortBand,
     ItemKind,
 )
 from app.modules.girl_file.models import FileEntry, FileStatus
@@ -28,7 +27,7 @@ from app.modules.girl_file.service import (
     details_line,
     main_theme,
 )
-from app.modules.girls.models import Girl, Topic
+from app.modules.girls.models import EffortBand, Girl, Topic
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
 from tests.test_discover_routes import FUTURO, MACEIO, acao, curado, menina, usuaria

@@ -14,12 +14,11 @@ from app.modules.catalog.models import (
     CuratedItem,
     CuratedItemTopic,
     CuratedType,
-    EffortBand,
     ItemKind,
 )
 from app.modules.catalog.schemas import CuratedItemIn
 from app.modules.catalog.service import apply_entry, save_curated_items
-from app.modules.girls.models import StudyStage, Topic
+from app.modules.girls.models import EffortBand, StudyStage, Topic
 from scripts.carregar_curadoria import DATA_FILE, CurationFileError, parse, read
 
 
