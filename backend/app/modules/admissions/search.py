@@ -143,7 +143,12 @@ async def _save_matches(
     # menina pode vir em dois cursos da mesma chamada. Um indício só por menina
     # e chamada, sem depender do autoflush dentro de create_match.
     saved: set[tuple[int, str, str]] = set()
-    for item in sorted(found, key=lambda f: (f.girl_id, f.selection_process, f.call)):
+    # O curso e o endereço entram na ordem para o mesmo curso ganhar sempre,
+    # e não o que o set devolver primeiro.
+    ordered = sorted(
+        found, key=lambda f: (f.girl_id, f.selection_process, f.call, f.course, f.url)
+    )
+    for item in ordered:
         key = (item.girl_id, item.selection_process, item.call)
         if key in saved:
             continue

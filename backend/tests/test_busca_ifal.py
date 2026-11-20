@@ -36,6 +36,7 @@ from app.modules.admissions.ifal import (
 )
 from app.modules.admissions.models import (
     Approval,
+    CourseLevel,
     Enrollment,
     ListMatch,
     ListSearchRun,
@@ -106,6 +107,31 @@ def test_lista_de_outro_curso_pelo_titulo() -> None:
     )
     # Sem curso no título: pode ter qualquer curso dentro.
     assert not is_other_course(CLASSIFICADOS, [ALVO])
+
+
+@pytest.mark.parametrize(
+    "titulo",
+    [
+        # Três ou mais trechos, mas o último não é um campus: lista com todos os cursos.
+        "Resultado Final - 2ª Chamada - Lista de Classificados",
+        "SiSU 2027 - Convocados - 1ª Chamada",
+        "Resultado Final - Classificados - Chamada Regular",
+    ],
+)
+def test_titulo_com_tracos_sem_campus_no_fim_e_baixado(titulo: str) -> None:
+    assert is_convocation(titulo)
+    assert not is_other_course(titulo, [ALVO])
+
+
+def test_campus_do_curso_alvo_conta_mesmo_fora_da_lista_de_campi() -> None:
+    alvo = TargetCourse("Sistemas de Informação", "Campus Novo")
+
+    assert is_other_course(
+        "Resultado Final - Classificados - Química - Campus Novo", [alvo]
+    )
+    assert not is_other_course(
+        "Resultado Final - Classificados - Sistemas de Informação - Campus Novo", [alvo]
+    )
 
 
 # --- Leitura do PDF ----------------------------------------------------------
@@ -182,6 +208,54 @@ def test_rodape_com_o_numero_da_pagina_nao_e_candidato(rodape: str) -> None:
     lista = parse_convocation(lista_pdf(linhas, rodape=rodape), CLASSIFICADOS, [ALVO])
 
     assert lista.rows_read == 120
+
+
+def test_rodape_com_recurso_nao_troca_o_curso_da_pagina_seguinte() -> None:
+    # "Recurso" tem "curso" dentro. A 2ª página começa direto no cabeçalho, então
+    # o rodapé da 1ª é o único texto antes dela: o curso continua o do topo.
+    linhas = [Linha(nome_ficticio(i)) for i in range(60)]
+    pdf = lista_pdf(linhas, rodape="Recurso: prazo de 2 dias", topo_so_na_primeira=True)
+
+    lista = parse_convocation(pdf, CLASSIFICADOS, [ALVO])
+
+    assert lista.rows_read == 60
+    assert len(lista.convoked) == 60
+
+
+@pytest.mark.parametrize(
+    "topo",
+    [
+        ["INSTITUTO FEDERAL DE ALAGOAS", "CONCURSO SISU 2027"],
+        ["INSTITUTO FEDERAL DE ALAGOAS", "PERCURSO DA MATRÍCULA: VEJA O EDITAL"],
+        [
+            "INSTITUTO FEDERAL DE ALAGOAS",
+            "Dúvidas sobre o curso: procure a coordenação",
+        ],
+    ],
+)
+def test_topo_sem_curso_mantem_o_curso_do_titulo(topo: list[str]) -> None:
+    titulo = "Resultado Final - Classificados - Sistemas de Informação - Maceió"
+
+    lista = parse_convocation(
+        lista_pdf([Linha(nome_ficticio(0))], topo=topo), titulo, [ALVO]
+    )
+
+    assert [item.name for item in lista.convoked] == ["ana clara lima da ficticia"]
+
+
+def test_topo_com_outro_curso_sem_dois_pontos_tira_do_alvo() -> None:
+    # "CURSO QUÍMICA" no começo da linha diz o curso, mesmo sem "Curso:".
+    lista = parse_convocation(
+        lista_pdf(
+            [Linha(nome_ficticio(0))],
+            topo=["INSTITUTO FEDERAL DE ALAGOAS", "CURSO LICENCIATURA EM QUÍMICA"],
+        ),
+        "Resultado Final - Classificados - Sistemas de Informação - Maceió",
+        [ALVO],
+    )
+
+    assert lista.rows_read == 1
+    assert lista.convoked == []
 
 
 def test_pdf_imagem_para_a_rodada() -> None:
@@ -430,6 +504,22 @@ async def test_so_cursos_alvo_na_rodada(
 
     assert resultado.rows_read == 1
     assert indicios == []
+
+
+async def test_convocacao_com_todos_os_cursos_e_baixada_e_lida(
+    indicios: list[tuple[int, str, str, str]],
+) -> None:
+    # Revisão do #286: o título tem três trechos, mas nenhum curso nem campus.
+    titulo = "SiSU 2027 - Convocados - 1ª Chamada"
+    cliente, pedidos = _cliente([(1, titulo, lista_pdf([Linha(nome_ficticio(0))]))])
+
+    resultado = await run_ifal_round(
+        _sessao([(7, nome_ficticio(0))]), cliente, _sem_espera
+    )
+
+    assert any(p.url.path.endswith("/1/download") for p in pedidos)
+    assert resultado.matches_created == 1
+    assert indicios == [(7, "Sistemas de Informação", PROCESSO, titulo)]
 
 
 async def test_documento_que_nao_e_convocacao_nem_e_baixado(
@@ -701,6 +791,85 @@ async def test_rota_agendada_roda_o_ifal(monkeypatch: pytest.MonkeyPatch) -> Non
     assert rodadas == ["ifal"]
     # "course" é só da COPEVE.
     assert curso.status_code == 422
+
+
+async def test_rota_agendada_sem_selecao_do_ifal_da_409_sem_gravar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.db.engine import get_session
+    from app.modules.admissions import cron
+
+    monkeypatch.setattr(settings, "cron_secret", "segredo-de-teste")
+    monkeypatch.setattr(settings, "ifal_selections", {})
+    rodada = AsyncMock()
+    sessao_falsa = AsyncMock()
+    sessao_falsa.add = MagicMock()
+
+    async def sessao() -> object:
+        yield sessao_falsa
+
+    monkeypatch.setattr(cron, "run_ifal_round", rodada)
+    app.dependency_overrides[get_session] = sessao
+    try:
+        async with httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="http://teste"
+        ) as client:
+            resposta = await client.get(
+                "/api/cron/official-lists?source=ifal",
+                headers={"Authorization": "Bearer segredo-de-teste"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resposta.status_code == 409
+    rodada.assert_not_awaited()
+    sessao_falsa.add.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "erro", [IndexError, AttributeError, RecursionError, KeyError, ValueError]
+)
+def test_pdf_malformado_vira_formato_novo_e_nao_erro_500(
+    monkeypatch: pytest.MonkeyPatch, erro: type[Exception]
+) -> None:
+    from app.modules.admissions import ifal
+
+    def quebra(*_: object, **__: object) -> None:
+        raise erro("pdf malformado")
+
+    monkeypatch.setattr(ifal, "PdfReader", quebra)
+
+    with pytest.raises(ReportFormatError):
+        parse_convocation(lista_pdf([Linha(nome_ficticio(0))]), CLASSIFICADOS, [ALVO])
+
+
+async def test_mesma_menina_em_dois_cursos_da_chamada_grava_sempre_o_mesmo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Revisão do #286: sem o curso na ordem, o curso gravado dependia do set.
+    gravados: list[str] = []
+
+    async def lista(*_: object) -> OfficialList:
+        return OfficialList(
+            institution="IFAL", selection_process="x", call="y", url="u"
+        )
+
+    async def criar(_s: object, _g: int, _l: object, course: str, *_: object) -> object:
+        gravados.append(course)
+        return object()
+
+    monkeypatch.setattr(search, "_official_list", lista)
+    monkeypatch.setattr(search, "create_match", criar)
+    achados = [
+        search._Found(1, "SiSU", "1ª", "https://b", curso, CourseLevel.GRADUACAO)
+        for curso in ("Sistemas de Informação", "Ciência da Computação")
+    ]
+    sessao_falsa = _sessao([])
+
+    for ordem in (achados, list(reversed(achados))):
+        await search._save_matches(sessao_falsa, "IFAL", ordem, AGORA)
+
+    assert gravados == ["Ciência da Computação", "Ciência da Computação"]
 
 
 class _Sessao:

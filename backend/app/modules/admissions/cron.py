@@ -61,6 +61,17 @@ async def official_lists_round(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "Curso fora dos alvos"
         )
 
+    if (
+        source == "ifal"
+        and settings.list_search_enabled
+        and not settings.ifal_selections
+    ):
+        # Sem seleção, a rodada não consultaria nada e ainda gravaria um registro
+        # vazio. O 409 deixa a falta de configuração visível no painel de cron.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Nenhuma seleção do IFAL configurada"
+        )
+
     courses = [course] if course is not None else list(TARGET_COURSES)
     async with httpx2.AsyncClient(timeout=30) as client:
         try:

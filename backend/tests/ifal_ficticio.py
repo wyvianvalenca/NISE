@@ -41,20 +41,23 @@ def _linha(y: int, celulas: list[str], xs: list[int] = COLUMNS_X) -> str:
     )
 
 
-def _pagina(
-    curso: str,
-    campus: str,
-    linhas: list[Linha],
-    inicio: int,
-    cabecalho: list[str],
-    rodape: str | None = None,
-) -> str:
-    topo = [
+def topo_padrao(curso: str, campus: str) -> list[str]:
+    """O topo de página que o spike anotou: curso e campus em linhas próprias."""
+    return [
         "INSTITUTO FEDERAL DE ALAGOAS",
         "RESULTADO FINAL - CLASSIFICADOS",
         f"Curso: {curso}",
         f"Campus: {campus}",
     ]
+
+
+def _pagina(
+    topo: list[str],
+    linhas: list[Linha],
+    inicio: int,
+    cabecalho: list[str],
+    rodape: str | None = None,
+) -> str:
     partes = [_linha(800 - 14 * i, [texto], [40]) for i, texto in enumerate(topo)]
     partes.append(_linha(730, cabecalho))
     for i, linha in enumerate(linhas):
@@ -114,15 +117,19 @@ def lista_pdf(
     campus: str = "Maceió",
     cabecalho: list[str] = HEADER,
     rodape: str | None = None,
+    topo: list[str] | None = None,
+    topo_so_na_primeira: bool = False,
 ) -> bytes:
     """A lista de um curso, 50 candidatos por página, curso e campus no topo.
 
     Com `rodape`, cada página termina com ele; "{n}" vira o número da página.
+    Com `topo`, as linhas do topo são essas em vez de curso e campus. Com
+    `topo_so_na_primeira`, as outras páginas começam direto no cabeçalho.
     """
+    primeiro_topo = topo_padrao(curso, campus) if topo is None else topo
     paginas = [
         _pagina(
-            curso,
-            campus,
+            primeiro_topo if i == 0 or not topo_so_na_primeira else [],
             linhas[i : i + ROWS_PER_PAGE],
             i,
             cabecalho,

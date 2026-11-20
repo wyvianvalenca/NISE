@@ -20,7 +20,6 @@ from dataclasses import dataclass
 
 import httpx2
 from pypdf import PdfReader
-from pypdf.errors import PyPdfError
 
 from app.modules.admissions.copeve import (
     ROBOT_USER_AGENT,
@@ -43,6 +42,34 @@ _CONVOCATION = re.compile(r"\bclassificad[oa]s\b|\bconvoca(cao|dos|das)\b|\bcham
 _NOT_CONVOCATION = re.compile(
     r"suplente|espera|desclassificad|eliminad|indeferid|preliminar|retifica|recurso"
 )
+
+# Os campi do IFAL, para reconhecer o "<curso> - <campus>" no fim de um título.
+# Os campi dos cursos-alvo (IFAL_TARGET_COURSES) também contam.
+IFAL_CAMPI = (
+    "Arapiraca",
+    "Batalha",
+    "Benedito Bentes",
+    "Coruripe",
+    "Maceió",
+    "Maragogi",
+    "Marechal Deodoro",
+    "Murici",
+    "Palmeira dos Índios",
+    "Penedo",
+    "Piranhas",
+    "Rio Largo",
+    "Santana do Ipanema",
+    "São Miguel dos Campos",
+    "Satuba",
+    "Viçosa",
+)
+
+# "curso" ou "campus" como palavra: "concurso", "recurso" e "percurso" não contam.
+_COURSE_WORD = re.compile(r"\b(curso|campus)\b")
+# Uma coluna que diz qual é o curso ou o campus começa pela palavra:
+# "Curso: Química", "CAMPUS SATUBA". Uma frase que só cita a palavra
+# ("Dúvidas sobre o curso: procure a coordenação") não diz.
+_COURSE_LABEL = re.compile(r"^(curso|campus)\b")
 
 # Duas colunas da página ficam separadas por dois ou mais espaços.
 _COLUMNS = re.compile(r"\s{2,}")
@@ -100,10 +127,15 @@ def is_other_course(title: str, targets: Sequence[TargetCourse]) -> bool:
 
     No SiSU, cada curso tem o seu PDF, com curso e campus no título:
     "Resultado Final - Classificados - <curso> - <campus>". Esses não precisam
-    ser baixados. Um título sem curso ("Resultado Final - Classificados") pode
-    ter qualquer curso dentro, e é baixado.
+    ser baixados. Só conta como curso no título quando o último trecho é um
+    campus do IFAL: "SiSU 2027 - Convocados - 1ª Chamada" e "Resultado Final -
+    2ª Chamada - Lista de Classificados" podem ter qualquer curso dentro, e são
+    baixados.
     """
-    names_a_course = len(title.split(" - ")) >= 3
+    segments = [normalize_search(part) for part in title.split(" - ")]
+    campi = {normalize_search(campus) for campus in IFAL_CAMPI}
+    campi |= {normalize_search(target.campus) for target in targets}
+    names_a_course = len(segments) >= 3 and segments[-1] in campi
     return names_a_course and not any(target.found_in(title) for target in targets)
 
 
@@ -192,9 +224,29 @@ def _is_header(cells: list[str]) -> bool:
     return any(normalize_search(cell).startswith("nome") for cell in cells)
 
 
-def _mentions_course(text: str) -> bool:
-    normalized = normalize_search(text)
-    return "curso" in normalized or "campus" in normalized
+def _section_course(
+    lines: list[str], targets: Sequence[TargetCourse]
+) -> tuple[bool, TargetCourse | None]:
+    """Se o texto antes de um cabeçalho ou candidato diz de qual curso é o trecho.
+
+    Devolve (diz, curso-alvo). Diz quando nomeia um curso-alvo ou tem uma linha
+    de curso ou campus ("Curso: Química"); aí o curso-alvo é None se o curso
+    não é alvo. Um texto que só cita a palavra ("Recurso: prazo de 2 dias",
+    "CONCURSO SISU 2027", "Dúvidas sobre o curso") não diz nada, e o trecho
+    continua no curso de antes.
+    """
+    text = " ".join(lines)
+    if not _COURSE_WORD.search(normalize_search(text)):
+        return False, None
+    target = next((t for t in targets if t.found_in(text)), None)
+    if target is not None:
+        return True, target
+    labeled = any(
+        _COURSE_LABEL.match(normalize_search(cell))
+        for line in lines
+        for cell in _cells(line)
+    )
+    return labeled, None
 
 
 def parse_convocation(
@@ -212,7 +264,10 @@ def parse_convocation(
     try:
         reader = PdfReader(io.BytesIO(pdf))
         pages = [page.extract_text(extraction_mode="layout") for page in reader.pages]
-    except (PyPdfError, ValueError, KeyError, TypeError) as error:
+    except Exception as error:
+        # Num PDF malformado o pypdf levanta de tudo (PyPdfError, IndexError,
+        # RecursionError, erros do zlib e do struct...). Qualquer um é "o
+        # formato mudou": a rodada para com 502, sem gravar nada, e não com 500.
         raise ReportFormatError from error
 
     current = next((target for target in targets if target.found_in(title)), None)
@@ -234,11 +289,12 @@ def parse_convocation(
             context.append(line)
             continue
 
-        # Um cabeçalho ou candidato depois de um texto com curso ou campus:
-        # começou o trecho de outro curso, que pode não ser alvo.
-        if context and _mentions_course(" ".join(context)):
-            text = " ".join(context)
-            current = next((t for t in targets if t.found_in(text)), None)
+        # Um cabeçalho ou candidato depois de um texto que diz o curso ou o
+        # campus: começou o trecho de outro curso, que pode não ser alvo.
+        if context:
+            names_course, target = _section_course(context, targets)
+            if names_course:
+                current = target
         context = []
 
         if is_header or header is None:
