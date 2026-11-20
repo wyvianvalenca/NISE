@@ -162,18 +162,23 @@ async def save_choice(
     tentativa depois de um tempo esgotado) tentam criar a mesma linha. O banco
     recusa o segundo (a restrição de único), e ele decide pela linha que o
     primeiro criou, sem erro 500.
+
+    O insert roda num savepoint: a recusa desfaz só ele. Um rollback da sessão
+    inteira expiraria os objetos já carregados (a menina, na rota), e lê-los de
+    novo no SQLAlchemy assíncrono dá MissingGreenlet, um 500.
     """
     status = CHOICE_STATUS[choice]
     if entry is None:
-        session.add(new_entry(girl_id, origin, number, status, reason))
         try:
-            await session.commit()
-            return True
+            async with session.begin_nested():
+                session.add(new_entry(girl_id, origin, number, status, reason))
         except IntegrityError:
-            await session.rollback()
             entry = await find_entry(session, girl_id, origin, number, for_update=True)
             if entry is None:
                 return False
+        else:
+            await session.commit()
+            return True
 
     if entry.status is status and entry.dismiss_reason is reason:
         return True

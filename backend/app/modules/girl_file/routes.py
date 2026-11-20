@@ -133,7 +133,10 @@ async def choose(
     if audience is None:
         return not_found("item_not_found")
 
-    entry = await find_entry(session, girl.id, origin, number, for_update=True)
+    # O id guardado antes de escrever: depois de um commit ou de um rollback, ler um
+    # atributo expirado da menina no SQLAlchemy assíncrono dá MissingGreenlet.
+    girl_id = girl.id
+    entry = await find_entry(session, girl_id, origin, number, for_update=True)
     # Um item novo só vale se for do perfil dela, como nas sugestões. O que já está
     # no Ver depois foi sugerido a ela antes: o perfil pode ter mudado desde então.
     if entry is None and not fits_profile(
@@ -142,12 +145,12 @@ async def choose(
         return not_found("item_not_found")
 
     if not await save_choice(
-        session, girl.id, origin, number, data.choice, data.reason, entry
+        session, girl_id, origin, number, data.choice, data.reason, entry
     ):
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT, content={"error": "already_chosen"}
         )
-    return ChoiceOut(file_total=await file_total(session, girl.id))
+    return ChoiceOut(file_total=await file_total(session, girl_id))
 
 
 UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {

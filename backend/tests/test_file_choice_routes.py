@@ -296,10 +296,10 @@ def corrida(linha_do_outro: FileEntry) -> AsyncMock:
         6,
     ]
     sessao_falsa.add = MagicMock()
-    sessao_falsa.commit.side_effect = [
-        IntegrityError("INSERT", {}, Exception("uq_file_entries_girl_curated")),
-        None,
-    ]
+    # O savepoint do insert esbarra na restrição de único ao sair do "async with".
+    sessao_falsa.begin_nested.return_value.__aexit__.side_effect = IntegrityError(
+        "INSERT", {}, Exception("uq_file_entries_girl_curated")
+    )
     return sessao_falsa
 
 
@@ -313,7 +313,10 @@ async def test_clique_duplo_na_mesma_escolha_responde_200_nas_duas() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"fileTotal": 6}
-    sessao_falsa.rollback.assert_awaited_once()
+    # Só o savepoint é desfeito. Um rollback da sessão expiraria a menina, e ler
+    # girl.id depois dele dava MissingGreenlet (500) no Postgres de verdade.
+    sessao_falsa.begin_nested.assert_called_once()
+    sessao_falsa.rollback.assert_not_called()
     assert linha_do_outro.status is FileStatus.NEXT
 
 

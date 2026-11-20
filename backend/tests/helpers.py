@@ -16,6 +16,8 @@ def sessao_com(usuaria: User | None) -> AsyncMock:
     # session.get(User, id) devolve a usuária, ou None se ela não existe mais.
     sessao_falsa = AsyncMock()
     sessao_falsa.get.return_value = usuaria
+    # session.begin_nested() é usado com "async with" (um savepoint), não com await.
+    sessao_falsa.begin_nested = MagicMock()
     return sessao_falsa
 
 
