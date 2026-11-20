@@ -16,7 +16,6 @@ from app.users.models import User
 from tests.presenca.dados import (
     EVENT_DAY,
     Api,
-    at,
     make_action,
     make_girl,
     make_group,
@@ -55,6 +54,7 @@ async def test_cria_o_registro_e_inscreve_na_acao(
     assert body["girl"]["study_stage"] == "medio"
     # Registered, but not marked by the server: the page marks her.
     assert body["girl"]["saved_present"] is False
+    assert body["girl"]["present"] is False
     girl = await banco.scalar(
         select(Girl).where(Girl.email == "larissa.ficticia@exemplo.com")
     )
@@ -221,17 +221,3 @@ async def test_nada_da_menina_vai_para_os_logs(
 
     assert "secreto@exemplo.com" not in caplog.text
     assert "Nome Secreto" not in caplog.text
-
-
-async def test_concluida_ainda_nao_aceita_neste_passo(
-    banco: AsyncSession, api: Api
-) -> None:
-    group, coordinator = await make_group(banco)
-    action = await make_action(banco, group, attendance_registered_at=at(EVENT_DAY))
-
-    response = await api(coordinator).post(
-        URL.format(action.id), json={"name": "Menina", "email": "m@exemplo.com"}
-    )
-
-    assert response.status_code == 409
-    assert response.json() == {"error": "already_concluded"}

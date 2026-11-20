@@ -20,6 +20,7 @@ from app.modules.attendance.emails import (
 )
 from app.modules.attendance.exceptions import (
     AlreadyConcludedError,
+    NotConcludedError,
     TooEarlyError,
     UnknownRegistrationError,
 )
@@ -268,19 +269,88 @@ async def register_girl(
 
 
 async def add_walk_in(
-    session: AsyncSession, action: Action, data: WalkInIn, today: date
+    session: AsyncSession, action: Action, data: WalkInIn, today: date, now: datetime
 ) -> WalkInOut:
-    """ "Veio sem inscrição?" while the attendance is being marked (#346).
+    """ "Veio sem inscrição?" (#346 while marking, #350 after concluding).
 
-    She is registered in the action right away and stays registered even if the
-    marks of the page are lost: the page marks her, and only the mark is
-    lost. Nothing is sent (RN-27): the e-mails go out when it is concluded.
+    While the attendance is being marked, she is only registered: the page
+    marks her, and if the page is left only the mark is lost. Nothing is sent
+    (RN-27).
+
+    After concluding (#350, D-80, D-81), she is registered and marked as
+    present at once, and her e-mails are queued: the evaluation and, if she
+    has no account and never got an invite, the invite. If she was already
+    present, nothing changes.
     """
     action = await lock_action(session, action)
-    ensure_awaiting_attendance(action, today)
+    if today < action.starts_on:
+        raise TooEarlyError
     participation, girl, already = await register_girl(session, action, data)
+    if action.attendance_registered_at is not None:
+        await _mark_present_after_conclusion(
+            session, action, participation, now, invite=True
+        )
     await session.commit()
     return WalkInOut(girl=_girl_out(participation, girl), already_registered=already)
+
+
+async def _mark_present_after_conclusion(
+    session: AsyncSession,
+    action: Action,
+    participation: Participation,
+    now: datetime,
+    invite: bool,
+) -> None:
+    """Marks one girl as present on a concluded action and queues her e-mails.
+
+    Does nothing if she is already present: a second tap sends nothing again.
+    The date the attendance was registered does not change. Does not commit.
+    """
+    if participation.attended_at is not None:
+        return
+    participation.attended_at = now
+    await queue_attendance_emails(
+        session,
+        action,
+        invite_girl_ids=[participation.girl_id] if invite else [],
+        evaluation_girl_ids=[participation.girl_id],
+    )
+
+
+async def mark_present_later(
+    session: AsyncSession,
+    action: Action,
+    participation_id: int,
+    today: date,
+    now: datetime,
+) -> None:
+    """ "Marcar presença" on a row of "Faltaram" (#350, RF-F3.09, D-80, D-81).
+
+    Only on a concluded action, and only adds: there is no way back to absent.
+    She gets the evaluation right away; no new invite, because she was already
+    registered when it was concluded and got hers then, if she had no account
+    (RN-29).
+    """
+    action = await lock_action(session, action)
+    if today < action.starts_on:
+        raise TooEarlyError
+    if action.attendance_registered_at is None:
+        raise NotConcludedError
+    participation = await session.scalar(
+        select(Participation)
+        .where(
+            Participation.id == participation_id,
+            Participation.action_id == action.id,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if participation is None:
+        raise UnknownRegistrationError
+    await _mark_present_after_conclusion(
+        session, action, participation, now, invite=False
+    )
+    await session.commit()
 
 
 async def conclude_attendance(
