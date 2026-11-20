@@ -65,6 +65,7 @@ def test_slug_e_unico_para_a_carga_nao_duplicar() -> None:
 def test_restricoes_do_item() -> None:
     assert _check_names(TABLES["curated_items"]) >= {
         "ck_curated_items_in_person_has_city",
+        "ck_curated_items_online_has_no_city",
         "ck_curated_items_event_has_dates",
         "ck_curated_items_activity_has_no_event_fields",
         "ck_curated_items_ends_after_start",

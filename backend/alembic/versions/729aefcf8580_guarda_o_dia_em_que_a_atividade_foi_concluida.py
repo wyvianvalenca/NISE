@@ -1,7 +1,7 @@
 """guarda o dia em que a atividade foi concluida
 
 Revision ID: 729aefcf8580
-Revises: 1a232c12c8a4
+Revises: 9400d3aadd8e
 Create Date: 2026-11-19 12:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "729aefcf8580"
-down_revision: str | Sequence[str] | None = "1a232c12c8a4"
+down_revision: str | Sequence[str] | None = "9400d3aadd8e"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

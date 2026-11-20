@@ -83,6 +83,10 @@ class CuratedItem(TimestampMixin, Base):
             name="ck_curated_items_in_person_has_city",
         ),
         CheckConstraint(
+            "format = 'IN_PERSON' OR city_ibge_code IS NULL",
+            name="ck_curated_items_online_has_no_city",
+        ),
+        CheckConstraint(
             "kind = 'ACTIVITY' OR (starts_on IS NOT NULL AND ends_on IS NOT NULL)",
             name="ck_curated_items_event_has_dates",
         ),
