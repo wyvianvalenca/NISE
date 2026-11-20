@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { getActivity, type ActivityDetail, type ActivityResult } from "@/lib/atividade";
 import { SIGNUP_PATHS } from "@/lib/signup";
 import { WITHOUT_SESSION } from "@/lib/signup-api";
@@ -31,6 +31,15 @@ export function useActivity(id: string) {
     });
     return () => controller.abort();
   }, [id, attempt]);
+
+  // Com cacheComponents, o Next esconde a tela (Activity) quando ela sai, em vez de
+  // desmontá-la, e na volta mostraria a atividade de antes (o status, por exemplo) até a
+  // busca nova chegar. A limpeza de um useLayoutEffect roda quando a tela é escondida: o
+  // resultado sai, e na volta ela mostra o "Carregando…", como na primeira visita. A busca
+  // acima roda de novo quando ela volta. É o mesmo que o useLongWait faz no Descobrir.
+  useLayoutEffect(() => {
+    return () => setResult(null);
+  }, []);
 
   useEffect(() => {
     if (redirect) router.replace(redirect);

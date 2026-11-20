@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { ActivityStatus } from "../lib/atividade";
 import { mockActivityApi } from "./activity-api";
 import { mockFileApi } from "./file-api";
+import { watchFrames } from "./frames";
 import { mockTermsApi } from "./terms-api";
 
 // #120 · A06·4a Atividade e a celebração da A06·5, com as rotas da #121 simuladas
@@ -34,6 +35,24 @@ function button(page: Page, name: string) {
 function siteLink(page: Page) {
   return page.getByRole("link", { name: /site/ });
 }
+
+test("ao voltar à atividade, não mostra o status de antes, nem por um quadro", async ({ page }) => {
+  await open(page, PYTHON, startAs("next"));
+  await expect(page.getByRole("main").getByText("Próxima aventura")).toBeVisible();
+
+  // Ela vai ao filé. Daqui em diante a atividade já vem em andamento (mudou em outro
+  // aparelho, por exemplo), mas demora a responder.
+  await page.getByRole("link", { name: "Seu filé" }).press("Enter");
+  await expect(page).toHaveURL(/\/file$/);
+  await mockActivityApi(page, { ...startAs("in_progress"), delayMs: 1500 });
+
+  // Com cacheComponents o Next guarda a atividade escondida; na volta ela busca de novo.
+  const seen = await watchFrames(page, ["Próxima aventura"]);
+  await page.goBack();
+
+  await expect(page.getByRole("main").getByText("Em andamento")).toBeVisible();
+  expect(await seen()).toEqual([]);
+});
 
 test("mostra o detalhe da atividade com o que o Figma pede", async ({ page }) => {
   await open(page, PYTHON, startAs("next"));
