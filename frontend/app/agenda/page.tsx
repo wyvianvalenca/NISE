@@ -5,6 +5,7 @@
 // quando chegarem, entram nesta mesma tela, abaixo da seção.
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
@@ -12,9 +13,11 @@ import { Icon } from "@/components/Icon";
 import { InfoHint } from "@/components/InfoHint";
 import { LoadFailed } from "@/components/LoadFailed";
 import { getToAnswer, IS_IT_YOU_PATH, type ToAnswer } from "@/lib/agenda";
+import { accessPath } from "@/lib/lista-oficial";
 import styles from "./page.module.css";
 
 export default function AgendaPage() {
+  const router = useRouter();
   // undefined: carregando. "error": a busca falhou.
   const [toAnswer, setToAnswer] = useState<ToAnswer | undefined | "error">(undefined);
   const [attempt, setAttempt] = useState(0);
@@ -22,12 +25,17 @@ export default function AgendaPage() {
   useEffect(() => {
     const controller = new AbortController();
     getToAnswer(controller.signal)
-      .then(setToAnswer)
+      .then((result) => {
+        if (result.ok) setToAnswer(result.toAnswer);
+        else if (result.reason === "failed") setToAnswer("error");
+        // Login vencido ou termos novos: "Tentar novamente" não resolveria.
+        else router.replace(accessPath(result.reason));
+      })
       .catch(() => {
         if (!controller.signal.aborted) setToAnswer("error");
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, router]);
 
   if (toAnswer === "error") {
     return (

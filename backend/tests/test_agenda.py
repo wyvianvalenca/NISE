@@ -17,11 +17,12 @@ MARIA = User(id=1, email="maria@exemplo.test", name="Maria Fictícia", role=Role
 GIRL = Girl(id=3, email="maria@exemplo.test", name="Maria Fictícia", user_id=1)
 
 
-def _sessao(usuaria: User, tem_indicio: bool) -> AsyncMock:
-    # get(User) para o login; scalar: 1º a menina da conta, 2º o EXISTS do indício.
+def _sessao(usuaria: User, tem_indicio: bool, aceite: int | None = 10) -> AsyncMock:
+    # get(User) para o login; scalar: 1º o aceite dos termos (o id, ou None),
+    # 2º a menina da conta, 3º o EXISTS do indício.
     sessao_falsa = AsyncMock()
     sessao_falsa.get.return_value = usuaria
-    sessao_falsa.scalar.side_effect = [GIRL, tem_indicio]
+    sessao_falsa.scalar.side_effect = [aceite, GIRL, tem_indicio]
     return sessao_falsa
 
 
@@ -45,11 +46,24 @@ async def test_consulta_so_o_indicio_aberto_da_propria_menina() -> None:
         app, "GET", "/api/agenda/to-answer", sessao_falsa, token=create_access_token(1)
     )
 
-    statement = sessao_falsa.scalar.call_args_list[1].args[0]
+    statement = sessao_falsa.scalar.call_args_list[2].args[0]
     sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
     assert "list_matches.girl_id = 3" in sql
     assert "list_matches.answered_at IS NULL" in sql
     assert "list_matches.expires_at >" in sql
+
+
+async def test_sem_o_aceite_da_versao_atual_dos_termos_da_403() -> None:
+    # Mesma regra da A19 (RN-20): nem o sim ou não sai antes do aceite.
+    sessao_falsa = _sessao(MARIA, True, aceite=None)
+
+    response = await chamar_rota(
+        app, "GET", "/api/agenda/to-answer", sessao_falsa, token=create_access_token(1)
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"error": "terms_not_accepted"}
+    assert sessao_falsa.scalar.await_count == 1
 
 
 @pytest.mark.parametrize("papel", [Role.COORDINATOR, Role.NISE_TEAM])

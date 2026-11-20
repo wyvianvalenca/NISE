@@ -91,6 +91,20 @@ test.describe("Sua agenda · Pra responder", () => {
     await expect(page.getByText(ITEM)).toBeVisible();
   });
 
+  // "Tentar novamente" never fixes an expired session or new terms.
+  for (const [what, status, body, path] of [
+    ["an expired session", 401, { detail: "Não autenticado" }, /\/$/],
+    ["new terms not accepted yet", 403, { error: "terms_not_accepted" }, /\/cadastro\/termos$/],
+  ] as const) {
+    test(`with ${what} it goes where she can fix it`, async ({ page }) => {
+      await page.route("**/api/agenda/to-answer", (route) => route.fulfill({ status, json: body }));
+      await page.goto("/agenda");
+
+      await expect(page).toHaveURL(path);
+      await expect(page.getByRole("button", { name: "Tentar novamente" })).toHaveCount(0);
+    });
+  }
+
   test("works with the keyboard, with visible focus", async ({ page }) => {
     await mockToAnswer(page, true);
     await page.route("**/api/matches", (route) => route.fulfill({ json: [] }));

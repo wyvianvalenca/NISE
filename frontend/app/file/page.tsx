@@ -28,7 +28,7 @@ export default function FilePage() {
   useEffect(() => {
     const controller = new AbortController();
     getToAnswer(controller.signal)
-      .then((toAnswer) => setQuestions(pendingCount(toAnswer)))
+      .then((result) => setQuestions(result.ok ? pendingCount(result.toAnswer) : 0))
       .catch(() => {});
     return () => controller.abort();
   }, []);

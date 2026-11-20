@@ -4,6 +4,8 @@
 // M5 (#129); por enquanto a rota só diz se há um indício de lista oficial sem
 // resposta, sem nenhum detalhe dele (RNF-F31.02).
 
+import { accessProblem, type AccessProblem } from "./lista-oficial";
+
 export type ToAnswer = {
   /** Há um indício sem resposta: mostra "Achamos seu nome numa lista de aprovados!". */
   list_match: boolean;
@@ -12,14 +14,27 @@ export type ToAnswer = {
 export const AGENDA_PATH = "/agenda";
 export const IS_IT_YOU_PATH = "/agenda/e-voce-na-lista";
 
-export async function getToAnswer(signal?: AbortSignal): Promise<ToAnswer> {
+export type ToAnswerResult =
+  | { ok: true; toAnswer: ToAnswer }
+  | { ok: false; reason: AccessProblem | "failed" };
+
+/**
+ * Sem login, com o cadastro do Google incompleto ou sem o aceite da versão atual
+ * dos termos, a rota não responde (401 ou 403 "terms_not_accepted"): o motivo
+ * volta para a tela levar ela até onde resolve. Sem rede, a promessa falha.
+ */
+export async function getToAnswer(signal?: AbortSignal): Promise<ToAnswerResult> {
   const response = await fetch("/api/agenda/to-answer", { signal });
 
   if (!response.ok) {
-    throw new Error(`agenda: ${response.status}`);
+    return { ok: false, reason: (await accessProblem(response)) ?? "failed" };
   }
 
-  return (await response.json()) as ToAnswer;
+  try {
+    return { ok: true, toAnswer: (await response.json()) as ToAnswer };
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
 }
 
 /** Quantas perguntas ela tem pra responder, para a faixa do filé. */
