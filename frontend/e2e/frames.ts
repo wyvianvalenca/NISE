@@ -24,3 +24,13 @@ export async function watchFrames(page: Page, texts: string[]): Promise<() => Pr
 
   return () => page.evaluate(() => (window as unknown as { __framesSeen: string[] }).__framesSeen);
 }
+
+/**
+ * Deixa as animações da página mais lentas (rate 0.25 = 4 vezes), para o teste ver as marcas
+ * de animação (data-fresh, data-filled, data-leaving) antes de elas saírem no fim.
+ */
+export async function slowAnimations(page: Page, rate = 0.25) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Animation.enable");
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: rate });
+}

@@ -40,6 +40,12 @@ type FileDrawingProps = {
   changes?: FileChanges;
   /** Chamado quando um quadradinho removido termina de sair. */
   onRemoved?: (id: string) => void;
+  /**
+   * Chamado quando um quadradinho novo ou que andou termina de se animar. A marca precisa
+   * sair: o navegador reinicia as animações de uma tela que volta a aparecer, e a de antes
+   * se repetiria na próxima volta ao filé.
+   */
+  onSettled?: (id: string) => void;
 };
 
 /**
@@ -52,7 +58,7 @@ type FileDrawingProps = {
  * O balãozinho é só visual: o leitor de tela lê o resumo do desenho e a lista abaixo,
  * que tem os mesmos nomes.
  */
-export function FileDrawing({ data, changes = NO_CHANGES, onRemoved }: FileDrawingProps) {
+export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }: FileDrawingProps) {
   const start = origin(START_CELL);
   const label =
     `Seu filé: ${countText(data.done.length, "concluído", "concluídos")}, ` +
@@ -130,6 +136,11 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved }: FileDrawi
                 data-square={square.id}
                 data-fresh={isFresh || undefined}
                 data-filled={isFilled || undefined}
+                onAnimationEnd={(event) => {
+                  // A última animação de um novo é a do miolo (fill-in); a de um que andou, grow.
+                  const last = isFresh ? "fill-in" : "grow";
+                  if ((isFresh || isFilled) && event.animationName.includes(last)) onSettled?.(square.id);
+                }}
                 onPointerEnter={(event) => {
                   if (event.pointerType === "mouse") setActive(square.id);
                 }}

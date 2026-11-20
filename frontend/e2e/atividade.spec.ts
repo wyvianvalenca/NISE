@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { ActivityStatus } from "../lib/atividade";
 import { mockActivityApi } from "./activity-api";
 import { FIGMA_ITEMS, mockFileApi } from "./file-api";
+import { slowAnimations } from "./frames";
 import { watchFrames } from "./frames";
 import { mockTermsApi } from "./terms-api";
 
@@ -202,10 +203,53 @@ test("iniciar uma atividade preenche o quadradinho dela no filé", async ({ page
   await mockFileApi(page, {
     items: FIGMA_ITEMS.map((item) => (item.id === "curadoria-3" ? { ...item, section: "in_progress" } : item)),
   });
+  await slowAnimations(page);
   await page.getByRole("link", { name: "Seu filé" }).press("Enter");
 
   await expect(page.locator("[data-filled]")).toHaveAttribute("data-square", "curadoria-3");
   await expect(page.locator("[data-filled]")).toHaveCount(1);
+});
+
+test("concluir depois de iniciar não repete o preenchimento da metade no filé", async ({ page }) => {
+  const DISCORD = "curadoria-3";
+  const comStatus = (section: "in_progress" | "concluded") =>
+    FIGMA_ITEMS.map((item) => (item.id === DISCORD ? { ...item, section } : item));
+  await mockActivityApi(page);
+  await page.goto("/file");
+
+  // Inicia: de volta ao filé, a metade teal se preenche.
+  await page.locator(`a[href='/file/${DISCORD}']`).press("Enter");
+  await button(page, "Marcar como iniciada").click();
+  await expect(page.getByRole("main").getByText("Em andamento")).toBeVisible();
+  await mockFileApi(page, { items: comStatus("in_progress") });
+  await page.getByRole("link", { name: "Seu filé" }).press("Enter");
+  const half = page.locator(`[data-square='${DISCORD}'] path`);
+  await expect(half).toBeVisible();
+  // Espera o preenchimento terminar.
+  await expect.poll(() => half.evaluate((element) => element.getAnimations().length)).toBe(0);
+
+  // Conclui: na volta, registra a cada quadro se a metade voltou a se animar.
+  await page.locator(`a[href='/file/${DISCORD}']`).press("Enter");
+  await button(page, "Marcar como concluída").click();
+  await expect(page).toHaveURL(`/file/${DISCORD}/concluida`);
+  await mockFileApi(page, { items: comStatus("concluded"), delayMs: 1000 });
+  await page.evaluate((id) => {
+    const w = window as unknown as { __metadeDeNovo: number };
+    w.__metadeDeNovo = 0;
+    const tick = () => {
+      const path = document.querySelector(`[data-square='${id}'] path`);
+      if (path && path.getAnimations().length > 0) w.__metadeDeNovo += 1;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, DISCORD);
+  await slowAnimations(page);
+  await page.getByRole("link", { name: "Fechar" }).press("Enter");
+
+  // Só o preenchimento do concluído roda; a metade não aparece se preenchendo de novo.
+  await expect(page.locator(`[data-square='${DISCORD}'] path`)).toHaveCount(0);
+  await expect(page.locator(`[data-square='${DISCORD}']`)).toHaveAttribute("data-filled", "true");
+  expect(await page.evaluate(() => (window as unknown as { __metadeDeNovo: number }).__metadeDeNovo)).toBe(0);
 });
 
 test("tirar uma atividade do filé faz o quadradinho dela sair", async ({ page }) => {
@@ -215,6 +259,7 @@ test("tirar uma atividade do filé faz o quadradinho dela sair", async ({ page }
   await expect(button(page, "Tirar do filé")).toBeVisible();
 
   await mockFileApi(page, { items: FIGMA_ITEMS.filter((item) => item.id !== PYTHON) });
+  await slowAnimations(page);
   await button(page, "Tirar do filé").click();
 
   // No filé, o quadradinho dela faz o caminho de volta na casa antiga e depois some.
