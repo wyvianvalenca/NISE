@@ -34,16 +34,60 @@ function reversed(keyframes: Keyframe[]): Keyframe[] {
   return [...keyframes].reverse();
 }
 
+/** O ancestral que rola (no Seu filé, o meio da tela, entre o cabeçalho e a barra de baixo). */
+function scrollParent(element: Element): HTMLElement | null {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const { overflowY } = getComputedStyle(parent);
+    if (overflowY === "auto" || overflowY === "scroll") return parent;
+  }
+  return null;
+}
+
+/**
+ * Traz o desenho para o meio da tela, se ele não estiver inteiro à vista, e resolve quando
+ * a rolagem termina. Ao voltar de uma atividade aberta pela lista, a tela volta rolada para
+ * baixo, e a animação aconteceria fora da vista.
+ */
+export function bringIntoView(element: Element): Promise<void> {
+  const parent = scrollParent(element);
+  const area = parent ? parent.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+  const box = element.getBoundingClientRect();
+  if (box.top >= area.top && box.bottom <= area.bottom) return Promise.resolve();
+
+  element.scrollIntoView({ block: "center", behavior: "smooth" });
+  return new Promise((resolve) => {
+    const target: EventTarget = parent ?? window;
+    function done() {
+      target.removeEventListener("scrollend", done);
+      clearTimeout(timer);
+      resolve();
+    }
+    // Se o navegador não avisar o fim da rolagem, as animações começam assim mesmo.
+    const timer = setTimeout(done, 800);
+    target.addEventListener("scrollend", done);
+  });
+}
+
 /**
  * Anima uma rodada de mudanças no desenho: o que entrou desenha a borda, o que andou se
  * preenche e o que saiu faz o caminho de volta. Avisa no fim de cada um. Com
  * prefers-reduced-motion, nada se move: avisa na hora.
+ *
+ * Se o desenho estiver fora da vista, ele entra na tela antes, e as animações esperam,
+ * paradas no primeiro quadro (a borda ainda sem desenho, o miolo ainda vazio).
  */
 export function playFileChanges(svg: SVGSVGElement, changes: FileChanges, { onSettled, onRemoved }: Callbacks) {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hasMotion = changes.fresh.size + changes.filled.size + changes.removed.length > 0;
+  const inView = reduce || !hasMotion ? Promise.resolve() : bringIntoView(svg);
+  const waiting: Animation[] = [];
 
   function animate(element: Element | null, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
-    return element ? element.animate(keyframes, options) : null;
+    if (!element) return null;
+    const animation = element.animate(keyframes, options);
+    animation.pause();
+    waiting.push(animation);
+    return animation;
   }
 
   // Quando todas terminam, avisa. Uma animação cancelada não avisa.
@@ -112,4 +156,6 @@ export function playFileChanges(svg: SVGSVGElement, changes: FileChanges, { onSe
       () => onRemoved(removed.id),
     );
   }
+
+  inView.then(() => waiting.forEach((animation) => animation.play()));
 }

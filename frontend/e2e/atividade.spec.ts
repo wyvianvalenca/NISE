@@ -252,6 +252,48 @@ test("concluir depois de iniciar não repete o preenchimento da metade no filé"
   expect(await page.evaluate(() => (window as unknown as { __metadeDeNovo: number }).__metadeDeNovo)).toBe(0);
 });
 
+test.describe("com a lista rolada para baixo", () => {
+  test.use({ viewport: { width: 390, height: 700 } });
+
+  /** Abre o filé rolado até o fim, com o desenho fora da vista, e entra na atividade. */
+  async function openFromTheList(page: Page, id: string) {
+    await mockActivityApi(page);
+    await page.goto("/file");
+    const link = page.locator(`a[href='/file/${id}']`);
+    await link.scrollIntoViewIfNeeded();
+    await page.locator("main").evaluate((main) => main.parentElement!.scrollTo(0, main.parentElement!.scrollHeight));
+    await expect(page.getByRole("img", { name: /^Seu filé:/ })).not.toBeInViewport();
+    await link.press("Enter");
+  }
+
+  test("ao voltar com uma mudança, o desenho entra na tela antes de animar", async ({ page }) => {
+    await openFromTheList(page, "curadoria-3");
+    await button(page, "Marcar como iniciada").click();
+    await expect(page.getByRole("main").getByText("Em andamento")).toBeVisible();
+    await mockFileApi(page, {
+      items: FIGMA_ITEMS.map((item) => (item.id === "curadoria-3" ? { ...item, section: "in_progress" } : item)),
+    });
+    await slowAnimations(page);
+    await page.getByRole("link", { name: "Seu filé" }).press("Enter");
+
+    const drawing = page.getByRole("img", { name: /^Seu filé:/ });
+    await expect(drawing).toBeInViewport({ ratio: 1 });
+    // A metade só começa a crescer com o desenho já à vista.
+    await expect(page.locator("[data-filled]")).toHaveAttribute("data-square", "curadoria-3");
+    await expect(page.locator("[data-filled]")).toHaveCount(0);
+  });
+
+  test("ao voltar sem mudança, a tela fica onde estava", async ({ page }) => {
+    await openFromTheList(page, "curadoria-3");
+    await expect(button(page, "Marcar como iniciada")).toBeVisible();
+    await page.getByRole("link", { name: "Seu filé" }).press("Enter");
+
+    await expect(page.locator("a[href='/file/curadoria-3']")).toBeVisible();
+    await page.waitForTimeout(1000);
+    await expect(page.getByRole("img", { name: /^Seu filé:/ })).not.toBeInViewport();
+  });
+});
+
 test("tirar uma atividade do filé faz o quadradinho dela sair", async ({ page }) => {
   await mockActivityApi(page);
   await page.goto("/file");
