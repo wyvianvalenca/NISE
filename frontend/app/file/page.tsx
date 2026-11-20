@@ -14,6 +14,7 @@ import { FileDrawing } from "@/components/FileDrawing";
 import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
+import { AGENDA_PATH, getToAnswer, pendingCount } from "@/lib/agenda";
 import { UndoTimerToast } from "@/components/UndoTimerToast";
 import { eventPath, takeDidNotGo, undoDidNotGo, type DidNotGo } from "@/lib/evento";
 import { getFile, type FileData, type FileItem } from "@/lib/file";
@@ -21,6 +22,16 @@ import styles from "./page.module.css";
 
 export default function FilePage() {
   const [data, setData] = useState<FileData | null>(null);
+  // Quantas perguntas esperam por ela na agenda (RF-F31.10). Se a busca falhar, a faixa não aparece.
+  const [questions, setQuestions] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getToAnswer(controller.signal)
+      .then((result) => setQuestions(result.ok ? pendingCount(result.toAnswer) : 0))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let current = true;
@@ -40,6 +51,16 @@ export default function FilePage() {
 
       <div className={styles.scroll}>
         <main className={styles.main}>
+          {questions > 0 && (
+            // Faixa "Tem umas perguntinhas pra você" (Figma: Link target / Perguntinhas pendentes).
+            <Link href={AGENDA_PATH} className={styles.questions}>
+              Tem umas perguntinhas pra você
+              <span className={styles.questionsLink}>
+                Ver
+                <Icon name="chevron-right" size={14} />
+              </span>
+            </Link>
+          )}
           {data ? (
             <File data={data} />
           ) : (
