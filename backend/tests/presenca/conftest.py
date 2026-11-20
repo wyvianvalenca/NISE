@@ -34,9 +34,9 @@ from app.auth.utils import create_access_token
 from app.config import settings
 from app.db.engine import get_session
 from app.main import app
-from app.modules.attendance.dependencies import current_day
+from app.modules.attendance.dependencies import current_day, email_connection
 from app.users.models import User
-from tests.presenca.dados import EVENT_DAY
+from tests.presenca.dados import EVENT_DAY, CorreioFalso
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://nise:nise@localhost:5432/nise_test"
@@ -115,7 +115,15 @@ async def banco(postgres_presenca: None) -> AsyncGenerator[AsyncSession]:
 
 
 @pytest.fixture
-async def api(banco: AsyncSession) -> AsyncGenerator[Callable[..., AsyncClient]]:
+def correio() -> CorreioFalso:
+    """Records the e-mails the routes would send, without sending anything."""
+    return CorreioFalso()
+
+
+@pytest.fixture
+async def api(
+    banco: AsyncSession, correio: CorreioFalso
+) -> AsyncGenerator[Callable[..., AsyncClient]]:
     """Calls the real app with the test session, signed in as `user`, on `today`."""
     clients: list[AsyncClient] = []
 
@@ -123,6 +131,7 @@ async def api(banco: AsyncSession) -> AsyncGenerator[Callable[..., AsyncClient]]
         yield banco
 
     app.dependency_overrides[get_session] = session_override
+    app.dependency_overrides[email_connection] = lambda: correio.connect
 
     def make(user: User | None, today: date = EVENT_DAY) -> AsyncClient:
         app.dependency_overrides[current_day] = lambda: today
@@ -143,6 +152,8 @@ async def api(banco: AsyncSession) -> AsyncGenerator[Callable[..., AsyncClient]]
 
 # Tables the concurrency tests may write to, children first, for the cleanup.
 _TABLES_TO_CLEAN = (
+    "attendance_emails",
+    "invites",
     "participations",
     "girls",
     "actions",
@@ -154,7 +165,7 @@ _TABLES_TO_CLEAN = (
 
 @pytest.fixture
 async def banco_concorrente(
-    postgres_presenca: None,
+    postgres_presenca: None, correio: CorreioFalso
 ) -> AsyncGenerator[async_sessionmaker[AsyncSession]]:
     """Real, committed sessions on separate connections, for races.
 
@@ -180,6 +191,7 @@ async def banco_concorrente(
             yield session
 
     app.dependency_overrides[get_session] = session_override
+    app.dependency_overrides[email_connection] = lambda: correio.connect
     try:
         yield sessions
     finally:

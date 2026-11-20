@@ -20,6 +20,7 @@ from app.modules.admissions.models import (  # noqa: F401
     OfficialList,
 )
 from app.modules.answers.models import Answer  # noqa: F401
+from app.modules.attendance.models import AttendanceEmail  # noqa: F401
 from app.modules.cities.models import City  # noqa: F401
 from app.modules.consents.models import TermsAcceptance  # noqa: F401
 from app.modules.girls.models import Girl, GirlTopic  # noqa: F401
