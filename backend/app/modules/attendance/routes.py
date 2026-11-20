@@ -23,6 +23,7 @@ from app.modules.attendance.service import (
     add_walk_in,
     build_attendance_page,
     conclude_attendance,
+    mark_present_later,
     save_marks,
 )
 
@@ -59,7 +60,8 @@ REFUSED: dict[int | str, dict[str, Any]] = {
     status.HTTP_409_CONFLICT: {
         "description": (
             'Fora do momento: {"error": "too_early"} antes do dia do evento, '
-            '{"error": "already_concluded"} depois de concluir'
+            '{"error": "already_concluded"} para marcar ou salvar depois de '
+            'concluir, {"error": "not_concluded"} para marcar uma por uma antes'
         )
     },
     status.HTTP_422_UNPROCESSABLE_CONTENT: {
@@ -89,18 +91,28 @@ async def save_attendance_marks(
     return await build_attendance_page(session, action, today)
 
 
-# "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03). Registers her
-# in the action (or finds her, by the e-mail) and answers her row, for the page
-# to mark. Sends nothing (RN-27). From the day of the event (D-80).
+# "Veio sem inscrição? Adicionar participante" (#346, #350, RF-F3.03).
+# Registers her in the action (or finds her, by the e-mail) and answers her row.
+# While marking, the page marks her and nothing is sent (RN-27). After
+# concluding, she is marked as present here and gets her e-mails right away
+# (D-81). From the day of the event (D-80).
 @router.post("/girls", response_model=WalkInOut, responses=REFUSED)
 async def add_walk_in_girl(
-    data: WalkInIn, action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
+    data: WalkInIn,
+    action: GroupActionDep,
+    session: AsyncSessionDep,
+    today: TodayDep,
+    connect: ConnectDep,
 ) -> WalkInOut | JSONResponse:
+    action_id = action.id
     try:
-        return await add_walk_in(session, action, data, today)
+        result = await add_walk_in(session, action, data, today, datetime.now(UTC))
     except AttendanceError as error:
         await session.rollback()
         return _refused(error)
+
+    await _send_now(session, action_id, connect)
+    return result
 
 
 async def _send_now(
@@ -136,4 +148,30 @@ async def conclude(
         return _refused(error)
 
     await _send_now(session, action.id, connect)
+    return await build_attendance_page(session, action, today)
+
+
+# "Marcar presença" on a row of "Faltaram" (#350, RF-F3.09, D-80). Only on a
+# concluded action, only adds (there is no way to unmark), and she gets the
+# evaluation right away. A second tap changes nothing and sends nothing.
+@router.post(
+    "/present/{participation_id}", response_model=AttendancePageOut, responses=REFUSED
+)
+async def mark_present(
+    participation_id: int,
+    action: GroupActionDep,
+    session: AsyncSessionDep,
+    today: TodayDep,
+    connect: ConnectDep,
+) -> AttendancePageOut | JSONResponse:
+    action_id = action.id
+    try:
+        await mark_present_later(
+            session, action, participation_id, today, datetime.now(UTC)
+        )
+    except AttendanceError as error:
+        await session.rollback()
+        return _refused(error)
+
+    await _send_now(session, action_id, connect)
     return await build_attendance_page(session, action, today)
