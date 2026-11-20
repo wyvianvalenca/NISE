@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { Avatar } from "@/components/Avatar";
+import { AccountMenu } from "@/components/AccountMenu";
 import { BottomNav } from "@/components/BottomNav";
 import { FileDrawing } from "@/components/FileDrawing";
 import { FileItemCard } from "@/components/FileItemCard";
@@ -35,12 +35,7 @@ export default function FilePage() {
   return (
     <div className={styles.page}>
       <AppHeader>
-        {data && (
-          // O perfil ainda não existe; por enquanto o link dá 404.
-          <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
-            <Avatar name={data.firstName} size={36} />
-          </Link>
-        )}
+        {data && <AccountMenu name={data.firstName} />}
       </AppHeader>
 
       <div className={styles.scroll}>

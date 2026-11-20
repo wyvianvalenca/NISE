@@ -197,7 +197,9 @@ test("a barra inferior marca Filé; Agenda e o avatar têm destino provisório",
   await expect(nav.getByRole("link", { name: "Filé" })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Descobrir" })).not.toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/agenda");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute("href", "/perfil");
+  // O avatar abre o menu da conta; o perfil fica dentro dele.
+  await page.getByRole("button", { name: "Sua conta" }).click();
+  await expect(page.getByRole("link", { name: "Ver perfil" })).toHaveAttribute("href", "/perfil");
 });
 
 test("mostra o carregamento enquanto o filé chega", async ({ page }) => {
@@ -213,7 +215,7 @@ test("dá para usar só com o teclado, com foco visível", async ({ page }) => {
   await expect(item(page, "IA para iniciantes")).toBeVisible();
 
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Sua conta" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "O que é o filé?" })).toBeFocused();
   await page.keyboard.press("Tab");

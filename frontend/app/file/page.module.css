@@ -25,10 +25,6 @@
   padding: 28px 24px 32px;
 }
 
-.profile {
-  display: flex;
-  border-radius: 50%;
-}
 
 .titleRow {
   display: flex;

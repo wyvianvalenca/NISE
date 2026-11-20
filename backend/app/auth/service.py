@@ -18,6 +18,7 @@ from app.auth.utils import (
 )
 from app.config import settings
 from app.modules.cities.service import ensure_city_exists
+from app.modules.consents.service import has_accepted_current_terms
 from app.modules.girls.models import Girl
 from app.modules.girls.service import get_girl_by_email
 from app.modules.girls.utils import AgeCheck, check_age
@@ -201,6 +202,29 @@ async def authenticate_user(session: AsyncSession, data: LoginIn) -> User | None
     return user
 
 
+# Para onde cada uma vai depois de entrar (A15, #330).
+COORDINATOR_HOME = "/coordenacao/acoes"
+# A porta do filé: na primeira vez explica o que é (A06·0), depois leva ao
+# Descobrir.
+GIRL_HOME = "/por-que-file"
+# Quem criou a conta e parou antes dos termos continua de onde parou (H3).
+TERMS_PATH = "/cadastro/termos"
+
+
+async def home_path(session: AsyncSession, user: User) -> str:
+    """A primeira tela depois de entrar, com e-mail e senha ou com o Google."""
+    if user.role is Role.COORDINATOR:
+        return COORDINATOR_HOME
+
+    if user.role is Role.GIRL:
+        if not await has_accepted_current_terms(session, user.id):
+            return TERMS_PATH
+        return GIRL_HOME
+
+    # A equipe NISE não tem telas: a curadoria é feita por scripts.
+    return "/"
+
+
 async def _invalidate_open_tokens(
     session: AsyncSession, user_id: int, now: datetime
 ) -> None:
@@ -215,6 +239,12 @@ async def _invalidate_open_tokens(
 
 
 async def create_password_reset_token(session: AsyncSession, user: User) -> str:
+    # Trava a conta até o commit. Sem isso, dois pedidos ao mesmo tempo (o
+    # pedido roda em segundo plano, então pedidos seguidos se sobrepõem)
+    # invalidavam os mesmos links e deixavam dois abertos. Com a trava, o
+    # segundo espera o primeiro gravar e invalida o link dele.
+    await session.scalar(select(User.id).where(User.id == user.id).with_for_update())
+
     now = datetime.now(UTC)
 
     await _invalidate_open_tokens(session, user.id, now)
@@ -233,6 +263,28 @@ async def create_password_reset_token(session: AsyncSession, user: User) -> str:
     return token
 
 
+def _is_usable(reset_token: PasswordResetToken, now: datetime) -> bool:
+    """O link não foi usado nem trocado por um mais novo, e não venceu."""
+    return reset_token.used_at is None and reset_token.expires_at > now
+
+
+async def find_reset_token_user(session: AsyncSession, token: str) -> User | None:
+    """A dona do link de nova senha, ou None se o link não vale mais.
+
+    Só confere: quem troca a senha e gasta o link é o reset_password. A A16b
+    usa para mostrar o e-mail da conta antes de ela digitar a senha nova.
+    """
+    stmt = select(PasswordResetToken).where(
+        PasswordResetToken.token_hash == hash_reset_token(token)
+    )
+    reset_token = await session.scalar(stmt)
+
+    if reset_token is None or not _is_usable(reset_token, datetime.now(UTC)):
+        return None
+
+    return await session.get(User, reset_token.user_id)
+
+
 async def reset_password(
     session: AsyncSession, token: str, new_password: str
 ) -> User | None:
@@ -248,11 +300,7 @@ async def reset_password(
     )
     reset_token = await session.scalar(stmt)
 
-    if (
-        reset_token is None
-        or reset_token.used_at is not None
-        or reset_token.expires_at <= now
-    ):
+    if reset_token is None or not _is_usable(reset_token, now):
         await session.rollback()
         return None
 

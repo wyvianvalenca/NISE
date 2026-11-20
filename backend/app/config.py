@@ -31,5 +31,8 @@ class AppSettings(BaseSettings):
 
     pending_signup_expire_minutes: int = 30
 
+    # Endereço público do app, para os links dos e-mails.
+    app_url: str = "http://localhost:3000"
+
 
 settings = AppSettings()
