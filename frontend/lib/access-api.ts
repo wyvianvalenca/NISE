@@ -40,21 +40,30 @@ export async function login(email: string, password: string): Promise<LoginResul
   return { ok: false, reason: "failed" };
 }
 
+export type HomeResult =
+  | { kind: "signed_in"; nextPath: string }
+  | { kind: "signed_out" }
+  | { kind: "failed" };
+
 /**
  * Where someone who is already signed in goes, decided by the server with the
- * same rule as the login. `null` without a session (401), and also when the
- * check fails: then she simply stays where she is.
+ * same rule as the login. "signed_out" is the 401 without a session; "failed"
+ * is a check that did not go through.
  */
-export async function getHomePath(signal?: AbortSignal): Promise<string | null> {
+export async function getHomePath(signal?: AbortSignal): Promise<HomeResult> {
   try {
     const response = await fetch("/api/auth/home", { signal });
-    if (!response.ok) {
-      return null;
+
+    if (response.ok) {
+      const body = (await response.json()) as { nextPath: string };
+      return { kind: "signed_in", nextPath: body.nextPath };
     }
-    const body = (await response.json()) as { nextPath: string };
-    return body.nextPath;
+    if (response.status === 401) {
+      return { kind: "signed_out" };
+    }
+    return { kind: "failed" };
   } catch {
-    return null;
+    return { kind: "failed" };
   }
 }
 

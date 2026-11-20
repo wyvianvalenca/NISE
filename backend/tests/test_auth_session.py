@@ -2,13 +2,14 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
+from httpx2 import Response
 
-from app.auth.permissions import SESSION_COOKIE
-from app.auth.utils import JWT_ALGORITHM, create_access_token
+from app.auth.permissions import SESSION_COOKIE, SIGNED_IN_HINT_COOKIE
+from app.auth.utils import JWT_ALGORITHM, create_access_token, hash_password
 from app.config import settings
 from app.main import app
 from app.users.models import Role, User
-from tests.helpers import chamar_rota, sessao_com
+from tests.helpers import chamar_rota, sessao_com, sessao_para_busca
 
 
 def alana() -> User:
@@ -19,6 +20,12 @@ def alana() -> User:
         password_hash="hash-ficticio",
         role=Role.GIRL,
     )
+
+
+def conta_com_senha() -> User:
+    conta = alana()
+    conta.password_hash = hash_password("senha-ficticia")
+    return conta
 
 
 async def test_me_sem_cookie_responde_401() -> None:
@@ -108,6 +115,45 @@ async def test_logout_apaga_o_cookie() -> None:
     # O navegador só apaga o cookie se path e httponly baterem com os da criação.
     assert "Path=/" in cookie
     assert "HttpOnly" in cookie
+
+
+def cookies_gravados(response: Response) -> dict[str, str]:
+    # Cada Set-Cookie separado, pelo nome do cookie.
+    return {
+        linha.split("=", 1)[0]: linha
+        for linha in response.headers.get_list("set-cookie")
+    }
+
+
+async def test_logout_apaga_tambem_o_aviso_de_sessao() -> None:
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/auth/logout",
+        sessao_com(alana()),
+        token=create_access_token(1),
+    )
+
+    aviso = cookies_gravados(response)[SIGNED_IN_HINT_COOKIE]
+    assert "Max-Age=0" in aviso
+    assert "Path=/" in aviso
+
+
+async def test_login_grava_o_aviso_de_sessao_legivel_pelo_front() -> None:
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/auth/login",
+        sessao_para_busca(conta_com_senha()),
+        corpo={"email": "alana@exemplo.com", "password": "senha-ficticia"},
+    )
+
+    cookies = cookies_gravados(response)
+    assert "HttpOnly" in cookies[SESSION_COOKIE]
+    # O aviso não tem segredo: só diz que há sessão, e o front precisa lê-lo.
+    assert cookies[SIGNED_IN_HINT_COOKIE].startswith(f"{SIGNED_IN_HINT_COOKIE}=1;")
+    assert "HttpOnly" not in cookies[SIGNED_IN_HINT_COOKIE]
+    assert "Path=/" in cookies[SIGNED_IN_HINT_COOKIE]
 
 
 async def test_logout_sem_estar_logada_responde_204() -> None:

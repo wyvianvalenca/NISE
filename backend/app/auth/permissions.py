@@ -13,6 +13,11 @@ from app.db.engine import AsyncSessionDep
 from app.users.models import Role, User
 
 SESSION_COOKIE = "nise_session"
+# Aviso de que este navegador tem sessão, gravado e apagado junto com ela. Não
+# é httpOnly, para a A01 ler e mostrar o carregamento em vez das boas-vindas
+# enquanto pergunta ao back para onde ela vai. Não é segredo nem dá acesso a
+# nada: quem decide é sempre o cookie da sessão.
+SIGNED_IN_HINT_COOKIE = "nise_entrou"
 PENDING_SIGNUP_COOKIE = "nise_cadastro_pendente"
 GOOGLE_STATE_COOKIE = "nise_google_state"
 GOOGLE_VERIFIER_COOKIE = "nise_google_verifier"
@@ -88,6 +93,15 @@ def set_session_cookie(response: Response, token: str) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
     )
+    response.set_cookie(
+        key=SIGNED_IN_HINT_COOKIE,
+        value="1",
+        max_age=settings.jwt_expire_minutes * 60,
+        path="/",
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
 
 
 def clear_session_cookie(response: Response) -> None:
@@ -95,6 +109,13 @@ def clear_session_cookie(response: Response) -> None:
         key=SESSION_COOKIE,
         path="/",
         httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+    response.delete_cookie(
+        key=SIGNED_IN_HINT_COOKIE,
+        path="/",
+        httponly=False,
         secure=settings.cookie_secure,
         samesite="lax",
     )
