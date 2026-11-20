@@ -62,8 +62,6 @@ class AppSettings(BaseSettings):
     smtp_password: str = ""
     # Remetente, ex.: "NISE <conta@gmail.com>". Vazio usa o SMTP_USER.
     email_from: str = ""
-    # Endereço público do app, para os links dos e-mails.
-    app_url: str = "http://localhost:3000"
 
 
 settings = AppSettings()

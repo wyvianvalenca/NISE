@@ -136,8 +136,16 @@ def test_codigos_de_nivel_e_origem() -> None:
 # --- Criar indício -----------------------------------------------------------
 
 
+def _sessao_criacao() -> AsyncMock:
+    # 1º scalar: a checagem "já existe?" (não); 2º: a conta da menina, para a
+    # fila do e-mail (#275). Sem conta, nada entra na fila.
+    sessao_falsa = _sessao()
+    sessao_falsa.scalar.side_effect = [False, None]
+    return sessao_falsa
+
+
 async def test_cria_indicio_que_vence_em_30_dias() -> None:
-    sessao_falsa = _sessao(scalar=False)
+    sessao_falsa = _sessao_criacao()
 
     indicio = await create_match(
         sessao_falsa, 3, LISTA, "Ciência da Computação", CourseLevel.GRADUACAO, AGORA
@@ -164,7 +172,7 @@ async def test_nao_cria_de_novo_o_indicio_da_mesma_chamada() -> None:
 
 
 async def test_a_checagem_olha_indicio_marca_aprovacao_e_ingresso() -> None:
-    sessao_falsa = _sessao(scalar=False)
+    sessao_falsa = _sessao_criacao()
 
     await create_match(sessao_falsa, 3, LISTA, "x", CourseLevel.GRADUACAO, AGORA)
 
@@ -179,7 +187,7 @@ async def test_a_checagem_olha_indicio_marca_aprovacao_e_ingresso() -> None:
 
 
 async def test_chamada_sem_flush_ganha_id_antes_da_checagem() -> None:
-    sessao_falsa = _sessao(scalar=False)
+    sessao_falsa = _sessao_criacao()
     nova = OfficialList(institution="UFAL", selection_process="Sisu 2027", call="2ª")
 
     async def flush() -> None:

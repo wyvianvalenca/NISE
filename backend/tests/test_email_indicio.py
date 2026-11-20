@@ -14,7 +14,12 @@ import pytest
 from sqlalchemy import UniqueConstraint
 
 from app.config import settings
-from app.core.email import EmailNotConfiguredError, send_email
+from app.core.email import (
+    EmailNotConfiguredError,
+    SmtpConnection,
+    build_message,
+    send_email,
+)
 from app.db.base import Base
 from app.db.engine import engine
 from app.main import app
@@ -23,8 +28,8 @@ from app.modules.admissions.copeve import TARGET_COURSES
 from app.modules.admissions.match_email import (
     BODY,
     SUBJECT,
+    TIME_BUDGET_SECONDS,
     SendResult,
-    accepts_opportunity_emails,
     match_email_body,
     send_match_emails,
 )
@@ -46,12 +51,10 @@ NOME = "Alana Fictícia de Teste"
 ENDERECO = "alana.ficticia@example.com"
 
 
-def _usuaria(aceitou: bool | None) -> User:
-    usuaria = User(id=1, email=ENDERECO, name=NOME, role=Role.GIRL)
-    if aceitou is not None:
-        # A coluna vem com o #202; até lá o teste põe o atributo na mão.
-        setattr(usuaria, "opportunity_emails", aceitou)  # noqa: B010
-    return usuaria
+def _usuaria(aceitou: bool, id: int = 1) -> User:
+    return User(
+        id=id, email=ENDERECO, name=NOME, role=Role.GIRL, opportunity_emails=aceitou
+    )
 
 
 def _indicio(**campos: object) -> ListMatch:
@@ -93,12 +96,8 @@ async def test_quem_aceitou_entra_na_fila_ao_criar_o_indicio() -> None:
     assert email.sent_at is None
 
 
-@pytest.mark.parametrize("aceitou", [False, None])
-async def test_quem_nao_aceitou_nao_entra_na_fila_e_o_indicio_fica(
-    aceitou: bool | None,
-) -> None:
-    # None: a coluna do #202 ainda não existe; na dúvida, não envia.
-    sessao_falsa = _sessao_criacao(_usuaria(aceitou))
+async def test_quem_nao_aceitou_nao_entra_na_fila_e_o_indicio_fica() -> None:
+    sessao_falsa = _sessao_criacao(_usuaria(aceitou=False))
 
     indicio = await create_match(
         sessao_falsa, 3, LISTA, CURSO, CourseLevel.GRADUACAO, AGORA
@@ -159,6 +158,18 @@ def test_restricao_unica_garante_um_e_mail_por_indicio() -> None:
 # --- Envio ---------------------------------------------------------------------
 
 
+class _Conexao:
+    """Imita app.core.email.SmtpConnection: guarda o que foi enviado."""
+
+    def __init__(self, erros: list[Exception | None] | None = None) -> None:
+        self.send = MagicMock(side_effect=erros)
+        self.close = MagicMock()
+
+
+def _conectar(conexao: _Conexao) -> MagicMock:
+    return MagicMock(return_value=conexao)
+
+
 def _sessao_envio(
     fila: list[tuple[MatchEmail | None, ListMatch | None, User | None]],
 ) -> AsyncMock:
@@ -181,24 +192,75 @@ def _sessao_envio(
     return sessao_falsa
 
 
+def _dois_na_fila() -> tuple[MatchEmail, MatchEmail, AsyncMock]:
+    primeiro = MatchEmail(id=1, list_match_id=11)
+    segundo = MatchEmail(id=2, list_match_id=12)
+    sessao_falsa = _sessao_envio(
+        [
+            (primeiro, _indicio(), _usuaria(aceitou=True)),
+            (segundo, _indicio(id=12, girl_id=4), _usuaria(aceitou=True, id=2)),
+        ]
+    )
+    return primeiro, segundo, sessao_falsa
+
+
 async def test_envia_um_e_mail_e_marca_como_enviado() -> None:
     email = MatchEmail(id=1, list_match_id=11)
     sessao_falsa = _sessao_envio([(email, _indicio(), _usuaria(aceitou=True))])
-    enviar = MagicMock()
+    conexao = _Conexao()
 
-    resultado = await send_match_emails(sessao_falsa, enviar, AGORA)
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
 
     assert resultado == SendResult(sent=1, dropped=0, stopped=False)
-    enviar.assert_called_once_with(ENDERECO, SUBJECT, match_email_body())
+    conexao.send.assert_called_once_with(ENDERECO, SUBJECT, match_email_body())
     assert email.sent_at == AGORA
-    sessao_falsa.commit.assert_awaited_once()
+    conexao.close.assert_called_once()
+
+
+async def test_marca_como_enviado_antes_de_enviar() -> None:
+    # Revisão do #287: se a hospedagem cortar a rotina depois do envio, a
+    # próxima não reenvia. No máximo uma vez (RNF-F4.01).
+    email = MatchEmail(id=1, list_match_id=11)
+    sessao_falsa = _sessao_envio([(email, _indicio(), _usuaria(aceitou=True))])
+    no_envio: list[object] = []
+    conexao = _Conexao()
+    conexao.send.side_effect = lambda *_: no_envio.append(
+        (email.sent_at, sessao_falsa.commit.await_count)
+    )
+
+    await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
+
+    assert no_envio == [(AGORA, 1)]
+
+
+async def test_uma_conexao_so_para_o_lote() -> None:
+    _, _, sessao_falsa = _dois_na_fila()
+    conexao = _Conexao()
+    conectar = _conectar(conexao)
+
+    resultado = await send_match_emails(sessao_falsa, conectar, AGORA)
+
+    assert resultado == SendResult(sent=2, dropped=0, stopped=False)
+    conectar.assert_called_once()
+    assert conexao.send.call_count == 2
+    conexao.close.assert_called_once()
+
+
+async def test_fila_vazia_nem_conecta() -> None:
+    sessao_falsa = _sessao_envio([])
+    conectar = MagicMock()
+
+    resultado = await send_match_emails(sessao_falsa, conectar, AGORA)
+
+    assert resultado == SendResult(sent=0, dropped=0, stopped=False)
+    conectar.assert_not_called()
 
 
 async def test_trava_cada_e_mail_pendente_antes_de_enviar() -> None:
     email = MatchEmail(id=1, list_match_id=11)
     sessao_falsa = _sessao_envio([(email, _indicio(), _usuaria(aceitou=True))])
 
-    await send_match_emails(sessao_falsa, MagicMock(), AGORA)
+    await send_match_emails(sessao_falsa, _conectar(_Conexao()), AGORA)
 
     trava = sessao_falsa.scalar.call_args_list[0].args[0]
     sql = str(
@@ -213,28 +275,33 @@ async def test_trava_cada_e_mail_pendente_antes_de_enviar() -> None:
 
 async def test_rotina_rodando_duas_vezes_envia_um_so() -> None:
     email = MatchEmail(id=1, list_match_id=11)
-    enviar = MagicMock()
+    conexao = _Conexao()
 
     await send_match_emails(
-        _sessao_envio([(email, _indicio(), _usuaria(aceitou=True))]), enviar, AGORA
+        _sessao_envio([(email, _indicio(), _usuaria(aceitou=True))]),
+        _conectar(conexao),
+        AGORA,
     )
     # Na segunda vez, a trava já não acha o e-mail pendente (foi enviado, ou
-    # outra rotina está com ele).
-    segunda = await send_match_emails(_sessao_envio([(None, None, None)]), enviar)
+    # outra rotina está com ele). A concorrência de verdade, com duas sessões
+    # no Postgres, foi conferida à mão (veja a descrição do PR).
+    segunda = await send_match_emails(
+        _sessao_envio([(None, None, None)]), _conectar(conexao), AGORA
+    )
 
     assert segunda == SendResult(sent=0, dropped=0, stopped=False)
-    enviar.assert_called_once()
+    conexao.send.assert_called_once()
 
 
 async def test_indicio_apagado_antes_do_envio_nao_envia() -> None:
     email = MatchEmail(id=1, list_match_id=11)
     sessao_falsa = _sessao_envio([(email, None, None)])
-    enviar = MagicMock()
+    conexao = _Conexao()
 
-    resultado = await send_match_emails(sessao_falsa, enviar, AGORA)
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
 
     assert resultado == SendResult(sent=0, dropped=1, stopped=False)
-    enviar.assert_not_called()
+    conexao.send.assert_not_called()
     assert email.dropped_at == AGORA
     assert email.sent_at is None
 
@@ -249,98 +316,212 @@ async def test_indicio_apagado_antes_do_envio_nao_envia() -> None:
 )
 async def test_indicio_respondido_ou_vencido_nao_envia(indicio: ListMatch) -> None:
     email = MatchEmail(id=1, list_match_id=11)
-    enviar = MagicMock()
+    conexao = _Conexao()
 
     resultado = await send_match_emails(
-        _sessao_envio([(email, indicio, _usuaria(aceitou=True))]), enviar, AGORA
+        _sessao_envio([(email, indicio, _usuaria(aceitou=True))]),
+        _conectar(conexao),
+        AGORA,
     )
 
     assert resultado.dropped == 1
-    enviar.assert_not_called()
+    conexao.send.assert_not_called()
 
 
 async def test_preferencia_desligada_antes_do_envio_nao_envia() -> None:
+    # A checagem é a única do app (can_send_email, RN-30).
     email = MatchEmail(id=1, list_match_id=11)
-    enviar = MagicMock()
+    conexao = _Conexao()
 
     resultado = await send_match_emails(
-        _sessao_envio([(email, _indicio(), _usuaria(aceitou=False))]), enviar, AGORA
+        _sessao_envio([(email, _indicio(), _usuaria(aceitou=False))]),
+        _conectar(conexao),
+        AGORA,
     )
 
     assert resultado.dropped == 1
-    enviar.assert_not_called()
+    conexao.send.assert_not_called()
 
 
 async def test_conta_apagada_antes_do_envio_nao_envia() -> None:
     email = MatchEmail(id=1, list_match_id=11)
-    enviar = MagicMock()
+    conexao = _Conexao()
 
     resultado = await send_match_emails(
-        _sessao_envio([(email, _indicio(), None)]), enviar, AGORA
+        _sessao_envio([(email, _indicio(), None)]), _conectar(conexao), AGORA
     )
 
     assert resultado.dropped == 1
-    enviar.assert_not_called()
+    conexao.send.assert_not_called()
+
+
+async def test_dois_indicios_da_mesma_menina_mandam_um_e_mail_so() -> None:
+    primeiro = MatchEmail(id=1, list_match_id=11)
+    segundo = MatchEmail(id=2, list_match_id=12)
+    sessao_falsa = _sessao_envio(
+        [
+            (primeiro, _indicio(), _usuaria(aceitou=True)),
+            (segundo, _indicio(id=12), _usuaria(aceitou=True)),
+        ]
+    )
+    conexao = _Conexao()
+
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
+
+    assert resultado == SendResult(sent=1, dropped=1, stopped=False)
+    conexao.send.assert_called_once()
+    assert segundo.dropped_at == AGORA
 
 
 @pytest.mark.parametrize(
     "erro",
     [
         EmailNotConfiguredError(),
-        smtplib.SMTPServerDisconnected("caiu"),
+        smtplib.SMTPConnectError(421, b"ocupado"),
+        smtplib.SMTPNotSupportedError("STARTTLS extension not supported by server."),
+        smtplib.SMTPNotSupportedError("SMTP AUTH extension not supported by server."),
+        smtplib.SMTPException("No suitable authentication method found."),
         smtplib.SMTPAuthenticationError(535, b"senha errada"),
-        OSError("rede fora"),
+        ConnectionRefusedError("porta errada"),
+        TimeoutError("sem resposta"),
     ],
-    ids=["sem-configuracao", "desconectado", "login", "rede"],
+    ids=[
+        "sem-configuracao",
+        "conexao",
+        "sem-starttls",
+        "sem-auth",
+        "sem-metodo-de-login",
+        "login",
+        "porta-errada",
+        "timeout",
+    ],
 )
-async def test_falha_no_envio_para_e_deixa_na_fila(erro: Exception) -> None:
-    primeiro = MatchEmail(id=1, list_match_id=11)
-    segundo = MatchEmail(id=2, list_match_id=12)
-    sessao_falsa = _sessao_envio(
-        [
-            (primeiro, _indicio(), _usuaria(aceitou=True)),
-            (segundo, _indicio(id=12), _usuaria(aceitou=True)),
-        ]
-    )
-    enviar = MagicMock(side_effect=erro)
+async def test_erro_ao_conectar_para_sem_tocar_na_fila(erro: Exception) -> None:
+    # Revisão do #287: com a porta errada ou sem STARTTLS, todo e-mail falhava
+    # e era descartado para sempre. Agora isso para a rotina antes do 1º.
+    primeiro, segundo, sessao_falsa = _dois_na_fila()
+    conectar = MagicMock(side_effect=erro)
 
-    resultado = await send_match_emails(sessao_falsa, enviar, AGORA)
+    resultado = await send_match_emails(sessao_falsa, conectar, AGORA)
 
     assert resultado == SendResult(sent=0, dropped=0, stopped=True)
-    enviar.assert_called_once()
-    assert primeiro.sent_at is None and primeiro.dropped_at is None
-    sessao_falsa.rollback.assert_awaited_once()
+    for email in (primeiro, segundo):
+        assert email.sent_at is None and email.dropped_at is None
+    sessao_falsa.scalar.assert_not_awaited()
     sessao_falsa.commit.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
     "erro",
     [
-        smtplib.SMTPRecipientsRefused({ENDERECO: (550, b"no such user")}),
-        smtplib.SMTPNotSupportedError("SMTPUTF8"),
+        smtplib.SMTPRecipientsRefused({ENDERECO: (450, b"mailbox busy")}),
+        smtplib.SMTPRecipientsRefused({ENDERECO: (421, b"try again later")}),
+        smtplib.SMTPDataError(452, b"quota de envio do Gmail"),
+        smtplib.SMTPDataError(421, b"try again later"),
+        smtplib.SMTPSenderRefused(550, b"remetente", "equipe@example.com"),
+        smtplib.SMTPException("outro erro do servidor"),
     ],
-    ids=["destinatario-recusado", "nao-suportado"],
+    ids=[
+        "destinatario-450",
+        "destinatario-421",
+        "cota-452",
+        "dados-421",
+        "remetente",
+        "generico",
+    ],
 )
-async def test_erro_de_um_destinatario_descarta_e_segue(erro: Exception) -> None:
-    # Antes, um endereço recusado parava a rotina, e a próxima pegava o mesmo
-    # e-mail primeiro: a fila travava para sempre atrás dele.
-    primeiro = MatchEmail(id=1, list_match_id=11)
-    segundo = MatchEmail(id=2, list_match_id=12)
-    sessao_falsa = _sessao_envio(
-        [
-            (primeiro, _indicio(), _usuaria(aceitou=True)),
-            (segundo, _indicio(id=12), _usuaria(aceitou=True)),
-        ]
-    )
-    enviar = MagicMock(side_effect=[erro, None])
+async def test_erro_temporario_ou_da_conta_para_e_devolve_a_fila(
+    erro: Exception,
+) -> None:
+    primeiro, segundo, sessao_falsa = _dois_na_fila()
+    conexao = _Conexao([erro, None])
 
-    resultado = await send_match_emails(sessao_falsa, enviar, AGORA)
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
+
+    assert resultado == SendResult(sent=0, dropped=0, stopped=True)
+    conexao.send.assert_called_once()
+    # A marca de enviado foi desfeita: vai de novo na próxima.
+    assert primeiro.sent_at is None and primeiro.dropped_at is None
+    assert segundo.sent_at is None and segundo.dropped_at is None
+    conexao.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [
+        smtplib.SMTPRecipientsRefused({ENDERECO: (550, b"no such user")}),
+        smtplib.SMTPDataError(554, b"message rejected"),
+        smtplib.SMTPNotSupportedError("SMTPUTF8 not supported by server"),
+        ValueError("Header values may not contain linefeed or carriage return"),
+        UnicodeEncodeError("ascii", "á", 0, 1, "fora do ascii"),
+        RuntimeError("qualquer outro erro do e-mail"),
+    ],
+    ids=[
+        "destinatario-550",
+        "dados-554",
+        "smtputf8",
+        "endereco-invalido",
+        "unicode",
+        "outro",
+    ],
+)
+async def test_erro_de_um_e_mail_so_descarta_e_segue(erro: Exception) -> None:
+    # Sem descartar, ele ficaria primeiro na fila e travaria todas as rodadas.
+    primeiro, segundo, sessao_falsa = _dois_na_fila()
+    conexao = _Conexao([erro, None])
+
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
 
     assert resultado == SendResult(sent=1, dropped=1, stopped=False)
-    assert enviar.call_count == 2
+    assert conexao.send.call_count == 2
     assert primeiro.dropped_at == AGORA and primeiro.sent_at is None
     assert segundo.sent_at == AGORA
-    assert sessao_falsa.commit.await_count == 2
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [smtplib.SMTPServerDisconnected("caiu"), OSError("rede fora")],
+    ids=["desconectado", "rede"],
+)
+async def test_conexao_que_cai_no_envio_para_e_nao_reenvia(erro: Exception) -> None:
+    # O servidor pode ter aceitado antes de cair: na dúvida, não reenvia.
+    primeiro, segundo, sessao_falsa = _dois_na_fila()
+    conexao = _Conexao([erro, None])
+
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
+
+    assert resultado == SendResult(sent=0, dropped=0, stopped=True)
+    conexao.send.assert_called_once()
+    assert primeiro.sent_at == AGORA
+    assert segundo.sent_at is None and segundo.dropped_at is None
+
+
+async def test_erro_no_quit_nao_muda_o_resultado() -> None:
+    email = MatchEmail(id=1, list_match_id=11)
+    sessao_falsa = _sessao_envio([(email, _indicio(), _usuaria(aceitou=True))])
+    conexao = _Conexao()
+    conexao.close.side_effect = smtplib.SMTPResponseException(500, b"bye")
+
+    resultado = await send_match_emails(sessao_falsa, _conectar(conexao), AGORA)
+
+    assert resultado == SendResult(sent=1, dropped=0, stopped=False)
+    assert email.sent_at == AGORA and email.dropped_at is None
+
+
+async def test_para_quando_passa_do_tempo_e_deixa_o_resto() -> None:
+    primeiro, segundo, sessao_falsa = _dois_na_fila()
+    conexao = _Conexao()
+    # Começa em 0; depois do 1º e-mail o relógio já passou do limite.
+    tempos = iter([0.0, 0.0, TIME_BUDGET_SECONDS + 1])
+
+    resultado = await send_match_emails(
+        sessao_falsa, _conectar(conexao), AGORA, clock=lambda: next(tempos)
+    )
+
+    assert resultado == SendResult(sent=1, dropped=0, stopped=False)
+    assert primeiro.sent_at == AGORA
+    assert segundo.sent_at is None and segundo.dropped_at is None
+    conexao.close.assert_called_once()
 
 
 # --- Texto e logs --------------------------------------------------------------
@@ -376,36 +557,37 @@ async def test_logs_do_envio_nao_tem_nome_nem_endereco(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     falha = smtplib.SMTPRecipientsRefused({ENDERECO: (550, NOME.encode())})
+    endereco_invalido = ValueError(f"linha quebrada em {ENDERECO}")
     with caplog.at_level(logging.DEBUG):
         await send_match_emails(
             _sessao_envio(
                 [(MatchEmail(id=1, list_match_id=11), _indicio(), _usuaria(True))]
             ),
-            MagicMock(),
+            _conectar(_Conexao()),
             AGORA,
         )
+        for erro in (falha, endereco_invalido):
+            await send_match_emails(
+                _sessao_envio(
+                    [(MatchEmail(id=2, list_match_id=12), _indicio(), _usuaria(True))]
+                ),
+                _conectar(_Conexao([erro])),
+                AGORA,
+            )
         await send_match_emails(
             _sessao_envio(
-                [(MatchEmail(id=2, list_match_id=12), _indicio(), _usuaria(True))]
+                [(MatchEmail(id=3, list_match_id=13), _indicio(), _usuaria(True))]
             ),
-            MagicMock(side_effect=falha),
+            MagicMock(side_effect=smtplib.SMTPAuthenticationError(535, ENDERECO)),
             AGORA,
         )
 
     assert "1 enviados" in caplog.text
     assert "SMTPRecipientsRefused" in caplog.text
+    assert "ValueError" in caplog.text
+    assert "SMTPAuthenticationError" in caplog.text
     for dado in (NOME, ENDERECO, "alana"):
         assert dado.lower() not in caplog.text.lower()
-
-
-# --- Preferência (#49, #202) ---------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("aceitou", "esperado"), [(True, True), (False, False), (None, False)]
-)
-def test_preferencia_de_oportunidades(aceitou: bool | None, esperado: bool) -> None:
-    assert accepts_opportunity_emails(_usuaria(aceitou)) is esperado
 
 
 # --- Envio por SMTP (app/core/email.py) ----------------------------------------
@@ -438,7 +620,7 @@ def test_envia_pelo_gmail_com_starttls_e_senha_de_app(
     send_email(ENDERECO, "Assunto", "Corpo")
 
     smtp.assert_called_once_with("smtp.gmail.com", 587, timeout=30)
-    conexao = smtp.return_value.__enter__.return_value
+    conexao = smtp.return_value
     conexao.starttls.assert_called_once()
     conexao.login.assert_called_once_with(
         "equipe.ficticia@example.com", "senha-de-app-ficticia"
@@ -447,6 +629,65 @@ def test_envia_pelo_gmail_com_starttls_e_senha_de_app(
     assert mensagem["To"] == ENDERECO
     assert mensagem["From"] == "equipe.ficticia@example.com"
     assert mensagem.get_content().strip() == "Corpo"
+
+
+def _smtp_configurado(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    monkeypatch.setattr(settings, "smtp_user", "equipe.ficticia@example.com")
+    monkeypatch.setattr(settings, "smtp_password", "senha-de-app-ficticia")
+    smtp = MagicMock()
+    monkeypatch.setattr("smtplib.SMTP", smtp)
+    return smtp
+
+
+def test_conexao_faz_starttls_e_login_uma_vez_para_varios_e_mails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    smtp = _smtp_configurado(monkeypatch)
+    servidor = smtp.return_value
+
+    with SmtpConnection() as conexao:
+        conexao.send(ENDERECO, "Assunto", "Corpo")
+        conexao.send("outra.ficticia@example.com", "Assunto", "Corpo")
+
+    smtp.assert_called_once()
+    servidor.starttls.assert_called_once()
+    servidor.login.assert_called_once()
+    assert servidor.send_message.call_count == 2
+    servidor.quit.assert_called_once()
+    servidor.close.assert_called_once()
+
+
+def test_login_que_falha_fecha_a_conexao(monkeypatch: pytest.MonkeyPatch) -> None:
+    smtp = _smtp_configurado(monkeypatch)
+    servidor = smtp.return_value
+    servidor.login.side_effect = smtplib.SMTPAuthenticationError(535, b"senha")
+
+    with pytest.raises(smtplib.SMTPAuthenticationError):
+        SmtpConnection()
+
+    servidor.close.assert_called_once()
+    servidor.send_message.assert_not_called()
+
+
+def test_erro_no_quit_nao_e_erro_do_envio(monkeypatch: pytest.MonkeyPatch) -> None:
+    smtp = _smtp_configurado(monkeypatch)
+    smtp.return_value.quit.side_effect = smtplib.SMTPResponseException(500, b"x")
+
+    send_email(ENDERECO, "Assunto", "Corpo")
+
+    smtp.return_value.send_message.assert_called_once()
+    smtp.return_value.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "endereco",
+    ["alana.ficticia@example.com\r\nBcc: todo.mundo@example.com", "a@b.test\nX: y"],
+)
+def test_endereco_com_quebra_de_linha_e_recusado_antes_do_envio(
+    endereco: str,
+) -> None:
+    with pytest.raises(ValueError):
+        build_message(endereco, "Assunto", "Corpo")
 
 
 # --- Rota agendada -------------------------------------------------------------
@@ -472,6 +713,7 @@ async def _cron(cabecalho: str | None) -> httpx2.Response:
 @pytest.fixture
 def segredo(monkeypatch: pytest.MonkeyPatch) -> str:
     monkeypatch.setattr(settings, "cron_secret", "segredo-de-teste")
+    monkeypatch.setattr(settings, "list_search_enabled", True)
     return "segredo-de-teste"
 
 
@@ -515,6 +757,20 @@ async def test_envio_que_para_responde_502(
     resposta = await _cron(f"Bearer {segredo}")
 
     assert resposta.status_code == 502
+
+
+async def test_com_a_busca_desligada_nada_sai_da_fila(
+    segredo: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # RN-20: desligar a busca também segura o que já estava na fila.
+    monkeypatch.setattr(settings, "list_search_enabled", False)
+    enviar = AsyncMock()
+    monkeypatch.setattr(cron, "send_match_emails", enviar)
+
+    resposta = await _cron(f"Bearer {segredo}")
+
+    assert resposta.status_code == 409
+    enviar.assert_not_awaited()
 
 
 def test_nenhuma_rota_publica_devolve_o_e_mail() -> None:

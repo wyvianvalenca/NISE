@@ -101,6 +101,11 @@ async def match_emails(session: AsyncSessionDep) -> dict[str, int]:
     configurado), responde 502 para a falha aparecer no painel de cron, e os
     e-mails que faltam ficam na fila para a próxima vez.
     """
+    if not settings.list_search_enabled:
+        # Com a busca desligada (RN-20), nada sai, nem o que já estava na fila.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "A busca em listas oficiais está desligada"
+        )
     result = await send_match_emails(session)
     if result.stopped:
         raise HTTPException(
