@@ -85,8 +85,14 @@ class FileGroupOut(BaseModel):
 
 
 class FileSquareOut(BaseModel):
-    """Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma."""
+    """Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma.
 
+    O id e o título são os do item: o título aparece no balãozinho do quadradinho, e o
+    id deixa o front reconhecer os quadradinhos novos para animá-los.
+    """
+
+    id: str
+    title: str
     theme: Topic | None
     section: FileSection
 

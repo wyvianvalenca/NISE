@@ -262,7 +262,8 @@ def build_file(name: str, placed: list[tuple[FileSection, FileItemOut]]) -> File
         return DRAWING_ORDER.index(square.section), theme_position
 
     squares = [
-        FileSquareOut(theme=item.theme, section=section) for section, item in placed
+        FileSquareOut(id=item.id, title=item.title, theme=item.theme, section=section)
+        for section, item in placed
     ]
     return FileOut(
         first_name=first_name(name),
