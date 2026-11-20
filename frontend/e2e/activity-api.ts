@@ -80,6 +80,8 @@ type Options = {
   failure?: Failure | "terms_not_accepted";
   /** Faz a mudança de status e o "Tirar do filé" responderem 500. */
   failUpdates?: boolean;
+  /** Primeiro nome no cadastro. Padrão: "Alana". */
+  firstName?: string;
 };
 
 /**
@@ -91,7 +93,11 @@ export async function mockActivityApi(page: Page, options: Options = {}) {
   const store = new Map(
     MOCK_ACTIVITIES.map((activity) => [
       activity.id,
-      { ...activity, status: options.status?.[activity.id] ?? activity.status },
+      {
+        ...activity,
+        status: options.status?.[activity.id] ?? activity.status,
+        firstName: options.firstName ?? activity.firstName,
+      },
     ]),
   );
   const sent = { statusChanges: [] as { id: string; status: ActivityStatus }[], removed: [] as string[] };

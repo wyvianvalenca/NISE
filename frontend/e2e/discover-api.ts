@@ -22,6 +22,8 @@ type Options = {
   delayMs?: number;
   /** Como o GET responde quando dá erro. "terms_not_accepted" é o 403. */
   failure?: Failure | "terms_not_accepted";
+  /** Primeiro nome no cadastro. Padrão: "Alana". */
+  firstName?: string;
 };
 
 /**
@@ -44,7 +46,7 @@ export async function mockDiscoverApi(page: Page, options: Options = {}): Promis
       return fail(route, failure);
     }
     const data: DiscoverData = {
-      firstName: "Alana",
+      firstName: options.firstName ?? "Alana",
       bands: BAND_CODES.map((code) => ({ code, count: counts[code] })),
       lastBand,
     };

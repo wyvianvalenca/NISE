@@ -41,6 +41,13 @@ test("cumprimenta pelo nome e mostra as 5 faixas na ordem, com os grupos", async
   ]);
 });
 
+test("sem primeiro nome, cumprimenta só com \"Oi!\"", async ({ page }) => {
+  await openWith(page, { firstName: "" });
+
+  await expect(page.getByText("Oi!", { exact: true })).toBeVisible();
+  await expect(page.getByText("Oi, !")).toHaveCount(0);
+});
+
 test("cada faixa mostra a descrição e o número de sugestões", async ({ page }) => {
   await openWith(page);
 

@@ -258,6 +258,27 @@ test("ação de grupo sem custo nem idade mínima não mostra esses chips", asyn
   await expect(card.getByText("Por que pra você")).toHaveCount(0);
 });
 
+test("custo de mil reais ou mais tem ponto no milhar", async ({ page }) => {
+  await open(page, "role-com-a-galera", {
+    items: [
+      {
+        id: "curadoria-9",
+        typeLabel: "Curso com turma",
+        title: "Curso ficticio de férias",
+        source: "Escola ficticia · exemplo",
+        format: "in_person",
+        duration: "~1 mês",
+        costCents: 150050,
+        minAge: null,
+        why: null,
+      },
+    ],
+  });
+
+  // Antes, "R$ 1500,50".
+  await expect(page.getByRole("article").getByText("R$ 1.500,50", { exact: true })).toBeVisible();
+});
+
 test("o custo vem em centavos e aparece em reais", async ({ page }) => {
   // No meu ritmo: o quinto item custa R$ 30.
   await open(page, "no-meu-ritmo");

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "./Icon";
+import { Tag } from "./Tag";
 import { formatDeadline, itemIcon, itemPath, themeOf, type FileItem } from "@/lib/file";
 import styles from "./FileItemCard.module.css";
 
@@ -11,7 +12,14 @@ const ACTIONS = {
   concluido: "Ver",
 } as const;
 
-/** Item do filé (Figma: Item / ..., A06·3). */
+/**
+ * Item do filé (Figma: Item / ..., A06·3).
+ *
+ * Só a atividade tem botão: ele abre a A06·4a (GET /api/file/{id}). O detalhe do
+ * evento (A06·4b) chega no M6 (#255), que escolhe a tela pelo `kind`; até lá, o
+ * evento aparece sem botão, em vez de abrir a tela da atividade e mostrar "Essa
+ * atividade não está no seu filé".
+ */
 export function FileItemCard({ item }: { item: FileItem }) {
   const theme = themeOf(item.theme);
   // Sem tema, o selo mostra só o tipo.
@@ -31,15 +39,22 @@ export function FileItemCard({ item }: { item: FileItem }) {
         <h3 className={styles.title}>{item.title}</h3>
         <p className={styles.details}>{item.details}</p>
         {item.deadline && <p className={styles.deadline}>Inscrições até {formatDeadline(item.deadline)}</p>}
+        {item.signedUp && (
+          <span className={styles.signedUp}>
+            <Tag variant="teal">Inscrita</Tag>
+          </span>
+        )}
       </div>
-      {/* O nome acessível leva o título, para "Abrir" não ficar ambíguo na lista. */}
-      <Link
-        href={itemPath(item.id)}
-        className={`${styles.action} ${inProgress ? styles.primary : ""}`}
-        aria-label={`${ACTIONS[item.status]}: ${item.title}`}
-      >
-        {ACTIONS[item.status]}
-      </Link>
+      {item.kind === "atividade" && (
+        // O nome acessível leva o título, para "Abrir" não ficar ambíguo na lista.
+        <Link
+          href={itemPath(item.id)}
+          className={`${styles.action} ${inProgress ? styles.primary : ""}`}
+          aria-label={`${ACTIONS[item.status]}: ${item.title}`}
+        >
+          {ACTIONS[item.status]}
+        </Link>
+      )}
     </article>
   );
 }

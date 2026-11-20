@@ -11,6 +11,8 @@ export type MockFileItem = FileItemResponse & { section: FileSection };
 export const FIGMA_ITEMS: MockFileItem[] = [
   {
     id: "curadoria-1",
+    kind: "atividade",
+    signedUp: false,
     title: "Lógica de programação com Python",
     theme: "programacao",
     typeLabel: "Curso online",
@@ -20,6 +22,8 @@ export const FIGMA_ITEMS: MockFileItem[] = [
   },
   {
     id: "curadoria-2",
+    kind: "evento",
+    signedUp: false,
     title: "Hackathon Meninas na Tecnologia",
     theme: "programacao",
     typeLabel: "Hackathon",
@@ -29,6 +33,8 @@ export const FIGMA_ITEMS: MockFileItem[] = [
   },
   {
     id: "curadoria-3",
+    kind: "atividade",
+    signedUp: false,
     title: "Comunidade de robótica no Discord",
     theme: "robotica",
     typeLabel: "Comunidade",
@@ -38,6 +44,8 @@ export const FIGMA_ITEMS: MockFileItem[] = [
   },
   {
     id: "curadoria-4",
+    kind: "atividade",
+    signedUp: false,
     title: "IA para iniciantes",
     theme: "ia",
     typeLabel: "Curso online",
@@ -47,6 +55,8 @@ export const FIGMA_ITEMS: MockFileItem[] = [
   },
   {
     id: "acao-5",
+    kind: "evento",
+    signedUp: false,
     title: "Oficina de Scratch",
     theme: "programacao",
     typeLabel: "Oficina",
@@ -56,6 +66,8 @@ export const FIGMA_ITEMS: MockFileItem[] = [
   },
   {
     id: "curadoria-6",
+    kind: "atividade",
+    signedUp: false,
     title: "Como funciona um robô",
     theme: "robotica",
     typeLabel: "Vídeo",
@@ -65,6 +77,8 @@ export const FIGMA_ITEMS: MockFileItem[] = [
   },
   {
     id: "curadoria-7",
+    kind: "atividade",
+    signedUp: false,
     title: "Quiz: IA no dia a dia",
     theme: "ia",
     typeLabel: "Quiz",
@@ -88,7 +102,16 @@ export function fileResponse(items: MockFileItem[]): FileResponse {
   const group = (section: FileSection) => {
     const inSection = items
       .filter((item) => item.section === section)
-      .map(({ id, title, theme, typeLabel, details, deadline }) => ({ id, title, theme, typeLabel, details, deadline }));
+      .map(({ id, kind, title, theme, typeLabel, details, deadline, signedUp }) => ({
+        id,
+        kind,
+        title,
+        theme,
+        typeLabel,
+        details,
+        deadline,
+        signedUp,
+      }));
     return { count: inSection.length, items: inSection };
   };
   const squares = items

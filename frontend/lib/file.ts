@@ -28,9 +28,14 @@ export type ThemeCode =
 export type FileSection = "in_progress" | "next" | "concluded";
 
 /** Um item como o back manda (FileItemOut). */
+/** Evento ou atividade (ItemKind no back); os mesmos valores do Ver depois. */
+export type FileItemKind = "atividade" | "evento";
+
 export type FileItemResponse = {
   /** "curadoria-12" ou "acao-7". */
   id: string;
+  /** A atividade abre a A06·4a; o evento abre o detalhe do evento (A06·4b, M6). */
+  kind: FileItemKind;
   /** Tema que dá a cor; null quando o item não tem tema. */
   theme: ThemeCode | null;
   /** Tipo, já escrito para a tela, ex.: "Curso online", "Hackathon". */
@@ -40,6 +45,8 @@ export type FileItemResponse = {
   details: string;
   /** Fim das inscrições (AAAA-MM-DD), só nos eventos que têm prazo. */
   deadline: string | null;
+  /** Evento em que ela se inscreveu (SIGNED_UP): "Inscrita". */
+  signedUp: boolean;
 };
 
 /** Uma seção como o back manda (FileGroupOut). */
@@ -64,6 +71,7 @@ export type FileResponse = {
 
 export type FileItem = {
   id: string;
+  kind: FileItemKind;
   title: string;
   theme: ThemeCode | null;
   /** Tipo do item, já escrito para a tela, ex.: "Curso online", "Hackathon". */
@@ -73,6 +81,8 @@ export type FileItem = {
   /** Fim das inscrições (AAAA-MM-DD), só nos eventos. */
   deadline?: string;
   status: FileStatus;
+  /** Evento em que ela se inscreveu: o cartão mostra "Inscrita". */
+  signedUp: boolean;
 };
 
 /**
@@ -101,12 +111,14 @@ const STATUS_OF: Record<FileSection, FileStatus> = {
 function toItem(item: FileItemResponse, section: FileSection): FileItem {
   return {
     id: item.id,
+    kind: item.kind,
     title: item.title,
     theme: item.theme,
     type: item.typeLabel,
     details: item.details,
     deadline: item.deadline ?? undefined,
     status: STATUS_OF[section],
+    signedUp: item.signedUp,
   };
 }
 

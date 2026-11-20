@@ -163,6 +163,14 @@ test("enquanto salva, os botões ficam bloqueados", async ({ page }) => {
   await expect(page.getByRole("main").getByText("Em andamento")).toBeVisible();
 });
 
+test("sem primeiro nome, a celebração diz só \"Você conseguiu!\"", async ({ page }) => {
+  await open(page, PYTHON, { ...startAs("in_progress"), firstName: "" });
+
+  await button(page, "Marcar como concluída").click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Você conseguiu!", exact: true })).toBeVisible();
+});
+
 test("\"Marcar como concluída\" abre a celebração, e \"Fechar\" leva ao filé", async ({ page }) => {
   const sent = await open(page, PYTHON);
 

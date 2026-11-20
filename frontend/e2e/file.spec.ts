@@ -30,11 +30,13 @@ function item(page: Page, title: string) {
 function makeItem(id: string, itemSection: FileSection, theme: ThemeCode | null = "programacao"): MockFileItem {
   return {
     id: `curadoria-${id}`,
+    kind: "atividade",
     title: `Item ${id}`,
     theme,
     typeLabel: "Curso online",
     details: "Online · ~1 h",
     deadline: null,
+    signedUp: false,
     section: itemSection,
   };
 }
@@ -105,16 +107,32 @@ test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluí
   await expect(
     section(page, "Em andamento").getByRole("link", { name: "Continuar: Lógica de programação com Python" }),
   ).toHaveAttribute("href", "/file/curadoria-1");
-  await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(3);
-  await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(3);
+  // Só as atividades têm botão: o hackathon (próximas) e a oficina (concluídos) são eventos.
+  await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(2);
+  await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(2);
 
   // A atividade (#119) é a tela de verdade: sem simular a rota dela, ela consultaria um back
   // local, se houver um rodando.
   await mockActivityApi(page);
-  await section(page, "Próximas aventuras")
-    .getByRole("link", { name: "Abrir: Hackathon Meninas na Tecnologia" })
-    .click();
-  await expect(page).toHaveURL(/\/file\/curadoria-2$/);
+  await section(page, "Próximas aventuras").getByRole("link", { name: "Abrir: IA para iniciantes" }).click();
+  await expect(page).toHaveURL(/\/file\/curadoria-4$/);
+});
+
+test("evento não abre a tela da atividade; o que tem inscrição mostra Inscrita", async ({ page }) => {
+  const evento = (id: string, signedUp: boolean): MockFileItem => ({
+    ...makeItem(id, "next"),
+    kind: "evento",
+    typeLabel: "Hackathon",
+    signedUp,
+  });
+  await openWith(page, { items: [evento("a", true), evento("b", false), makeItem("c", "next")] });
+
+  // O detalhe do evento (A06·4b) chega no M6; até lá, o evento não tem botão.
+  await expect(item(page, "Item a").getByRole("link")).toHaveCount(0);
+  await expect(item(page, "Item b").getByRole("link")).toHaveCount(0);
+  await expect(item(page, "Item c").getByRole("link", { name: "Abrir: Item c" })).toBeVisible();
+  await expect(item(page, "Item a").getByText("Inscrita")).toBeVisible();
+  await expect(item(page, "Item b").getByText("Inscrita")).toHaveCount(0);
 });
 
 test("cada item fica na seção do seu status", async ({ page }) => {
@@ -522,7 +540,7 @@ test("os alvos de toque têm pelo menos 44 px", async ({ page }) => {
     page.getByRole("link", { name: "O que é o filé?" }),
     page.getByRole("button", { name: "Recolher Em andamento" }),
     page.getByRole("link", { name: "Continuar: Lógica de programação com Python" }),
-    page.getByRole("link", { name: "Ver: Oficina de Scratch" }),
+    page.getByRole("link", { name: "Ver: Como funciona um robô" }),
   ];
   for (const target of targets) {
     const box = await target.boundingBox();

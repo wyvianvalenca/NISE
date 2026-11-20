@@ -102,7 +102,8 @@ export default function DiscoverPage() {
 function Bands({ data }: { data: DiscoverData }) {
   return (
     <>
-      <p className={styles.greeting}>Oi, {data.firstName}!</p>
+      {/* Sem nome no cadastro, só "Oi!" (e não "Oi, !"). */}
+      <p className={styles.greeting}>{data.firstName.trim() ? `Oi, ${data.firstName}!` : "Oi!"}</p>
       <h1 className={styles.title}>Quanto você quer mergulhar agora?</h1>
       <div className={styles.bands}>
         {data.bands.map((band, index) => {

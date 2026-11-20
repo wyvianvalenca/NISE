@@ -84,7 +84,7 @@ function Celebration() {
       />
       <p className={celebration.kicker}>Mais um passo dado</p>
       <h1 ref={headingRef} tabIndex={-1} className={celebration.title}>
-        Você conseguiu, {activity.firstName}!
+        {activity.firstName.trim() ? `Você conseguiu, ${activity.firstName}!` : "Você conseguiu!"}
       </h1>
       <p className={celebration.activity}>{activity.title}</p>
 

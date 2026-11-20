@@ -88,7 +88,7 @@ function toCard(item: MockItem, index: number): SuggestionCard {
     source: item.source,
     format: item.format === "Online" ? "online" : "in_person",
     duration: item.duration,
-    costCents: item.cost === "Grátis" ? 0 : Number(item.cost.replace("R$ ", "")) * 100,
+    costCents: item.cost === "Grátis" ? 0 : Number(item.cost.replace("R$ ", "").replace(".", "")) * 100,
     minAge: item.minAge,
     why: item.why ?? null,
   };

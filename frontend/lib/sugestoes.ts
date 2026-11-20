@@ -86,12 +86,18 @@ const FORMAT_LABELS: Record<SuggestionCard["format"], string> = {
   in_person: "Presencial",
 };
 
-/** O custo como aparece no chip: "Grátis", "R$ 20" ou "R$ 12,50". */
+/** O custo como aparece no chip: "Grátis", "R$ 20", "R$ 12,50" ou "R$ 1.500". */
 export function costLabel(cents: number | null): string | null {
   if (cents === null) return null;
   if (cents === 0) return "Grátis";
   const reais = cents / 100;
-  return `R$ ${Number.isInteger(reais) ? reais : reais.toFixed(2).replace(".", ",")}`;
+  // Ponto no milhar e vírgula nos centavos, como se escreve no Brasil.
+  const digits = Number.isInteger(reais) ? 0 : 2;
+  const amount = reais.toLocaleString("pt-BR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return `R$ ${amount}`;
 }
 
 /** O card do back com os textos da tela. */
