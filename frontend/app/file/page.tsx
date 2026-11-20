@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
@@ -19,6 +19,14 @@ import { getFile, type FileData, type FileItem, type FileResult } from "@/lib/fi
 import { SIGNUP_PATHS } from "@/lib/signup";
 import { WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
+
+const NOTHING_NEW: ReadonlySet<string> = new Set();
+
+/** Os ids dos quadradinhos que estão no filé novo e não estavam no de antes. */
+function newSquares(before: FileData, after: FileData): ReadonlySet<string> {
+  const known = new Set(before.squares.map((square) => square.id));
+  return new Set(after.squares.filter((square) => !known.has(square.id)).map((square) => square.id));
+}
 
 /** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
 function redirectFor(result: FileResult | null): string | null {
@@ -33,25 +41,36 @@ export default function FilePage() {
   const [result, setResult] = useState<FileResult | null>(null);
   // Muda a cada "Tentar novamente", para buscar de novo.
   const [attempt, setAttempt] = useState(0);
+  // Os quadradinhos que entraram desde a versão que estava na tela; eles desenham a borda.
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(NOTHING_NEW);
+  // O filé que está na tela, para comparar com o que chega.
+  const shown = useRef<FileData | null>(null);
   const redirect = redirectFor(result);
 
   useEffect(() => {
-    const controller = new AbortController();
-    getFile(controller.signal).then(setResult, () => {
-      // Sem conexão, a busca falha. Sair da tela também a cancela, mas isso não é uma falha.
-      if (!controller.signal.aborted) setResult({ ok: false, reason: "failed" });
-    });
-    return () => controller.abort();
-  }, [attempt]);
+    shown.current = result?.ok ? result.data : null;
+  }, [result]);
 
   // Com cacheComponents, o Next esconde esta tela (Activity) quando ela sai, em vez de
-  // desmontá-la, e na volta mostraria o filé de antes até a busca nova chegar. A limpeza de
-  // um useLayoutEffect roda quando a tela é escondida: o resultado sai, e na volta ela mostra
-  // o "Carregando…", como na primeira visita. A busca acima roda de novo quando ela volta.
-  // É o mesmo que o useLongWait faz no Descobrir (lib/loading.ts).
-  useLayoutEffect(() => {
-    return () => setResult(null);
-  }, []);
+  // desmontá-la, e roda os efeitos de novo quando ela volta. Então, na volta, o filé de
+  // antes continua na tela enquanto esta busca roda; quando o novo chega, só os
+  // quadradinhos que entraram nesse meio-tempo se desenham. Na primeira visita não há filé
+  // de antes, e nada se desenha.
+  useEffect(() => {
+    const controller = new AbortController();
+    getFile(controller.signal).then(
+      (next) => {
+        const before = shown.current;
+        setFresh(before && next.ok ? newSquares(before, next.data) : NOTHING_NEW);
+        setResult(next);
+      },
+      () => {
+        // Sem conexão, a busca falha. Sair da tela também a cancela, mas isso não é uma falha.
+        if (!controller.signal.aborted) setResult({ ok: false, reason: "failed" });
+      },
+    );
+    return () => controller.abort();
+  }, [attempt]);
 
   useEffect(() => {
     if (redirect) router.replace(redirect);
@@ -84,7 +103,7 @@ export default function FilePage() {
       <div className={styles.scroll}>
         <main className={styles.main}>
           {data ? (
-            <File data={data} />
+            <File data={data} fresh={fresh} />
           ) : (
             // A E03 ("Tecendo seu filé…", #81) fala das sugestões sendo montadas; o filé
             // só lê o que ela já escolheu, então a espera aqui é só este aviso.
@@ -106,7 +125,7 @@ export default function FilePage() {
  * the drawing and the legend stay, because the drawing already handles an empty
  * list. Both come back on her first "Quero fazer".
  */
-function File({ data }: { data: FileData }) {
+function File({ data, fresh }: { data: FileData; fresh: ReadonlySet<string> }) {
   const isEmpty = data.done.length + data.inProgress.length + data.next.length === 0;
 
   return (
@@ -137,7 +156,7 @@ function File({ data }: { data: FileData }) {
         <span aria-hidden="true">→</span>
       </Link>
 
-      <FileDrawing data={data} />
+      <FileDrawing data={data} fresh={fresh} />
       <FileLegend data={data} />
 
       {!isEmpty && (
