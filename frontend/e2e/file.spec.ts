@@ -307,6 +307,24 @@ test("ao voltar, o quadradinho que andou se preenche, e só ele", async ({ page 
   await expect(page.locator("[data-fresh]")).toHaveCount(0);
 });
 
+test("o que andou se preenche na casa onde estava, e só depois desliza para a nova", async ({ page }) => {
+  // Antes: o em andamento (Programação) na primeira casa, o próximo (IA) na segunda. Ao
+  // concluir o de IA, ele passa a ser o primeiro: os dois trocam de casa.
+  await comeBackWith(
+    page,
+    [makeItem("ia", "next", "ia"), makeItem("prog", "in_progress", "programacao")],
+    [makeItem("ia", "concluded", "ia"), makeItem("prog", "in_progress", "programacao")],
+  );
+  const concluded = page.locator("[data-square='curadoria-ia']");
+  const position = () => concluded.evaluate((element) => getComputedStyle(element).transform);
+
+  // Enquanto se preenche, ele fica na casa antiga (92, 92)...
+  await expect(concluded).toHaveAttribute("data-filled", "true");
+  expect(await position()).toBe("matrix(1, 0, 0, 1, 92, 92)");
+  // ...e depois desliza para a primeira casa (138, 92).
+  await expect.poll(position).toBe("matrix(1, 0, 0, 1, 138, 92)");
+});
+
 test("ao voltar, o que saiu do filé faz o caminho de volta e some", async ({ page }) => {
   await comeBackWith(
     page,

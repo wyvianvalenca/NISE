@@ -237,6 +237,14 @@ export type Cell = readonly [number, number];
 /** O centro, "Seu começo". */
 export const START_CELL: Cell = [3, 3];
 
+/** Casas de 40px a cada 46px (Figma: Filé da trilha, quadro de 322px). */
+export const CELL_STEP = 46;
+
+/** O canto de cima à esquerda de uma casa, no desenho. */
+export function cellOrigin([column, row]: Cell) {
+  return { x: column * CELL_STEP, y: row * CELL_STEP };
+}
+
 /**
  * As 14 casas em volta do centro, na ordem em que vão sendo ocupadas. O back
  * manda os quadradinhos já na ordem: concluídos primeiro, depois em andamento,
@@ -316,6 +324,11 @@ export type FileChanges = {
   /** Saíram ("Tirar do filé", "Remover"): o preenchimento ao contrário, na casa antiga. */
   removed: readonly RemovedSquare[];
   /**
+   * Continuam no desenho, mas em outra casa (os concluídos vêm primeiro, por tema). Eles
+   * deslizam depois que o que mudou se preenche ali mesmo, na casa antiga.
+   */
+  moved: ReadonlyMap<string, { from: Cell; to: Cell }>;
+  /**
    * Muda a cada comparação. O desenho anima cada rodada uma vez só, mesmo que a tela seja
    * escondida e volte (components/fileMotion.ts).
    */
@@ -323,7 +336,13 @@ export type FileChanges = {
 };
 
 /** Nada mudou: o padrão, para a primeira visita. */
-export const NO_CHANGES: FileChanges = { fresh: new Set(), filled: new Set(), removed: [], round: 0 };
+export const NO_CHANGES: FileChanges = {
+  fresh: new Set(),
+  filled: new Set(),
+  removed: [],
+  moved: new Map(),
+  round: 0,
+};
 
 let rounds = 0;
 
@@ -348,6 +367,13 @@ export function fileChanges(before: ShownFile, after: FileData): FileChanges {
     square && !current.has(square.id) ? [{ cell, square }] : [],
   );
 
+  const cellBefore = new Map(fileSquares(before).flatMap(({ cell, square }) => (square ? [[square.id, cell]] : [])));
+  const moved = new Map<string, { from: Cell; to: Cell }>();
+  for (const { cell, square } of fileSquares(after)) {
+    const from = square && cellBefore.get(square.id);
+    if (from && (from[0] !== cell[0] || from[1] !== cell[1])) moved.set(square!.id, { from, to: cell });
+  }
+
   rounds += 1;
-  return { fresh, filled, removed, round: rounds };
+  return { fresh, filled, removed, moved, round: rounds };
 }

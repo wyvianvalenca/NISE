@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   NO_CHANGES,
   START_CELL,
+  cellOrigin,
   fileSquares,
   themeOf,
   type Cell,
@@ -12,16 +13,13 @@ import {
   type FileSquareData,
 } from "@/lib/file";
 import styles from "./FileDrawing.module.css";
-import { LEAVE_MS, playFileChanges } from "./fileMotion";
+import { playFileChanges } from "./fileMotion";
 
-// Grade 7×7 do Figma: casas de 40px a cada 46px, num quadro de 322px.
-const STEP = 46;
+// Grade 7×7 do Figma: casas de 40px (a cada CELL_STEP, 46px), num quadro de 322px.
 const SIZE = 40;
 const BOARD = 322;
 
-function origin([column, row]: Cell) {
-  return { x: column * STEP, y: row * STEP };
-}
+const origin = cellOrigin;
 
 function countText(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
@@ -92,8 +90,6 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }
     });
   }, [changes, onSettled, onRemoved]);
 
-  // Com algum quadradinho saindo, os outros esperam ele sair para deslizar.
-  const slideDelay = changes.removed.length > 0 ? `${LEAVE_MS}ms` : "0ms";
 
   return (
     <div className={styles.frame}>
@@ -124,11 +120,12 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }
 
             const isFresh = changes.fresh.has(square.id);
             const isFilled = changes.filled.has(square.id);
-            const style = { transform: `translate(${x}px, ${y}px)`, transitionDelay: slideDelay };
+            // A casa final. Se ela mudou, o deslize desde a casa antiga é animado em fileMotion.ts.
+            const style = { transform: `translate(${x}px, ${y}px)` };
 
             return (
-              // A chave é o item, não a casa: quando um quadradinho novo entra no meio, os
-              // outros deslizam para a casa nova em vez de trocar de lugar de repente.
+              // A chave é o item, não a casa: quando ele muda de casa, é o mesmo elemento que
+              // desliza (fileMotion.ts), em vez de um sumir e outro aparecer.
               <g
                 key={square.id}
                 className={styles.square}
