@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockDiscoverApi } from "./discover-api";
-import { mockLaterApi } from "./later-api";
+import { watchFrames } from "./frames";
+import { mockLaterApi, SAVED_ITEMS } from "./later-api";
 import { mockTermsApi } from "./terms-api";
 
 // #111 e #113 · A06·2b Ver depois, pela rota GET /api/later (#112) e pelas rotas da escolha
@@ -176,6 +177,25 @@ test("quando a lista não carrega, mostra o erro e tenta de novo", async ({ page
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Ver depois" })).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(4);
+});
+
+test("ao voltar ao Ver depois, não mostra a lista de antes, nem por um quadro", async ({ page }) => {
+  await page.goto("/ver-depois");
+  await expect(card(page, "Hackathon Meninas na Tecnologia")).toBeVisible();
+
+  // Ela vai ao Descobrir e decide o hackathon por lá. Daqui em diante a lista já vem sem ele,
+  // mas demora a responder.
+  await page.getByRole("navigation").getByRole("link", { name: "Descobrir" }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await mockLaterApi(page, { items: SAVED_ITEMS.slice(1), delayMs: 1500 });
+
+  // Com cacheComponents o Next guarda o Ver depois escondido; na volta ele busca de novo.
+  const seen = await watchFrames(page, ["Hackathon Meninas na Tecnologia"]);
+  await page.goBack();
+
+  await expect(card(page, "Robótica com Arduino para iniciantes")).toBeVisible();
+  await expect(card(page, "Hackathon Meninas na Tecnologia")).toHaveCount(0);
+  expect(await seen()).toEqual([]);
 });
 
 test("sem sessão, volta para o início", async ({ page }) => {
