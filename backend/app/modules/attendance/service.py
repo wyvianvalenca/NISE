@@ -7,11 +7,16 @@ group's data (RNF-G.03).
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionStatus, Participation
 from app.modules.actions.service import ACTION_TIMEZONE, compute_status
+from app.modules.attendance.exceptions import (
+    AlreadyConcludedError,
+    TooEarlyError,
+    UnknownRegistrationError,
+)
 from app.modules.attendance.schemas import (
     AttendanceActionOut,
     AttendanceGirlOut,
@@ -44,6 +49,7 @@ def _girl_out(participation: Participation, girl: Girl) -> AttendanceGirlOut:
         name=girl.name,
         email=girl.email,
         study_stage=girl.study_stage,
+        saved_present=participation.saved_present,
     )
 
 
@@ -94,7 +100,76 @@ async def build_attendance_page(
         registrations_open=action.registrations_open and today < action.starts_on,
         can_delete=status is not ActionStatus.CONCLUDED,
         registered_count=len(registrations),
+        saved_count=sum(
+            1 for participation, _ in registrations if participation.saved_present
+        ),
         last_registered_on=last_registered_on,
         columns=columns,
         girls=[_girl_out(participation, girl) for participation, girl in registrations],
     )
+
+
+async def lock_action(session: AsyncSession, action: Action) -> Action:
+    """Locks the action row until the commit and reads it again.
+
+    Saving, concluding and marking afterwards all start here, so two of them on
+    the same action never run at the same time: a double tap on "Concluir
+    presença" waits for the first one and then sees it concluded.
+    """
+    locked = await session.scalar(
+        select(Action)
+        .where(Action.id == action.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    assert locked is not None  # the route has just read it
+    return locked
+
+
+def ensure_awaiting_attendance(action: Action, today: date) -> None:
+    """Marks are only taken from the day of the event until it is concluded."""
+    if today < action.starts_on:
+        raise TooEarlyError
+    if action.attendance_registered_at is not None:
+        raise AlreadyConcludedError
+
+
+async def ensure_registrations(
+    session: AsyncSession, action: Action, ids: set[int]
+) -> None:
+    """Every id must be a registration of this very action."""
+    if not ids:
+        return
+    found = set(
+        (
+            await session.scalars(
+                select(Participation.id).where(
+                    Participation.action_id == action.id, Participation.id.in_(ids)
+                )
+            )
+        ).all()
+    )
+    if found != ids:
+        raise UnknownRegistrationError
+
+
+async def save_marks(
+    session: AsyncSession, action: Action, present_ids: list[int], today: date
+) -> None:
+    """ "Salvar e continuar depois" (#340, RF-F3.04, D-81).
+
+    Replaces the saved marks of the action: the girls in `present_ids` are
+    marked and every other one is unmarked. Nothing else changes: no e-mail,
+    no attendance, no filé, and the action stays "Aguardando presença".
+    """
+    action = await lock_action(session, action)
+    ensure_awaiting_attendance(action, today)
+    ids = set(present_ids)
+    await ensure_registrations(session, action, ids)
+
+    await session.execute(
+        update(Participation)
+        .where(Participation.action_id == action.id)
+        .values(saved_present=Participation.id.in_(ids) if ids else False)
+    )
+    await session.commit()
