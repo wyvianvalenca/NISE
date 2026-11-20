@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { ActivityStatus } from "../lib/atividade";
 import { mockActivityApi } from "./activity-api";
-import { mockFileApi } from "./file-api";
+import { FIGMA_ITEMS, mockFileApi } from "./file-api";
 import { watchFrames } from "./frames";
 import { mockTermsApi } from "./terms-api";
 
@@ -188,6 +188,40 @@ test("depois de concluir, voltar ao detalhe mostra a atividade concluída", asyn
 
   await expect(page.getByRole("main").getByText("Concluído")).toBeVisible();
   await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
+});
+
+test("iniciar uma atividade preenche o quadradinho dela no filé", async ({ page }) => {
+  await mockActivityApi(page);
+  await page.goto("/file");
+  // Enter, e não clique: o botão do Next no modo dev pode ficar por cima dos links.
+  await page.locator("a[href='/file/curadoria-3']").press("Enter");
+  await button(page, "Marcar como iniciada").click();
+  await expect(page.getByRole("main").getByText("Em andamento")).toBeVisible();
+
+  // De volta ao filé, ela já está em andamento: a metade teal do quadradinho se preenche.
+  await mockFileApi(page, {
+    items: FIGMA_ITEMS.map((item) => (item.id === "curadoria-3" ? { ...item, section: "in_progress" } : item)),
+  });
+  await page.getByRole("link", { name: "Seu filé" }).press("Enter");
+
+  await expect(page.locator("[data-filled]")).toHaveAttribute("data-square", "curadoria-3");
+  await expect(page.locator("[data-filled]")).toHaveCount(1);
+});
+
+test("tirar uma atividade do filé faz o quadradinho dela sair", async ({ page }) => {
+  await mockActivityApi(page);
+  await page.goto("/file");
+  await page.locator("a[href='/file/curadoria-1']").press("Enter");
+  await expect(button(page, "Tirar do filé")).toBeVisible();
+
+  await mockFileApi(page, { items: FIGMA_ITEMS.filter((item) => item.id !== PYTHON) });
+  await button(page, "Tirar do filé").click();
+
+  // No filé, o quadradinho dela faz o caminho de volta na casa antiga e depois some.
+  await expect(page).toHaveURL("/file");
+  await expect(page.locator(`[data-leaving='${PYTHON}']`)).toBeAttached();
+  await expect(page.locator(`[data-leaving='${PYTHON}']`)).toHaveCount(0);
+  await expect(page.locator(`[data-square='${PYTHON}']`)).toHaveCount(0);
 });
 
 test("\"Tirar do filé\" tira a atividade e leva ao filé", async ({ page }) => {

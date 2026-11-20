@@ -279,6 +279,52 @@ test("ao voltar ao filé, mostra o de antes e só os quadradinhos novos se desen
   await expect(page.locator("[data-square]")).toHaveCount(3);
 });
 
+/** Abre o filé, vai ao Descobrir e volta com outro filé, que demora a chegar. */
+async function comeBackWith(page: Page, before: MockFileItem[], after: MockFileItem[]) {
+  await openWith(page, { items: before });
+  await expect(page.locator("[data-square]")).toHaveCount(before.length);
+  await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await mockFileApi(page, { items: after, delayMs: 500 });
+  await page.goBack();
+}
+
+test("ao voltar, o quadradinho que andou se preenche, e só ele", async ({ page }) => {
+  await comeBackWith(
+    page,
+    [makeItem("a", "next"), makeItem("b", "in_progress"), makeItem("c", "next")],
+    [makeItem("a", "in_progress"), makeItem("b", "concluded"), makeItem("c", "next")],
+  );
+
+  await expect(page.locator("[data-filled]")).toHaveCount(2);
+  await expect(page.locator("[data-square='curadoria-a']")).toHaveAttribute("data-filled", "true");
+  await expect(page.locator("[data-square='curadoria-b']")).toHaveAttribute("data-filled", "true");
+  await expect(page.locator("[data-fresh]")).toHaveCount(0);
+});
+
+test("ao voltar, o que saiu do filé faz o caminho de volta e some", async ({ page }) => {
+  await comeBackWith(
+    page,
+    [makeItem("a", "next"), makeItem("b", "next"), makeItem("c", "next")],
+    [makeItem("a", "next"), makeItem("c", "next")],
+  );
+
+  await expect(page.locator("[data-leaving='curadoria-b']")).toBeAttached();
+  await expect(page.locator("[data-leaving]")).toHaveCount(0);
+  await expect(page.locator("[data-square]")).toHaveCount(2);
+});
+
+test.describe("com menos movimento", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("o que saiu do filé não aparece mais, sem animação", async ({ page }) => {
+    await comeBackWith(page, [makeItem("a", "next"), makeItem("b", "next")], [makeItem("a", "next")]);
+
+    await expect(page.locator("[data-square]")).toHaveCount(1);
+    await expect(page.locator("[data-leaving='curadoria-b']")).toBeHidden();
+  });
+});
+
 test("o mouse sobre um quadradinho mostra o nome do item, e sai junto", async ({ page }) => {
   await openWith(page, { items: [makeItem("a", "next"), makeItem("b", "concluded")] });
   const tooltip = page.getByTestId("file-tooltip");

@@ -33,7 +33,8 @@
   animation: draw-border 600ms ease-out var(--fresh-delay, 0ms) both;
 }
 
-.fresh .fill {
+.fresh .fill,
+.fresh .half {
   animation: fill-in 300ms ease-out calc(var(--fresh-delay, 0ms) + 400ms) both;
 }
 
@@ -54,6 +55,63 @@
 
 @keyframes fill-in {
   from {
+    opacity: 0;
+  }
+}
+
+/* O miolo cresce de um ponto: a metade teal, do canto de baixo; a cor do concluído, do centro. */
+.half {
+  transform-box: fill-box;
+  transform-origin: 0 100%;
+}
+
+.solid {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Andou para em andamento ou concluído: o miolo se preenche. */
+.filled .half,
+.filled .solid {
+  animation: grow 500ms ease-out both;
+}
+
+@keyframes grow {
+  from {
+    scale: 0;
+  }
+}
+
+/*
+ * Saiu do filé: o preenchimento ao contrário, na casa antiga. O miolo encolhe, a borda se
+ * desfaz e o quadradinho some. O fim da animação do grupo (700ms, LEAVE_MS em
+ * FileDrawing.tsx) o tira da tela.
+ */
+.leaving {
+  animation: leave 700ms ease-in both;
+  pointer-events: none;
+}
+
+.leaving .half,
+.leaving .solid {
+  animation: grow 350ms ease-in reverse both;
+}
+
+.leaving .fill {
+  animation: fill-in 250ms ease-in 150ms reverse both;
+}
+
+.leaving .border {
+  stroke-dasharray: 1;
+  animation: draw-border 400ms ease-in 250ms reverse both;
+}
+
+@keyframes leave {
+  90% {
+    opacity: 1;
+  }
+
+  to {
     opacity: 0;
   }
 }
@@ -92,7 +150,15 @@
 
   .fresh .border,
   .fresh .fill,
-  .fresh .solid {
+  .fresh .half,
+  .fresh .solid,
+  .filled .half,
+  .filled .solid {
     animation: none;
+  }
+
+  /* Sem a animação, o quadradinho que saiu só não aparece mais. */
+  .leaving {
+    display: none;
   }
 }

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { START_CELL, fileSquares, themeOf, type Cell, type FileData, type FileSquareData } from "@/lib/file";
+import {
+  NO_CHANGES,
+  START_CELL,
+  fileSquares,
+  themeOf,
+  type Cell,
+  type FileChanges,
+  type FileData,
+  type FileSquareData,
+} from "@/lib/file";
 import styles from "./FileDrawing.module.css";
 
 // Grade 7×7 do Figma: casas de 40px a cada 46px, num quadro de 322px.
@@ -17,16 +26,20 @@ function countText(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-/** Nada é novo: o padrão, para a primeira visita. */
-const NOTHING_NEW: ReadonlySet<string> = new Set();
+// Quanto dura a saída de um quadradinho removido (FileDrawing.module.css, .leaving). Os
+// outros só deslizam para as casas novas depois dela, para não passarem por cima.
+const LEAVE_MS = 700;
 
 type FileDrawingProps = {
   data: FileData;
   /**
-   * Ids dos quadradinhos que entraram desde a versão que estava na tela: eles desenham a
-   * borda, um depois do outro. Os outros só deslizam se a casa deles mudou.
+   * O que mudou desde a versão que estava na tela (lib/file.ts, fileChanges): o que
+   * entrou desenha a borda, o que andou se preenche e o que saiu faz o caminho de volta.
+   * Os outros só deslizam se a casa deles mudou.
    */
-  fresh?: ReadonlySet<string>;
+  changes?: FileChanges;
+  /** Chamado quando um quadradinho removido termina de sair. */
+  onRemoved?: (id: string) => void;
 };
 
 /**
@@ -39,7 +52,7 @@ type FileDrawingProps = {
  * O balãozinho é só visual: o leitor de tela lê o resumo do desenho e a lista abaixo,
  * que tem os mesmos nomes.
  */
-export function FileDrawing({ data, fresh = NOTHING_NEW }: FileDrawingProps) {
+export function FileDrawing({ data, changes = NO_CHANGES, onRemoved }: FileDrawingProps) {
   const start = origin(START_CELL);
   const label =
     `Seu filé: ${countText(data.done.length, "concluído", "concluídos")}, ` +
@@ -69,33 +82,41 @@ export function FileDrawing({ data, fresh = NOTHING_NEW }: FileDrawingProps) {
 
   // A ordem em que os quadradinhos novos desenham a borda.
   let freshOrder = 0;
+  // Com algum quadradinho saindo, os outros esperam ele sair para deslizar.
+  const slideDelay = changes.removed.length > 0 ? `${LEAVE_MS}ms` : "0ms";
 
   return (
     <div className={styles.frame}>
       <div className={styles.board}>
         <svg viewBox={`0 0 ${BOARD} ${BOARD}`} className={styles.drawing} role="img" aria-label={label}>
           <rect x={start.x} y={start.y} width={SIZE} height={SIZE} fill="var(--nise-ink)" />
+          {/* As casas vazias vão por baixo, para não passarem por cima de um quadradinho que
+              ainda está deslizando para a casa nova. */}
           {cells.map(({ cell, square }) => {
+            if (square) return null;
+            const { x, y } = origin(cell);
+            return (
+              <rect
+                key={cell.join("-")}
+                x={x + 1}
+                y={y + 1}
+                width={SIZE - 2}
+                height={SIZE - 2}
+                fill="none"
+                stroke="var(--nise-fileEmpty)"
+                strokeDasharray="3 3"
+              />
+            );
+          })}
+          {cells.map(({ cell, square }) => {
+            if (!square) return null;
             const { x, y } = origin(cell);
 
-            if (!square) {
-              return (
-                <rect
-                  key={cell.join("-")}
-                  x={x + 1}
-                  y={y + 1}
-                  width={SIZE - 2}
-                  height={SIZE - 2}
-                  fill="none"
-                  stroke="var(--nise-fileEmpty)"
-                  strokeDasharray="3 3"
-                />
-              );
-            }
-
-            const isFresh = fresh.has(square.id);
+            const isFresh = changes.fresh.has(square.id);
+            const isFilled = changes.filled.has(square.id);
             const style = {
               transform: `translate(${x}px, ${y}px)`,
+              transitionDelay: slideDelay,
               "--fresh-delay": isFresh ? `${freshOrder++ * 120}ms` : undefined,
             } as CSSProperties;
 
@@ -104,10 +125,11 @@ export function FileDrawing({ data, fresh = NOTHING_NEW }: FileDrawingProps) {
               // outros deslizam para a casa nova em vez de trocar de lugar de repente.
               <g
                 key={square.id}
-                className={`${styles.square} ${isFresh ? styles.fresh : ""}`}
+                className={`${styles.square} ${isFresh ? styles.fresh : ""} ${isFilled ? styles.filled : ""}`}
                 style={style}
                 data-square={square.id}
                 data-fresh={isFresh || undefined}
+                data-filled={isFilled || undefined}
                 onPointerEnter={(event) => {
                   if (event.pointerType === "mouse") setActive(square.id);
                 }}
@@ -119,6 +141,25 @@ export function FileDrawing({ data, fresh = NOTHING_NEW }: FileDrawingProps) {
                 onClick={(event) => {
                   if ((event.nativeEvent as PointerEvent).pointerType === "mouse") setActive(square.id);
                   else setActive((current) => (current === square.id ? null : square.id));
+                }}
+              >
+                <Square square={square} />
+              </g>
+            );
+          })}
+
+          {/* Os que saíram ficam na casa antiga só enquanto fazem o caminho de volta. */}
+          {changes.removed.map(({ cell, square }) => {
+            const { x, y } = origin(cell);
+            return (
+              <g
+                key={`saindo-${square.id}`}
+                className={`${styles.square} ${styles.leaving}`}
+                style={{ transform: `translate(${x}px, ${y}px)` }}
+                data-leaving={square.id}
+                aria-hidden="true"
+                onAnimationEnd={(event) => {
+                  if (event.target === event.currentTarget) onRemoved?.(square.id);
                 }}
               >
                 <Square square={square} />
@@ -145,7 +186,7 @@ function Square({ square }: { square: FileSquareData }) {
     <>
       <rect className={styles.fill} x={1.5} y={1.5} width={SIZE - 3} height={SIZE - 3} fill="var(--nise-surface)" />
       {square.status === "em-andamento" && (
-        <path className={styles.fill} d={`M0 ${SIZE}L${SIZE} 0V${SIZE}H0Z`} fill="var(--nise-teal)" />
+        <path className={styles.half} d={`M0 ${SIZE}L${SIZE} 0V${SIZE}H0Z`} fill="var(--nise-teal)" />
       )}
       <rect
         className={styles.border}

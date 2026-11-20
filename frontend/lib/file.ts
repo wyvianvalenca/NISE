@@ -274,3 +274,43 @@ export type FileSquare = {
 export function fileSquares(data: FileData): FileSquare[] {
   return FILE_CELLS.map((cell, index) => ({ cell, square: data.squares[index] ?? null }));
 }
+
+/** Um quadradinho que saiu do filé, com a casa onde estava, para a animação de saída. */
+export type RemovedSquare = { cell: Cell; square: FileSquareData };
+
+/** O que mudou no desenho entre o filé que estava na tela e o novo, para animar. */
+export type FileChanges = {
+  /** Entraram: a borda se desenha. */
+  fresh: ReadonlySet<string>;
+  /** Andaram para em andamento ou concluído: o miolo se preenche. */
+  filled: ReadonlySet<string>;
+  /** Saíram ("Tirar do filé", "Remover"): o preenchimento ao contrário, na casa antiga. */
+  removed: readonly RemovedSquare[];
+};
+
+/** Nada mudou: o padrão, para a primeira visita. */
+export const NO_CHANGES: FileChanges = { fresh: new Set(), filled: new Set(), removed: [] };
+
+// Quanto cada status preenche o quadradinho: só um passo para a frente se anima.
+const FILLING: Record<FileStatus, number> = { proxima: 0, "em-andamento": 1, concluido: 2 };
+
+/** Compara o filé que estava na tela com o novo, pelo id de cada quadradinho. */
+export function fileChanges(before: FileData, after: FileData): FileChanges {
+  const previous = new Map(before.squares.map((square) => [square.id, square]));
+  const current = new Set(after.squares.map((square) => square.id));
+
+  const fresh = new Set<string>();
+  const filled = new Set<string>();
+  for (const square of after.squares) {
+    const old = previous.get(square.id);
+    if (!old) fresh.add(square.id);
+    else if (FILLING[square.status] > FILLING[old.status]) filled.add(square.id);
+  }
+
+  // Só os que estavam no desenho (as 14 casas) têm de onde sair.
+  const removed = fileSquares(before).flatMap(({ cell, square }) =>
+    square && !current.has(square.id) ? [{ cell, square }] : [],
+  );
+
+  return { fresh, filled, removed };
+}
