@@ -64,3 +64,9 @@ class PendingSignupOut(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class SessionOut(UserOut):
+    """A conta que acabou de entrar e a tela para onde ela vai (A15, #330)."""
+
+    next_path: str = Field(serialization_alias="nextPath")

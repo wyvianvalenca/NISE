@@ -18,6 +18,7 @@ from app.auth.utils import (
 )
 from app.config import settings
 from app.modules.cities.service import ensure_city_exists
+from app.modules.consents.service import has_accepted_current_terms
 from app.modules.girls.models import Girl
 from app.modules.girls.service import get_girl_by_email
 from app.modules.girls.utils import AgeCheck, check_age
@@ -199,6 +200,29 @@ async def authenticate_user(session: AsyncSession, data: LoginIn) -> User | None
         return None
 
     return user
+
+
+# Para onde cada uma vai depois de entrar (A15, #330).
+COORDINATOR_HOME = "/coordenacao/acoes"
+# A porta do filé: na primeira vez explica o que é (A06·0), depois leva ao
+# Descobrir.
+GIRL_HOME = "/por-que-file"
+# Quem criou a conta e parou antes dos termos continua de onde parou (H3).
+TERMS_PATH = "/cadastro/termos"
+
+
+async def home_path(session: AsyncSession, user: User) -> str:
+    """A primeira tela depois de entrar, com e-mail e senha ou com o Google."""
+    if user.role is Role.COORDINATOR:
+        return COORDINATOR_HOME
+
+    if user.role is Role.GIRL:
+        if not await has_accepted_current_terms(session, user.id):
+            return TERMS_PATH
+        return GIRL_HOME
+
+    # A equipe NISE não tem telas: a curadoria é feita por scripts.
+    return "/"
 
 
 async def _invalidate_open_tokens(

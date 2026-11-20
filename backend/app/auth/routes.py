@@ -32,12 +32,14 @@ from app.auth.schemas import (
     GoogleSignupCompleteIn,
     LoginIn,
     PendingSignupOut,
+    SessionOut,
     SignupOut,
 )
 from app.auth.service import (
     authenticate_user,
     complete_google_signup,
     find_oauth_user,
+    home_path,
     signup_with_email,
 )
 from app.auth.utils import (
@@ -52,9 +54,10 @@ from app.users.service import normalize_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-GOOGLE_SUCCESS_URL = "/"
 GOOGLE_SIGNUP_URL = "/cadastro/google"
-GOOGLE_ERROR_URL = "/?erro=google"
+# A A15 mostra o aviso. Vale também para quem começou em "Criar conta com o
+# Google": ela tenta de novo por lá ou toca "Criar conta".
+GOOGLE_ERROR_URL = "/entrar?erro=google"
 
 
 @router.get("/me", response_model=UserOut)
@@ -159,8 +162,18 @@ async def discard_signup(response: Response) -> None:
     clear_pending_signup_cookie(response)
 
 
-@router.post("/login", response_model=UserOut)
-async def login(data: LoginIn, session: AsyncSessionDep, response: Response) -> User:
+# Entrar com e-mail e senha (A15, #330). A resposta diz a próxima tela, a
+# mesma para onde o Google mandaria.
+@router.post(
+    "/login",
+    response_model=SessionOut,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "E-mail ou senha incorretos"}
+    },
+)
+async def login(
+    data: LoginIn, session: AsyncSessionDep, response: Response
+) -> SessionOut:
     user = await authenticate_user(session, data)
 
     if user is None:
@@ -168,7 +181,13 @@ async def login(data: LoginIn, session: AsyncSessionDep, response: Response) -> 
 
     set_session_cookie(response, create_access_token(user.id))
 
-    return user
+    return SessionOut(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        role=user.role,
+        next_path=await home_path(session, user),
+    )
 
 
 # O front também manda switch_account=1 em "Usar outra conta" (A02b). Não
@@ -228,7 +247,7 @@ async def google_callback(
 
         if user is not None:
             response = RedirectResponse(
-                GOOGLE_SUCCESS_URL, status_code=status.HTTP_302_FOUND
+                await home_path(session, user), status_code=status.HTTP_302_FOUND
             )
             set_session_cookie(response, create_access_token(user.id))
             clear_pending_signup_cookie(response)
