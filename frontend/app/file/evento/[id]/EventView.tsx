@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<EventStatus, string> = {
   concluded: "Concluído",
 };
 
-type EventViewProps = {
+export type EventViewProps = {
   event: EventDetail;
   /** O título recebe o foco quando a versão da tela muda, para não se perder. */
   titleRef?: Ref<HTMLHeadingElement>;
@@ -45,8 +45,11 @@ type EventViewProps = {
   /** "Fui!" e "Não deu", do evento de fora depois da data (#190). */
   onWent?: () => void;
   onDidNotGo?: () => void;
-  /** Qual ação está sendo enviada; os botões ficam bloqueados enquanto isso. */
-  saving?: "mark" | "remove" | "went" | "didNotGo" | null;
+  /**
+   * Qual ação está sendo enviada; os botões e o lembrete ficam bloqueados enquanto isso.
+   * "undo" é o "Desfazer" do aviso; "reminder", salvar o lembrete.
+   */
+  saving?: "mark" | "remove" | "went" | "didNotGo" | "reminder" | "undo" | null;
   /** Mensagem de erro da última ação, se falhou. */
   error?: string | null;
 };
@@ -220,7 +223,7 @@ function SignedUpBody({ event, onRemove, onReminderChange, saving }: EventViewPr
         />
       </ul>
 
-      <ReminderOption event={event} onReminderChange={onReminderChange} />
+      <ReminderOption event={event} onReminderChange={onReminderChange} saving={saving} />
 
       <div className={styles.signedUpFooter}>
         <RemoveButton onRemove={onRemove} saving={saving} />
@@ -348,24 +351,24 @@ function DetailChips({ event }: { event: EventDetail }) {
  * "Me lembra um dia antes" (#186): começa desmarcado e some quando o dia anterior já
  * passou ou é hoje. Se salvar falha, avisa e a caixa volta a como estava.
  */
-function ReminderOption({ event, onReminderChange }: Pick<EventViewProps, "event" | "onReminderChange">) {
+function ReminderOption({
+  event,
+  onReminderChange,
+  saving,
+}: Pick<EventViewProps, "event" | "onReminderChange" | "saving">) {
   // A caixa é não controlada (veja o Checkbox); trocar a key recria a caixa com o valor salvo.
   const [version, setVersion] = useState(0);
-  const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const day = reminderDate(event);
   if (!day || !onReminderChange) return null;
 
   async function change(on: boolean) {
-    setSaving(true);
     setFailed(false);
     try {
       await onReminderChange?.(on);
     } catch {
       setFailed(true);
       setVersion((current) => current + 1);
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -377,7 +380,8 @@ function ReminderOption({ event, onReminderChange }: Pick<EventViewProps, "event
         className={styles.reminderOption}
         defaultChecked={event.reminder}
         onCheckedChange={change}
-        disabled={saving}
+        disabled={Boolean(saving)}
+        aria-busy={saving === "reminder" || undefined}
       >
         <span className={styles.reminderTitle}>Me lembra um dia antes</span>
         <span className={styles.reminderText}>Um e-mail só, no dia {day}. Opcional.</span>

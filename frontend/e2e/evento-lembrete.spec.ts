@@ -7,6 +7,8 @@ type Mock = {
   status?: Record<string, "next" | "in_progress" | "concluded">;
   today?: string;
   failReminder?: boolean;
+  failLoad?: boolean;
+  delayMs?: number;
 };
 
 const HACKATHON = "hackathon-meninas-na-tecnologia";
@@ -83,6 +85,72 @@ test("desfazer a inscrição cancela o lembrete", async ({ page }) => {
   await page.getByRole("button", { name: "Já me inscrevi" }).click();
 
   await expect(reminder(page)).not.toBeChecked();
+});
+
+// Revisão do #259: com duas ações no ar, a resposta que chega por último sobrescreve a outra.
+// O mock espera delayMs em cada chamada, então dá para ver a tela no meio do envio.
+test("enquanto o lembrete salva, \"Tirar do filé\" e \"Desfazer\" esperam", async ({ page }) => {
+  await open(page, PATH, { status: { [HACKATHON]: "next" } });
+  await page.getByRole("button", { name: "Já me inscrevi" }).click();
+  await expect(reminder(page)).toBeVisible();
+  await page.evaluate(() => {
+    globalThis.__NISE_MOCK_EVENTO__ = { ...globalThis.__NISE_MOCK_EVENTO__, delayMs: 1500 };
+  });
+
+  await reminder(page).check();
+
+  const undo = page.getByRole("status").getByRole("button", { name: "Desfazer" });
+  await expect(page.getByRole("button", { name: "Tirar do filé" })).toBeDisabled();
+  await expect(undo).toHaveAttribute("aria-disabled", "true");
+  // Tocar no "Desfazer" bloqueado não faz nada: a inscrição e o lembrete continuam.
+  // dispatchEvent porque o click do Playwright esperaria o aria-disabled sair.
+  await undo.dispatchEvent("click");
+  await expect(page.getByRole("button", { name: "Tirar do filé" })).toBeEnabled();
+  await expect(reminder(page)).toBeChecked();
+  await expect(page.getByRole("main").getByText("Inscrita", { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(reminder(page)).toBeChecked();
+});
+
+test("enquanto desfaz a inscrição, o lembrete fica bloqueado", async ({ page }) => {
+  await open(page, PATH, { status: { [HACKATHON]: "next" } });
+  await page.getByRole("button", { name: "Já me inscrevi" }).click();
+  await expect(reminder(page)).toBeVisible();
+  await page.evaluate(() => {
+    globalThis.__NISE_MOCK_EVENTO__ = { ...globalThis.__NISE_MOCK_EVENTO__, delayMs: 1500 };
+  });
+
+  await page.getByRole("status").getByRole("button", { name: "Desfazer" }).click();
+
+  await expect(reminder(page)).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Tirar do filé" })).toBeDisabled();
+  await expect(page.getByRole("main").getByText("Próxima aventura")).toBeVisible();
+});
+
+test("enquanto tira do filé, o lembrete fica bloqueado", async ({ page }) => {
+  await open(page, PATH, { delayMs: 1500 });
+
+  await page.getByRole("button", { name: "Tirar do filé" }).click();
+
+  await expect(reminder(page)).toBeDisabled();
+  await page.waitForURL("**/file");
+});
+
+test("se o evento não carrega, avisa e deixa tentar de novo", async ({ page }) => {
+  await page.addInitScript((mockValue) => {
+    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
+  }, { today: TODAY, status: { [HACKATHON]: "in_progress" }, failLoad: true });
+  await page.goto(PATH);
+
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("Não deu pra carregar o evento.");
+  await page.evaluate(() => {
+    globalThis.__NISE_MOCK_EVENTO__ = { ...globalThis.__NISE_MOCK_EVENTO__, failLoad: false };
+  });
+  await page.getByRole("button", { name: "Tentar de novo" }).click();
+
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(reminder(page)).toBeVisible();
 });
 
 test("dá para marcar pelo teclado, com o foco visível", async ({ page }) => {

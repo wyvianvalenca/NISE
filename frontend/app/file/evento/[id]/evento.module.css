@@ -191,3 +191,11 @@
   color: var(--nise-muted);
   font-size: 13px;
 }
+
+/* Erro ao carregar o evento, com "Tentar de novo". */
+.loadFailed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}

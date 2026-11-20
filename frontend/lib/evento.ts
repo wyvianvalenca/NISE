@@ -241,6 +241,8 @@ declare global {
         failUndo?: boolean;
         /** Faz só salvar o lembrete falhar. */
         failReminder?: boolean;
+        /** Faz só abrir o detalhe falhar, para testar o "Tentar de novo". */
+        failLoad?: boolean;
       }
     | undefined;
 }
@@ -458,6 +460,7 @@ async function wait() {
 /** Detalhe de um evento do filé dela; null se não está no filé (ou é de outra menina). */
 export async function getEvent(id: string): Promise<EventDetail | null> {
   await wait();
+  if (globalThis.__NISE_MOCK_EVENTO__?.failLoad) throw new Error("Falha simulada");
   const saved = load();
   const mock = MOCK_EVENTS.find((event) => event.id === id);
   if (!mock || saved.removed.includes(id)) return null;
