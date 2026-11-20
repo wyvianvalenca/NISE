@@ -30,6 +30,13 @@ import { SIGNUP_PATHS } from "@/lib/signup";
 import { WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
+function withoutId(ids: ReadonlySet<string>, id: string): ReadonlySet<string> {
+  if (!ids.has(id)) return ids;
+  const rest = new Set(ids);
+  rest.delete(id);
+  return rest;
+}
+
 /** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
 function redirectFor(result: FileResult | null): string | null {
   if (!result || result.ok) return null;
@@ -53,8 +60,9 @@ export default function FilePage() {
     if (result?.ok) rememberShownFile(result.data);
   }, [result]);
 
-  // Escondida, a tela perde as marcas de animação: ao voltar a aparecer, o navegador reinicia
-  // as animações dela, e o preenchimento da volta anterior se repetiria antes do novo.
+  // Escondida no meio de uma animação, a tela perde as marcas que ainda não saíram (cada
+  // quadradinho tira a sua quando a animação termina, em onSettled): ao voltar a aparecer, o
+  // navegador reinicia as animações dela, e a da volta anterior se repetiria antes da nova.
   useLayoutEffect(() => {
     return () => setChanges(NO_CHANGES);
   }, []);
@@ -114,6 +122,14 @@ export default function FilePage() {
             <File
               data={data}
               changes={changes}
+              // A animação de um quadradinho terminou: a marca sai (FileDrawing, onSettled).
+              onSettled={(id) =>
+                setChanges((current) => ({
+                  ...current,
+                  fresh: withoutId(current.fresh, id),
+                  filled: withoutId(current.filled, id),
+                }))
+              }
               // O quadradinho que saiu terminou de sair: deixa de ser desenhado.
               onRemoved={(id) =>
                 setChanges((current) => ({
@@ -146,10 +162,11 @@ export default function FilePage() {
 type FileProps = {
   data: FileData;
   changes: FileChanges;
+  onSettled: (id: string) => void;
   onRemoved: (id: string) => void;
 };
 
-function File({ data, changes, onRemoved }: FileProps) {
+function File({ data, changes, onSettled, onRemoved }: FileProps) {
   const isEmpty = data.done.length + data.inProgress.length + data.next.length === 0;
 
   return (
@@ -180,7 +197,7 @@ function File({ data, changes, onRemoved }: FileProps) {
         <span aria-hidden="true">→</span>
       </Link>
 
-      <FileDrawing data={data} changes={changes} onRemoved={onRemoved} />
+      <FileDrawing data={data} changes={changes} onSettled={onSettled} onRemoved={onRemoved} />
       <FileLegend data={data} />
 
       {!isEmpty && (

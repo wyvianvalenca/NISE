@@ -3,6 +3,7 @@ import type { FileSection, ThemeCode } from "../lib/file";
 import { mockActivityApi } from "./activity-api";
 import { mockDiscoverApi } from "./discover-api";
 import { type MockFileItem, mockFileApi } from "./file-api";
+import { slowAnimations } from "./frames";
 import { mockTermsApi } from "./terms-api";
 
 // #115 e #117 · A06·3 Seu filé, pela rota GET /api/file (#116), simulada em file-api.ts.
@@ -268,6 +269,7 @@ test("ao voltar ao filé, mostra o de antes e só os quadradinhos novos se desen
 
   // Com cacheComponents o Next guarda o filé escondido: na volta, o de antes continua na
   // tela enquanto o novo não chega.
+  await slowAnimations(page);
   await page.goBack();
   await expect(item(page, "Item a")).toBeVisible();
   await expect(item(page, "Item c")).toHaveCount(0);
@@ -277,6 +279,8 @@ test("ao voltar ao filé, mostra o de antes e só os quadradinhos novos se desen
   await expect(page.locator("[data-fresh]")).toHaveCount(1);
   await expect(page.locator("[data-fresh]")).toHaveAttribute("data-square", "curadoria-c");
   await expect(page.locator("[data-square]")).toHaveCount(3);
+  // No fim da animação, a marca sai (senão a animação se repetiria na próxima volta).
+  await expect(page.locator("[data-fresh]")).toHaveCount(0);
 });
 
 /** Abre o filé, vai ao Descobrir e volta com outro filé, que demora a chegar. */
@@ -286,6 +290,7 @@ async function comeBackWith(page: Page, before: MockFileItem[], after: MockFileI
   await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
   await mockFileApi(page, { items: after, delayMs: 500 });
+  await slowAnimations(page);
   await page.goBack();
 }
 
@@ -318,6 +323,7 @@ test("na segunda volta, só a mudança nova se anima: a de antes não repete", a
   // Primeira volta: ela iniciou a atividade, e a metade teal se preencheu.
   await comeBackWith(page, [makeItem("a", "next")], [makeItem("a", "in_progress")]);
   await expect(page.locator("[data-square='curadoria-a']")).toHaveAttribute("data-filled", "true");
+  await expect(page.locator("[data-filled]")).toHaveCount(0);
 
   // Segunda volta: ela concluiu. Enquanto o filé novo não chega, o de antes aparece parado,
   // sem repetir o preenchimento da metade (a tela escondida reinicia as animações dela).
@@ -340,6 +346,7 @@ test("os quadradinhos novos se desenham mesmo se a página recarregou no meio", 
   // A página recarrega no Descobrir (o filé é montado do zero na volta) e ela escolhe mais.
   await page.goto("/descobrir");
   await mockFileApi(page, { items: [makeItem("a", "next"), makeItem("b", "next"), makeItem("c", "next")] });
+  await slowAnimations(page);
   await page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Filé" }).press("Enter");
 
   await expect(page.locator("[data-square]")).toHaveCount(3);
