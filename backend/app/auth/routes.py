@@ -36,7 +36,7 @@ from app.auth.permissions import (
     set_pending_signup_cookie,
     set_session_cookie,
 )
-from app.auth.reset_email import send_reset_email
+from app.auth.reset_email import send_reset_link
 from app.auth.schemas import (
     EmailSignupIn,
     ForgotPasswordIn,
@@ -53,7 +53,6 @@ from app.auth.schemas import (
 from app.auth.service import (
     authenticate_user,
     complete_google_signup,
-    create_password_reset_token,
     find_oauth_user,
     find_reset_token_user,
     home_path,
@@ -69,7 +68,7 @@ from app.auth.utils import (
 from app.db.engine import AsyncSessionDep
 from app.users.models import User
 from app.users.schemas import UserOut
-from app.users.service import get_user_by_email, normalize_email
+from app.users.service import normalize_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -230,17 +229,12 @@ PASSWORD_TOO_SHORT = {"error": "password_too_short"}
 
 @router.post("/password/forgot", status_code=status.HTTP_204_NO_CONTENT)
 async def forgot_password(
-    data: ForgotPasswordIn,
-    session: AsyncSessionDep,
-    background_tasks: BackgroundTasks,
+    data: ForgotPasswordIn, background_tasks: BackgroundTasks
 ) -> None:
     # Responde igual exista a conta ou não: a A16 não pode dizer quem tem
-    # conta. O e-mail sai depois da resposta, em segundo plano.
-    user = await get_user_by_email(session, data.email)
-
-    if user is not None:
-        token = await create_password_reset_token(session, user)
-        background_tasks.add_task(send_reset_email, user.email, token)
+    # conta. Nem a busca roda antes da resposta, para o tempo também não
+    # denunciar (revisão do #332): tudo fica na tarefa de fundo.
+    background_tasks.add_task(send_reset_link, data.email)
 
 
 @router.post(

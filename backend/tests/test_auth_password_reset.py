@@ -86,6 +86,19 @@ async def test_cada_pedido_gera_um_token_diferente() -> None:
     assert len(token_1) == 43
 
 
+async def test_criar_trava_a_conta_antes_de_invalidar_os_outros() -> None:
+    # Revisão do #332: pedidos que se sobrepõem deixavam dois links abertos.
+    sessao_falsa = sessao_para_busca(None)
+
+    await create_password_reset_token(sessao_falsa, katia())
+
+    trava = str(sessao_falsa.scalar.await_args_list[0].args[0].compile())
+    assert "FROM users" in trava
+    assert "FOR UPDATE" in trava
+    chamadas = [nome for nome, _, _ in sessao_falsa.mock_calls]
+    assert chamadas.index("scalar") < chamadas.index("execute")
+
+
 async def test_criar_invalida_os_tokens_abertos_antes_de_salvar_o_novo() -> None:
     sessao_falsa = sessao_para_busca(None)
 

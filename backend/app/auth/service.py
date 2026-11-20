@@ -239,6 +239,12 @@ async def _invalidate_open_tokens(
 
 
 async def create_password_reset_token(session: AsyncSession, user: User) -> str:
+    # Trava a conta até o commit. Sem isso, dois pedidos ao mesmo tempo (o
+    # pedido roda em segundo plano, então pedidos seguidos se sobrepõem)
+    # invalidavam os mesmos links e deixavam dois abertos. Com a trava, o
+    # segundo espera o primeiro gravar e invalida o link dele.
+    await session.scalar(select(User.id).where(User.id == user.id).with_for_update())
+
     now = datetime.now(UTC)
 
     await _invalidate_open_tokens(session, user.id, now)
