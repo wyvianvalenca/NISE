@@ -40,6 +40,20 @@ export async function login(email: string, password: string): Promise<LoginResul
   return { ok: false, reason: "failed" };
 }
 
+/**
+ * Ends the session ("Sair" in the girl's account menu). The server clears the
+ * httpOnly cookie, which the page itself cannot touch. Returns false when the
+ * request did not go through, so the menu can say so.
+ */
+export async function logout(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/logout", { method: "POST" });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Recovering access (A16 and A16b, #331)
 // ---------------------------------------------------------------------------

@@ -22,10 +22,6 @@
   padding: 28px 24px 24px;
 }
 
-.profile {
-  display: flex;
-  border-radius: 50%;
-}
 
 .title {
   font-size: 28px;

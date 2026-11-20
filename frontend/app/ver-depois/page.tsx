@@ -4,10 +4,9 @@
 // Atende RF-F10.06 (issues #110 e #111). Usa os dados de teste de lib/ver-depois.ts
 // até a sub-issue do back existir.
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { Avatar } from "@/components/Avatar";
+import { AccountMenu } from "@/components/AccountMenu";
 import { BottomNav } from "@/components/BottomNav";
 import { LinkButton } from "@/components/Button";
 import { Chip } from "@/components/Chip";
@@ -80,10 +79,7 @@ export default function SavedForLaterPage() {
   return (
     <div className={styles.page}>
       <AppHeader>
-        {/* O perfil ainda não existe; por enquanto o link dá 404. */}
-        <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
-          <Avatar name={FIRST_NAME} size={36} />
-        </Link>
+        <AccountMenu name={FIRST_NAME} />
       </AppHeader>
 
       <div className={styles.scroll}>
