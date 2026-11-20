@@ -1,13 +1,14 @@
 // Detalhe de um evento do filé (A06·4b), issues #178 e #179, e a marca de inscrição
 // (A09 e versão "Inscrita"), issues #182 e #183, e o "Você foi?" do evento de fora,
 // issues #190 e #191, e a espera pela lista de presença do evento de grupo da NISE,
-// issues #194 e #195.
+// issues #194 e #195, e o lembrete um dia antes, issues #186 e #187.
 //
 // TEMPORÁRIO: getEvent() usa dados de teste guardados na memória do navegador.
 // Os tipos seguem a rota descrita na #178 (sub-issue de back #180) e serão trocados
 // pelos tipos gerados do OpenAPI quando ela existir; a troca pela chamada a /api é a
 // #181. As rotas de marcar e desfazer são a #184 (troca na #185), e as de "Fui!" e
-// "Não deu", a #192 (troca na #193). A presença muda o status pela #196 (troca na #197).
+// "Não deu", a #192 (troca na #193). A presença muda o status pela #196 (troca na #197),
+// e o lembrete é salvo pela #188 (troca na #189).
 // Os dados são fictícios; nada sai do navegador.
 
 import type { IconName } from "@/components/Icon";
@@ -49,6 +50,8 @@ export type EventDetail = {
   daysUntilStart: number;
   /** true depois do fim do último dia do evento, no horário de Maceió (calculado no servidor, #190). */
   afterEvent: boolean;
+  /** "Me lembra um dia antes", salvo com a inscrição dela (#186). Começa desmarcado. */
+  reminder: boolean;
   /** null quando é gratuito: aparece "Grátis". */
   cost: string | null;
   /** Etapa mínima, ex.: "Ensino médio"; null se não há. */
@@ -187,6 +190,16 @@ export function daysLeftText(daysLeft: number): string {
   return `Faltam ${daysLeft} dias`;
 }
 
+/**
+ * O dia do lembrete, um antes do primeiro dia do evento (#186), ex.: "7 de novembro".
+ * null quando esse dia já passou ou é hoje (o evento começa hoje ou amanhã): aí a opção não aparece.
+ */
+export function reminderDate(event: Pick<EventDetail, "startsOn" | "daysUntilStart">): string | null {
+  if (event.daysUntilStart < 2) return null;
+  const start = parse(event.startsOn);
+  return formatDate(toIso(new Date(start.getTime() - DAY_MS)));
+}
+
 /** Quanto falta para o evento, na versão "Inscrita": "faltam 23 dias", "é amanhã" ou "é hoje". */
 export function daysUntilText(days: number): string {
   if (days <= 0) return "é hoje";
@@ -200,7 +213,7 @@ export function daysUntilText(days: number): string {
 /** Um evento de teste, com as datas em dias a partir de hoje, para não envelhecer. */
 type MockEvent = Omit<
   EventDetail,
-  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen" | "daysUntilStart" | "afterEvent"
+  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen" | "daysUntilStart" | "afterEvent" | "reminder"
 > & {
   /** Dias de hoje até o fim das inscrições; negativo se já fecharam. */
   deadlineIn: number;
@@ -226,6 +239,10 @@ declare global {
         failUpdates?: boolean;
         /** Faz só o "Desfazer" falhar. */
         failUndo?: boolean;
+        /** Faz só salvar o lembrete falhar. */
+        failReminder?: boolean;
+        /** Faz só abrir o detalhe falhar, para testar o "Tentar de novo". */
+        failLoad?: boolean;
       }
     | undefined;
 }
@@ -319,6 +336,24 @@ const MOCK_EVENTS: MockEvent[] = [
     prerequisites: [],
     registrationUrl: "https://example.com/eventos/palestra-mulheres-na-computacao",
   },
+  // Evento que começa amanhã: a versão "Inscrita" não oferece o lembrete (#186).
+  {
+    id: "visita-ao-laboratorio-de-robotica",
+    status: "in_progress",
+    type: "visita",
+    topic: "Robótica",
+    band: "role-com-a-galera",
+    title: "Visita ao laboratório de robótica",
+    group: null,
+    deadlineIn: -2,
+    startsIn: 1,
+    length: 1,
+    city: "Maceió",
+    cost: null,
+    stage: "Ensino médio",
+    prerequisites: [],
+    registrationUrl: "https://example.com/eventos/visita-ao-laboratorio",
+  },
   // Evento de grupo da NISE que já passou, com ela inscrita: espera a lista de presença (#194).
   {
     id: "oficina-de-jogos-rendeiras",
@@ -342,7 +377,7 @@ const MOCK_EVENTS: MockEvent[] = [
 // O "banco" do mock. Fica no sessionStorage para sobreviver a um recarregamento;
 // some quando a aba fecha.
 const STORAGE_KEY = "nise-mock-evento";
-type Saved = { status: Record<string, EventStatus>; removed: string[] };
+type Saved = { status: Record<string, EventStatus>; removed: string[]; reminders?: string[] };
 
 function load(): Saved {
   try {
@@ -371,7 +406,7 @@ function plusDays(date: Date, days: number): string {
   return toIso(new Date(date.getTime() + days * DAY_MS));
 }
 
-function toDetail(mock: MockEvent, status: EventStatus): EventDetail {
+function toDetail(mock: MockEvent, status: EventStatus, reminder: boolean): EventDetail {
   const { deadlineIn, startsIn, length, ...rest } = mock;
   const now = today();
   return {
@@ -384,6 +419,7 @@ function toDetail(mock: MockEvent, status: EventStatus): EventDetail {
     registrationsOpen: deadlineIn >= 0,
     daysUntilStart: Math.max(startsIn, 0),
     afterEvent: startsIn + length - 1 < 0,
+    reminder,
   };
 }
 
@@ -395,7 +431,7 @@ function save(saved: Saved) {
   }
 }
 
-function fail(kind: "failUpdates" | "failUndo") {
+function fail(kind: "failUpdates" | "failUndo" | "failReminder") {
   if (globalThis.__NISE_MOCK_EVENTO__?.[kind]) {
     throw new Error("Falha simulada");
   }
@@ -405,6 +441,13 @@ function fail(kind: "failUpdates" | "failUndo") {
 function setStatus(id: string, status: EventStatus) {
   const saved = load();
   save({ ...saved, status: { ...saved.status, [id]: status } });
+}
+
+/** Liga ou desliga o lembrete de um evento no "banco" do mock. */
+function saveReminder(id: string, on: boolean) {
+  const saved = load();
+  const reminders = (saved.reminders ?? []).filter((reminderId) => reminderId !== id);
+  save({ ...saved, reminders: on ? [...reminders, id] : reminders });
 }
 
 async function wait() {
@@ -417,10 +460,11 @@ async function wait() {
 /** Detalhe de um evento do filé dela; null se não está no filé (ou é de outra menina). */
 export async function getEvent(id: string): Promise<EventDetail | null> {
   await wait();
+  if (globalThis.__NISE_MOCK_EVENTO__?.failLoad) throw new Error("Falha simulada");
   const saved = load();
   const mock = MOCK_EVENTS.find((event) => event.id === id);
   if (!mock || saved.removed.includes(id)) return null;
-  return toDetail(mock, saved.status[id] ?? mock.status);
+  return toDetail(mock, saved.status[id] ?? mock.status, saved.reminders?.includes(id) ?? false);
 }
 
 /**
@@ -445,7 +489,9 @@ export async function undoSignUp(id: string): Promise<EventDetail> {
     throw new Error("Não dá para desfazer a inscrição desse evento");
   }
   setStatus(id, "next");
-  return { ...event, status: "next" };
+  // Desfazer a inscrição cancela o lembrete (#186).
+  saveReminder(id, false);
+  return { ...event, status: "next", reminder: false };
 }
 
 /** "Tirar do filé": funciona para próxima e em andamento, pela rota da #108. */
@@ -455,8 +501,21 @@ export async function removeEvent(id: string): Promise<void> {
   if (!event || event.status === "concluded") {
     throw new Error("Não dá para tirar esse evento do filé");
   }
+  // Tirar do filé cancela o lembrete (#186).
+  saveReminder(id, false);
   const saved = load();
   save({ ...saved, removed: [...saved.removed, id] });
+}
+
+/** "Me lembra um dia antes": só para um evento em que ela marcou que se inscreveu (#186). */
+export async function setReminder(id: string, on: boolean): Promise<EventDetail> {
+  const event = await getEvent(id);
+  fail("failReminder");
+  if (!event || event.status !== "in_progress" || (on && !reminderDate(event))) {
+    throw new Error("Não dá para mudar o lembrete desse evento");
+  }
+  saveReminder(id, on);
+  return { ...event, reminder: on };
 }
 
 /** "Fui!" e "Não deu" só valem para evento de fora, depois da data, com ela inscrita (#190). */
