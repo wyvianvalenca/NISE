@@ -128,3 +128,33 @@
 .signedUpFooter > button {
   align-self: auto;
 }
+
+/* "Você foi?" (evento de fora depois da data): 8px a mais antes da pergunta, como no Figma. */
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.questionTitle {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.questionText {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.answers {
+  display: flex;
+  gap: 12px;
+}
+
+/* Os dois do mesmo tamanho: dizer que não foi não é menos importante. */
+.answers .answer {
+  flex: 1;
+  height: 52px;
+  font-size: 16px;
+}

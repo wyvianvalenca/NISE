@@ -1,4 +1,5 @@
 import type { Ref } from "react";
+import { Button } from "@/components/Button";
 import { Icon, type IconName } from "@/components/Icon";
 import { Notice } from "@/components/Notice";
 import { Tag } from "@/components/Tag";
@@ -12,6 +13,7 @@ import {
   organizerLine,
   typeIcon,
   typeLabel,
+  wentQuestion,
   type EventDetail,
   type EventStatus,
 } from "@/lib/evento";
@@ -34,22 +36,37 @@ type EventViewProps = {
   onMarkSignedUp?: () => void;
   /** "Tirar do filé". Sem ela, o botão aparece desabilitado. */
   onRemove?: () => void;
+  /** "Fui!" e "Não deu", do evento de fora depois da data (#190). */
+  onWent?: () => void;
+  onDidNotGo?: () => void;
   /** Qual ação está sendo enviada; os botões ficam bloqueados enquanto isso. */
-  saving?: "mark" | "remove" | null;
+  saving?: "mark" | "remove" | "went" | "didNotGo" | null;
   /** Mensagem de erro da última ação, se falhou. */
   error?: string | null;
 };
 
+/** Qual versão da A06·4b o evento mostra. */
+function variantOf(event: EventDetail) {
+  if (event.status === "concluded") return "concluded";
+  if (event.status === "next") return "next";
+  // Inscrita: antes da data, a versão "Inscrita"; depois, o evento de fora pergunta "Você foi?".
+  if (!event.afterEvent) return "signedUp";
+  return event.group === null ? "askWent" : "signedUp";
+}
+
 /**
- * O detalhe do evento (Figma A06·4b): a versão "Próxima aventura" e a versão
- * "Inscrita" (A06·4b inscrita), que é o evento em andamento.
+ * O detalhe do evento (Figma A06·4b): as versões "Próxima aventura", "Inscrita"
+ * (A06·4b inscrita), "Você foi?" (evento de fora depois da data) e "Concluído".
  */
 export function EventView(props: EventViewProps) {
-  const { event } = props;
+  const variant = variantOf(props.event);
   return (
     <>
       <EventHeading {...props} />
-      {event.status === "in_progress" ? <SignedUpBody {...props} /> : <NextBody {...props} />}
+      {variant === "next" && <NextBody {...props} />}
+      {variant === "signedUp" && <SignedUpBody {...props} />}
+      {variant === "askWent" && <AskWentBody {...props} />}
+      {variant === "concluded" && <ConcludedBody {...props} />}
       {props.error && (
         <p className={shared.error} role="alert">
           {props.error}
@@ -81,7 +98,7 @@ function EventHeading({ event, titleRef }: EventViewProps) {
         </span>
       </div>
 
-      {event.status === "in_progress" ? (
+      {variantOf(event) === "signedUp" ? (
         <div className={styles.topicRow}>
           <p className={shared.topic}>
             <span className={shared.dot} aria-hidden="true" />
@@ -118,11 +135,7 @@ function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: Eve
           main={formatEventDays(event.startsOn, event.endsOn)}
           sub={formatWeekdays(event.startsOn, event.endsOn)}
         />
-        <SummaryRow
-          icon="pin"
-          main={event.city ?? "Online"}
-          sub={event.city ? "Local divulgado na inscrição" : "Link divulgado na inscrição"}
-        />
+        <PlaceRow event={event} />
         {event.registrationsOpen ? (
           <SummaryRow
             icon="clock"
@@ -139,15 +152,7 @@ function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: Eve
         )}
       </ul>
 
-      <ul className={shared.chips} aria-label="Detalhes">
-        <li>{event.cost ? <span className={shared.chip}>{event.cost}</span> : <Tag variant="pink">Grátis</Tag>}</li>
-        {event.stage && <li className={shared.chip}>{event.stage}</li>}
-        {event.prerequisites.map((item) => (
-          <li key={item} className={shared.chip}>
-            {item}
-          </li>
-        ))}
-      </ul>
+      <DetailChips event={event} />
 
       {/* RN-19: a inscrição acontece fora da NISE, e a NISE não envia os dados dela. */}
       <Notice>A inscrição é feita no site dos organizadores. Seus dados da NISE não são enviados.</Notice>
@@ -210,6 +215,99 @@ function SignedUpBody({ event, onRemove, saving }: EventViewProps) {
         <RemoveButton onRemove={onRemove} saving={saving} />
       </div>
     </>
+  );
+}
+
+/**
+ * "Você foi?": evento de fora, depois do último dia, com ela inscrita (#190).
+ * Só a pergunta e os dois botões; os outros botões e avisos somem.
+ */
+function AskWentBody({ event, onWent, onDidNotGo, saving }: EventViewProps) {
+  const busy = Boolean(saving);
+
+  return (
+    <>
+      <ul className={styles.summary} aria-label="Quando e onde">
+        <SummaryRow
+          icon="calendar"
+          main={`Foi em ${formatEventDays(event.startsOn, event.endsOn)}`}
+          sub={formatWeekdays(event.startsOn, event.endsOn)}
+        />
+        <PlaceRow event={event} />
+        <SummaryRow icon="clock" main="O evento acabou" sub="Conta pra gente se você foi" />
+      </ul>
+
+      <section className={styles.question} aria-labelledby="pergunta-voce-foi">
+        <h2 id="pergunta-voce-foi" className={styles.questionTitle}>
+          {wentQuestion(event.type)}
+        </h2>
+        <p className={styles.questionText}>Se foi, ele vira um quadradinho colorido no seu filé.</p>
+        <div className={styles.answers}>
+          <Button
+            variant="secondary"
+            className={styles.answer}
+            onClick={onDidNotGo}
+            disabled={!onDidNotGo || busy}
+            loading={saving === "didNotGo"}
+            loadingLabel="Salvando…"
+          >
+            Não deu
+          </Button>
+          <Button
+            className={styles.answer}
+            onClick={onWent}
+            disabled={!onWent || busy}
+            loading={saving === "went"}
+            loadingLabel="Salvando…"
+          >
+            Fui!
+          </Button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+/** "Concluído": ela foi. Sem botões (#190). */
+function ConcludedBody({ event }: EventViewProps) {
+  return (
+    <>
+      <ul className={styles.summary} aria-label="Quando e onde">
+        <SummaryRow
+          icon="calendar"
+          main={`Você foi · ${formatEventDays(event.startsOn, event.endsOn)}`}
+          sub={formatWeekdays(event.startsOn, event.endsOn)}
+        />
+        <PlaceRow event={event} />
+      </ul>
+      <DetailChips event={event} />
+      <Notice>Ele já tá colorido no seu filé.</Notice>
+    </>
+  );
+}
+
+function PlaceRow({ event }: { event: EventDetail }) {
+  return (
+    <SummaryRow
+      icon="pin"
+      main={event.city ?? "Online"}
+      sub={event.city ? "Local divulgado na inscrição" : "Link divulgado na inscrição"}
+    />
+  );
+}
+
+/** Custo, etapa mínima e pré-requisitos. */
+function DetailChips({ event }: { event: EventDetail }) {
+  return (
+    <ul className={shared.chips} aria-label="Detalhes">
+      <li>{event.cost ? <span className={shared.chip}>{event.cost}</span> : <Tag variant="pink">Grátis</Tag>}</li>
+      {event.stage && <li className={shared.chip}>{event.stage}</li>}
+      {event.prerequisites.map((item) => (
+        <li key={item} className={shared.chip}>
+          {item}
+        </li>
+      ))}
+    </ul>
   );
 }
 
