@@ -1,7 +1,7 @@
 from datetime import date, time
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, StringConstraints
 
 from app.modules.actions.models import (
     ActionFormat,
@@ -80,3 +80,34 @@ class SavedMarksIn(BaseModel):
     """
 
     present_ids: Annotated[list[int], Field(max_length=MAX_MARKS)]
+
+
+NAME_MAX_LENGTH = 200
+
+
+class WalkInIn(BaseModel):
+    """ "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03, RF-F1.09).
+
+    Name and e-mail are required; the study level is optional. WhatsApp and
+    "Série" come with the registration of C2 (#232, #235).
+    """
+
+    name: Annotated[
+        str,
+        StringConstraints(
+            strip_whitespace=True, min_length=1, max_length=NAME_MAX_LENGTH
+        ),
+    ]
+    email: EmailStr
+    study_stage: StudyStage | None = None
+
+
+class WalkInOut(BaseModel):
+    """The girl as she now is in the action's list.
+
+    `already_registered` says that the e-mail was already registered in this
+    action: nobody was duplicated (#346).
+    """
+
+    girl: AttendanceGirlOut
+    already_registered: bool

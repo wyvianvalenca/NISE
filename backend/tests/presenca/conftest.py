@@ -25,7 +25,7 @@ from alembic.config import Config
 from httpx2 import ASGITransport, AsyncClient
 from sqlalchemy import make_url, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from alembic import command
@@ -139,3 +139,65 @@ async def api(banco: AsyncSession) -> AsyncGenerator[Callable[..., AsyncClient]]
         for client in clients:
             await client.aclose()
         app.dependency_overrides.clear()
+
+
+# Tables the concurrency tests may write to, children first, for the cleanup.
+_TABLES_TO_CLEAN = (
+    "participations",
+    "girls",
+    "actions",
+    "group_coordinators",
+    "groups",
+    "users",
+)
+
+
+@pytest.fixture
+async def banco_concorrente(
+    postgres_presenca: None,
+) -> AsyncGenerator[async_sessionmaker[AsyncSession]]:
+    """Real, committed sessions on separate connections, for races.
+
+    A race needs two connections that really commit, so these tests cannot run
+    inside the rolled-back transaction of `banco`. Every route call gets a
+    session of its own, as in production, and at the end the rows created by
+    the test are deleted (only rows newer than the ones that existed before).
+    """
+    engine = create_async_engine(
+        TEST_DATABASE_URL, poolclass=NullPool, connect_args={"statement_cache_size": 0}
+    )
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.connect() as connection:
+        before = {
+            table: await connection.scalar(
+                text(f"SELECT coalesce(max(id), 0) FROM {table}")
+            )
+            for table in _TABLES_TO_CLEAN
+        }
+
+    async def session_override() -> AsyncGenerator[AsyncSession]:
+        async with sessions() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = session_override
+    try:
+        yield sessions
+    finally:
+        app.dependency_overrides.clear()
+        async with engine.begin() as connection:
+            for table in _TABLES_TO_CLEAN:
+                await connection.execute(
+                    text(f"DELETE FROM {table} WHERE id > :id"),
+                    {"id": before[table]},
+                )
+        await engine.dispose()
+
+
+def client_for(user: User, today: date = EVENT_DAY) -> AsyncClient:
+    """A client of the real app, signed in as `user` (for `banco_concorrente`)."""
+    app.dependency_overrides[current_day] = lambda: today
+    return AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://teste",
+        cookies={SESSION_COOKIE: create_access_token(user.id)},
+    )

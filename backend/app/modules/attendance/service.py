@@ -8,6 +8,7 @@ group's data (RNF-G.03).
 from datetime import date
 
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionStatus, Participation
@@ -21,9 +22,12 @@ from app.modules.attendance.schemas import (
     AttendanceActionOut,
     AttendanceGirlOut,
     AttendancePageOut,
+    WalkInIn,
+    WalkInOut,
 )
 from app.modules.cities.models import City
 from app.modules.girls.models import Girl
+from app.users.service import normalize_email
 
 # Optional column of the lists, shown only when some girl has it (RF-F1.14).
 # WhatsApp and "Série" come with the registration of C2 (#232).
@@ -173,3 +177,65 @@ async def save_marks(
         .values(saved_present=Participation.id.in_(ids) if ids else False)
     )
     await session.commit()
+
+
+async def register_girl(
+    session: AsyncSession, action: Action, data: WalkInIn
+) -> tuple[Participation, Girl, bool]:
+    """Puts a girl in the action from her name and e-mail (RN-29, RN-27).
+
+    The thinnest version of the registration of C2 (#232), for "Veio sem
+    inscrição?": the e-mail is compared ignoring case and spaces; a record that
+    already exists (with or without an account, from any group) is linked to the
+    action and never changed, and otherwise an imported record is created, with
+    no account. Never creates an account and never sends anything. Closed
+    registrations do not block it (RF-F1.10).
+
+    Both inserts use ON CONFLICT, so two taps at the same time cannot create
+    two records or two registrations. Returns the registration, the girl and
+    whether she was already registered in this action. Does not commit.
+    """
+    email = normalize_email(data.email)
+    await session.execute(
+        insert(Girl)
+        .values(email=email, name=data.name, study_stage=data.study_stage)
+        .on_conflict_do_nothing(index_elements=[Girl.email])
+    )
+    girl = await session.scalar(
+        select(Girl)
+        .where(Girl.email == email)
+        .execution_options(populate_existing=True)
+    )
+    assert girl is not None
+
+    inserted = await session.scalar(
+        insert(Participation)
+        .values(girl_id=girl.id, action_id=action.id)
+        .on_conflict_do_nothing(
+            index_elements=[Participation.girl_id, Participation.action_id]
+        )
+        .returning(Participation.id)
+    )
+    participation = await session.scalar(
+        select(Participation)
+        .where(Participation.girl_id == girl.id, Participation.action_id == action.id)
+        .execution_options(populate_existing=True)
+    )
+    assert participation is not None
+    return participation, girl, inserted is None
+
+
+async def add_walk_in(
+    session: AsyncSession, action: Action, data: WalkInIn, today: date
+) -> WalkInOut:
+    """ "Veio sem inscrição?" while the attendance is being marked (#346).
+
+    She is registered in the action right away and stays registered even if the
+    marks of the page are lost: the page marks her, and only the mark is
+    lost. Nothing is sent (RN-27): the e-mails go out when it is concluded.
+    """
+    action = await lock_action(session, action)
+    ensure_awaiting_attendance(action, today)
+    participation, girl, already = await register_girl(session, action, data)
+    await session.commit()
+    return WalkInOut(girl=_girl_out(participation, girl), already_registered=already)

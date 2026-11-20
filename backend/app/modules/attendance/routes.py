@@ -7,8 +7,17 @@ from app.db.engine import AsyncSessionDep
 from app.modules.actions.dependencies import GroupActionDep
 from app.modules.attendance.dependencies import TodayDep
 from app.modules.attendance.exceptions import AttendanceError
-from app.modules.attendance.schemas import AttendancePageOut, SavedMarksIn
-from app.modules.attendance.service import build_attendance_page, save_marks
+from app.modules.attendance.schemas import (
+    AttendancePageOut,
+    SavedMarksIn,
+    WalkInIn,
+    WalkInOut,
+)
+from app.modules.attendance.service import (
+    add_walk_in,
+    build_attendance_page,
+    save_marks,
+)
 
 # The attendance of an action (C3, #135). Every route takes the action through
 # GroupActionDep: an action of another group is a 404, the same as one that does
@@ -71,3 +80,17 @@ async def save_attendance_marks(
         return _refused(error)
 
     return await build_attendance_page(session, action, today)
+
+
+# "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03). Registers her
+# in the action (or finds her, by the e-mail) and answers her row, for the page
+# to mark. Sends nothing (RN-27). From the day of the event (D-80).
+@router.post("/girls", response_model=WalkInOut, responses=REFUSED)
+async def add_walk_in_girl(
+    data: WalkInIn, action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
+) -> WalkInOut | JSONResponse:
+    try:
+        return await add_walk_in(session, action, data, today)
+    except AttendanceError as error:
+        await session.rollback()
+        return _refused(error)
