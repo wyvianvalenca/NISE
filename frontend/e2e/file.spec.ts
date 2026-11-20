@@ -314,6 +314,38 @@ test("ao voltar, o que saiu do filé faz o caminho de volta e some", async ({ pa
   await expect(page.locator("[data-square]")).toHaveCount(2);
 });
 
+test("na segunda volta, só a mudança nova se anima: a de antes não repete", async ({ page }) => {
+  // Primeira volta: ela iniciou a atividade, e a metade teal se preencheu.
+  await comeBackWith(page, [makeItem("a", "next")], [makeItem("a", "in_progress")]);
+  await expect(page.locator("[data-square='curadoria-a']")).toHaveAttribute("data-filled", "true");
+
+  // Segunda volta: ela concluiu. Enquanto o filé novo não chega, o de antes aparece parado,
+  // sem repetir o preenchimento da metade (a tela escondida reinicia as animações dela).
+  await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await mockFileApi(page, { items: [makeItem("a", "concluded")], delayMs: 1500 });
+  await page.goBack();
+  await expect(page.locator("[data-square='curadoria-a']")).toBeVisible();
+  expect(await page.locator("[data-filled]").count()).toBe(0);
+
+  // Quando o novo chega, só o preenchimento do concluído roda.
+  await expect(page.locator("[data-square='curadoria-a']")).toHaveAttribute("data-filled", "true");
+  await expect(page.locator("[data-square='curadoria-a'] rect")).toHaveCount(1);
+});
+
+test("os quadradinhos novos se desenham mesmo se a página recarregou no meio", async ({ page }) => {
+  await openWith(page, { items: [makeItem("a", "next")] });
+  await expect(page.locator("[data-square]")).toHaveCount(1);
+
+  // A página recarrega no Descobrir (o filé é montado do zero na volta) e ela escolhe mais.
+  await page.goto("/descobrir");
+  await mockFileApi(page, { items: [makeItem("a", "next"), makeItem("b", "next"), makeItem("c", "next")] });
+  await page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Filé" }).press("Enter");
+
+  await expect(page.locator("[data-square]")).toHaveCount(3);
+  await expect(page.locator("[data-fresh]")).toHaveCount(2);
+});
+
 test.describe("com menos movimento", () => {
   test.use({ reducedMotion: "reduce" });
 

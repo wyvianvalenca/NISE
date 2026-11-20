@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
@@ -19,6 +19,8 @@ import {
   NO_CHANGES,
   fileChanges,
   getFile,
+  lastShownFile,
+  rememberShownFile,
   type FileChanges,
   type FileData,
   type FileItem,
@@ -44,24 +46,29 @@ export default function FilePage() {
   // O que mudou desde a versão que estava na tela: o que entrou desenha a borda, o que
   // andou se preenche e o que saiu faz o caminho de volta (lib/file.ts, fileChanges).
   const [changes, setChanges] = useState<FileChanges>(NO_CHANGES);
-  // O filé que está na tela, para comparar com o que chega.
-  const shown = useRef<FileData | null>(null);
   const redirect = redirectFor(result);
 
+  // O desenho que apareceu fica guardado na aba, para a próxima volta comparar com ele.
   useEffect(() => {
-    shown.current = result?.ok ? result.data : null;
+    if (result?.ok) rememberShownFile(result.data);
   }, [result]);
+
+  // Escondida, a tela perde as marcas de animação: ao voltar a aparecer, o navegador reinicia
+  // as animações dela, e o preenchimento da volta anterior se repetiria antes do novo.
+  useLayoutEffect(() => {
+    return () => setChanges(NO_CHANGES);
+  }, []);
 
   // Com cacheComponents, o Next esconde esta tela (Activity) quando ela sai, em vez de
   // desmontá-la, e roda os efeitos de novo quando ela volta. Então, na volta, o filé de
   // antes continua na tela enquanto esta busca roda; quando o novo chega, só os
-  // quadradinhos que mudaram nesse meio-tempo se animam. Na primeira visita não há filé
-  // de antes, e nada se anima.
+  // quadradinhos que mudaram desde o último desenho mostrado nesta aba se animam. Se o filé
+  // ainda não apareceu nesta aba, nada se anima.
   useEffect(() => {
     const controller = new AbortController();
     getFile(controller.signal).then(
       (next) => {
-        const before = shown.current;
+        const before = lastShownFile();
         setChanges(before && next.ok ? fileChanges(before, next.data) : NO_CHANGES);
         setResult(next);
       },

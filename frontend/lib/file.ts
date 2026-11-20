@@ -271,8 +271,37 @@ export type FileSquare = {
  * ela tiver mais itens, os que sobram não aparecem no desenho (só nas listas)
  * até o design definir como o filé cresce.
  */
-export function fileSquares(data: FileData): FileSquare[] {
+export function fileSquares(data: Pick<FileData, "squares">): FileSquare[] {
   return FILE_CELLS.map((cell, index) => ({ cell, square: data.squares[index] ?? null }));
+}
+
+/** O desenho que estava na tela: só os quadradinhos, que é o que a comparação usa. */
+export type ShownFile = Pick<FileData, "squares">;
+
+const SHOWN_KEY = "nise:file-shown";
+
+/**
+ * Guarda o desenho que acabou de aparecer, para a próxima volta ao filé saber o que mudou.
+ * Fica no sessionStorage, e não só na tela, porque a tela pode ser montada do zero: a
+ * página recarregou, ou o Next a descartou. Só os quadradinhos (id, título do catálogo,
+ * tema e status), nada pessoal; some quando a aba fecha.
+ */
+export function rememberShownFile(data: FileData) {
+  try {
+    sessionStorage.setItem(SHOWN_KEY, JSON.stringify({ squares: data.squares } satisfies ShownFile));
+  } catch {
+    // Sem sessionStorage (aba anônima bloqueada): a próxima volta só não se anima.
+  }
+}
+
+/** O último desenho que apareceu nesta aba; null se o filé ainda não apareceu nela. */
+export function lastShownFile(): ShownFile | null {
+  try {
+    const saved = sessionStorage.getItem(SHOWN_KEY);
+    return saved ? (JSON.parse(saved) as ShownFile) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Um quadradinho que saiu do filé, com a casa onde estava, para a animação de saída. */
@@ -294,8 +323,8 @@ export const NO_CHANGES: FileChanges = { fresh: new Set(), filled: new Set(), re
 // Quanto cada status preenche o quadradinho: só um passo para a frente se anima.
 const FILLING: Record<FileStatus, number> = { proxima: 0, "em-andamento": 1, concluido: 2 };
 
-/** Compara o filé que estava na tela com o novo, pelo id de cada quadradinho. */
-export function fileChanges(before: FileData, after: FileData): FileChanges {
+/** Compara o desenho que estava na tela com o novo, pelo id de cada quadradinho. */
+export function fileChanges(before: ShownFile, after: FileData): FileChanges {
   const previous = new Map(before.squares.map((square) => [square.id, square]));
   const current = new Set(after.squares.map((square) => square.id));
 
