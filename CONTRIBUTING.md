@@ -90,7 +90,7 @@ O código de `backend/` e `frontend/` fica montado nos containers: ao salvar, o 
 
 ### 3.4. Verificações à mão
 
-Os hooks já rodam quase tudo a cada commit, e os testes do back a cada push. Para rodar todos os hooks em todos os arquivos, como o CI faz: `uv run prek run --all-files` (na raiz). Os testes do back rodam na máquina, não no container (a imagem não tem as dependências de desenvolvimento).
+Os hooks já rodam quase tudo a cada commit, e os testes do back a cada push. Para rodar todos os hooks em todos os arquivos, como o CI faz: `uv run prek run --all-files` (na raiz). Os testes do back rodam na máquina, não no container (a imagem não tem as dependências de desenvolvimento). Os testes que usam o banco precisam do Postgres no ar (`docker compose up -d db`); eles criam e usam um banco separado, o `nise_test`, sem tocar nos seus dados. Se o seu Postgres não está em `localhost:5432` com usuário e senha `nise`, defina `TEST_DATABASE_URL` (veja a seção 8 do [docs/ferramentas.md](docs/ferramentas.md)).
 
 - Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
 - Front (em `frontend/`): `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:e2e`
@@ -154,7 +154,7 @@ Rodam nos **hooks do Git** (na sua máquina, pelo prek) e no **CI** (no PR, pelo
 | Back | Formatação e lint | ruff |
 | Back | Tipos | mypy |
 | Back | Testes | pytest |
-| Back | Migrações em dia | Alembic |
+| Back | Migrações em dia | Alembic, dentro do pytest: sobe e desce todas as migrações e roda o `alembic check` |
 | Front | Formatação | Prettier |
 | Front | Lint | ESLint |
 | Front | Tipos | `pnpm typecheck` (`next typegen` + `tsc --noEmit`) |
@@ -162,7 +162,7 @@ Rodam nos **hooks do Git** (na sua máquina, pelo prek) e no **CI** (no PR, pelo
 | Front | Contrato com o back | Cliente gerado do OpenAPI (`@hey-api/openapi-ts`), regenerado pelo hook `generate-client` e commitado |
 | Front | E2E | Ferramenta a definir (sugestão: Playwright), só nos caminhos principais |
 
-Não há meta de cobertura de testes, mas toda história tem testes de back para os critérios de aceite.
+Não há meta de cobertura de testes, mas toda história tem testes de back para os critérios de aceite. O CI mostra o relatório de cobertura do back para ajudar a achar o que ficou sem teste. Regra que o banco garante (restrição única, checagem, permissão por consulta) é testada no Postgres de verdade, com a fixture `db_session`.
 
 ## 7. Pull requests
 

@@ -22,6 +22,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "coverage>=7.17.3",
     "mypy>=2.4.1",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
@@ -68,3 +69,12 @@ plugins = ["pydantic.mypy"]
 # Testes `async def` rodam sem precisar do decorador @pytest.mark.asyncio.
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+# Cobertura só do código do app (sem os testes e os scripts). Sem meta mínima:
+# o relatório serve para achar o que ficou sem teste, não para barrar o PR.
+source = ["app"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
