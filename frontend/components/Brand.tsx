@@ -5,7 +5,13 @@ import styles from "./Brand.module.css";
 export function Brand() {
   return (
     <span className={styles.brand}>
-      <Image src="/icons/simbolo-nise.svg" alt="" width={30} height={30} unoptimized />
+      <Image
+        src="/icons/simbolo-nise.svg"
+        alt=""
+        width={30}
+        height={30}
+        unoptimized
+      />
       NISE
     </span>
   );

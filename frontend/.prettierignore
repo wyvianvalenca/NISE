@@ -1,0 +1,4 @@
+# O Prettier já ignora o que está no .gitignore (node_modules, .next, saídas
+# do Playwright). Aqui só o que é versionado mas não deve ser formatado.
+pnpm-lock.yaml
+next-env.d.ts

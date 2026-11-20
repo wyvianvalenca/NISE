@@ -11,7 +11,13 @@ type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
  * Usa o <select> nativo para funcionar bem com teclado e leitor de tela.
  * As opções vão como filhos: <option value="12m">Últimos 12 meses</option>.
  */
-export function Select({ label, id, className, children, ...rest }: SelectProps) {
+export function Select({
+  label,
+  id,
+  className,
+  children,
+  ...rest
+}: SelectProps) {
   const generatedId = useId();
   const selectId = id ?? generatedId;
 

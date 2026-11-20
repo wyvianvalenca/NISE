@@ -18,7 +18,9 @@ type Params = PageProps<"/convite/[codigo]">["params"];
  * An invalid or expired code falls back to A01, as the issue asks — and not
  * to an error screen, so she is never stuck.
  */
-export default function ConvitePage({ params }: PageProps<"/convite/[codigo]">) {
+export default function ConvitePage({
+  params,
+}: PageProps<"/convite/[codigo]">) {
   return (
     <div className={styles.page}>
       <AppHeader>

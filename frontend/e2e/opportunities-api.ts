@@ -16,7 +16,10 @@ type Options = {
  * Responde PUT /api/preferences/opportunity-emails.
  * Devolve a lista das escolhas enviadas ({enabled}), para o teste conferir.
  */
-export async function mockOpportunitiesApi(page: Page, options: Options = {}): Promise<boolean[]> {
+export async function mockOpportunitiesApi(
+  page: Page,
+  options: Options = {},
+): Promise<boolean[]> {
   const { response = 204 } = options;
   const sentChoices: boolean[] = [];
 
@@ -27,7 +30,10 @@ export async function mockOpportunitiesApi(page: Page, options: Options = {}): P
       return route.fulfill({ status: 204, body: "" });
     }
     if (response === "terms_not_accepted") {
-      return route.fulfill({ status: 403, json: { error: "terms_not_accepted" } });
+      return route.fulfill({
+        status: 403,
+        json: { error: "terms_not_accepted" },
+      });
     }
     return fail(route, response);
   });

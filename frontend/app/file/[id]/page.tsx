@@ -55,7 +55,9 @@ function Loading() {
 function ActivityLoader() {
   const { id } = useParams<{ id: string }>();
   // undefined: carregando. null: não está no filé.
-  const [activity, setActivity] = useState<ActivityDetail | null | undefined>(undefined);
+  const [activity, setActivity] = useState<ActivityDetail | null | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     let current = true;
@@ -68,7 +70,10 @@ function ActivityLoader() {
   }, [id]);
 
   if (activity === undefined) return <Loading />;
-  if (activity === null) return <p className={styles.status}>Essa atividade não está no seu filé.</p>;
+  if (activity === null)
+    return (
+      <p className={styles.status}>Essa atividade não está no seu filé.</p>
+    );
   return <Detail activity={activity} onChange={setActivity} />;
 }
 
@@ -86,7 +91,9 @@ type DetailProps = {
 function Detail({ activity, onChange }: DetailProps) {
   const router = useRouter();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [saving, setSaving] = useState<"start" | "conclude" | "remove" | null>(null);
+  const [saving, setSaving] = useState<"start" | "conclude" | "remove" | null>(
+    null,
+  );
   const [error, setError] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
@@ -148,7 +155,9 @@ function Detail({ activity, onChange }: DetailProps) {
           <Icon name="code-lg" size={42} />
         </span>
         <span className={`${styles.statusChip} ${styles[activity.status]}`}>
-          {activity.status === "concluded" && <Icon name="check-lg" size={15} />}
+          {activity.status === "concluded" && (
+            <Icon name="check-lg" size={15} />
+          )}
           <span className={styles.srOnly}>Status: </span>
           {STATUS_LABELS[activity.status]}
         </span>
@@ -166,7 +175,13 @@ function Detail({ activity, onChange }: DetailProps) {
       <ul className={styles.chips} aria-label="Detalhes">
         <li className={styles.chip}>{activity.format}</li>
         <li className={styles.chip}>{activity.duration}</li>
-        <li>{activity.cost ? <span className={styles.chip}>{activity.cost}</span> : <Tag variant="pink">Grátis</Tag>}</li>
+        <li>
+          {activity.cost ? (
+            <span className={styles.chip}>{activity.cost}</span>
+          ) : (
+            <Tag variant="pink">Grátis</Tag>
+          )}
+        </li>
         {activity.minAge !== null && (
           <li className={styles.chip}>
             {activity.minAge}+<span className={styles.srOnly}> anos</span>
@@ -183,7 +198,12 @@ function Detail({ activity, onChange }: DetailProps) {
       )}
 
       <div className={styles.actions}>
-        <a href={activity.url} target="_blank" rel="noopener noreferrer" className={styles.siteButton}>
+        <a
+          href={activity.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.siteButton}
+        >
           <Icon name="external" size={18} />
           {siteLabel}
           <span className={styles.srOnly}> (abre em outra aba)</span>

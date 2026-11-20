@@ -8,9 +8,16 @@ type SearchFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
 };
 
 /** Campo de busca com lupa (Figma: Busca). O placeholder padrão é o próprio label. */
-export function SearchField({ label, placeholder, className, ...rest }: SearchFieldProps) {
+export function SearchField({
+  label,
+  placeholder,
+  className,
+  ...rest
+}: SearchFieldProps) {
   return (
-    <div className={className ? `${styles.search} ${className}` : styles.search}>
+    <div
+      className={className ? `${styles.search} ${className}` : styles.search}
+    >
       <Icon name="search" className={styles.icon} />
       <input
         {...rest}

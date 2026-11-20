@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import type { BandCode } from "@/lib/descobrir";
-import { getSuggestions, sendChoice, undoChoice, type Choice, type ReasonCode, type Suggestion } from "@/lib/sugestoes";
+import {
+  getSuggestions,
+  sendChoice,
+  undoChoice,
+  type Choice,
+  type ReasonCode,
+  type Suggestion,
+} from "@/lib/sugestoes";
 
 // Estado da tela de sugestões: a lista da faixa, qual está à mostra e o total do filé.
 
@@ -42,18 +49,33 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckState {
     case "loading":
       return initialDeck;
     case "loaded":
-      return { ...initialDeck, status: "ready", items: action.items, fileTotal: action.fileTotal };
+      return {
+        ...initialDeck,
+        status: "ready",
+        items: action.items,
+        fileTotal: action.fileTotal,
+      };
     case "loadFailed":
       return { ...initialDeck, status: "error" };
     case "choosing":
       return { ...state, pending: true, choiceFailed: false };
     case "chosen":
       // A escolha foi guardada: passa para a próxima e usa o total que o back devolveu.
-      return { ...state, index: state.index + 1, fileTotal: action.fileTotal, pending: false };
+      return {
+        ...state,
+        index: state.index + 1,
+        fileTotal: action.fileTotal,
+        pending: false,
+      };
     case "undone": {
       // A escolha foi desfeita: a mesma sugestão volta a ser a atual (#107).
       const index = state.items.findIndex((item) => item.id === action.id);
-      return { ...state, index: index === -1 ? state.index : index, fileTotal: action.fileTotal, pending: false };
+      return {
+        ...state,
+        index: index === -1 ? state.index : index,
+        fileTotal: action.fileTotal,
+        pending: false,
+      };
     }
     case "failed":
       // A sugestão continua à mostra; ela vê o aviso e pode tocar de novo.
@@ -64,14 +86,21 @@ export function deckReducer(state: DeckState, action: DeckAction): DeckState {
   }
 }
 
-export type ChoiceResult = { item: Suggestion; choice: Choice; fileTotal: number };
+export type ChoiceResult = {
+  item: Suggestion;
+  choice: Choice;
+  fileTotal: number;
+};
 
 type Options = {
   /** Chamado depois que o back confirma a escolha (o aviso "Desfazer" da #107 parte daqui). */
   onChoiceConfirmed?: (item: Suggestion, choice: Choice) => void;
 };
 
-export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options = {}) {
+export function useSuggestionDeck(
+  band: BandCode,
+  { onChoiceConfirmed }: Options = {},
+) {
   const [state, dispatch] = useReducer(deckReducer, initialDeck);
   // Cada "Tentar de novo" soma 1 e refaz a busca.
   const [attempt, setAttempt] = useState(0);
@@ -80,7 +109,12 @@ export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options
     let current = true;
     getSuggestions(band).then(
       (data) => {
-        if (current) dispatch({ type: "loaded", items: data.items, fileTotal: data.fileTotal });
+        if (current)
+          dispatch({
+            type: "loaded",
+            items: data.items,
+            fileTotal: data.fileTotal,
+          });
       },
       (error: unknown) => {
         console.warn("Não foi possível carregar as sugestões.", error);
@@ -105,7 +139,10 @@ export function useSuggestionDeck(band: BandCode, { onChoiceConfirmed }: Options
    * Se falhar, resolve com null e marca choiceFailed: a tela avisa e ela pode tocar de novo.
    */
   const choose = useCallback(
-    async (choice: Choice, reason?: ReasonCode): Promise<ChoiceResult | null> => {
+    async (
+      choice: Choice,
+      reason?: ReasonCode,
+    ): Promise<ChoiceResult | null> => {
       if (!item || state.pending) return null;
       dispatch({ type: "choosing" });
       try {

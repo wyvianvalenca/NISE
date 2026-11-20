@@ -58,7 +58,12 @@ export type ThemeInfo = {
 
 // Cores do Figma (A06·3). Só Programação, Robótica e IA têm cor no Figma; os outros
 // temas usam uma cor neutra até o design definir (anotado no PR).
-const NEUTRAL = { color: "var(--nise-muted)", soft: "var(--nise-paper)", ink: "var(--nise-muted)", icon: "code" } as const;
+const NEUTRAL = {
+  color: "var(--nise-muted)",
+  soft: "var(--nise-paper)",
+  ink: "var(--nise-muted)",
+  icon: "code",
+} as const;
 
 export const THEMES: Record<ThemeCode, ThemeInfo> = {
   programacao: {
@@ -95,7 +100,20 @@ export function itemIcon(item: FileItem): IconName {
   return THEMES[item.theme].icon;
 }
 
-const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTHS = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+];
 
 /** "2027-10-30" vira "30/out", como no Figma. Lê a data sem fuso para não mudar o dia. */
 export function formatDeadline(isoDate: string): string {
@@ -199,7 +217,8 @@ export async function getFile(): Promise<FileData> {
     typeof location !== "undefined" &&
     new URLSearchParams(location.search).has("empty");
   const items = emptyByQuery ? [] : (mock.items ?? MOCK_ITEMS);
-  const byStatus = (status: FileStatus) => items.filter((item) => item.status === status);
+  const byStatus = (status: FileStatus) =>
+    items.filter((item) => item.status === status);
   return {
     firstName: "Alana",
     inProgress: byStatus("em-andamento"),
@@ -252,5 +271,8 @@ export type FileSquare = {
  */
 export function fileSquares(data: FileData): FileSquare[] {
   const items = [...data.done, ...data.inProgress, ...data.next];
-  return FILE_CELLS.map((cell, index) => ({ cell, item: items[index] ?? null }));
+  return FILE_CELLS.map((cell, index) => ({
+    cell,
+    item: items[index] ?? null,
+  }));
 }

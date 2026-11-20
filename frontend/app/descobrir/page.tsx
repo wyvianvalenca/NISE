@@ -9,7 +9,13 @@ import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BandCard } from "@/components/BandCard";
 import { BottomNav } from "@/components/BottomNav";
-import { BANDS, bandPath, getDiscover, type BandGroup, type DiscoverData } from "@/lib/descobrir";
+import {
+  BANDS,
+  bandPath,
+  getDiscover,
+  type BandGroup,
+  type DiscoverData,
+} from "@/lib/descobrir";
 import styles from "./page.module.css";
 
 const GROUP_LABELS: Record<Exclude<BandGroup, null>, string> = {
@@ -35,7 +41,11 @@ export default function DiscoverPage() {
       <AppHeader>
         {data && (
           // O perfil ainda não existe; por enquanto o link dá 404.
-          <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
+          <Link
+            href="/perfil"
+            className={styles.profile}
+            aria-label="Seu perfil"
+          >
             <Avatar name={data.firstName} size={36} />
           </Link>
         )}
@@ -68,8 +78,12 @@ function Bands({ data }: { data: DiscoverData }) {
         {data.bands.map((band, index) => {
           const info = BANDS[band.code];
           // O rótulo do grupo ("Sozinha", "Em grupo") vai antes da primeira faixa de cada grupo.
-          const previousGroup = index > 0 ? BANDS[data.bands[index - 1].code].group : null;
-          const label = info.group && info.group !== previousGroup ? GROUP_LABELS[info.group] : null;
+          const previousGroup =
+            index > 0 ? BANDS[data.bands[index - 1].code].group : null;
+          const label =
+            info.group && info.group !== previousGroup
+              ? GROUP_LABELS[info.group]
+              : null;
           return (
             <div key={band.code} className={styles.band}>
               {label && <h2 className={styles.groupLabel}>{label}</h2>}

@@ -37,7 +37,9 @@ const EMPTY_STATE: MockState = {
 function readState(): MockState {
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY);
-    return saved ? { ...EMPTY_STATE, ...JSON.parse(saved) } : { ...EMPTY_STATE };
+    return saved
+      ? { ...EMPTY_STATE, ...JSON.parse(saved) }
+      : { ...EMPTY_STATE };
   } catch {
     return { ...EMPTY_STATE };
   }
@@ -45,7 +47,10 @@ function readState(): MockState {
 
 function saveState(changes: Partial<MockState>) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readState(), ...changes }));
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...readState(), ...changes }),
+    );
   } catch {
     // Sem sessionStorage (aba anônima bloqueada): os dados de teste só não ficam salvos.
   }
@@ -56,11 +61,27 @@ function saveState(changes: Partial<MockState>) {
  * Os e-mails de questionário não dependem de preferência: toda menina com conta recebe.
  */
 export async function confirmQuestionnaireNotice(): Promise<void> {
-  saveState({ questionnaireNoticeSeenAt: new Date().toISOString(), consentCompleted: true });
+  saveState({
+    questionnaireNoticeSeenAt: new Date().toISOString(),
+    consentCompleted: true,
+  });
 }
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTHS = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+];
 
 /**
  * Data e lugar de uma ação como no Card / Evento do Figma: "Sáb, 11 de out · Maceió".
@@ -69,7 +90,10 @@ const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "
  * `startsOn` é a data ISO que vem do back ("2026-10-10"). A conta é feita em UTC
  * para o dia da semana não mudar com o fuso de quem abre a página.
  */
-export function eventDetails(startsOn: string, cityName: string | null): string {
+export function eventDetails(
+  startsOn: string,
+  cityName: string | null,
+): string {
   const [year, month, day] = startsOn.split("-").map(Number);
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 

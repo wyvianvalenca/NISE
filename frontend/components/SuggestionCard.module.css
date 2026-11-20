@@ -16,7 +16,8 @@
   align-items: center;
   justify-content: center;
   height: 200px;
-  background: var(--nise-tealSoft) url(/malha.svg) left top / 420px 200px repeat-x;
+  background: var(--nise-tealSoft) url(/malha.svg) left top / 420px 200px
+    repeat-x;
 }
 
 .kind {

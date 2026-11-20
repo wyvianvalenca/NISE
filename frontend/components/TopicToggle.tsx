@@ -2,7 +2,10 @@ import type { ButtonHTMLAttributes } from "react";
 import { Icon, type IconName } from "./Icon";
 import styles from "./TopicToggle.module.css";
 
-type TopicToggleProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
+type TopicToggleProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "type"
+> & {
   selected: boolean;
   icon: IconName;
   label: string;
@@ -14,13 +17,22 @@ type TopicToggleProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & 
 };
 
 /** Tema de interesse que liga e desliga (tela A05). */
-export function TopicToggle({ selected, icon, label, variant = "card", className, ...rest }: TopicToggleProps) {
+export function TopicToggle({
+  selected,
+  icon,
+  label,
+  variant = "card",
+  className,
+  ...rest
+}: TopicToggleProps) {
   return (
     <button
       {...rest}
       type="button"
       aria-pressed={selected}
-      className={[styles.toggle, styles[variant], className].filter(Boolean).join(" ")}
+      className={[styles.toggle, styles[variant], className]
+        .filter(Boolean)
+        .join(" ")}
     >
       <Icon name={icon} className={styles.icon} />
       <span className={styles.label}>{label}</span>

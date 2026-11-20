@@ -8,7 +8,13 @@ type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 };
 
 /** Campo de texto de várias linhas (Figma: Campo / Comentário, tela A03). */
-export function TextArea({ label, optional, id, className, ...rest }: TextAreaProps) {
+export function TextArea({
+  label,
+  optional,
+  id,
+  className,
+  ...rest
+}: TextAreaProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
 

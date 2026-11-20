@@ -14,7 +14,9 @@ function isBand(value: string): value is BandCode {
 }
 
 // Com Cache Components, ler params fora de um <Suspense> trava a navegação e o Next avisa no dev.
-export default function BandSuggestionsPage({ params }: PageProps<"/descobrir/[faixa]">) {
+export default function BandSuggestionsPage({
+  params,
+}: PageProps<"/descobrir/[faixa]">) {
   return (
     <Suspense>
       <Band params={params} />
@@ -22,7 +24,9 @@ export default function BandSuggestionsPage({ params }: PageProps<"/descobrir/[f
   );
 }
 
-async function Band({ params }: Pick<PageProps<"/descobrir/[faixa]">, "params">) {
+async function Band({
+  params,
+}: Pick<PageProps<"/descobrir/[faixa]">, "params">) {
   const { faixa } = await params;
   if (!isBand(faixa)) notFound();
   return <SuggestionsScreen band={faixa} />;

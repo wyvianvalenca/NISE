@@ -29,7 +29,14 @@ export function Chip({
       {...rest}
       type="button"
       aria-pressed={selected}
-      className={[styles.chip, styles[size], variant === "filter" && styles.filter, className].filter(Boolean).join(" ")}
+      className={[
+        styles.chip,
+        styles[size],
+        variant === "filter" && styles.filter,
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {children}
       {count !== undefined && <span className={styles.count}>{count}</span>}

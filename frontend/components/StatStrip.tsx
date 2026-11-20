@@ -18,7 +18,9 @@ export function StatStrip({ stats }: StatStripProps) {
       {stats.map((stat) => (
         <div key={stat.label} className={styles.stat}>
           <dt className={styles.label}>{stat.label}</dt>
-          <dd className={`${styles.value} ${styles[stat.tone ?? "default"]}`}>{stat.value}</dd>
+          <dd className={`${styles.value} ${styles[stat.tone ?? "default"]}`}>
+            {stat.value}
+          </dd>
         </div>
       ))}
     </dl>

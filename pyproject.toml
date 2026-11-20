@@ -1,0 +1,14 @@
+# Raiz do repositório: workspace do uv. Não é um pacote; só junta o back
+# (backend/) num uv.lock único e guarda as ferramentas do repositório inteiro.
+# Detalhes em docs/ferramentas.md.
+
+[tool.uv.workspace]
+members = ["backend"]
+
+[dependency-groups]
+dev = [
+    # Roda os hooks do .pre-commit-config.yaml (substitui o pre-commit).
+    "prek>=0.5.11",
+    # Procura problemas de segurança nos workflows do GitHub Actions.
+    "zizmor>=1.32.0",
+]

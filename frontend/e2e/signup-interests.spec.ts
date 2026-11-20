@@ -5,7 +5,10 @@ import { mockTermsApi } from "./terms-api";
 // #56 · A05 O que te interessa? As rotas dos interesses (#147) são simuladas.
 
 /** Abre a A05 com as rotas simuladas. Devolve as escolhas enviadas. */
-async function openInterests(page: Page, settings: Parameters<typeof mockInterestsApi>[1] = {}) {
+async function openInterests(
+  page: Page,
+  settings: Parameters<typeof mockInterestsApi>[1] = {},
+) {
   const sentChoices = await mockInterestsApi(page, settings);
   await page.goto("/cadastro/interesses");
   return sentChoices;
@@ -15,14 +18,31 @@ function topic(page: Page, name: string) {
   return page.getByRole("button", { name, exact: true });
 }
 
-test("mostra os 8 temas, a opção de ver tudo e as etapas de estudo", async ({ page }) => {
+test("mostra os 8 temas, a opção de ver tudo e as etapas de estudo", async ({
+  page,
+}) => {
   await openInterests(page);
 
-  for (const name of ["Programação", "Robótica", "Inteligência artificial", "Dados", "Cibersegurança", "Jogos", "Sites e apps", "Design e criação"]) {
+  for (const name of [
+    "Programação",
+    "Robótica",
+    "Inteligência artificial",
+    "Dados",
+    "Cibersegurança",
+    "Jogos",
+    "Sites e apps",
+    "Design e criação",
+  ]) {
     await expect(topic(page, name)).toBeVisible();
   }
   await expect(topic(page, "Ainda não sei, me mostra de tudo")).toBeVisible();
-  for (const name of ["Ensino fundamental", "Ensino médio", "Curso técnico", "Graduação", "Já me formei"]) {
+  for (const name of [
+    "Ensino fundamental",
+    "Ensino médio",
+    "Curso técnico",
+    "Graduação",
+    "Já me formei",
+  ]) {
     await expect(topic(page, name)).toBeVisible();
   }
 });
@@ -30,7 +50,10 @@ test("mostra os 8 temas, a opção de ver tudo e as etapas de estudo", async ({ 
 test("mostra as listas que o back devolve", async ({ page }) => {
   await openInterests(page, {
     options: {
-      topics: [...INTEREST_OPTIONS.topics, { code: "astronomia", label: "Astronomia" }],
+      topics: [
+        ...INTEREST_OPTIONS.topics,
+        { code: "astronomia", label: "Astronomia" },
+      ],
       stages: [{ code: "medio", label: "Ensino médio" }],
     },
   });
@@ -40,11 +63,16 @@ test("mostra as listas que o back devolve", async ({ page }) => {
   await expect(topic(page, "Graduação")).toHaveCount(0);
 
   // Um tema sem ícone próprio usa o genérico, em vez de quebrar a imagem.
-  const icons = await page.getByRole("group", { name: "Temas" }).locator("[style*='topic-']").count();
+  const icons = await page
+    .getByRole("group", { name: "Temas" })
+    .locator("[style*='topic-']")
+    .count();
   expect(icons).toBe(8);
 });
 
-test("só começa o filé com pelo menos um tema e a etapa de estudo", async ({ page }) => {
+test("só começa o filé com pelo menos um tema e a etapa de estudo", async ({
+  page,
+}) => {
   await openInterests(page);
   const start = page.getByRole("button", { name: "Começar meu filé" });
 
@@ -63,7 +91,9 @@ test("salva um tema e a etapa e segue para o filé", async ({ page }) => {
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
   await expect(page).toHaveURL(/\/por-que-file$/);
-  expect(sentChoices).toEqual([{ topics: ["robotica"], everything: false, stage: "medio" }]);
+  expect(sentChoices).toEqual([
+    { topics: ["robotica"], everything: false, stage: "medio" },
+  ]);
 });
 
 test("salva vários temas", async ({ page }) => {
@@ -76,10 +106,18 @@ test("salva vários temas", async ({ page }) => {
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
   await expect(page).toHaveURL(/\/por-que-file$/);
-  expect(sentChoices).toEqual([{ topics: ["programacao", "ia", "jogos"], everything: false, stage: "graduacao" }]);
+  expect(sentChoices).toEqual([
+    {
+      topics: ["programacao", "ia", "jogos"],
+      everything: false,
+      stage: "graduacao",
+    },
+  ]);
 });
 
-test("me mostra de tudo desmarca os temas, e escolher um tema desmarca o ver tudo", async ({ page }) => {
+test("me mostra de tudo desmarca os temas, e escolher um tema desmarca o ver tudo", async ({
+  page,
+}) => {
   await openInterests(page);
   const everything = topic(page, "Ainda não sei, me mostra de tudo");
 
@@ -100,17 +138,21 @@ test("me mostra de tudo salva sem temas", async ({ page }) => {
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
   await expect(page).toHaveURL(/\/por-que-file$/);
-  expect(sentChoices).toEqual([{ topics: [], everything: true, stage: "tecnico" }]);
+  expect(sentChoices).toEqual([
+    { topics: [], everything: true, stage: "tecnico" },
+  ]);
 });
 
 // A tela é a mesma no M1 e no M2: nada nela depende de onde ela veio.
 test("não tem Pular por agora, nem no M1 nem no M2", async ({ page }) => {
   await openInterests(page);
   await expect(topic(page, "Começar meu filé")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Pular por agora" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Pular por agora" }),
+  ).toHaveCount(0);
 });
 
-test("sem tema nem \"me mostra de tudo\" não dá pra seguir", async ({ page }) => {
+test('sem tema nem "me mostra de tudo" não dá pra seguir', async ({ page }) => {
   await openInterests(page);
   const start = page.getByRole("button", { name: "Começar meu filé" });
   const everything = topic(page, "Ainda não sei, me mostra de tudo");
@@ -126,7 +168,10 @@ test("cada tema mostra o próprio ícone", async ({ page }) => {
   await openInterests(page);
   await expect(topic(page, "Programação")).toBeVisible();
 
-  const icons = await page.getByRole("group", { name: "Temas" }).locator("[style*='topic-']").count();
+  const icons = await page
+    .getByRole("group", { name: "Temas" })
+    .locator("[style*='topic-']")
+    .count();
   expect(icons).toBe(8);
 });
 
@@ -157,7 +202,9 @@ test("se não dá pra salvar, avisa e deixa tentar de novo", async ({ page }) =>
   await topic(page, "Ensino médio").click();
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
-  await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
+  await expect(
+    page.getByText("Não deu pra salvar. Tente de novo."),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/cadastro\/interesses$/);
   await expect(topic(page, "Robótica")).toHaveAttribute("aria-pressed", "true");
 
@@ -165,14 +212,18 @@ test("se não dá pra salvar, avisa e deixa tentar de novo", async ({ page }) =>
   const sentChoices = await mockInterestsApi(page);
   await page.getByRole("button", { name: "Começar meu filé" }).click();
   await expect(page).toHaveURL(/\/por-que-file$/);
-  expect(sentChoices).toEqual([{ topics: ["robotica"], everything: false, stage: "medio" }]);
+  expect(sentChoices).toEqual([
+    { topics: ["robotica"], everything: false, stage: "medio" },
+  ]);
 });
 
 test("se as listas não carregam, deixa tentar de novo", async ({ page }) => {
   await openInterests(page, { options: 500 });
 
   await expect(page.getByText("Não deu pra carregar os temas.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Começar meu filé" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Começar meu filé" }),
+  ).toHaveCount(0);
 
   await mockInterestsApi(page);
   await page.getByRole("button", { name: "Tentar de novo" }).click();
@@ -185,9 +236,13 @@ test("sem sessão, volta para a página inicial", async ({ page }) => {
   await expect(page).toHaveURL(/localhost:3000\/$/);
 });
 
-test("com o cadastro do Google incompleto, volta para a A02b", async ({ page }) => {
+test("com o cadastro do Google incompleto, volta para a A02b", async ({
+  page,
+}) => {
   // A A02b busca o cadastro pendente; aqui basta ela abrir.
-  await page.route("**/api/auth/signup/pending", (route) => route.fulfill({ status: 404, json: {} }));
+  await page.route("**/api/auth/signup/pending", (route) =>
+    route.fulfill({ status: 404, json: {} }),
+  );
   await openInterests(page, { options: "incomplete_signup" });
 
   await expect(page).toHaveURL(/\/cadastro\/google$/);
@@ -200,7 +255,9 @@ test("sem o aceite dos termos, volta para a A04·1", async ({ page }) => {
   await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
 
-test("se a sessão cai antes de salvar, volta para a página inicial", async ({ page }) => {
+test("se a sessão cai antes de salvar, volta para a página inicial", async ({
+  page,
+}) => {
   await openInterests(page, { save: 401 });
 
   await topic(page, "Robótica").click();
@@ -210,7 +267,9 @@ test("se a sessão cai antes de salvar, volta para a página inicial", async ({ 
   await expect(page).toHaveURL(/localhost:3000\/$/);
 });
 
-test("se os termos mudaram antes de salvar, volta para a A04·1", async ({ page }) => {
+test("se os termos mudaram antes de salvar, volta para a A04·1", async ({
+  page,
+}) => {
   await mockTermsApi(page);
   await openInterests(page, { save: "terms_not_accepted" });
 

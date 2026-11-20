@@ -1,0 +1,16 @@
+# O contexto do build do back é a raiz do repositório. Este arquivo vale só
+# para o backend/Dockerfile (o Docker procura <Dockerfile>.dockerignore).
+# Lista do que entra; todo o resto fica de fora.
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!backend/
+
+# A .venv da máquina não pode sobrescrever a que o uv cria na imagem.
+**/.venv/
+**/__pycache__/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
+**/.env

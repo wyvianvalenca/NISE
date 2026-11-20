@@ -85,7 +85,11 @@ export default function InterestsPage() {
   // Escolher um tema desmarca "me mostra de tudo", e vice-versa.
   function toggleTopic(code: string) {
     setEverything(false);
-    setTopics((chosen) => (chosen.includes(code) ? chosen.filter((item) => item !== code) : [...chosen, code]));
+    setTopics((chosen) =>
+      chosen.includes(code)
+        ? chosen.filter((item) => item !== code)
+        : [...chosen, code],
+    );
   }
 
   function toggleEverything() {
@@ -106,7 +110,10 @@ export default function InterestsPage() {
 
     setSaving(false);
 
-    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+    if (
+      result?.reason === "unauthenticated" ||
+      result?.reason === "incomplete_signup"
+    ) {
       router.replace(WITHOUT_SESSION[result.reason]);
       return;
     }
@@ -128,7 +135,11 @@ export default function InterestsPage() {
           <div role="alert">
             <p className={shared.error}>Não deu pra carregar os temas.</p>
             <div className={styles.actions}>
-              <Button variant="secondary" className={shared.fullWidth} onClick={retryLoad}>
+              <Button
+                variant="secondary"
+                className={shared.fullWidth}
+                onClick={retryLoad}
+              >
                 Tentar de novo
               </Button>
             </div>
@@ -168,7 +179,11 @@ export default function InterestsPage() {
       />
 
       <h2 className={styles.stageTitle}>Seu momento de estudo</h2>
-      <div className={styles.stages} role="group" aria-label="Seu momento de estudo">
+      <div
+        className={styles.stages}
+        role="group"
+        aria-label="Seu momento de estudo"
+      >
         {options.stages.map((option) => (
           <Chip
             key={option.code}

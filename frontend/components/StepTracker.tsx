@@ -17,7 +17,11 @@ type StepTrackerProps = {
   size?: "lg" | "sm";
 };
 
-const STATUS_LABEL = { done: "feita", current: "atual", todo: "a fazer" } as const;
+const STATUS_LABEL = {
+  done: "feita",
+  current: "atual",
+  todo: "a fazer",
+} as const;
 
 /** Etapas numeradas de um fluxo, com a atual em destaque. */
 export function StepTracker({ steps, size = "lg" }: StepTrackerProps) {
@@ -32,7 +36,11 @@ export function StepTracker({ steps, size = "lg" }: StepTrackerProps) {
           {index > 0 && (
             <span
               // O trilho fica teal quando a etapa anterior já foi feita.
-              className={steps[index - 1].status === "done" ? `${styles.rail} ${styles.railDone}` : styles.rail}
+              className={
+                steps[index - 1].status === "done"
+                  ? `${styles.rail} ${styles.railDone}`
+                  : styles.rail
+              }
               aria-hidden="true"
             />
           )}
@@ -42,7 +50,10 @@ export function StepTracker({ steps, size = "lg" }: StepTrackerProps) {
           <span className={styles.texts}>
             <span className={styles.label}>
               {step.label}
-              <span className={styles.srOnly}> ({STATUS_LABEL[step.status]})</span>
+              <span className={styles.srOnly}>
+                {" "}
+                ({STATUS_LABEL[step.status]})
+              </span>
             </span>
             {size === "lg" && step.description && (
               <span className={styles.description}>{step.description}</span>

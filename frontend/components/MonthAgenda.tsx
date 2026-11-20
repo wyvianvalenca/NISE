@@ -26,7 +26,10 @@ export function MonthAgenda({ month, items }: MonthAgendaProps) {
       <h2 className={styles.title}>{month}</h2>
       <ul className={styles.list}>
         {items.map((item) => (
-          <li key={item.id} className={`${styles.item} ${styles[item.tone ?? "teal"]}`}>
+          <li
+            key={item.id}
+            className={`${styles.item} ${styles[item.tone ?? "teal"]}`}
+          >
             <span className={styles.date}>
               <span className={styles.day}>{item.day}</span>
               <span className={styles.weekday}>{item.weekday}</span>

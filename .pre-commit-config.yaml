@@ -1,25 +1,36 @@
-# Hooks do pre-commit da NISE.
+# Hooks da NISE, rodados pelo prek (substituto mais rápido do pre-commit, que
+# lê este mesmo arquivo). Explicação de cada um em docs/ferramentas.md.
+#
 # Instalação (uma vez por máquina, na raiz do repositório):
-#   uv tool install pre-commit
-#   pre-commit install
-# Rodar em todos os arquivos: pre-commit run --all-files
-# Atualizar versões dos repositórios externos: pre-commit autoupdate
+#   uv sync
+#   uv run prek install
+# Rodar em todos os arquivos (é o que o CI faz): uv run prek run --all-files
+# Atualizar as versões dos repositórios externos: uv run prek update --freeze
 
 # Instala os dois ganchos: pre-commit (lint, formatação, tipos) e pre-push (testes)
 default_install_hook_types: [pre-commit, pre-push]
 
 repos:
-  # Verificações gerais
+  # Verificações gerais. A versão fica fixada pelo hash do commit, não pela tag
+  # (tag pode ser movida); o comentário diz a qual versão o hash corresponde.
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        # O lockfile do pnpm 12 tem vários documentos YAML e é gerado.
+        exclude: ^frontend/pnpm-lock\.yaml$
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files
       - id: detect-private-key # barra chaves privadas commitadas por engano
+
+  # Barra segredos (tokens, senhas, client secrets) no que vai ser commitado.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e # frozen: v8.30.1
+    hooks:
+      - id: gitleaks
 
   # Usa as versões instaladas no projeto (uv e pnpm), as mesmas do CI
   - repo: local
@@ -47,22 +58,39 @@ repos:
         pass_filenames: false
 
       # Front-end
+      - id: prettier
+        name: prettier (front)
+        entry: bash -c 'cd frontend && pnpm exec prettier --write .'
+        language: system
+        files: ^frontend/
+        pass_filenames: false
+
       - id: eslint
         name: eslint (front)
         entry: bash -c 'cd frontend && pnpm lint'
         language: system
-        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        files: ^frontend/.*\.(ts|tsx|js|jsx|mjs)$
         pass_filenames: false
 
-      - id: tsc
-        name: tsc (front)
-        entry: bash -c 'cd frontend && pnpm tsc --noEmit'
+      # `pnpm typecheck` gera os tipos de rota do Next antes do tsc; um
+      # `tsc --noEmit` solto falha num clone novo.
+      - id: typecheck
+        name: typecheck (front)
+        entry: bash -c 'cd frontend && pnpm typecheck'
         language: system
         files: ^frontend/.*\.(ts|tsx)$
         pass_filenames: false
 
+      # Workflows do GitHub Actions
+      - id: zizmor
+        name: zizmor (workflows)
+        entry: uv run zizmor .github/workflows
+        language: system
+        files: ^\.github/workflows/
+        pass_filenames: false
+
       # Testes do back: só no push, para o commit continuar rápido
-      - id: pytest?
+      - id: pytest
         name: pytest (back)
         entry: bash -c 'cd backend && uv run pytest -q'
         language: system

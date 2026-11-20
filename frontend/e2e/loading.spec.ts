@@ -29,7 +29,9 @@ type Marks = { e03?: number; e04?: number; ready?: number };
 async function watchMarks(page: Page) {
   await page.addInitScript(() => {
     const marks: Record<string, number> = {};
-    (globalThis as unknown as { __waitMarks: Record<string, number> }).__waitMarks = marks;
+    (
+      globalThis as unknown as { __waitMarks: Record<string, number> }
+    ).__waitMarks = marks;
 
     const stamp = (key: string) => {
       if (marks[key] === undefined) marks[key] = performance.now();
@@ -54,17 +56,21 @@ async function watchMarks(page: Page) {
 }
 
 const marksOf = (page: Page) =>
-  page.evaluate(() => (globalThis as unknown as { __waitMarks: Marks }).__waitMarks);
+  page.evaluate(
+    () => (globalThis as unknown as { __waitMarks: Marks }).__waitMarks,
+  );
 
 async function openWith(page: Page, mock: Mock) {
   await watchMarks(page);
   await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_WAIT__ = value as typeof globalThis.__NISE_MOCK_WAIT__;
+    globalThis.__NISE_MOCK_WAIT__ =
+      value as typeof globalThis.__NISE_MOCK_WAIT__;
   }, mock);
   await page.goto("/dev-wait");
 }
 
-const switchFetcher = (page: Page) => page.getByRole("button", { name: "switch" });
+const switchFetcher = (page: Page) =>
+  page.getByRole("button", { name: "switch" });
 const weaving = (page: Page) =>
   page.getByRole("heading", { name: "Tecendo seu filé…" });
 const failed = (page: Page) =>
@@ -74,7 +80,9 @@ const failed = (page: Page) =>
  * A fixed wait on purpose: what this proves is that E03 does **not** appear,
  * and for that the threshold has to go by. There is no event to wait for.
  */
-test("a short wait goes straight to the result, without showing E03", async ({ page }) => {
+test("a short wait goes straight to the result, without showing E03", async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [100], threshold: 500 });
 
   await expect(page.getByTestId("ready")).toBeVisible();
@@ -83,7 +91,9 @@ test("a short wait goes straight to the result, without showing E03", async ({ p
   await expect(page.getByTestId("ready")).toBeVisible();
 });
 
-test("a long wait shows E03 with the name and the Figma text", async ({ page }) => {
+test("a long wait shows E03 with the name and the Figma text", async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [3000], threshold: 200, maximum: 10000 });
 
   await expect(weaving(page)).toBeVisible();
@@ -95,7 +105,9 @@ test("a long wait shows E03 with the name and the Figma text", async ({ page }) 
   ).toBeVisible();
 });
 
-test("E03 does not flash: once visible it stays for at least the minimum", async ({ page }) => {
+test("E03 does not flash: once visible it stays for at least the minimum", async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [400], threshold: 300, minimum: 900 });
 
   await expect(weaving(page)).toBeVisible();
@@ -105,27 +117,46 @@ test("E03 does not flash: once visible it stays for at least the minimum", async
   expect(marks.ready! - marks.e03!).toBeGreaterThanOrEqual(850);
 });
 
-test("going past the maximum shows E04 without the sign-up block", async ({ page }) => {
+test("going past the maximum shows E04 without the sign-up block", async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 800 });
 
   await expect(failed(page)).toBeVisible();
   await expect(
     page.getByText("Sua conexão pode ter sido interrompida. Tente novamente."),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Tentar novamente" }),
+  ).toBeVisible();
   await expect(page.getByText("Seu cadastro está salvo")).toHaveCount(0);
-  await expect(page.getByText("Você não precisa preencher seus dados outra vez.")).toHaveCount(0);
+  await expect(
+    page.getByText("Você não precisa preencher seus dados outra vez."),
+  ).toHaveCount(0);
 });
 
-test("with the optional block, E04 matches Figma node 5:437", async ({ page }) => {
-  await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 800, reassurance: true });
+test("with the optional block, E04 matches Figma node 5:437", async ({
+  page,
+}) => {
+  await openWith(page, {
+    delaysMs: [60000],
+    threshold: 100,
+    maximum: 800,
+    reassurance: true,
+  });
 
   await expect(failed(page)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Seu cadastro está salvo" })).toBeVisible();
-  await expect(page.getByText("Você não precisa preencher seus dados outra vez.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Seu cadastro está salvo" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Você não precisa preencher seus dados outra vez."),
+  ).toBeVisible();
 });
 
-test("\"Tentar novamente\" runs the fetch again and delivers the result", async ({ page }) => {
+test('"Tentar novamente" runs the fetch again and delivers the result', async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [60000, 0], threshold: 100, maximum: 800 });
 
   await expect(failed(page)).toBeVisible();
@@ -135,7 +166,9 @@ test("\"Tentar novamente\" runs the fetch again and delivers the result", async 
   await expect(failed(page)).toHaveCount(0);
 });
 
-test("\"Tentar novamente\" shows E03 at once, with no blank screen in between", async ({ page }) => {
+test('"Tentar novamente" shows E03 at once, with no blank screen in between', async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [60000], threshold: 5000, maximum: 3000 });
 
   await expect(failed(page)).toBeVisible();
@@ -146,8 +179,16 @@ test("\"Tentar novamente\" shows E03 at once, with no blank screen in between", 
   await expect(weaving(page)).toBeVisible({ timeout: 1500 });
 });
 
-test("a failed fetch shows E04, and E03 does not flash first", async ({ page }) => {
-  await openWith(page, { delaysMs: [400], fail: true, threshold: 200, minimum: 900, maximum: 30000 });
+test("a failed fetch shows E04, and E03 does not flash first", async ({
+  page,
+}) => {
+  await openWith(page, {
+    delaysMs: [400],
+    fail: true,
+    threshold: 200,
+    minimum: 900,
+    maximum: 30000,
+  });
 
   await expect(weaving(page)).toBeVisible();
   await expect(failed(page)).toBeVisible();
@@ -156,7 +197,9 @@ test("a failed fetch shows E04, and E03 does not flash first", async ({ page }) 
   expect(marks.e04! - marks.e03!).toBeGreaterThanOrEqual(850);
 });
 
-test("after an error, a new fetcher is not dropped: its result shows", async ({ page }) => {
+test("after an error, a new fetcher is not dropped: its result shows", async ({
+  page,
+}) => {
   await openWith(page, {
     delaysMs: [400],
     fail: true,
@@ -174,7 +217,9 @@ test("after an error, a new fetcher is not dropped: its result shows", async ({ 
   await expect(failed(page)).toHaveCount(0);
 });
 
-test("after a result, a slow new fetcher shows E03 and the old data is gone", async ({ page }) => {
+test("after a result, a slow new fetcher shows E03 and the old data is gone", async ({
+  page,
+}) => {
   await openWith(page, {
     delaysMs: [0],
     switchable: true,
@@ -204,7 +249,9 @@ test("a new fetcher after an E03 holds its own minimum", async ({ page }) => {
   await expect(page.getByTestId("ready")).toContainText("pronto");
 
   await page.evaluate(() => {
-    const marks = (globalThis as unknown as { __waitMarks: Record<string, number> }).__waitMarks;
+    const marks = (
+      globalThis as unknown as { __waitMarks: Record<string, number> }
+    ).__waitMarks;
     for (const key of Object.keys(marks)) delete marks[key];
   });
   await switchFetcher(page).click();
@@ -229,13 +276,22 @@ test("a new fetcher while E03 is on screen keeps E03", async ({ page }) => {
 
   /** Records whether the E03 heading is ever missing after the switch, however briefly. */
   const gone = await page.evaluate(async () => {
-    const button = [...document.querySelectorAll("button")].find((b) => b.textContent === "switch");
+    const button = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "switch",
+    );
     let missing = false;
     const look = () => {
-      if (!document.querySelector("h1")?.textContent?.includes("Tecendo seu filé")) missing = true;
+      if (
+        !document.querySelector("h1")?.textContent?.includes("Tecendo seu filé")
+      )
+        missing = true;
     };
     const observer = new MutationObserver(look);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
     button!.click();
     await new Promise((resolve) => setTimeout(resolve, 100));
     observer.disconnect();
@@ -245,17 +301,25 @@ test("a new fetcher while E03 is on screen keeps E03", async ({ page }) => {
   await expect(weaving(page)).toBeVisible();
 });
 
-test("E04 works with the keyboard alone, with visible focus, and does not trap it", async ({ page }) => {
+test("E04 works with the keyboard alone, with visible focus, and does not trap it", async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [60000, 0], threshold: 100, maximum: 800 });
   await expect(failed(page)).toBeVisible();
 
   const retry = page.getByRole("button", { name: "Tentar novamente" });
   // In dev mode the Next dev overlay portal comes before the button in tab order.
-  for (let i = 0; i < 5 && !(await retry.evaluate((el) => el === document.activeElement)); i++) {
+  for (
+    let i = 0;
+    i < 5 && !(await retry.evaluate((el) => el === document.activeElement));
+    i++
+  ) {
     await page.keyboard.press("Tab");
   }
   await expect(retry).toBeFocused();
-  const outline = await retry.evaluate((element) => getComputedStyle(element).outlineStyle);
+  const outline = await retry.evaluate(
+    (element) => getComputedStyle(element).outlineStyle,
+  );
   expect(outline).not.toBe("none");
 
   await page.keyboard.press("Tab");
@@ -267,7 +331,9 @@ test("E04 works with the keyboard alone, with visible focus, and does not trap i
   await expect(page.getByTestId("ready")).toBeVisible();
 });
 
-test("E03 has nothing focusable, so it does not trap focus", async ({ page }) => {
+test("E03 has nothing focusable, so it does not trap focus", async ({
+  page,
+}) => {
   await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 5000 });
   await expect(weaving(page)).toBeVisible();
 
@@ -283,19 +349,30 @@ test("E03 has nothing focusable, so it does not trap focus", async ({ page }) =>
 });
 
 for (const width of [360, 1366]) {
-  test(`E03 and E04 fit in ${width} px with no horizontal scroll`, async ({ page }) => {
+  test(`E03 and E04 fit in ${width} px with no horizontal scroll`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 800 });
     const overflows = () =>
       page.evaluate(
-        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        () =>
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth,
       );
 
-    await openWith(page, { delaysMs: [60000], threshold: 100, maximum: 1500, reassurance: true });
+    await openWith(page, {
+      delaysMs: [60000],
+      threshold: 100,
+      maximum: 1500,
+      reassurance: true,
+    });
     await expect(weaving(page)).toBeVisible();
     expect(await overflows()).toBe(false);
 
     await expect(failed(page)).toBeVisible();
     expect(await overflows()).toBe(false);
-    await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Tentar novamente" }),
+    ).toBeVisible();
   });
 }

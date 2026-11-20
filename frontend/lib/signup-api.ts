@@ -318,8 +318,7 @@ export type TermsSummaryResult =
   | { ok: false; reason: SessionProblem | "failed" };
 
 export type AcceptTermsResult =
-  | { ok: true }
-  | { ok: false; reason: SessionProblem | "outdated" | "failed" };
+  { ok: true } | { ok: false; reason: SessionProblem | "outdated" | "failed" };
 
 /** Reads the 401 body: get_current_user answers "Cadastro incompleto" in that case. */
 async function sessionProblem(response: Response): Promise<SessionProblem> {
@@ -411,7 +410,10 @@ export async function setOpportunityEmails(
 
   // The route needs the current terms accepted: 403 {"error":
   // "terms_not_accepted"}. Any other 403 (not a girl's account) is a failure.
-  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+  if (
+    response.status === 403 &&
+    (await errorCode(response)) === "terms_not_accepted"
+  ) {
     return { ok: false, reason: "terms_not_accepted" };
   }
 
@@ -484,7 +486,10 @@ export async function getPendingRating(
   }
 
   // A03 comes after the terms: 403 {"error": "terms_not_accepted"}.
-  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+  if (
+    response.status === 403 &&
+    (await errorCode(response)) === "terms_not_accepted"
+  ) {
     return { ok: false, reason: "terms_not_accepted" };
   }
 
@@ -577,7 +582,10 @@ export async function getInterestOptions(
   }
 
   // A05 comes after the terms: 403 {"error": "terms_not_accepted"}.
-  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+  if (
+    response.status === 403 &&
+    (await errorCode(response)) === "terms_not_accepted"
+  ) {
     return { ok: false, reason: "terms_not_accepted" };
   }
 
@@ -607,7 +615,10 @@ export async function saveInterests(
     return { ok: false, reason: await sessionProblem(response) };
   }
 
-  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+  if (
+    response.status === 403 &&
+    (await errorCode(response)) === "terms_not_accepted"
+  ) {
     return { ok: false, reason: "terms_not_accepted" };
   }
 

@@ -10,7 +10,8 @@ type Mock = {
 
 async function openWith(page: Page, mock: Mock) {
   await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_DESCOBRIR__ = value as typeof globalThis.__NISE_MOCK_DESCOBRIR__;
+    globalThis.__NISE_MOCK_DESCOBRIR__ =
+      value as typeof globalThis.__NISE_MOCK_DESCOBRIR__;
   }, mock);
   await page.goto("/descobrir");
 }
@@ -19,11 +20,18 @@ function band(page: Page, name: string) {
   return page.getByRole("link", { name: new RegExp(`^${name}`) });
 }
 
-test("cumprimenta pelo nome e mostra as 5 faixas na ordem, com os grupos", async ({ page }) => {
+test("cumprimenta pelo nome e mostra as 5 faixas na ordem, com os grupos", async ({
+  page,
+}) => {
   await page.goto("/descobrir");
 
   await expect(page.getByText("Oi, Alana!")).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1, name: "Quanto você quer mergulhar agora?" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Quanto você quer mergulhar agora?",
+    }),
+  ).toBeVisible();
 
   const main = page.getByRole("main");
   const order = await main.locator("h2, a").allInnerTexts();
@@ -38,14 +46,22 @@ test("cumprimenta pelo nome e mostra as 5 faixas na ordem, com os grupos", async
   ]);
 });
 
-test("cada faixa mostra a descrição e o número de sugestões", async ({ page }) => {
+test("cada faixa mostra a descrição e o número de sugestões", async ({
+  page,
+}) => {
   await page.goto("/descobrir");
 
-  await expect(band(page, "Primeiros passos")).toContainText("Até 15 min: vídeos, quizzes e artigos curtos");
+  await expect(band(page, "Primeiros passos")).toContainText(
+    "Até 15 min: vídeos, quizzes e artigos curtos",
+  );
   await expect(band(page, "Primeiros passos")).toContainText("12 sugestões");
-  await expect(band(page, "Uma tarde")).toContainText("Até 1 dia: tutoriais e mini-projetos");
+  await expect(band(page, "Uma tarde")).toContainText(
+    "Até 1 dia: tutoriais e mini-projetos",
+  );
   await expect(band(page, "No meu ritmo")).toContainText("6 sugestões");
-  await expect(band(page, "Rolê com a galera")).toContainText("Até 1 dia: oficinas, palestras e encontros");
+  await expect(band(page, "Rolê com a galera")).toContainText(
+    "Até 1 dia: oficinas, palestras e encontros",
+  );
   await expect(band(page, "Grande desafio")).toContainText("4 sugestões");
 });
 
@@ -63,7 +79,9 @@ test("sem faixa da última vez, nenhuma tag aparece", async ({ page }) => {
   await expect(page.getByText("da última vez")).toHaveCount(0);
 });
 
-test("a faixa da última vez sem sugestões não mostra a tag", async ({ page }) => {
+test("a faixa da última vez sem sugestões não mostra a tag", async ({
+  page,
+}) => {
   await openWith(page, { counts: { "uma-tarde": 0 }, lastBand: "uma-tarde" });
 
   await expect(page.getByText("Por enquanto, nada marcado.")).toBeVisible();
@@ -83,7 +101,9 @@ test("faixa com 0 sugestões mostra o aviso e não é link", async ({ page }) =>
 
   await expect(page.getByText("0 sugestões")).toBeVisible();
   await expect(page.getByText("Por enquanto, nada marcado.")).toBeVisible();
-  await expect(page.getByText("Até 1 dia: oficinas, palestras e encontros")).toHaveCount(0);
+  await expect(
+    page.getByText("Até 1 dia: oficinas, palestras e encontros"),
+  ).toHaveCount(0);
   await expect(band(page, "Rolê com a galera")).toHaveCount(0);
 
   await page.getByText("Rolê com a galera").click();
@@ -97,14 +117,28 @@ test("1 sugestão fica no singular", async ({ page }) => {
   await expect(band(page, "Grande desafio")).not.toContainText("1 sugestões");
 });
 
-test("a barra inferior marca Descobrir; Agenda e o avatar têm destino provisório", async ({ page }) => {
+test("a barra inferior marca Descobrir; Agenda e o avatar têm destino provisório", async ({
+  page,
+}) => {
   await page.goto("/descobrir");
   const nav = page.getByRole("navigation", { name: "Navegação principal" });
 
-  await expect(nav.getByRole("link", { name: "Descobrir" })).toHaveAttribute("aria-current", "page");
-  await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/agenda");
-  await expect(nav.getByRole("link", { name: "Agenda" })).not.toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute("href", "/perfil");
+  await expect(nav.getByRole("link", { name: "Descobrir" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute(
+    "href",
+    "/agenda",
+  );
+  await expect(nav.getByRole("link", { name: "Agenda" })).not.toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute(
+    "href",
+    "/perfil",
+  );
 });
 
 test("mostra o carregamento enquanto as contagens chegam", async ({ page }) => {
@@ -115,7 +149,9 @@ test("mostra o carregamento enquanto as contagens chegam", async ({ page }) => {
   await expect(page.getByText("Carregando…")).toHaveCount(0);
 });
 
-test("dá para escolher uma faixa só com o teclado, com foco visível", async ({ page }) => {
+test("dá para escolher uma faixa só com o teclado, com foco visível", async ({
+  page,
+}) => {
   await page.goto("/descobrir");
   await expect(band(page, "Primeiros passos")).toBeVisible();
 
@@ -125,7 +161,9 @@ test("dá para escolher uma faixa só com o teclado, com foco visível", async (
   await page.keyboard.press("Tab");
   const first = band(page, "Primeiros passos");
   await expect(first).toBeFocused();
-  const outline = await first.evaluate((element) => getComputedStyle(element).outlineStyle);
+  const outline = await first.evaluate(
+    (element) => getComputedStyle(element).outlineStyle,
+  );
   expect(outline).toBe("solid");
 
   await page.keyboard.press("Enter");
@@ -138,8 +176,12 @@ for (const width of [360, 1366]) {
     await page.goto("/descobrir");
     await expect(band(page, "Grande desafio")).toBeVisible();
 
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
     expect(overflow).toBeLessThanOrEqual(0);
-    await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeInViewport();
+    await expect(
+      page.getByRole("navigation", { name: "Navegação principal" }),
+    ).toBeInViewport();
   });
 }

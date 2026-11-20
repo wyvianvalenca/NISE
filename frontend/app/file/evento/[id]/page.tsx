@@ -59,7 +59,8 @@ function EventLoader() {
   }, [id]);
 
   if (event === undefined) return <Loading />;
-  if (event === null) return <p className={shared.status}>Esse evento não está no seu filé.</p>;
+  if (event === null)
+    return <p className={shared.status}>Esse evento não está no seu filé.</p>;
   // "Já me inscrevi" e "Tirar do filé" ficam desenhados e desabilitados até a #182.
   return <EventView event={event} />;
 }

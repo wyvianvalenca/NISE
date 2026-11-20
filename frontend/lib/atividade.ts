@@ -65,7 +65,8 @@ const MOCK_ACTIVITIES: ActivityDetail[] = [
     minAge: 13,
     description:
       "Aprenda a pensar como programadora resolvendo problemas do dia a dia, sem precisar instalar nada.",
-    reason: "você curtiu Programação e IA, e Python é a porta de entrada pras duas.",
+    reason:
+      "você curtiu Programação e IA, e Python é a porta de entrada pras duas.",
     url: "https://example.com/cursos/logica-com-python",
   },
   {
@@ -81,7 +82,8 @@ const MOCK_ACTIVITIES: ActivityDetail[] = [
     duration: "~6 horas",
     cost: null,
     minAge: 13,
-    description: "Entenda como a inteligência artificial aprende com exemplos e onde ela já aparece no seu dia.",
+    description:
+      "Entenda como a inteligência artificial aprende com exemplos e onde ela já aparece no seu dia.",
     reason: "você marcou Inteligência artificial nos seus interesses.",
     url: "https://example.com/cursos/ia-para-iniciantes",
   },
@@ -98,7 +100,8 @@ const MOCK_ACTIVITIES: ActivityDetail[] = [
     duration: "No seu ritmo",
     cost: null,
     minAge: 13,
-    description: "Um lugar pra tirar dúvidas, mostrar seus projetos e conhecer outras meninas que curtem robôs.",
+    description:
+      "Um lugar pra tirar dúvidas, mostrar seus projetos e conhecer outras meninas que curtem robôs.",
     reason: null,
     url: "https://example.com/comunidades/robotica",
   },
@@ -115,7 +118,8 @@ const MOCK_ACTIVITIES: ActivityDetail[] = [
     duration: "~3 horas",
     cost: null,
     minAge: 13,
-    description: "Monte seu primeiro jogo arrastando blocos, sem precisar escrever código.",
+    description:
+      "Monte seu primeiro jogo arrastando blocos, sem precisar escrever código.",
     reason: "você curtiu Jogos.",
     url: "https://example.com/tutoriais/scratch",
   },
@@ -132,7 +136,8 @@ const MOCK_ACTIVITIES: ActivityDetail[] = [
     duration: "12 min",
     cost: null,
     minAge: null,
-    description: "Sensores, motores e um cérebro: o básico de qualquer robô em poucos minutos.",
+    description:
+      "Sensores, motores e um cérebro: o básico de qualquer robô em poucos minutos.",
     reason: null,
     url: "https://example.com/videos/como-funciona-um-robo",
   },
@@ -149,7 +154,8 @@ const MOCK_ACTIVITIES: ActivityDetail[] = [
     duration: "5 min",
     cost: null,
     minAge: null,
-    description: "Dez perguntas rápidas pra descobrir onde a IA aparece sem você perceber.",
+    description:
+      "Dez perguntas rápidas pra descobrir onde a IA aparece sem você perceber.",
     reason: null,
     url: "https://example.com/quizzes/ia-no-dia-a-dia",
   },
@@ -167,7 +173,10 @@ function load(): Saved {
   } catch {
     // Sem sessionStorage (aba anônima bloqueada etc.): começa do zero.
   }
-  return { status: globalThis.__NISE_MOCK_ATIVIDADE__?.status ?? {}, removed: [] };
+  return {
+    status: globalThis.__NISE_MOCK_ATIVIDADE__?.status ?? {},
+    removed: [],
+  };
 }
 
 function save(saved: Saved) {
@@ -181,7 +190,9 @@ function save(saved: Saved) {
 function getStore(): Map<string, ActivityDetail> {
   const saved = load();
   return new Map(
-    MOCK_ACTIVITIES.filter((activity) => !saved.removed.includes(activity.id)).map((activity) => [
+    MOCK_ACTIVITIES.filter(
+      (activity) => !saved.removed.includes(activity.id),
+    ).map((activity) => [
       activity.id,
       { ...activity, status: saved.status[activity.id] ?? activity.status },
     ]),
@@ -217,14 +228,19 @@ const NEXT_STATUS: Record<ActivityStatus, ActivityStatus | null> = {
  * Anda um passo no status: próxima → em andamento → concluída.
  * Outro salto é recusado, como o back vai fazer.
  */
-export async function setActivityStatus(id: string, status: ActivityStatus): Promise<ActivityDetail> {
+export async function setActivityStatus(
+  id: string,
+  status: ActivityStatus,
+): Promise<ActivityDetail> {
   await wait();
   const activity = getStore().get(id);
   if (globalThis.__NISE_MOCK_ATIVIDADE__?.failUpdates) {
     throw new Error("Falha simulada");
   }
   if (!activity || NEXT_STATUS[activity.status] !== status) {
-    throw new Error(`Mudança de status recusada: ${activity?.status} → ${status}`);
+    throw new Error(
+      `Mudança de status recusada: ${activity?.status} → ${status}`,
+    );
   }
   const saved = load();
   save({ ...saved, status: { ...saved.status, [id]: status } });

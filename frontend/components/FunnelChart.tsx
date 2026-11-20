@@ -56,7 +56,10 @@ export function FunnelChart({ stages, firstNote }: FunnelChartProps) {
   return (
     // Em telas estreitas o funil rola de lado em vez de espremer os números.
     <div className={styles.wrapper}>
-      <div className={styles.funnel} style={{ gridTemplateColumns: `repeat(${stages.length}, 1fr)` }}>
+      <div
+        className={styles.funnel}
+        style={{ gridTemplateColumns: `repeat(${stages.length}, 1fr)` }}
+      >
         {stages.map((stage) => (
           <div key={stage.label} className={styles.head}>
             <span className={styles.value}>{stage.value}</span>
@@ -71,7 +74,11 @@ export function FunnelChart({ stages, firstNote }: FunnelChartProps) {
           aria-hidden="true"
         >
           {shapes.map((shape, index) => (
-            <polygon key={stages[index].label} points={shape.points} fill={shape.color} />
+            <polygon
+              key={stages[index].label}
+              points={shape.points}
+              fill={shape.color}
+            />
           ))}
         </svg>
 
@@ -81,7 +88,10 @@ export function FunnelChart({ stages, firstNote }: FunnelChartProps) {
             ? `${previous.value ? Math.round((stage.value / previous.value) * 100) : 0}% da etapa anterior`
             : firstNote;
           return (
-            <span key={stage.label} className={previous ? styles.rate : styles.firstNote}>
+            <span
+              key={stage.label}
+              className={previous ? styles.rate : styles.firstNote}
+            >
               {note}
             </span>
           );

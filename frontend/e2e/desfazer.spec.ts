@@ -2,11 +2,17 @@ import { expect, test, type Page } from "@playwright/test";
 
 // #107 · Aviso "Desfazer" na A06·2. Usa os dados de teste de lib/sugestoes.ts.
 
-type Mock = { count?: number; fileTotal?: number; delayMs?: number; undoFailures?: number };
+type Mock = {
+  count?: number;
+  fileTotal?: number;
+  delayMs?: number;
+  undoFailures?: number;
+};
 
 async function open(page: Page, mock: Mock = {}) {
   await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = value as typeof globalThis.__NISE_MOCK_SUGESTOES__;
+    globalThis.__NISE_MOCK_SUGESTOES__ =
+      value as typeof globalThis.__NISE_MOCK_SUGESTOES__;
   }, mock);
   await page.goto("/descobrir/uma-tarde");
   await expect(page.getByText(/^Sugestão 1 de/)).toBeVisible();
@@ -17,14 +23,18 @@ function choices(page: Page) {
 }
 
 const pill = (page: Page) => page.getByRole("link", { name: /^Meu filé/ });
-const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
-const toast = (page: Page) => page.getByRole("status").filter({ has: page.getByRole("button") });
+const button = (page: Page, name: string) =>
+  page.getByRole("button", { name, exact: true });
+const toast = (page: Page) =>
+  page.getByRole("status").filter({ has: page.getByRole("button") });
 const undoButton = (page: Page) => button(page, "Desfazer");
 
 const FIRST = "Crie seu primeiro site com HTML";
 const SECOND = "Um jogo da velha no navegador";
 
-test("\"Quero fazer\" mostra o aviso e \"Desfazer\" traz a mesma sugestão de volta", async ({ page }) => {
+test('"Quero fazer" mostra o aviso e "Desfazer" traz a mesma sugestão de volta', async ({
+  page,
+}) => {
   await open(page);
 
   await button(page, "Quero fazer").click();
@@ -42,7 +52,9 @@ test("\"Quero fazer\" mostra o aviso e \"Desfazer\" traz a mesma sugestão de vo
   await expect(page.getByText("Sugestão 1 de 8")).toBeFocused();
 });
 
-test("\"Talvez depois\" mostra \"foi pro Ver depois\" e o desfazer apaga a escolha", async ({ page }) => {
+test('"Talvez depois" mostra "foi pro Ver depois" e o desfazer apaga a escolha', async ({
+  page,
+}) => {
   await open(page);
 
   await button(page, "Talvez depois").click();
@@ -54,7 +66,9 @@ test("\"Talvez depois\" mostra \"foi pro Ver depois\" e o desfazer apaga a escol
   expect(await choices(page)).toEqual([]);
 });
 
-test("\"Não é pra mim\" mostra \"foi dispensada\" e o desfazer apaga a escolha e o motivo", async ({ page }) => {
+test('"Não é pra mim" mostra "foi dispensada" e o desfazer apaga a escolha e o motivo', async ({
+  page,
+}) => {
   await open(page);
 
   await button(page, "Não é pra mim").click();
@@ -68,7 +82,9 @@ test("\"Não é pra mim\" mostra \"foi dispensada\" e o desfazer apaga a escolha
   expect(await choices(page)).toEqual([]);
 });
 
-test("uma escolha nova troca o aviso: só a última pode ser desfeita", async ({ page }) => {
+test("uma escolha nova troca o aviso: só a última pode ser desfeita", async ({
+  page,
+}) => {
   await open(page);
 
   await button(page, "Quero fazer").click();
@@ -82,10 +98,14 @@ test("uma escolha nova troca o aviso: só a última pode ser desfeita", async ({
   await expect(page.getByRole("heading", { name: SECOND })).toBeVisible();
   // A primeira escolha continua guardada.
   await expect(pill(page)).toContainText("6");
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "quero-fazer" }]);
+  expect(await choices(page)).toEqual([
+    { id: "uma-tarde-1", choice: "quero-fazer" },
+  ]);
 });
 
-test("o aviso só aparece depois que a escolha é confirmada", async ({ page }) => {
+test("o aviso só aparece depois que a escolha é confirmada", async ({
+  page,
+}) => {
   await open(page, { delayMs: 600 });
 
   await button(page, "Quero fazer").click();
@@ -103,7 +123,10 @@ test("enquanto desfaz, os botões ficam bloqueados", async ({ page }) => {
 
   // Daqui em diante as respostas demoram.
   await page.evaluate(() => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = { ...globalThis.__NISE_MOCK_SUGESTOES__, delayMs: 600 };
+    globalThis.__NISE_MOCK_SUGESTOES__ = {
+      ...globalThis.__NISE_MOCK_SUGESTOES__,
+      delayMs: 600,
+    };
   });
   await undoButton(page).click();
   await expect(undoButton(page)).toHaveAttribute("aria-disabled", "true");
@@ -113,7 +136,9 @@ test("enquanto desfaz, os botões ficam bloqueados", async ({ page }) => {
   await expect(button(page, "Quero fazer")).toBeEnabled();
 });
 
-test("se desfazer falha, mostra o erro e deixa tentar de novo", async ({ page }) => {
+test("se desfazer falha, mostra o erro e deixa tentar de novo", async ({
+  page,
+}) => {
   await open(page, { undoFailures: 1 });
 
   await button(page, "Quero fazer").click();
@@ -133,7 +158,11 @@ test("depois da última sugestão ainda dá para desfazer", async ({ page }) => 
   await open(page, { count: 1 });
 
   await button(page, "Quero fazer").click();
-  await expect(page.getByRole("heading", { name: "Você viu todas as sugestões de Uma tarde" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Você viu todas as sugestões de Uma tarde",
+    }),
+  ).toBeVisible();
 
   await undoButton(page).click();
   await expect(page.getByText("Sugestão 1 de 1")).toBeVisible();
@@ -145,7 +174,9 @@ test.describe("tempo do aviso", () => {
     await page.clock.install();
   });
 
-  test("some sozinho depois de uns 5 s e não oferece mais o desfazer", async ({ page }) => {
+  test("some sozinho depois de uns 5 s e não oferece mais o desfazer", async ({
+    page,
+  }) => {
     await open(page);
     await button(page, "Quero fazer").click();
     await expect(toast(page)).toBeVisible();
@@ -187,7 +218,9 @@ test.describe("tempo do aviso", () => {
   });
 });
 
-test("dá para desfazer só com o teclado, com foco visível", async ({ page }) => {
+test("dá para desfazer só com o teclado, com foco visível", async ({
+  page,
+}) => {
   await open(page);
 
   // Voltar, Meu filé, Não é pra mim, Talvez depois, Quero fazer.
@@ -207,7 +240,9 @@ test("dá para desfazer só com o teclado, com foco visível", async ({ page }) 
 });
 
 for (const width of [360, 1366]) {
-  test(`em ${width} px o aviso cabe na tela, abaixo do cabeçalho, sem cobrir os botões`, async ({ page }) => {
+  test(`em ${width} px o aviso cabe na tela, abaixo do cabeçalho, sem cobrir os botões`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: width === 360 ? 740 : 768 });
     await open(page);
     await button(page, "Quero fazer").click();
@@ -216,7 +251,9 @@ for (const width of [360, 1366]) {
     expect(box).not.toBeNull();
     expect(box!.y).toBeGreaterThanOrEqual(68);
     await expect(toast(page)).toBeInViewport({ ratio: 1 });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
     expect(overflow).toBeLessThanOrEqual(0);
     for (const name of ["Não é pra mim", "Talvez depois", "Quero fazer"]) {
       await expect(button(page, name)).toBeInViewport({ ratio: 1 });

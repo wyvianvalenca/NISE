@@ -1,4 +1,10 @@
-import { START_CELL, THEMES, fileSquares, type Cell, type FileData } from "@/lib/file";
+import {
+  START_CELL,
+  THEMES,
+  fileSquares,
+  type Cell,
+  type FileData,
+} from "@/lib/file";
 import styles from "./FileDrawing.module.css";
 
 // Grade 7×7 do Figma: casas de 40px a cada 46px, num quadro de 322px.
@@ -28,8 +34,19 @@ export function FileDrawing({ data }: { data: FileData }) {
 
   return (
     <div className={styles.frame}>
-      <svg viewBox="0 0 322 322" className={styles.drawing} role="img" aria-label={label}>
-        <rect x={start.x} y={start.y} width={SIZE} height={SIZE} fill="var(--nise-ink)" />
+      <svg
+        viewBox="0 0 322 322"
+        className={styles.drawing}
+        role="img"
+        aria-label={label}
+      >
+        <rect
+          x={start.x}
+          y={start.y}
+          width={SIZE}
+          height={SIZE}
+          fill="var(--nise-ink)"
+        />
         {fileSquares(data).map(({ cell, item }) => {
           const { x, y } = origin(cell);
           const key = cell.join("-");
@@ -50,7 +67,16 @@ export function FileDrawing({ data }: { data: FileData }) {
           }
 
           if (item.status === "concluido") {
-            return <rect key={key} x={x} y={y} width={SIZE} height={SIZE} fill={THEMES[item.theme].color} />;
+            return (
+              <rect
+                key={key}
+                x={x}
+                y={y}
+                width={SIZE}
+                height={SIZE}
+                fill={THEMES[item.theme].color}
+              />
+            );
           }
 
           return (
@@ -65,7 +91,10 @@ export function FileDrawing({ data }: { data: FileData }) {
                 strokeWidth={3}
               />
               {item.status === "em-andamento" && (
-                <path d={`M${x} ${y + SIZE}L${x + SIZE} ${y}V${y + SIZE}H${x}Z`} fill="var(--nise-teal)" />
+                <path
+                  d={`M${x} ${y + SIZE}L${x + SIZE} ${y}V${y + SIZE}H${x}Z`}
+                  fill="var(--nise-teal)"
+                />
               )}
             </g>
           );

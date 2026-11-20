@@ -45,7 +45,10 @@ function termsNotAccepted(route: Route) {
  * Devolve a lista das escolhas enviadas, para o teste conferir.
  * Chamar de novo no mesmo teste troca as respostas (a rota mais nova vale).
  */
-export async function mockInterestsApi(page: Page, settings: Options = {}): Promise<InterestsChoice[]> {
+export async function mockInterestsApi(
+  page: Page,
+  settings: Options = {},
+): Promise<InterestsChoice[]> {
   const { options = INTEREST_OPTIONS, save = 204 } = settings;
   const sentChoices: InterestsChoice[] = [];
 

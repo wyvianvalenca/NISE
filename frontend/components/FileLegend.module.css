@@ -35,7 +35,11 @@
 
 /* Metade rosa, metade teal: "a cor do tema". */
 .done {
-  background: linear-gradient(to right, var(--nise-theme-robotica) 50%, var(--nise-theme-programacao) 50%);
+  background: linear-gradient(
+    to right,
+    var(--nise-theme-robotica) 50%,
+    var(--nise-theme-programacao) 50%
+  );
 }
 
 .next,
@@ -46,7 +50,11 @@
 
 /* Triângulo teal embaixo à direita, como o quadradinho em andamento. */
 .inProgress {
-  background: linear-gradient(to bottom right, var(--nise-surface) 50%, var(--nise-teal) 50%);
+  background: linear-gradient(
+    to bottom right,
+    var(--nise-surface) 50%,
+    var(--nise-teal) 50%
+  );
 }
 
 .dot {

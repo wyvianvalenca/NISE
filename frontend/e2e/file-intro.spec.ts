@@ -9,7 +9,9 @@ import { mockInterestsApi } from "./interests-api";
 test("na primeira vez, explica a metáfora do filé", async ({ page }) => {
   await page.goto("/por-que-file");
 
-  await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Por que filé?" }),
+  ).toBeVisible();
   await expect(page.getByText("uma ensina a outra")).toBeVisible();
 
   // Os três passos, na ordem do Figma.
@@ -18,7 +20,7 @@ test("na primeira vez, explica a metáfora do filé", async ({ page }) => {
   await expect(page.getByText("No fim, sai uma peça única.")).toBeVisible();
 });
 
-test("\"Começar meu filé\" leva para o Descobrir", async ({ page }) => {
+test('"Começar meu filé" leva para o Descobrir', async ({ page }) => {
   await page.goto("/por-que-file");
 
   await page.getByRole("button", { name: "Começar meu filé" }).click();
@@ -42,14 +44,16 @@ test("depois de vista, não aparece de novo: vai direto para o Descobrir", async
   ).toHaveCount(0);
 });
 
-test("o \"?\" reabre a explicação mesmo depois de vista", async ({ page }) => {
+test('o "?" reabre a explicação mesmo depois de vista', async ({ page }) => {
   await page.goto("/por-que-file");
   await page.getByRole("button", { name: "Começar meu filé" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
 
   await page.goto("/por-que-file?rever=1");
 
-  await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Por que filé?" }),
+  ).toBeVisible();
   await expect(page).toHaveURL(/rever=1$/);
 });
 
@@ -113,7 +117,9 @@ test("dá pra chegar no botão pelo teclado, com foco visível (RNF-G.02)", asyn
   await expect(page).toHaveURL(/\/descobrir$/);
 });
 
-test("o fim do cadastro cai na porta do filé, não num 404", async ({ page }) => {
+test("o fim do cadastro cai na porta do filé, não num 404", async ({
+  page,
+}) => {
   // As rotas dos interesses (#147) são simuladas.
   await mockInterestsApi(page);
   await page.goto("/cadastro/interesses");
@@ -123,5 +129,7 @@ test("o fim do cadastro cai na porta do filé, não num 404", async ({ page }) =
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
   // First time: the explanation opens instead of a 404.
-  await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Por que filé?" }),
+  ).toBeVisible();
 });

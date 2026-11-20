@@ -281,7 +281,9 @@ test("se a internet cair, o botão volta e ela é avisada", async ({ page }) => 
   await fillForm(page);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
-  await expect(page.getByText("Não deu pra criar sua conta agora.")).toBeVisible();
+  await expect(
+    page.getByText("Não deu pra criar sua conta agora."),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Criar conta" })).toBeEnabled();
 });
 
