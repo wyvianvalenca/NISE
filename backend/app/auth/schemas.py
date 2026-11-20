@@ -70,3 +70,35 @@ class SessionOut(UserOut):
     """A conta que acabou de entrar e a tela para onde ela vai (A15, #330)."""
 
     next_path: str = Field(serialization_alias="nextPath")
+
+
+class ForgotPasswordIn(BaseModel):
+    """O e-mail da conta que esqueceu a senha (A16, #331)."""
+
+    email: Annotated[str, StringConstraints(strip_whitespace=True, max_length=254)]
+
+
+# O token do link tem 43 caracteres (secrets.token_urlsafe(32)); o teto só
+# protege o servidor.
+ResetToken = Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+
+class ResetTokenIn(BaseModel):
+    """O token do link de nova senha. Vai no corpo, não na URL da API, para
+    não ficar em logs de acesso."""
+
+    token: ResetToken
+
+
+class ResetTokenOut(BaseModel):
+    """O e-mail da conta, que a A16b mostra ("Pra conta alana@...")."""
+
+    email: str
+
+
+class ResetPasswordIn(BaseModel):
+    """A senha nova da A16b (#331). O tamanho mínimo é conferido na rota."""
+
+    token: ResetToken
+    # Sem teto, uma senha gigante prenderia o servidor no Argon2.
+    password: Annotated[str, StringConstraints(max_length=128)]

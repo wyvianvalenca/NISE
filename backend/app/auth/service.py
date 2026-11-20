@@ -257,6 +257,28 @@ async def create_password_reset_token(session: AsyncSession, user: User) -> str:
     return token
 
 
+def _is_usable(reset_token: PasswordResetToken, now: datetime) -> bool:
+    """O link não foi usado nem trocado por um mais novo, e não venceu."""
+    return reset_token.used_at is None and reset_token.expires_at > now
+
+
+async def find_reset_token_user(session: AsyncSession, token: str) -> User | None:
+    """A dona do link de nova senha, ou None se o link não vale mais.
+
+    Só confere: quem troca a senha e gasta o link é o reset_password. A A16b
+    usa para mostrar o e-mail da conta antes de ela digitar a senha nova.
+    """
+    stmt = select(PasswordResetToken).where(
+        PasswordResetToken.token_hash == hash_reset_token(token)
+    )
+    reset_token = await session.scalar(stmt)
+
+    if reset_token is None or not _is_usable(reset_token, datetime.now(UTC)):
+        return None
+
+    return await session.get(User, reset_token.user_id)
+
+
 async def reset_password(
     session: AsyncSession, token: str, new_password: str
 ) -> User | None:
@@ -272,11 +294,7 @@ async def reset_password(
     )
     reset_token = await session.scalar(stmt)
 
-    if (
-        reset_token is None
-        or reset_token.used_at is not None
-        or reset_token.expires_at <= now
-    ):
+    if reset_token is None or not _is_usable(reset_token, now):
         await session.rollback()
         return None
 
