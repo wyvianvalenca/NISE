@@ -186,6 +186,8 @@ test("uma espera longa mostra o Tecendo seu filé… (#81)", async ({ page }) =>
   await open(page, "uma-tarde", { delayMs: 2500 });
 
   await expect(page.getByRole("heading", { name: "Tecendo seu filé…" })).toBeVisible();
+  // A espera fica dentro da tela: com ela à vista, o cabeçalho com o voltar já está lá.
+  expect(await page.getByRole("link", { name: /voltar ao Descobrir/ }).count()).toBe(1);
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
   await expect(page.getByText("Tecendo seu filé…")).toHaveCount(0);
 });
