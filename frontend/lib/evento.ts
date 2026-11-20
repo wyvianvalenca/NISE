@@ -1,9 +1,11 @@
-// Detalhe de um evento do filé (A06·4b), issues #178 e #179.
+// Detalhe de um evento do filé (A06·4b), issues #178 e #179, e a marca de inscrição
+// (A09 e versão "Inscrita"), issues #182 e #183.
 //
 // TEMPORÁRIO: getEvent() usa dados de teste guardados na memória do navegador.
 // Os tipos seguem a rota descrita na #178 (sub-issue de back #180) e serão trocados
 // pelos tipos gerados do OpenAPI quando ela existir; a troca pela chamada a /api é a
-// #181. Os dados são fictícios; nada sai do navegador.
+// #181. As rotas de marcar e desfazer são a #184, e a troca pela chamada a /api, a #185.
+// Os dados são fictícios; nada sai do navegador.
 
 import type { IconName } from "@/components/Icon";
 import type { BandCode } from "./descobrir";
@@ -40,6 +42,8 @@ export type EventDetail = {
   daysLeft: number;
   /** false quando as inscrições já fecharam; o evento continua no filé dela (RN-36). */
   registrationsOpen: boolean;
+  /** Dias até o primeiro dia do evento, contados no servidor; 0 é hoje. */
+  daysUntilStart: number;
   /** null quando é gratuito: aparece "Grátis". */
   cost: string | null;
   /** Etapa mínima, ex.: "Ensino médio"; null se não há. */
@@ -162,11 +166,21 @@ export function daysLeftText(daysLeft: number): string {
   return `Faltam ${daysLeft} dias`;
 }
 
+/** Quanto falta para o evento, na versão "Inscrita": "faltam 23 dias", "é amanhã" ou "é hoje". */
+export function daysUntilText(days: number): string {
+  if (days <= 0) return "é hoje";
+  if (days === 1) return "é amanhã";
+  return `faltam ${days} dias`;
+}
+
 // ---------------------------------------------------------------------------
 // Dados de teste
 
 /** Um evento de teste, com as datas em dias a partir de hoje, para não envelhecer. */
-type MockEvent = Omit<EventDetail, "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen"> & {
+type MockEvent = Omit<
+  EventDetail,
+  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen" | "daysUntilStart"
+> & {
   /** Dias de hoje até o fim das inscrições; negativo se já fecharam. */
   deadlineIn: number;
   /** Dias de hoje até o primeiro dia do evento. */
@@ -185,6 +199,10 @@ declare global {
         today?: string;
         /** Atraso das respostas, em ms, para testar o carregamento. */
         delayMs?: number;
+        /** Faz as mudanças (marcar, tirar do filé) falharem, para testar a mensagem de erro. */
+        failUpdates?: boolean;
+        /** Faz só o "Desfazer" falhar. */
+        failUndo?: boolean;
       }
     | undefined;
 }
@@ -286,7 +304,28 @@ function toDetail(mock: MockEvent, status: EventStatus): EventDetail {
     deadline: plusDays(now, deadlineIn),
     daysLeft: Math.max(deadlineIn, 0),
     registrationsOpen: deadlineIn >= 0,
+    daysUntilStart: Math.max(startsIn, 0),
   };
+}
+
+function save(saved: Saved) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  } catch {
+    // Sem sessionStorage, a mudança vale só até recarregar.
+  }
+}
+
+function fail(kind: "failUpdates" | "failUndo") {
+  if (globalThis.__NISE_MOCK_EVENTO__?.[kind]) {
+    throw new Error("Falha simulada");
+  }
+}
+
+/** Troca o status, como as rotas da #184 vão fazer. */
+function setStatus(id: string, status: EventStatus) {
+  const saved = load();
+  save({ ...saved, status: { ...saved.status, [id]: status } });
 }
 
 async function wait() {
@@ -303,6 +342,76 @@ export async function getEvent(id: string): Promise<EventDetail | null> {
   const mock = MOCK_EVENTS.find((event) => event.id === id);
   if (!mock || saved.removed.includes(id)) return null;
   return toDetail(mock, saved.status[id] ?? mock.status);
+}
+
+/**
+ * "Sim, me inscrevi" e "Já me inscrevi": próxima → em andamento ("Inscrita").
+ * Marcar duas vezes dá o mesmo resultado; o prazo não bloqueia; concluído é recusado (#182).
+ */
+export async function markSignedUp(id: string): Promise<EventDetail> {
+  const event = await getEvent(id);
+  fail("failUpdates");
+  if (!event || event.status === "concluded") {
+    throw new Error("Não dá para marcar a inscrição nesse evento");
+  }
+  setStatus(id, "in_progress");
+  return { ...event, status: "in_progress" };
+}
+
+/** "Desfazer" do aviso "Você tá inscrita!": em andamento → próxima (RF-F10.15). */
+export async function undoSignUp(id: string): Promise<EventDetail> {
+  const event = await getEvent(id);
+  fail("failUndo");
+  if (!event || event.status !== "in_progress") {
+    throw new Error("Não dá para desfazer a inscrição desse evento");
+  }
+  setStatus(id, "next");
+  return { ...event, status: "next" };
+}
+
+/** "Tirar do filé": funciona para próxima e em andamento, pela rota da #108. */
+export async function removeEvent(id: string): Promise<void> {
+  const event = await getEvent(id);
+  fail("failUpdates");
+  if (!event || event.status === "concluded") {
+    throw new Error("Não dá para tirar esse evento do filé");
+  }
+  const saved = load();
+  save({ ...saved, removed: [...saved.removed, id] });
+}
+
+// ---------------------------------------------------------------------------
+// Volta do site de inscrição (#182)
+
+// Só nesta sessão (sessionStorage): quando ela volta para a NISE, a A09 pergunta se deu certo.
+const LEFT_KEY = "nise-saiu-para-inscricao";
+
+/** Guarda que ela saiu para o site de inscrição desse evento. */
+export function rememberLeftToSignUp(id: string) {
+  try {
+    sessionStorage.setItem(LEFT_KEY, id);
+  } catch {
+    // Sem sessionStorage, a A09 não abre sozinha; "Já me inscrevi" continua lá.
+  }
+}
+
+/** Se ela saiu para o site desse evento, devolve true e esquece, para perguntar uma vez só. */
+export function takeLeftToSignUp(id: string): boolean {
+  try {
+    if (sessionStorage.getItem(LEFT_KEY) !== id) return false;
+    sessionStorage.removeItem(LEFT_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Parâmetro que a A09 põe no endereço do evento depois de "Sim, me inscrevi", para abrir o aviso. */
+export const SIGNED_UP_PARAM = "inscrita";
+
+/** Endereço da A09 "Conseguiu se inscrever?". */
+export function signUpCheckPath(id: string): string {
+  return `${eventPath(id)}/inscricao`;
 }
 
 /** Endereço do detalhe do evento, usado pelos itens do filé. */

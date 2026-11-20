@@ -1,9 +1,11 @@
+import type { Ref } from "react";
 import { Icon, type IconName } from "@/components/Icon";
 import { Notice } from "@/components/Notice";
 import { Tag } from "@/components/Tag";
 import { BANDS } from "@/lib/descobrir";
 import {
   daysLeftText,
+  daysUntilText,
   formatDate,
   formatEventDays,
   formatWeekdays,
@@ -24,17 +26,43 @@ const STATUS_LABELS: Record<EventStatus, string> = {
 
 type EventViewProps = {
   event: EventDetail;
-  /**
-   * "Já me inscrevi". Sem ela, o botão aparece desabilitado: a ação chega com a #182.
-   */
+  /** O título recebe o foco quando a versão da tela muda, para não se perder. */
+  titleRef?: Ref<HTMLHeadingElement>;
+  /** Chamado ao tocar em "Ir para inscrição", antes de o site abrir na outra aba. */
+  onOpenSignUp?: () => void;
+  /** "Já me inscrevi". Sem ela, o botão aparece desabilitado. */
   onMarkSignedUp?: () => void;
-  /** "Tirar do filé". Sem ela, o botão aparece desabilitado: a ação chega com a #182. */
+  /** "Tirar do filé". Sem ela, o botão aparece desabilitado. */
   onRemove?: () => void;
+  /** Qual ação está sendo enviada; os botões ficam bloqueados enquanto isso. */
+  saving?: "mark" | "remove" | null;
+  /** Mensagem de erro da última ação, se falhou. */
+  error?: string | null;
 };
 
-/** O detalhe do evento (Figma A06·4b), versão "Próxima aventura". */
-export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
+/**
+ * O detalhe do evento (Figma A06·4b): a versão "Próxima aventura" e a versão
+ * "Inscrita" (A06·4b inscrita), que é o evento em andamento.
+ */
+export function EventView(props: EventViewProps) {
+  const { event } = props;
+  return (
+    <>
+      <EventHeading {...props} />
+      {event.status === "in_progress" ? <SignedUpBody {...props} /> : <NextBody {...props} />}
+      {props.error && (
+        <p className={shared.error} role="alert">
+          {props.error}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Visual, tema, título e organizador: igual em todas as versões. */
+function EventHeading({ event, titleRef }: EventViewProps) {
   const icons = typeIcon(event.type);
+  const topic = `${event.topic} · ${BANDS[event.band].title}`;
 
   return (
     <>
@@ -53,15 +81,37 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
         </span>
       </div>
 
-      <p className={shared.topic}>
-        <span className={shared.dot} aria-hidden="true" />
-        {event.topic} · {BANDS[event.band].title}
-      </p>
-      <h1 tabIndex={-1} className={shared.title}>
+      {event.status === "in_progress" ? (
+        <div className={styles.topicRow}>
+          <p className={shared.topic}>
+            <span className={shared.dot} aria-hidden="true" />
+            {topic}
+          </p>
+          <span className={styles.signedUpChip}>
+            <Icon name="check" size={15} />
+            Inscrita
+          </span>
+        </div>
+      ) : (
+        <p className={shared.topic}>
+          <span className={shared.dot} aria-hidden="true" />
+          {topic}
+        </p>
+      )}
+      <h1 ref={titleRef} tabIndex={-1} className={shared.title}>
         {event.title}
       </h1>
       <p className={shared.source}>{organizerLine(event)}</p>
+    </>
+  );
+}
 
+/** "Próxima aventura": prazo, chips, aviso da RN-19 e os botões de inscrição. */
+function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: EventViewProps) {
+  const busy = Boolean(saving);
+
+  return (
+    <>
       <ul className={styles.summary} aria-label="Quando e onde">
         <SummaryRow
           icon="calendar"
@@ -108,6 +158,7 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
           target="_blank"
           rel="noopener noreferrer"
           className={shared.siteButton}
+          onClick={onOpenSignUp}
         >
           <Icon name="external" size={18} />
           Ir para inscrição
@@ -115,16 +166,64 @@ export function EventView({ event, onMarkSignedUp, onRemove }: EventViewProps) {
         </a>
 
         <div className={styles.footer}>
-          <button type="button" className={styles.signedUp} onClick={onMarkSignedUp} disabled={!onMarkSignedUp}>
+          <button
+            type="button"
+            className={styles.signedUp}
+            onClick={onMarkSignedUp}
+            disabled={!onMarkSignedUp || busy}
+            aria-busy={saving === "mark" || undefined}
+          >
             <Icon name="check" />
-            Já me inscrevi
+            {saving === "mark" ? "Salvando…" : "Já me inscrevi"}
           </button>
-          <button type="button" className={shared.remove} onClick={onRemove} disabled={!onRemove}>
-            Tirar do filé
-          </button>
+          <RemoveButton onRemove={onRemove} saving={saving} />
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * "Inscrita": quando e onde, com quanto falta para o dia, e só "Tirar do filé".
+ * Ficam para depois o "Me lembra um dia antes" (#186) e o aviso "Depois do evento,
+ * a gente pergunta o que você achou" (a avaliação de evento de fora ainda não existe).
+ */
+function SignedUpBody({ event, onRemove, saving }: EventViewProps) {
+  const weekdays = formatWeekdays(event.startsOn, event.endsOn);
+
+  return (
+    <>
+      <ul className={styles.summary} aria-label="Quando e onde">
+        <SummaryRow
+          icon="calendar"
+          main={formatEventDays(event.startsOn, event.endsOn)}
+          sub={`${weekdays} · ${daysUntilText(event.daysUntilStart)}`}
+        />
+        <SummaryRow
+          icon="pin"
+          main={event.city ?? "Online"}
+          sub={event.city ? "O local chega no e-mail das organizadoras" : "O link chega no e-mail das organizadoras"}
+        />
+      </ul>
+
+      <div className={styles.signedUpFooter}>
+        <RemoveButton onRemove={onRemove} saving={saving} />
+      </div>
+    </>
+  );
+}
+
+function RemoveButton({ onRemove, saving }: Pick<EventViewProps, "onRemove" | "saving">) {
+  return (
+    <button
+      type="button"
+      className={shared.remove}
+      onClick={onRemove}
+      disabled={!onRemove || Boolean(saving)}
+      aria-busy={saving === "remove" || undefined}
+    >
+      {saving === "remove" ? "Tirando…" : "Tirar do filé"}
+    </button>
   );
 }
 

@@ -100,13 +100,13 @@ test("\"Ir para inscrição\" abre o site do grupo em outra aba e não muda o st
   await expect(page.getByRole("main").getByText("Próxima aventura")).toBeVisible();
 });
 
-test("\"Já me inscrevi\" e \"Tirar do filé\" aparecem desabilitados até a #182", async ({ page }) => {
+test("\"Já me inscrevi\" e \"Tirar do filé\" estão disponíveis (#182)", async ({ page }) => {
   await open(page, HACKATHON);
 
-  await expect(page.getByRole("button", { name: "Já me inscrevi" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Já me inscrevi" })).toBeEnabled();
   // Texto em ink (#0a3b48) sobre o papel; teal ali dava 4,26:1, abaixo do AA.
   await expect(page.getByRole("button", { name: "Já me inscrevi" })).toHaveCSS("color", "rgb(10, 59, 72)");
-  await expect(page.getByRole("button", { name: "Tirar do filé" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Tirar do filé" })).toBeEnabled();
 });
 
 test("um evento que não está no filé dela não abre", async ({ page }) => {
