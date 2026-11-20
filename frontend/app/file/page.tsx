@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { BottomNav } from "@/components/BottomNav";
@@ -43,6 +43,15 @@ export default function FilePage() {
     });
     return () => controller.abort();
   }, [attempt]);
+
+  // Com cacheComponents, o Next esconde esta tela (Activity) quando ela sai, em vez de
+  // desmontá-la, e na volta mostraria o filé de antes até a busca nova chegar. A limpeza de
+  // um useLayoutEffect roda quando a tela é escondida: o resultado sai, e na volta ela mostra
+  // o "Carregando…", como na primeira visita. A busca acima roda de novo quando ela volta.
+  // É o mesmo que o useLongWait faz no Descobrir (lib/loading.ts).
+  useLayoutEffect(() => {
+    return () => setResult(null);
+  }, []);
 
   useEffect(() => {
     if (redirect) router.replace(redirect);
