@@ -64,13 +64,20 @@ export function SuggestionsScreen({ band }: { band: BandCode }) {
     if (redirect) router.replace(redirect);
   }, [redirect, router]);
 
-  if (phase === "weaving") return <TecendoFile />;
   if (phase === "error") return <LoadFailed onRetry={retry} />;
 
-  return <BandSuggestions band={band} data={result?.ok ? result.data : null} />;
+  // A espera longa (E03) fica no meio da tela, com o cabeçalho e o voltar à vista.
+  return <BandSuggestions band={band} data={result?.ok ? result.data : null} weaving={phase === "weaving"} />;
 }
 
-function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData | null }) {
+type BandSuggestionsProps = {
+  band: BandCode;
+  data: SuggestionsData | null;
+  /** A espera passou de 1 s: o meio da tela mostra o "Tecendo seu filé…" (#81). */
+  weaving: boolean;
+};
+
+function BandSuggestions({ band, data, weaving }: BandSuggestionsProps) {
   const title = BANDS[band].title;
   const [notice, setNotice] = useState<UndoNotice | null>(null);
   const noticeKey = useRef(0);
@@ -170,42 +177,48 @@ function BandSuggestions({ band, data }: { band: BandCode; data: SuggestionsData
       {notice && <UndoToast key={notice.key} notice={notice} onUndo={undoLast} onTimeout={hideNotice} />}
 
       <main className={styles.main}>
-        <h1 className={styles.srOnly}>Sugestões de {title}</h1>
-        {/* Espaço do aviso no Figma; o aviso fica por cima dele (.toastArea), para não empurrar o card. */}
-        <div className={styles.noticeSlot} />
-
-        {/* Antes de 1 s não aparece nada no meio, para a tela não piscar (#81).
-            Depois da última escolha, o fim da faixa espera o último card terminar de sair. */}
-        {state.status === "loading" ? null : item || leaving ? (
-          <>
-            {state.choiceFailed && (
-              <p className={styles.error} role="alert">
-                Não deu pra guardar. Tente de novo.
-              </p>
-            )}
-            {item && (
-              <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
-                Sugestão {position} de {total}
-                <span className={styles.srOnly}>: {item.title}</span>
-              </p>
-            )}
-            <Deck
-              item={item}
-              behind={Math.min(total - position, 2)}
-              leaving={leaving}
-              returning={returning?.item.id === item?.id ? returning : null}
-              onLeft={() => setLeaving(null)}
-            />
-            <Actions
-              disabled={state.pending || !item}
-              onChoose={(choice) => {
-                if (choice === "nao-e-pra-mim") setReasonOpen(true);
-                else decide(choice);
-              }}
-            />
-          </>
+        {weaving ? (
+          <TecendoFile embedded />
         ) : (
-          <End title={title} empty={total === 0} takeFocus={decided} />
+          <>
+            <h1 className={styles.srOnly}>Sugestões de {title}</h1>
+            {/* Espaço do aviso no Figma; o aviso fica por cima dele (.toastArea), para não empurrar o card. */}
+            <div className={styles.noticeSlot} />
+
+            {/* Antes de 1 s não aparece nada no meio, para a tela não piscar (#81).
+                Depois da última escolha, o fim da faixa espera o último card terminar de sair. */}
+            {state.status === "loading" ? null : item || leaving ? (
+              <>
+                {state.choiceFailed && (
+                  <p className={styles.error} role="alert">
+                    Não deu pra guardar. Tente de novo.
+                  </p>
+                )}
+                {item && (
+                  <p ref={counterRef} tabIndex={-1} className={styles.counter} aria-live="polite">
+                    Sugestão {position} de {total}
+                    <span className={styles.srOnly}>: {item.title}</span>
+                  </p>
+                )}
+                <Deck
+                  item={item}
+                  behind={Math.min(total - position, 2)}
+                  leaving={leaving}
+                  returning={returning?.item.id === item?.id ? returning : null}
+                  onLeft={() => setLeaving(null)}
+                />
+                <Actions
+                  disabled={state.pending || !item}
+                  onChoose={(choice) => {
+                    if (choice === "nao-e-pra-mim") setReasonOpen(true);
+                    else decide(choice);
+                  }}
+                />
+              </>
+            ) : (
+              <End title={title} empty={total === 0} takeFocus={decided} />
+            )}
+          </>
         )}
       </main>
 
