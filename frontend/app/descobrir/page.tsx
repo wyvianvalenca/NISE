@@ -68,8 +68,8 @@ export default function DiscoverPage() {
     if (redirect) router.replace(redirect);
   }, [redirect, router]);
 
-  // A espera longa e a falha são as telas da #81 (E03 e E04).
-  if (phase === "weaving") return <TecendoFile name={waitName} />;
+  // A falha é a tela da #81 (E04). A espera longa (E03) fica no meio desta tela, com o
+  // cabeçalho e a barra de baixo: trocar a página inteira fazia a barra sumir e voltar.
   if (phase === "error") return <LoadFailed onRetry={retry} />;
 
   // Antes de 1 s não aparece nada no meio, para a tela não piscar.
@@ -87,7 +87,9 @@ export default function DiscoverPage() {
       </AppHeader>
 
       <div className={styles.scroll}>
-        <main className={styles.main}>{data && <Bands data={data} />}</main>
+        <main className={styles.main}>
+          {phase === "weaving" ? <TecendoFile name={waitName} embedded /> : data && <Bands data={data} />}
+        </main>
       </div>
 
       <BottomNav active="descobrir" />
