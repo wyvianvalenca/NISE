@@ -39,3 +39,97 @@ export async function login(email: string, password: string): Promise<LoginResul
 
   return { ok: false, reason: "failed" };
 }
+
+// ---------------------------------------------------------------------------
+// Recovering access (A16 and A16b, #331)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asks for the link to create a new password (A16). The server answers the
+ * same whether the email has an account or not, so this only fails when the
+ * request itself did not go through.
+ */
+export async function requestPasswordReset(email: string): Promise<boolean> {
+  const response = await fetch("/api/auth/password/forgot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  return response.ok;
+}
+
+export type ResetLinkResult =
+  | { ok: true; email: string }
+  | { ok: false; reason: "invalid_link" | "failed" };
+
+/**
+ * The account behind the link, for "Pra conta alana@…" on A16b. The token
+ * goes in the body, not in the API URL, so it stays out of access logs.
+ */
+export async function checkResetLink(
+  token: string,
+  signal?: AbortSignal,
+): Promise<ResetLinkResult> {
+  const response = await fetch("/api/auth/password/reset/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    signal,
+  });
+
+  if (response.ok) {
+    const body = (await response.json()) as { email: string };
+    return { ok: true, email: body.email };
+  }
+
+  // Expired, already used, replaced by a newer one or unknown: 422
+  // {"error": "invalid_token"}.
+  if (response.status === 422) {
+    return { ok: false, reason: "invalid_link" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+export type ResetPasswordResult =
+  | { ok: true; nextPath: string }
+  | {
+      ok: false;
+      reason: "invalid_link" | "password_too_short" | "failed";
+    };
+
+/**
+ * "Salvar e entrar" (A16b): saves the new password, spends the link and opens
+ * the session. `nextPath` is the same screen the login would lead to.
+ */
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<ResetPasswordResult> {
+  const response = await fetch("/api/auth/password/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  });
+
+  if (response.ok) {
+    const body = (await response.json()) as { nextPath: string };
+    return { ok: true, nextPath: body.nextPath };
+  }
+
+  if (response.status === 422) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+
+    if (body?.error === "invalid_token") {
+      return { ok: false, reason: "invalid_link" };
+    }
+    if (body?.error === "password_too_short") {
+      return { ok: false, reason: "password_too_short" };
+    }
+  }
+
+  return { ok: false, reason: "failed" };
+}

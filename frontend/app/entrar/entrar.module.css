@@ -77,3 +77,9 @@
   width: 100%;
   margin-top: 8px;
 }
+
+/* The single action under a message (link sent, link no longer valid). */
+.messageAction {
+  width: 100%;
+  margin-top: 24px;
+}
