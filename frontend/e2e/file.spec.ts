@@ -2,7 +2,6 @@ import { expect, test, type Page } from "@playwright/test";
 import type { FileSection, ThemeCode } from "../lib/file";
 import { mockDiscoverApi } from "./discover-api";
 import { type MockFileItem, mockFileApi } from "./file-api";
-import { watchFrames } from "./frames";
 import { mockTermsApi } from "./terms-api";
 
 // #115 e #117 · A06·3 Seu filé, pela rota GET /api/file (#116), simulada em file-api.ts.
@@ -220,8 +219,13 @@ test("o desenho segue a ordem e os temas que o back manda", async ({ page }) => 
 
   const drawing = page.getByRole("img", { name: /^Seu filé:/ });
   // As duas primeiras casas (as de cima do centro) são os concluídos, Programação antes de IA.
-  await expect(drawing.locator('rect[x="138"][y="92"]')).toHaveAttribute("fill", "var(--nise-theme-programacao)");
-  await expect(drawing.locator('rect[x="92"][y="92"]')).toHaveAttribute("fill", "var(--nise-theme-ia)");
+  // Cada quadradinho vai até a sua casa pelo transform do grupo dele.
+  const programacao = drawing.locator("[data-square='curadoria-c']");
+  await expect(programacao).toHaveAttribute("style", /translate\(138px, 92px\)/);
+  await expect(programacao.locator("rect")).toHaveAttribute("fill", "var(--nise-theme-programacao)");
+  const ia = drawing.locator("[data-square='curadoria-b']");
+  await expect(ia).toHaveAttribute("style", /translate\(92px, 92px\)/);
+  await expect(ia.locator("rect")).toHaveAttribute("fill", "var(--nise-theme-ia)");
 });
 
 test("item sem tema usa a cor neutra e mostra só o tipo", async ({ page }) => {
@@ -243,26 +247,91 @@ test("quando o filé não carrega, mostra o erro e tenta de novo", async ({ page
   await expect(item(page, "IA para iniciantes")).toBeVisible();
 });
 
-test("ao voltar ao filé, não mostra o filé de antes, nem por um quadro", async ({ page }) => {
+test("ao voltar ao filé, mostra o de antes e só os quadradinhos novos se desenham", async ({ page }) => {
   await openWith(page, { items: [makeItem("a", "next"), makeItem("b", "next")] });
   await expect(item(page, "Item a")).toBeVisible();
+  // Na primeira visita nada se desenha.
+  await expect(page.locator("[data-fresh]")).toHaveCount(0);
 
-  // Ela vai ao Descobrir e escolhe mais coisas. Daqui em diante o filé já vem com os itens
-  // novos, mas demora a responder.
+  // Ela vai ao Descobrir e escolhe mais uma coisa. Daqui em diante o filé já vem com o item
+  // novo, mas demora a responder.
   await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
   await mockFileApi(page, {
-    items: [makeItem("c", "next"), makeItem("d", "next"), makeItem("e", "next")],
+    items: [makeItem("a", "next"), makeItem("b", "next"), makeItem("c", "next")],
     delayMs: 1500,
   });
 
-  // Com cacheComponents o Next guarda o filé escondido; na volta ele busca de novo.
-  const seen = await watchFrames(page, ["Item a"]);
+  // Com cacheComponents o Next guarda o filé escondido: na volta, o de antes continua na
+  // tela enquanto o novo não chega.
   await page.goBack();
+  await expect(item(page, "Item a")).toBeVisible();
+  await expect(item(page, "Item c")).toHaveCount(0);
 
+  // Quando o novo chega, só o quadradinho dele se desenha.
   await expect(item(page, "Item c")).toBeVisible();
-  await expect(section(page, "Próximas aventuras").getByRole("article")).toHaveCount(3);
-  expect(await seen()).toEqual([]);
+  await expect(page.locator("[data-fresh]")).toHaveCount(1);
+  await expect(page.locator("[data-fresh]")).toHaveAttribute("data-square", "curadoria-c");
+  await expect(page.locator("[data-square]")).toHaveCount(3);
+});
+
+test("o mouse sobre um quadradinho mostra o nome do item, e sai junto", async ({ page }) => {
+  await openWith(page, { items: [makeItem("a", "next"), makeItem("b", "concluded")] });
+  const tooltip = page.getByTestId("file-tooltip");
+
+  await page.locator("[data-square='curadoria-a']").hover();
+  await expect(tooltip).toHaveText("Item a");
+
+  await page.locator("[data-square='curadoria-b']").hover();
+  await expect(tooltip).toHaveText("Item b");
+
+  await page.getByRole("heading", { level: 1, name: "Seu filé" }).hover();
+  await expect(tooltip).toHaveCount(0);
+});
+
+test.describe("no celular", () => {
+  test.use({ hasTouch: true, viewport: { width: 360, height: 740 } });
+
+  test("um toque no quadradinho mostra o nome; outro toque, fora ou nele, fecha", async ({ page }) => {
+    await openWith(page, { items: [makeItem("a", "next"), makeItem("b", "next")] });
+    const tooltip = page.getByTestId("file-tooltip");
+
+    await page.locator("[data-square='curadoria-a']").tap();
+    await expect(tooltip).toHaveText("Item a");
+
+    await page.locator("[data-square='curadoria-a']").tap();
+    await expect(tooltip).toHaveCount(0);
+
+    await page.locator("[data-square='curadoria-b']").tap();
+    await expect(tooltip).toHaveText("Item b");
+    await page.getByRole("heading", { level: 1, name: "Seu filé" }).tap();
+    await expect(tooltip).toHaveCount(0);
+  });
+
+  test("o nome de cada quadradinho cabe na tela de 360px", async ({ page }) => {
+    await page.goto("/file");
+    const squares = page.locator("[data-square]");
+    await expect(squares.first()).toBeVisible();
+
+    for (const square of await squares.all()) {
+      await square.tap();
+      const box = await page.getByTestId("file-tooltip").boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+      await square.tap();
+    }
+  });
+});
+
+test("o Esc fecha o nome do quadradinho", async ({ page }) => {
+  await openWith(page, { items: [makeItem("a", "next")] });
+
+  await page.locator("[data-square='curadoria-a']").click();
+  await expect(page.getByTestId("file-tooltip")).toHaveText("Item a");
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByTestId("file-tooltip")).toHaveCount(0);
 });
 
 test("sem sessão, volta para o início", async ({ page }) => {

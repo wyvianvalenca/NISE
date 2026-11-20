@@ -223,13 +223,31 @@ async def test_desenho_tem_um_quadradinho_por_item_pelo_tema_e_pela_secao() -> N
 
     # Concluídos primeiro, depois em andamento, depois próximas; em cada seção,
     # agrupados por tema na ordem da tela de interesses (RF-F10.07).
-    assert response.json()["squares"] == [
-        {"theme": "robotica", "section": "concluded"},
-        {"theme": "ia", "section": "concluded"},
-        {"theme": "programacao", "section": "in_progress"},
-        {"theme": "programacao", "section": "next"},
-        {"theme": "robotica", "section": "next"},
+    squares = response.json()["squares"]
+    assert [(square["theme"], square["section"]) for square in squares] == [
+        ("robotica", "concluded"),
+        ("ia", "concluded"),
+        ("programacao", "in_progress"),
+        ("programacao", "next"),
+        ("robotica", "next"),
     ]
+
+
+async def test_cada_quadradinho_tem_o_id_e_o_titulo_do_seu_item() -> None:
+    response = await abrir(sessao_com_as_tres_secoes())
+
+    corpo = response.json()
+    itens = {
+        item["id"]: item
+        for secao in ("inProgress", "next", "concluded")
+        for item in corpo[secao]["items"]
+    }
+    squares = corpo["squares"]
+    # Um quadradinho por item, e cada um com o título e o tema do seu item.
+    assert sorted(square["id"] for square in squares) == sorted(itens)
+    for square in squares:
+        assert square["title"] == itens[square["id"]]["title"]
+        assert square["theme"] == itens[square["id"]]["theme"]
 
 
 async def test_evento_inscrita_fica_nas_proximas_aventuras() -> None:

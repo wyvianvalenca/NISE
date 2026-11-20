@@ -92,7 +92,7 @@ export function fileResponse(items: MockFileItem[]): FileResponse {
     return { count: inSection.length, items: inSection };
   };
   const squares = items
-    .map((item) => ({ theme: item.theme, section: item.section }))
+    .map((item) => ({ id: item.id, title: item.title, theme: item.theme, section: item.section }))
     .sort(
       (a, b) =>
         DRAWING_ORDER.indexOf(a.section) - DRAWING_ORDER.indexOf(b.section) ||
