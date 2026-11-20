@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   NO_CHANGES,
   START_CELL,
@@ -12,6 +12,7 @@ import {
   type FileSquareData,
 } from "@/lib/file";
 import styles from "./FileDrawing.module.css";
+import { LEAVE_MS, playFileChanges } from "./fileMotion";
 
 // Grade 7×7 do Figma: casas de 40px a cada 46px, num quadro de 322px.
 const STEP = 46;
@@ -26,10 +27,6 @@ function countText(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-// Quanto dura a saída de um quadradinho removido (FileDrawing.module.css, .leaving). Os
-// outros só deslizam para as casas novas depois dela, para não passarem por cima.
-const LEAVE_MS = 700;
-
 type FileDrawingProps = {
   data: FileData;
   /**
@@ -40,11 +37,7 @@ type FileDrawingProps = {
   changes?: FileChanges;
   /** Chamado quando um quadradinho removido termina de sair. */
   onRemoved?: (id: string) => void;
-  /**
-   * Chamado quando um quadradinho novo ou que andou termina de se animar. A marca precisa
-   * sair: o navegador reinicia as animações de uma tela que volta a aparecer, e a de antes
-   * se repetiria na próxima volta ao filé.
-   */
+  /** Chamado quando um quadradinho novo ou que andou termina de se animar. */
   onSettled?: (id: string) => void;
 };
 
@@ -86,15 +79,26 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }
     };
   }, [active]);
 
-  // A ordem em que os quadradinhos novos desenham a borda.
-  let freshOrder = 0;
+  // Cada rodada de mudanças se anima uma vez só (components/fileMotion.ts). Os efeitos rodam
+  // de novo quando o Next mostra a tela escondida; a rodada já animada não se repete.
+  const svg = useRef<SVGSVGElement>(null);
+  const played = useRef(0);
+  useLayoutEffect(() => {
+    if (!svg.current || changes.round === 0 || played.current === changes.round) return;
+    played.current = changes.round;
+    playFileChanges(svg.current, changes, {
+      onSettled: (id) => onSettled?.(id),
+      onRemoved: (id) => onRemoved?.(id),
+    });
+  }, [changes, onSettled, onRemoved]);
+
   // Com algum quadradinho saindo, os outros esperam ele sair para deslizar.
   const slideDelay = changes.removed.length > 0 ? `${LEAVE_MS}ms` : "0ms";
 
   return (
     <div className={styles.frame}>
       <div className={styles.board}>
-        <svg viewBox={`0 0 ${BOARD} ${BOARD}`} className={styles.drawing} role="img" aria-label={label}>
+        <svg ref={svg} viewBox={`0 0 ${BOARD} ${BOARD}`} className={styles.drawing} role="img" aria-label={label}>
           <rect x={start.x} y={start.y} width={SIZE} height={SIZE} fill="var(--nise-ink)" />
           {/* As casas vazias vão por baixo, para não passarem por cima de um quadradinho que
               ainda está deslizando para a casa nova. */}
@@ -120,27 +124,18 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }
 
             const isFresh = changes.fresh.has(square.id);
             const isFilled = changes.filled.has(square.id);
-            const style = {
-              transform: `translate(${x}px, ${y}px)`,
-              transitionDelay: slideDelay,
-              "--fresh-delay": isFresh ? `${freshOrder++ * 120}ms` : undefined,
-            } as CSSProperties;
+            const style = { transform: `translate(${x}px, ${y}px)`, transitionDelay: slideDelay };
 
             return (
               // A chave é o item, não a casa: quando um quadradinho novo entra no meio, os
               // outros deslizam para a casa nova em vez de trocar de lugar de repente.
               <g
                 key={square.id}
-                className={`${styles.square} ${isFresh ? styles.fresh : ""} ${isFilled ? styles.filled : ""}`}
+                className={styles.square}
                 style={style}
                 data-square={square.id}
                 data-fresh={isFresh || undefined}
                 data-filled={isFilled || undefined}
-                onAnimationEnd={(event) => {
-                  // A última animação de um novo é a do miolo (fill-in); a de um que andou, grow.
-                  const last = isFresh ? "fill-in" : "grow";
-                  if ((isFresh || isFilled) && event.animationName.includes(last)) onSettled?.(square.id);
-                }}
                 onPointerEnter={(event) => {
                   if (event.pointerType === "mouse") setActive(square.id);
                 }}
@@ -169,9 +164,6 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }
                 style={{ transform: `translate(${x}px, ${y}px)` }}
                 data-leaving={square.id}
                 aria-hidden="true"
-                onAnimationEnd={(event) => {
-                  if (event.target === event.currentTarget) onRemoved?.(square.id);
-                }}
               >
                 <Square square={square} />
               </g>
@@ -190,17 +182,19 @@ export function FileDrawing({ data, changes = NO_CHANGES, onRemoved, onSettled }
 /** O quadradinho, desenhado a partir do canto da casa (o <g> leva até ela). */
 function Square({ square }: { square: FileSquareData }) {
   if (square.status === "concluido") {
-    return <rect className={styles.solid} width={SIZE} height={SIZE} fill={themeOf(square.theme).color} />;
+    return (
+      <rect className={styles.solid} data-part="solid" width={SIZE} height={SIZE} fill={themeOf(square.theme).color} />
+    );
   }
 
   return (
     <>
-      <rect className={styles.fill} x={1.5} y={1.5} width={SIZE - 3} height={SIZE - 3} fill="var(--nise-surface)" />
+      <rect data-part="fill" x={1.5} y={1.5} width={SIZE - 3} height={SIZE - 3} fill="var(--nise-surface)" />
       {square.status === "em-andamento" && (
-        <path className={styles.half} d={`M0 ${SIZE}L${SIZE} 0V${SIZE}H0Z`} fill="var(--nise-teal)" />
+        <path className={styles.half} data-part="half" d={`M0 ${SIZE}L${SIZE} 0V${SIZE}H0Z`} fill="var(--nise-teal)" />
       )}
       <rect
-        className={styles.border}
+        data-part="border"
         x={1.5}
         y={1.5}
         width={SIZE - 3}

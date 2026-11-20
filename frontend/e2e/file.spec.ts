@@ -339,6 +339,41 @@ test("na segunda volta, só a mudança nova se anima: a de antes não repete", a
   await expect(page.locator("[data-square='curadoria-a'] rect")).toHaveCount(1);
 });
 
+test("na volta seguinte, os quadradinhos que entraram antes não se desenham de novo", async ({ page }) => {
+  // Primeira volta: dois novos desenham a borda.
+  await comeBackWith(
+    page,
+    [makeItem("a", "next")],
+    [makeItem("a", "next"), makeItem("b", "next"), makeItem("c", "next")],
+  );
+  await expect(page.locator("[data-fresh]")).toHaveCount(2);
+  await expect(page.locator("[data-fresh]")).toHaveCount(0);
+
+  // Segunda volta, com o mesmo filé: registra a cada quadro se algum quadradinho se anima.
+  await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await mockFileApi(page, {
+    items: [makeItem("a", "next"), makeItem("b", "next"), makeItem("c", "next")],
+    delayMs: 800,
+  });
+  await page.evaluate(() => {
+    const w = window as unknown as { __animou: number };
+    w.__animou = 0;
+    const tick = () => {
+      for (const element of document.querySelectorAll("[data-square], [data-square] *")) {
+        if (element.getAnimations().some((animation) => !(animation instanceof CSSTransition))) w.__animou += 1;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.goBack();
+  await expect(page.locator("[data-square]")).toHaveCount(3);
+  await page.waitForTimeout(1500);
+
+  expect(await page.evaluate(() => (window as unknown as { __animou: number }).__animou)).toBe(0);
+});
+
 test("os quadradinhos novos se desenham mesmo se a página recarregou no meio", async ({ page }) => {
   await openWith(page, { items: [makeItem("a", "next")] });
   await expect(page.locator("[data-square]")).toHaveCount(1);
