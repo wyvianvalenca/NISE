@@ -315,10 +315,17 @@ export type FileChanges = {
   filled: ReadonlySet<string>;
   /** Saíram ("Tirar do filé", "Remover"): o preenchimento ao contrário, na casa antiga. */
   removed: readonly RemovedSquare[];
+  /**
+   * Muda a cada comparação. O desenho anima cada rodada uma vez só, mesmo que a tela seja
+   * escondida e volte (components/fileMotion.ts).
+   */
+  round: number;
 };
 
 /** Nada mudou: o padrão, para a primeira visita. */
-export const NO_CHANGES: FileChanges = { fresh: new Set(), filled: new Set(), removed: [] };
+export const NO_CHANGES: FileChanges = { fresh: new Set(), filled: new Set(), removed: [], round: 0 };
+
+let rounds = 0;
 
 // Quanto cada status preenche o quadradinho: só um passo para a frente se anima.
 const FILLING: Record<FileStatus, number> = { proxima: 0, "em-andamento": 1, concluido: 2 };
@@ -341,5 +348,6 @@ export function fileChanges(before: ShownFile, after: FileData): FileChanges {
     square && !current.has(square.id) ? [{ cell, square }] : [],
   );
 
-  return { fresh, filled, removed };
+  rounds += 1;
+  return { fresh, filled, removed, round: rounds };
 }

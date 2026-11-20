@@ -25,41 +25,10 @@
 }
 
 /*
- * Quadradinho novo desde a versão que estava na tela: a borda se desenha (de 0 a 1, pelo
- * pathLength) e o miolo aparece em seguida. Os novos vão um depois do outro (--fresh-delay).
+ * As animações dos quadradinhos (o que entrou, o que andou, o que saiu) ficam em
+ * components/fileMotion.ts, pela Web Animations API. Aqui só os pontos de onde o miolo
+ * cresce: a metade teal, do canto de baixo; a cor do concluído, do centro.
  */
-.fresh .border {
-  stroke-dasharray: 1;
-  animation: draw-border 600ms ease-out var(--fresh-delay, 0ms) both;
-}
-
-.fresh .fill,
-.fresh .half {
-  animation: fill-in 300ms ease-out calc(var(--fresh-delay, 0ms) + 400ms) both;
-}
-
-/* O concluído não tem borda: a cor aparece de uma vez. */
-.fresh .solid {
-  animation: fill-in 400ms ease-out var(--fresh-delay, 0ms) both;
-}
-
-@keyframes draw-border {
-  from {
-    stroke-dashoffset: 1;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes fill-in {
-  from {
-    opacity: 0;
-  }
-}
-
-/* O miolo cresce de um ponto: a metade teal, do canto de baixo; a cor do concluído, do centro. */
 .half {
   transform-box: fill-box;
   transform-origin: 0 100%;
@@ -70,50 +39,9 @@
   transform-origin: center;
 }
 
-/* Andou para em andamento ou concluído: o miolo se preenche. */
-.filled .half,
-.filled .solid {
-  animation: grow 500ms ease-out both;
-}
-
-@keyframes grow {
-  from {
-    scale: 0;
-  }
-}
-
-/*
- * Saiu do filé: o preenchimento ao contrário, na casa antiga. O miolo encolhe, a borda se
- * desfaz e o quadradinho some. O fim da animação do grupo (700ms, LEAVE_MS em
- * FileDrawing.tsx) o tira da tela.
- */
+/* O que saiu fica na casa antiga só enquanto faz o caminho de volta. */
 .leaving {
-  animation: leave 700ms ease-in both;
   pointer-events: none;
-}
-
-.leaving .half,
-.leaving .solid {
-  animation: grow 350ms ease-in reverse both;
-}
-
-.leaving .fill {
-  animation: fill-in 250ms ease-in 150ms reverse both;
-}
-
-.leaving .border {
-  stroke-dasharray: 1;
-  animation: draw-border 400ms ease-in 250ms reverse both;
-}
-
-@keyframes leave {
-  90% {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
 }
 
 /* Balãozinho com o nome do item, logo acima do quadradinho (FileDrawing.tsx). */
@@ -142,23 +70,9 @@
   transform: translate(-100%, calc(-100% - 6px));
 }
 
-/* Quem pediu menos movimento vê o filé novo de uma vez, sem desenho nem deslize. */
+/* Quem pediu menos movimento vê o filé novo de uma vez, sem deslize (fileMotion.ts também não anima). */
 @media (prefers-reduced-motion: reduce) {
   .square {
     transition: none;
-  }
-
-  .fresh .border,
-  .fresh .fill,
-  .fresh .half,
-  .fresh .solid,
-  .filled .half,
-  .filled .solid {
-    animation: none;
-  }
-
-  /* Sem a animação, o quadradinho que saiu só não aparece mais. */
-  .leaving {
-    display: none;
   }
 }
