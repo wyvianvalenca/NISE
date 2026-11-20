@@ -45,8 +45,8 @@ export type FileItemResponse = {
 /** Uma seção como o back manda (FileGroupOut). */
 export type FileGroupResponse = { count: number; items: FileItemResponse[] };
 
-/** Um quadradinho do desenho como o back manda (FileSquareOut). */
-export type FileSquareResponse = { theme: ThemeCode | null; section: FileSection };
+/** Um quadradinho do desenho como o back manda (FileSquareOut). O id e o título são os do item. */
+export type FileSquareResponse = { id: string; title: string; theme: ThemeCode | null; section: FileSection };
 
 /** A resposta de GET /api/file (FileOut). Sem porcentagem nem comparação (RN-28). */
 export type FileResponse = {
@@ -75,8 +75,11 @@ export type FileItem = {
   status: FileStatus;
 };
 
-/** Um quadradinho do desenho: o tema dá a cor e o status, a forma. */
-export type FileSquareData = { theme: ThemeCode | null; status: FileStatus };
+/**
+ * Um quadradinho do desenho: o tema dá a cor e o status, a forma. O título aparece no
+ * balãozinho, e o id (o do item) mostra quais quadradinhos são novos.
+ */
+export type FileSquareData = { id: string; title: string; theme: ThemeCode | null; status: FileStatus };
 
 export type FileData = {
   /** Primeira letra do avatar. */
@@ -114,7 +117,12 @@ export function toFileData(response: FileResponse): FileData {
     inProgress: response.inProgress.items.map((item) => toItem(item, "in_progress")),
     next: response.next.items.map((item) => toItem(item, "next")),
     done: response.concluded.items.map((item) => toItem(item, "concluded")),
-    squares: response.squares.map((square) => ({ theme: square.theme, status: STATUS_OF[square.section] })),
+    squares: response.squares.map((square) => ({
+      id: square.id,
+      title: square.title,
+      theme: square.theme,
+      status: STATUS_OF[square.section],
+    })),
   };
 }
 

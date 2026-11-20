@@ -5,10 +5,94 @@
   padding: 8px 0;
 }
 
-/* 322px como no Figma; encolhe junto em telas de 360px. */
+/* 322px como no Figma; encolhe junto em telas de 360px. O balãozinho se posiciona por cima. */
+.board {
+  position: relative;
+  width: 100%;
+  max-width: 322px;
+}
+
 .drawing {
   display: block;
   width: 100%;
-  max-width: 322px;
   height: auto;
+}
+
+/* Cada quadradinho vai até a sua casa por transform; se a casa muda, ele desliza. */
+.square {
+  transition: transform 300ms ease-out;
+  cursor: pointer;
+}
+
+/*
+ * Quadradinho novo desde a versão que estava na tela: a borda se desenha (de 0 a 1, pelo
+ * pathLength) e o miolo aparece em seguida. Os novos vão um depois do outro (--fresh-delay).
+ */
+.fresh .border {
+  stroke-dasharray: 1;
+  animation: draw-border 600ms ease-out var(--fresh-delay, 0ms) both;
+}
+
+.fresh .fill {
+  animation: fill-in 300ms ease-out calc(var(--fresh-delay, 0ms) + 400ms) both;
+}
+
+/* O concluído não tem borda: a cor aparece de uma vez. */
+.fresh .solid {
+  animation: fill-in 400ms ease-out var(--fresh-delay, 0ms) both;
+}
+
+@keyframes draw-border {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fill-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Balãozinho com o nome do item, logo acima do quadradinho (FileDrawing.tsx). */
+.tooltip {
+  position: absolute;
+  z-index: 1;
+  width: max-content;
+  max-width: 180px;
+  margin: 0;
+  padding: 4px 8px;
+  transform: translate(-50%, calc(-100% - 6px));
+  border-radius: 8px;
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+  pointer-events: none;
+}
+
+.alignStart {
+  transform: translate(0, calc(-100% - 6px));
+}
+
+.alignEnd {
+  transform: translate(-100%, calc(-100% - 6px));
+}
+
+/* Quem pediu menos movimento vê o filé novo de uma vez, sem desenho nem deslize. */
+@media (prefers-reduced-motion: reduce) {
+  .square {
+    transition: none;
+  }
+
+  .fresh .border,
+  .fresh .fill,
+  .fresh .solid {
+    animation: none;
+  }
 }
