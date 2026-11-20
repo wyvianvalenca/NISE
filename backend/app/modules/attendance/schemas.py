@@ -1,6 +1,7 @@
 from datetime import date, time
+from typing import Annotated
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.modules.actions.models import (
     ActionFormat,
@@ -40,6 +41,8 @@ class AttendanceGirlOut(BaseModel):
     name: str
     email: str
     study_stage: StudyStage | None
+    # Marked with "Salvar e continuar depois" (#340). Not attendance (D-81).
+    saved_present: bool
 
 
 class AttendancePageOut(BaseModel):
@@ -57,8 +60,23 @@ class AttendancePageOut(BaseModel):
     # Deleting is possible until the attendance is concluded (RN-15).
     can_delete: bool
     registered_count: int
+    # How many girls are marked in the saved marks (#340), for "14 de 23".
+    saved_count: int
     # Day of the most recent registration, for "23 importadas em 16/10".
     last_registered_on: date | None
     # Optional columns that have data in at least one girl (RF-F1.14).
     columns: list[str]
     girls: list[AttendanceGirlOut]
+
+
+# More than any action will have; it only bounds the size of the request.
+MAX_MARKS = 5000
+
+
+class SavedMarksIn(BaseModel):
+    """ "Salvar e continuar depois" (#340): the registrations marked as present.
+
+    It replaces what was saved before, so a girl left out is unmarked.
+    """
+
+    present_ids: Annotated[list[int], Field(max_length=MAX_MARKS)]

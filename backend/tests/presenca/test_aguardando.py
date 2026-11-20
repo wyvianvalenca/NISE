@@ -102,7 +102,7 @@ async def test_as_inscricoes_fecham_sozinhas_no_dia(
 async def test_mostra_o_cabecalho_e_os_passos(banco: AsyncSession, api: Api) -> None:
     group, coordinator = await make_group(banco)
     banco.add(City(id=9_999_001, name="Maceió", state="AL", search_name="maceio, al"))
-    await banco.flush()
+    await banco.commit()
     action = await make_action(
         banco,
         group,
@@ -119,7 +119,7 @@ async def test_mostra_o_cabecalho_e_os_passos(banco: AsyncSession, api: Api) -> 
     last = await register(banco, action, await make_girl(banco))
     # 01:00 UTC on the 17th is still the 16th in Maceió.
     last.created_at = datetime(2026, 10, 17, 1, tzinfo=UTC)
-    await banco.flush()
+    await banco.commit()
 
     body = (await api(coordinator).get(URL.format(action.id))).json()
 
@@ -160,7 +160,7 @@ async def test_lista_as_inscritas_em_ordem_e_so_as_colunas_com_dado(
     assert body["columns"] == []
 
     bia.study_stage = StudyStage.MEDIO
-    await banco.flush()
+    await banco.commit()
     body = (await api(coordinator).get(URL.format(action.id))).json()
 
     assert body["columns"] == ["study_stage"]

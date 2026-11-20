@@ -1,4 +1,8 @@
-"""Fictional data for the attendance tests (never real girls)."""
+"""Fictional data for the attendance tests (never real girls).
+
+Each helper commits, as the app would: a route that rolls back after a refusal
+must not take the test's data with it.
+"""
 
 from collections.abc import Callable
 from datetime import UTC, date, datetime
@@ -32,7 +36,7 @@ async def make_user(session: AsyncSession, role: Role, name: str = "Pessoa") -> 
     number = next(_sequence)
     user = User(email=f"pessoa{number}@exemplo.com", name=name, role=role)
     session.add(user)
-    await session.flush()
+    await session.commit()
     return user
 
 
@@ -43,7 +47,7 @@ async def make_group(session: AsyncSession) -> tuple[Group, User]:
     coordinator = await make_user(session, Role.COORDINATOR, "Coordenadora Fictícia")
     await session.flush()
     session.add(GroupCoordinator(group_id=group.id, user_id=coordinator.id))
-    await session.flush()
+    await session.commit()
     return group, coordinator
 
 
@@ -62,7 +66,7 @@ async def make_action(
     values.update(fields)
     action = Action(**values)
     session.add(action)
-    await session.flush()
+    await session.commit()
     return action
 
 
@@ -87,14 +91,14 @@ async def make_girl(
         study_stage=study_stage,
     )
     session.add(girl)
-    await session.flush()
+    await session.commit()
     return girl
 
 
 async def register(session: AsyncSession, action: Action, girl: Girl) -> Participation:
     participation = Participation(girl_id=girl.id, action_id=action.id)
     session.add(participation)
-    await session.flush()
+    await session.commit()
     return participation
 
 
