@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
 from httpx2 import ASGITransport, AsyncClient, Response
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.sql import ClauseElement
 
 from app.auth.permissions import SESSION_COOKIE
 from app.db.engine import get_session
@@ -61,3 +63,9 @@ async def chamar_rota(
             return await client.request(metodo, url, json=corpo)
     finally:
         app.dependency_overrides.clear()
+
+
+def sql_do_postgres(consulta: ClauseElement) -> str:
+    """O SQL de uma consulta como o Postgres a recebe (ex.: para ver o FOR UPDATE)."""
+    dialeto = postgresql.dialect()  # type: ignore[no-untyped-call]
+    return str(consulta.compile(dialect=dialeto))

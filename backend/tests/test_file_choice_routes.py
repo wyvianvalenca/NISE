@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 from httpx2 import Response
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.utils import create_access_token
 from app.main import app
@@ -24,9 +25,9 @@ from app.modules.girl_file.models import (
 )
 from app.modules.girl_file.schemas import Choice
 from app.modules.girl_file.service import CHOICE_STATUS, IN_FILE
-from app.modules.girls.models import EffortBand, Girl
+from app.modules.girls.models import EffortBand, Girl, Topic
 from app.users.models import Role, User
-from tests.helpers import chamar_rota, sessao_com
+from tests.helpers import chamar_rota, sessao_com, sql_do_postgres
 from tests.test_discover_routes import ARAPIRACA, MACEIO, acao, curado, menina, usuaria
 
 ITEM = "curadoria-12"
@@ -206,14 +207,9 @@ async def test_motivo_ou_escolha_fora_da_lista_e_recusado(
 # --- Escolher de novo ---------------------------------------------------------
 
 
-async def test_escolher_de_novo_troca_a_escolha_sem_duplicar() -> None:
-    linha = FileEntry(
-        id=40,
-        girl_id=3,
-        curated_item_id=12,
-        status=FileStatus.DISMISSED,
-        dismiss_reason=DismissReason.SEM_TEMPO_AGORA,
-    )
+async def test_do_ver_depois_a_escolha_troca_a_mesma_linha() -> None:
+    # O "+ Quero fazer" do Ver depois (#110) usa esta rota.
+    linha = FileEntry(id=40, girl_id=3, curated_item_id=12, status=FileStatus.LATER)
     sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=6)
 
     response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
@@ -223,31 +219,167 @@ async def test_escolher_de_novo_troca_a_escolha_sem_duplicar() -> None:
     # A mesma linha muda; nenhuma outra é criada.
     sessao_falsa.add.assert_not_called()
     assert linha.status is FileStatus.NEXT
-    assert linha.dismiss_reason is None
     sessao_falsa.commit.assert_awaited_once()
 
 
-async def test_trocar_uma_atividade_concluida_apaga_a_avaliacao() -> None:
-    # A nota e as "sugestões parecidas" só valem no concluído (restrição do banco).
-    linha = FileEntry(
-        id=41,
-        girl_id=3,
-        curated_item_id=12,
-        status=FileStatus.CONCLUDED,
-        rating=5,
-        similar_choice=SimilarChoice.MAIS_AVANCADO,
-        concluded_on=date(2026, 11, 1),
-    )
+@pytest.mark.parametrize(
+    ("status", "campos"),
+    [
+        (FileStatus.NEXT, {}),
+        (FileStatus.IN_PROGRESS, {}),
+        (
+            FileStatus.CONCLUDED,
+            {
+                "rating": 5,
+                "similar_choice": SimilarChoice.MAIS_AVANCADO,
+                "concluded_on": date(2026, 11, 1),
+            },
+        ),
+        (FileStatus.SIGNED_UP, {}),
+        (FileStatus.DISMISSED, {"dismiss_reason": DismissReason.SEM_TEMPO_AGORA}),
+    ],
+)
+async def test_nao_troca_a_escolha_de_um_item_no_file_ou_dispensado(
+    status: FileStatus, campos: dict[str, object]
+) -> None:
+    # Esses itens não aparecem nas sugestões. Trocar a escolha apagaria a nota, o
+    # dia da conclusão ou a inscrição, e tiraria o item do filé.
+    linha = FileEntry(id=41, girl_id=3, curated_item_id=12, status=status, **campos)
     sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha)
 
     response = await escolher(sessao_falsa, {"choice": "talvez-depois"})
 
+    assert response.status_code == 409
+    assert response.json() == {"error": "already_chosen"}
+    assert linha.status is status
+    for campo, valor in campos.items():
+        assert getattr(linha, campo) == valor
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_not_called()
+
+
+async def test_repetir_a_mesma_escolha_vale_sem_mudar_nada() -> None:
+    linha = FileEntry(id=42, girl_id=3, curated_item_id=12, status=FileStatus.NEXT)
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
     assert response.status_code == 200
-    assert linha.status is FileStatus.LATER
-    assert linha.rating is None
-    assert linha.similar_choice is None
-    # O dia da conclusão também só vale no concluído (#119).
-    assert linha.concluded_on is None
+    assert response.json() == {"fileTotal": 4}
+    assert linha.status is FileStatus.NEXT
+    sessao_falsa.commit.assert_not_called()
+
+
+async def test_a_linha_e_travada_antes_de_decidir() -> None:
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel())
+
+    await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    # SELECT ... FOR UPDATE: dois pedidos na mesma linha vão um depois do outro.
+    busca_da_linha = sessao_falsa.scalar.await_args_list[3].args[0]
+    sql = sql_do_postgres(busca_da_linha)
+    assert "FOR UPDATE" in sql
+
+
+# --- Dois pedidos ao mesmo tempo ----------------------------------------------
+
+
+def corrida(linha_do_outro: FileEntry) -> AsyncMock:
+    """O outro pedido criou a linha no mesmo instante: o banco recusa a nossa."""
+    sessao_falsa = sessao_com(usuaria())
+    sessao_falsa.scalar.side_effect = [
+        10,
+        menina(),
+        item_visivel(),
+        None,
+        linha_do_outro,
+        6,
+    ]
+    sessao_falsa.add = MagicMock()
+    sessao_falsa.commit.side_effect = [
+        IntegrityError("INSERT", {}, Exception("uq_file_entries_girl_curated")),
+        None,
+    ]
+    return sessao_falsa
+
+
+async def test_clique_duplo_na_mesma_escolha_responde_200_nas_duas() -> None:
+    linha_do_outro = FileEntry(
+        id=43, girl_id=3, curated_item_id=12, status=FileStatus.NEXT
+    )
+    sessao_falsa = corrida(linha_do_outro)
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 200
+    assert response.json() == {"fileTotal": 6}
+    sessao_falsa.rollback.assert_awaited_once()
+    assert linha_do_outro.status is FileStatus.NEXT
+
+
+async def test_escolhas_diferentes_ao_mesmo_tempo_a_segunda_responde_409() -> None:
+    linha_do_outro = FileEntry(
+        id=44, girl_id=3, curated_item_id=12, status=FileStatus.NEXT
+    )
+    sessao_falsa = corrida(linha_do_outro)
+
+    response = await escolher(sessao_falsa, {"choice": "nao-e-pra-mim"})
+
+    assert response.status_code == 409
+    assert response.json() == {"error": "already_chosen"}
+    assert linha_do_outro.status is FileStatus.NEXT
+
+
+# --- O perfil dela (RF-F11.02) ------------------------------------------------
+
+
+async def test_item_com_idade_minima_acima_da_dela_responde_404() -> None:
+    # menina() tem 16 anos.
+    sessao_falsa = sessao_da_escolha(
+        menina(), curado(12, EffortBand.UMA_TARDE, min_age=18)
+    )
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "item_not_found"}
+    sessao_falsa.add.assert_not_called()
+
+
+async def test_item_de_outro_tema_responde_404() -> None:
+    # menina() escolheu só Programação.
+    sessao_falsa = sessao_da_escolha(
+        menina(), curado(12, EffortBand.UMA_TARDE, topic=Topic.ROBOTICA)
+    )
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 404
+    sessao_falsa.add.assert_not_called()
+
+
+async def test_acao_sem_tema_serve_para_qualquer_tema() -> None:
+    # Uma ação pode ser cadastrada sem tema (RF-F17.06).
+    oficina, _ = acao(7, MACEIO, topics=[])
+    sessao_falsa = sessao_da_escolha(menina(), oficina)
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"}, item="acao-7")
+
+    assert response.status_code == 200
+    assert linha_gravada(sessao_falsa).action_id == 7
+
+
+async def test_no_ver_depois_o_perfil_nao_e_conferido_de_novo() -> None:
+    # Ela guardou o item quando ele era do perfil dela; o perfil mudou depois.
+    linha = FileEntry(id=45, girl_id=3, curated_item_id=12, status=FileStatus.LATER)
+    sessao_falsa = sessao_da_escolha(
+        menina(), curado(12, EffortBand.UMA_TARDE, topic=Topic.ROBOTICA), linha=linha
+    )
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 200
+    assert linha.status is FileStatus.NEXT
 
 
 # --- Permissões (RNF-G.03) ----------------------------------------------------
@@ -326,7 +458,16 @@ async def test_exige_o_aceite_dos_termos() -> None:
 
 
 @pytest.mark.parametrize(
-    "item", ["12", "curadoria-", "curadoria-abc", "evento-12", "curadoria-²"]
+    "item",
+    [
+        "12",
+        "curadoria-",
+        "curadoria-abc",
+        "evento-12",
+        "curadoria-²",
+        "curadoria-2147483648",
+        "acao-01",
+    ],
 )
 async def test_id_de_item_invalido_responde_404(item: str) -> None:
     sessao_falsa = sessao_da_escolha(menina(), item_visivel())

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -48,6 +49,19 @@ CHOICE_STATUS: dict[Choice, FileStatus] = {
     Choice.TALVEZ_DEPOIS: FileStatus.LATER,
     Choice.NAO_E_PRA_MIM: FileStatus.DISMISSED,
 }
+
+# Uma escolha nova só vale num item sem escolha dela, ou num que está no "Ver
+# depois" (o "+ Quero fazer" do Ver depois, #110). No filé, no "Não é pra mim"
+# ou concluído, o item não aparece mais nas sugestões, e trocar a escolha
+# apagaria o que ela fez (a nota, o dia da conclusão, a inscrição).
+CHOOSABLE: frozenset[FileStatus] = frozenset({FileStatus.LATER})
+
+# O que o "Desfazer", o "Remover" e o "Tirar do filé" podem apagar. A atividade
+# concluída não sai do filé, e o evento em que ela se inscreveu também não: o
+# "Tirar do filé" de eventos (M6) decide isso quando chegar.
+REMOVABLE: frozenset[FileStatus] = frozenset(
+    {FileStatus.NEXT, FileStatus.IN_PROGRESS, FileStatus.LATER, FileStatus.DISMISSED}
+)
 
 # O que conta na pílula "Meu filé": tudo o que entrou no filé. O "Ver depois"
 # e o "Não é pra mim" ficam de fora.
@@ -101,20 +115,30 @@ async def file_total(session: AsyncSession, girl_id: int) -> int:
 
 
 async def find_entry(
-    session: AsyncSession, girl_id: int, origin: ItemOrigin, number: int
+    session: AsyncSession,
+    girl_id: int,
+    origin: ItemOrigin,
+    number: int,
+    for_update: bool = False,
 ) -> FileEntry | None:
     """A linha dela para um item do catálogo, ou None se ela ainda não escolheu nada.
 
     A busca usa o id dela, então a linha de outra menina nunca é achada (RNF-G.03).
+
+    Com `for_update`, a linha fica travada até o fim da transação (SELECT ... FOR
+    UPDATE): as rotas que escrevem usam isso para dois pedidos na mesma linha (um
+    clique duplo, "Concluída" e "Tirar do filé" juntos) irem um depois do outro,
+    e o segundo decidir pelo status que o primeiro deixou.
     """
     if origin is ItemOrigin.CURATED:
         same_item = FileEntry.curated_item_id == number
     else:
         same_item = FileEntry.action_id == number
 
-    return await session.scalar(
-        select(FileEntry).where(FileEntry.girl_id == girl_id, same_item)
-    )
+    query = select(FileEntry).where(FileEntry.girl_id == girl_id, same_item)
+    if for_update:
+        query = query.with_for_update().execution_options(populate_existing=True)
+    return await session.scalar(query)
 
 
 async def save_choice(
@@ -123,49 +147,66 @@ async def save_choice(
     origin: ItemOrigin,
     number: int,
     choice: Choice,
-    reason: DismissReason | None = None,
-) -> None:
+    reason: DismissReason | None,
+    entry: FileEntry | None,
+) -> bool:
     """Grava o que ela decidiu sobre um item (RF-F10.04).
 
-    Uma linha por menina e item: escolher de novo troca a escolha anterior, sem
-    criar outra linha.
+    `entry` é a linha que ela já tem para o item (`find_entry` com
+    `for_update`), ou None. Uma linha por menina e item: num item no "Ver
+    depois" a escolha troca a anterior; num item sem escolha, cria a linha. Nos
+    outros status (CHOOSABLE) devolve False sem mudar nada. Repetir a mesma
+    escolha não muda nada e vale.
+
+    Dois pedidos ao mesmo tempo num item sem escolha (clique duplo, nova
+    tentativa depois de um tempo esgotado) tentam criar a mesma linha. O banco
+    recusa o segundo (a restrição de único), e ele decide pela linha que o
+    primeiro criou, sem erro 500.
     """
     status = CHOICE_STATUS[choice]
-    entry = await find_entry(session, girl_id, origin, number)
     if entry is None:
         session.add(new_entry(girl_id, origin, number, status, reason))
-    else:
-        entry.status = status
-        entry.dismiss_reason = reason
-        # A nota e as "sugestões parecidas" só valem numa atividade concluída
-        # (ck_file_entries_feedback_only_when_concluded).
-        entry.rating = None
-        entry.similar_choice = None
-        # O dia da conclusão também (ck_file_entries_concluded_on_only_when_concluded).
-        entry.concluded_on = None
+        try:
+            await session.commit()
+            return True
+        except IntegrityError:
+            await session.rollback()
+            entry = await find_entry(session, girl_id, origin, number, for_update=True)
+            if entry is None:
+                return False
+
+    if entry.status is status and entry.dismiss_reason is reason:
+        return True
+    if entry.status not in CHOOSABLE:
+        return False
+    entry.status = status
+    entry.dismiss_reason = reason
     await session.commit()
+    return True
 
 
 async def remove_choice(
     session: AsyncSession, girl_id: int, origin: ItemOrigin, number: int
-) -> bool:
+) -> FileStatus | None:
     """Apaga a escolha dela sobre um item, e o item volta a poder ser sugerido.
 
     É o "Desfazer" da A06·2 (RF-F10.05), o "Remover" do Ver depois e o "Tirar
     do filé" da atividade (#119). Apagar a linha leva junto o motivo do "Não é
     pra mim". Se ela não tem escolha nesse item (ou já desfez), não faz nada.
 
-    Uma atividade concluída não sai do filé: devolve False sem apagar nada
-    (tabela de status da #78).
+    Devolve None quando deu certo. A atividade concluída e o evento em que ela
+    se inscreveu não saem do filé (REMOVABLE): devolve o status que impediu, sem
+    apagar nada (tabela de status da #78). A linha é travada antes de decidir,
+    então um "Marcar como concluída" ao mesmo tempo nunca é apagado.
     """
-    entry = await find_entry(session, girl_id, origin, number)
+    entry = await find_entry(session, girl_id, origin, number, for_update=True)
     if entry is None:
-        return True
-    if entry.status is FileStatus.CONCLUDED:
-        return False
+        return None
+    if entry.status not in REMOVABLE:
+        return entry.status
     await session.delete(entry)
     await session.commit()
-    return True
+    return None
 
 
 # --- Seu filé (A06·3, #114) ---------------------------------------------------
@@ -217,33 +258,42 @@ def details_line(item_format: ActionFormat, duration: str, city: str | None) -> 
     return f"Presencial · {city}"
 
 
-def curated_file_item(item: CuratedItem, city: str | None) -> FileItemOut:
+def curated_file_item(
+    item: CuratedItem, city: str | None, signed_up: bool = False
+) -> FileItemOut:
     """Um item da curadoria como aparece no filé. Precisa de topics carregados."""
     deadline = None
     if item.kind is ItemKind.EVENT:
         deadline = item.registration_deadline
     return FileItemOut(
         id=item_id(ItemOrigin.CURATED, item.id),
+        kind=item.kind,
         theme=main_theme([row.topic for row in item.topics]),
         type_label=CURATED_TYPE_LABELS[item.type],
         title=item.title,
         details=details_line(item.format, item.duration, city),
         deadline=deadline,
+        signed_up=signed_up,
     )
 
 
-def action_file_item(action: Action, city: str | None) -> FileItemOut:
+def action_file_item(
+    action: Action, city: str | None, signed_up: bool = False
+) -> FileItemOut:
     """Uma ação de grupo como aparece no filé. Precisa de topics carregados.
 
-    A ação não tem prazo de inscrição, só "inscrições abertas" ou não.
+    Toda ação é um evento. Ela não tem prazo de inscrição, só "inscrições
+    abertas" ou não.
     """
     return FileItemOut(
         id=item_id(ItemOrigin.GROUP_ACTION, action.id),
+        kind=ItemKind.EVENT,
         theme=main_theme([row.topic for row in action.topics]),
         type_label=ACTION_TYPE_LABELS[action.type],
         title=action.name,
         details=details_line(action.format, action_duration(action), city),
         deadline=None,
+        signed_up=signed_up,
     )
 
 
@@ -304,14 +354,19 @@ async def load_file(session: AsyncSession, user_id: int) -> FileOut | None:
 
     placed = []
     for entry in entries:
+        signed_up = entry.status is FileStatus.SIGNED_UP
         if entry.curated_item_id is not None:
             item = items.curated[entry.curated_item_id]
-            file_item = curated_file_item(item, items.city_name(item.city_ibge_code))
+            file_item = curated_file_item(
+                item, items.city_name(item.city_ibge_code), signed_up
+            )
         else:
             # A restrição ck_file_entries_one_source garante uma das duas colunas.
             assert entry.action_id is not None
             action = items.actions[entry.action_id]
-            file_item = action_file_item(action, items.city_name(action.city_ibge_code))
+            file_item = action_file_item(
+                action, items.city_name(action.city_ibge_code), signed_up
+            )
         placed.append((SECTION_OF[entry.status], file_item))
 
     return build_file(girl.name, placed)
@@ -442,7 +497,7 @@ async def load_later(
     faixa. Um item que não pode mais ser sugerido (venceu, foi desativado, a
     ação fechou ou já passou, o presencial é de outra cidade) não aparece
     (RF-F11.07), mas a escolha dela fica guardada: são as mesmas regras que o
-    "+ Quero fazer" confere (`is_suggestible`).
+    "+ Quero fazer" confere (`suggestible_audience`).
 
     A menina é sempre a da sessão, e as linhas são buscadas pelo id dela
     (RNF-G.03). Devolve None quando a conta não tem registro de menina.
@@ -503,7 +558,7 @@ NEXT_STEP: dict[FileStatus, FileStatus | None] = {
 
 
 async def find_activity(
-    session: AsyncSession, girl_id: int, text_id: str
+    session: AsyncSession, girl_id: int, text_id: str, for_update: bool = False
 ) -> tuple[FileEntry, CuratedItem] | None:
     """A linha dela e o item de uma atividade do filé, ou None se não há.
 
@@ -514,6 +569,7 @@ async def find_activity(
 
     A linha é buscada pelo id dela, então a de outra menina nunca é achada
     (RNF-G.03). O item vem com os temas e as etapas, para o "Por que pra você".
+    Com `for_update`, a linha fica travada até o fim da transação (`find_entry`).
     """
     parsed = parse_item_id(text_id)
     if parsed is None:
@@ -522,7 +578,7 @@ async def find_activity(
     if origin is not ItemOrigin.CURATED:
         return None
 
-    entry = await find_entry(session, girl_id, origin, number)
+    entry = await find_entry(session, girl_id, origin, number, for_update=for_update)
     if entry is None or entry.status not in NEXT_STEP:
         return None
 

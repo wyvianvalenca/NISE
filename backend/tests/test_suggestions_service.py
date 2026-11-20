@@ -161,6 +161,12 @@ def test_quem_ainda_nao_escolheu_temas_ve_todos() -> None:
     assert matches_profile(item(1, [ROBOTICA]), perfil())
 
 
+def test_item_sem_tema_serve_para_quem_escolheu_temas() -> None:
+    # Uma ação de grupo pode ser cadastrada sem tema (RF-F17.06). Sem esta regra,
+    # ela nunca apareceria para quem escolheu temas.
+    assert matches_profile(item(1, []), perfil(PROG, IA))
+
+
 def test_etapa_de_estudo_do_publico() -> None:
     menina = perfil(PROG, stage=StudyStage.MEDIO)
 

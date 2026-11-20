@@ -26,14 +26,16 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.engine import SessionLocal, engine
 from app.modules.catalog.schemas import CuratedItemIn
 from app.modules.catalog.service import save_curated_items
 
 # Os itens e as ações apontam para cities; sem importar o model, o SQLAlchemy
-# não acha a tabela ao montar as consultas.
-from app.modules.cities.models import City  # noqa: F401
+# não acha a tabela ao montar as consultas. A carga também confere os códigos.
+from app.modules.cities.models import City
 
 DATA_FILE = Path(__file__).parent / "dados" / "curadoria.json"
 
@@ -72,10 +74,40 @@ def parse(raw: list[Any]) -> list[CuratedItemIn]:
 
 
 def read(path: Path) -> list[CuratedItemIn]:
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        # Sem isto, um JSON quebrado mostrava um traceback, sem dizer onde corrigir.
+        raise CurationFileError(
+            f"O arquivo não é um JSON válido (linha {error.lineno}, coluna"
+            f" {error.colno}): {error.msg}"
+        ) from None
     if not isinstance(raw, list):
         raise CurationFileError("O arquivo precisa ser uma lista de itens")
     return parse(raw)
+
+
+async def check_cities(session: AsyncSession, entries: list[CuratedItemIn]) -> None:
+    """Confere se cada city_ibge_code está na tabela de municípios (RN-17).
+
+    Sem isto, um código que não existe só falhava no commit, com um traceback
+    do banco que não diz qual item corrigir. Levanta CurationFileError com o
+    slug e o campo de cada item errado; nada é gravado.
+    """
+    codes = {
+        entry.city_ibge_code for entry in entries if entry.city_ibge_code is not None
+    }
+    if not codes:
+        return
+    known = set(await session.scalars(select(City.id).where(City.id.in_(codes))))
+    errors = [
+        f"{entry.slug}: city_ibge_code: o município {entry.city_ibge_code} não está"
+        " na tabela de municípios (rode scripts.carregar_municipios antes)"
+        for entry in entries
+        if entry.city_ibge_code is not None and entry.city_ibge_code not in known
+    ]
+    if errors:
+        raise CurationFileError("\n".join(errors))
 
 
 async def main(path: Path) -> int:
@@ -86,10 +118,16 @@ async def main(path: Path) -> int:
         return 1
 
     async with SessionLocal() as session:
-        created, updated = await save_curated_items(session, entries)
+        try:
+            await check_cities(session, entries)
+        except CurationFileError as error:
+            await engine.dispose()
+            print(f"Nada foi gravado. Corrija {path.name}:\n{error}", file=sys.stderr)
+            return 1
+        created, updated, unchanged = await save_curated_items(session, entries)
     await engine.dispose()
 
-    print(f"{created} itens criados e {updated} atualizados.")
+    print(f"{created} itens criados, {updated} atualizados e {unchanged} sem mudança.")
     return 0
 
 

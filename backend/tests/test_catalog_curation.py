@@ -4,6 +4,7 @@ save_curated_items roda com uma sessão falsa; a carga contra o Postgres de
 verdade está no "Como testar" do PR.
 """
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -19,7 +20,13 @@ from app.modules.catalog.models import (
 from app.modules.catalog.schemas import CuratedItemIn
 from app.modules.catalog.service import apply_entry, save_curated_items
 from app.modules.girls.models import EffortBand, StudyStage, Topic
-from scripts.carregar_curadoria import DATA_FILE, CurationFileError, parse, read
+from scripts.carregar_curadoria import (
+    DATA_FILE,
+    CurationFileError,
+    check_cities,
+    parse,
+    read,
+)
 
 
 def dados(**campos: Any) -> dict[str, Any]:
@@ -128,6 +135,61 @@ def test_evento_que_termina_antes_de_comecar_e_recusado() -> None:
         parse([evento(ends_on="2026-12-01")])
 
 
+def test_inscricao_depois_do_fim_do_evento_e_recusada() -> None:
+    with pytest.raises(CurationFileError, match="registration_deadline"):
+        parse([evento(registration_deadline="2026-12-07")])
+
+
+def test_evento_que_vence_antes_de_comecar_e_recusado() -> None:
+    # Ele nunca apareceria nas sugestões.
+    with pytest.raises(CurationFileError, match="expires_on"):
+        parse([evento(expires_on="2026-12-01")])
+
+
+def test_inscricao_no_ultimo_dia_e_vencer_no_dia_que_comeca_valem() -> None:
+    [entrada] = parse(
+        [evento(registration_deadline="2026-12-06", expires_on="2026-12-05")]
+    )
+
+    assert entrada.registration_deadline is not None
+
+
+def test_json_quebrado_diz_onde_corrigir(tmp_path: Path) -> None:
+    arquivo = tmp_path / "curadoria.json"
+    arquivo.write_text('[{"slug": "curso-ficticio",}]', encoding="utf-8")
+
+    # Antes, um JSONDecodeError com traceback.
+    with pytest.raises(CurationFileError, match="linha 1, coluna"):
+        read(arquivo)
+
+
+async def test_cidade_que_nao_existe_e_recusada_antes_de_gravar() -> None:
+    sessao_falsa = AsyncMock()
+    # Só Maceió está na tabela de municípios.
+    sessao_falsa.scalars.return_value = [2704302]
+    entradas = parse(
+        [
+            dados(slug="em-maceio", format="in_person", city_ibge_code=2704302),
+            dados(slug="em-lugar-nenhum", format="in_person", city_ibge_code=9999999),
+        ]
+    )
+
+    with pytest.raises(CurationFileError) as erro:
+        await check_cities(sessao_falsa, entradas)
+
+    # A mensagem diz qual item e qual campo, como os outros erros do arquivo.
+    assert str(erro.value).startswith("em-lugar-nenhum: city_ibge_code")
+    assert "em-maceio" not in str(erro.value)
+
+
+async def test_sem_item_presencial_nao_consulta_os_municipios() -> None:
+    sessao_falsa = AsyncMock()
+
+    await check_cities(sessao_falsa, parse([dados()]))
+
+    sessao_falsa.scalars.assert_not_called()
+
+
 def test_slug_repetido_e_recusado() -> None:
     with pytest.raises(CurationFileError, match="slug repetido"):
         parse([dados(), dados(title="Outro titulo")])
@@ -186,9 +248,11 @@ def sessao_com(existentes: list[CuratedItem]) -> AsyncMock:
 async def test_item_novo_e_criado() -> None:
     sessao_falsa = sessao_com([])
 
-    criados, atualizados = await save_curated_items(sessao_falsa, [entrada()])
+    criados, atualizados, sem_mudanca = await save_curated_items(
+        sessao_falsa, [entrada()]
+    )
 
-    assert (criados, atualizados) == (1, 0)
+    assert (criados, atualizados, sem_mudanca) == (1, 0, 0)
     [item] = [chamada.args[0] for chamada in sessao_falsa.add.call_args_list]
     assert item.slug == "curso-ficticio"
     assert item.title == "Curso ficticio"
@@ -203,13 +267,24 @@ async def test_rodar_de_novo_atualiza_sem_duplicar() -> None:
 
     # A segunda carga encontra no banco o que a primeira gravou.
     segunda = sessao_com(gravados)
-    criados, atualizados = await save_curated_items(
+    criados, atualizados, sem_mudanca = await save_curated_items(
         segunda, [entrada(title="Curso ficticio, 2a edicao")]
     )
 
-    assert (criados, atualizados) == (0, 1)
+    assert (criados, atualizados, sem_mudanca) == (0, 1, 0)
     segunda.add.assert_not_called()
     assert gravados[0].title == "Curso ficticio, 2a edicao"
+
+
+async def test_rodar_de_novo_sem_mudar_nada_conta_como_sem_mudanca() -> None:
+    primeira = sessao_com([])
+    await save_curated_items(primeira, [entrada()])
+    gravados = [chamada.args[0] for chamada in primeira.add.call_args_list]
+
+    resultado = await save_curated_items(sessao_com(gravados), [entrada()])
+
+    # Antes, todo item que já existia contava como "atualizado".
+    assert resultado == (0, 0, 1)
 
 
 async def test_desativar_pelo_arquivo() -> None:

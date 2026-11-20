@@ -370,9 +370,30 @@ def test_id_do_item_vai_e_volta() -> None:
     assert parse_item_id("acao-7") == (ItemOrigin.GROUP_ACTION, 7)
 
 
-@pytest.mark.parametrize("texto", ["", "7", "acao-", "acao-x", "grupo-7", "acao-²"])
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "",
+        "7",
+        "acao-",
+        "acao-x",
+        "grupo-7",
+        "acao-²",
+        # Zero à esquerda: "acao-01" não é "acao-1", e "0" não é id de nada.
+        "acao-01",
+        "curadoria-03",
+        "curadoria-0",
+        # Maior que o int4 do banco: a consulta daria erro 500 em vez de 404.
+        "curadoria-2147483648",
+        "acao-99999999999",
+    ],
+)
 def test_id_invalido_devolve_none(texto: str) -> None:
     assert parse_item_id(texto) is None
+
+
+def test_o_maior_id_do_banco_ainda_vale() -> None:
+    assert parse_item_id("curadoria-2147483647") == (ItemOrigin.CURATED, 2147483647)
 
 
 def test_todo_tipo_tem_nome_para_a_tela() -> None:

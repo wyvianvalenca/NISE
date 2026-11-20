@@ -144,8 +144,14 @@ async def test_enviar_de_novo_troca_a_resposta_anterior() -> None:
         {"rating": 0},
         {"rating": 6},
         {"rating": 3.5},
+        # A nota é um inteiro de verdade: texto, 3.0 e true não viram número.
+        {"rating": "3"},
+        {"rating": 3.0},
+        {"rating": True},
         # Opção que não está na tela.
         {"similar": "qualquer-coisa"},
+        # Campo que a tela não manda.
+        {"rating": 4, "comentario": "oi"},
     ],
 )
 async def test_corpo_invalido_responde_422_e_nao_guarda_nada(
@@ -208,7 +214,9 @@ async def test_evento_nao_e_avaliado_aqui() -> None:
     sessao_falsa.commit.assert_not_called()
 
 
-@pytest.mark.parametrize("item_id", ["acao-7", "12", "curadoria-abc"])
+@pytest.mark.parametrize(
+    "item_id", ["acao-7", "12", "curadoria-abc", "curadoria-2147483648", "curadoria-03"]
+)
 async def test_acao_de_grupo_ou_id_invalido_responde_404(item_id: str) -> None:
     sessao_falsa = sessao_da_avaliacao(menina())
 

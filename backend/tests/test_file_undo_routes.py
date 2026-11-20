@@ -16,7 +16,7 @@ from app.main import app
 from app.modules.girl_file.models import DismissReason, FileEntry, FileStatus
 from app.modules.girls.models import Girl
 from app.users.models import Role, User
-from tests.helpers import chamar_rota, sessao_com
+from tests.helpers import chamar_rota, sessao_com, sql_do_postgres
 from tests.test_discover_routes import menina, usuaria
 
 ITEM = "curadoria-12"
@@ -168,6 +168,52 @@ async def test_id_de_item_invalido_responde_404(item: str) -> None:
     assert response.json() == {"error": "item_not_found"}
     sessao_falsa.delete.assert_not_called()
     sessao_falsa.commit.assert_not_called()
+
+
+# --- O que não sai do filé (tabela de status da #78) --------------------------
+
+
+@pytest.mark.parametrize(
+    ("status", "erro"),
+    [
+        (FileStatus.CONCLUDED, "concluded_cannot_be_removed"),
+        # O "Tirar do filé" de eventos (M6) decide isso quando chegar.
+        (FileStatus.SIGNED_UP, "signed_up_cannot_be_removed"),
+    ],
+)
+async def test_concluida_e_inscrita_nao_saem_do_file(
+    status: FileStatus, erro: str
+) -> None:
+    escolha = linha(status)
+    sessao_falsa = sessao_do_desfazer(menina(), escolha)
+
+    response = await desfazer(sessao_falsa)
+
+    assert response.status_code == 409
+    assert response.json() == {"error": erro}
+    sessao_falsa.delete.assert_not_called()
+    sessao_falsa.commit.assert_not_called()
+
+
+async def test_tirar_do_file_uma_atividade_em_andamento_apaga_a_escolha() -> None:
+    escolha = linha(FileStatus.IN_PROGRESS)
+    sessao_falsa = sessao_do_desfazer(menina(), escolha)
+
+    response = await desfazer(sessao_falsa)
+
+    assert response.status_code == 200
+    sessao_falsa.delete.assert_awaited_once_with(escolha)
+
+
+async def test_a_linha_e_travada_antes_de_apagar() -> None:
+    sessao_falsa = sessao_do_desfazer(menina(), linha(FileStatus.NEXT))
+
+    await desfazer(sessao_falsa)
+
+    # SELECT ... FOR UPDATE: um "Marcar como concluída" ao mesmo tempo espera, e
+    # este pedido decide pelo status que ele deixou.
+    busca_da_linha = sessao_falsa.scalar.await_args_list[2].args[0]
+    assert "FOR UPDATE" in sql_do_postgres(busca_da_linha)
 
 
 # --- Permissões (RNF-G.03) ----------------------------------------------------

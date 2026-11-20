@@ -5,6 +5,7 @@ testadas sem banco. `load_catalog` só busca no banco e aplica essas funções.
 Quais itens combinam com cada menina e em que ordem é a #80.
 """
 
+from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import select
@@ -26,7 +27,7 @@ from app.modules.catalog.utils import (
     CURATED_TYPE_LABELS,
     item_id,
 )
-from app.modules.girls.models import EffortBand
+from app.modules.girls.models import EffortBand, StudyStage, Topic
 from app.modules.groups.models import Group
 
 # A coordenadora não informa o nível de uma ação. As ações dos grupos são
@@ -214,32 +215,67 @@ async def load_catalog(
     ]
 
 
-async def is_suggestible(
+@dataclass(frozen=True)
+class ItemAudience:
+    """Para quem um item é: o que as regras de perfil olham (RF-F11.02)."""
+
+    topics: frozenset[Topic]
+    stages: frozenset[StudyStage]
+    min_age: int | None
+
+
+async def suggestible_audience(
     session: AsyncSession,
     origin: ItemOrigin,
     number: int,
     girl_city: int | None,
     today: date,
-) -> bool:
-    """O item existe e pode ser sugerido hoje a quem mora em `girl_city`.
+) -> ItemAudience | None:
+    """Para quem é o item, se ele existe e pode ser sugerido hoje a quem mora em
+    `girl_city`; None se não.
 
     As mesmas regras de `load_catalog`, para um item só. Serve para recusar a
     escolha num item que ela não veria nas sugestões: desativado, vencido, ação
-    fechada ou passada, presencial de outra cidade (RF-F11.07, RN-16).
+    fechada ou passada, presencial de outra cidade (RF-F11.07, RN-16). Os temas,
+    as etapas e a idade mínima voltam para quem precisa conferir o perfil dela
+    (`fits_profile` nas sugestões), sem outra consulta.
     """
     if origin is ItemOrigin.CURATED:
-        item = await session.scalar(select(CuratedItem).where(CuratedItem.id == number))
-        return (
-            item is not None
-            and curated_is_visible(item, today)
-            and reaches_city(item.format, item.city_ibge_code, girl_city)
+        item = await session.scalar(
+            select(CuratedItem)
+            .where(CuratedItem.id == number)
+            .options(
+                selectinload(CuratedItem.topics), selectinload(CuratedItem.audiences)
+            )
+        )
+        if (
+            item is None
+            or not curated_is_visible(item, today)
+            or not reaches_city(item.format, item.city_ibge_code, girl_city)
+        ):
+            return None
+        return ItemAudience(
+            topics=frozenset(row.topic for row in item.topics),
+            stages=frozenset(row.stage for row in item.audiences),
+            min_age=item.min_age,
         )
 
-    action = await session.scalar(select(Action).where(Action.id == number))
-    return (
-        action is not None
-        and action_is_visible(action, today)
-        and reaches_city(action.format, action.city_ibge_code, girl_city)
+    action = await session.scalar(
+        select(Action)
+        .where(Action.id == number)
+        .options(selectinload(Action.topics), selectinload(Action.audiences))
+    )
+    if (
+        action is None
+        or not action_is_visible(action, today)
+        or not reaches_city(action.format, action.city_ibge_code, girl_city)
+    ):
+        return None
+    # A ação de grupo não tem idade mínima.
+    return ItemAudience(
+        topics=frozenset(row.topic for row in action.topics),
+        stages=frozenset(row.stage for row in action.audiences),
+        min_age=None,
     )
 
 
@@ -288,13 +324,41 @@ def apply_entry(item: CuratedItem, entry: CuratedItemIn) -> None:
     ]
 
 
+def curated_snapshot(item: CuratedItem) -> tuple[object, ...]:
+    """Tudo o que `apply_entry` escreve no item, para saber se a carga mudou algo."""
+    return (
+        item.kind,
+        item.type,
+        item.title,
+        item.source,
+        item.description,
+        item.url,
+        item.effort_band,
+        item.level,
+        item.format,
+        item.city_ibge_code,
+        item.min_age,
+        item.cost_cents,
+        item.duration,
+        item.expires_on,
+        item.active,
+        item.starts_on,
+        item.ends_on,
+        item.registration_deadline,
+        item.prerequisites,
+        sorted(row.topic.value for row in item.topics),
+        sorted(row.stage.value for row in item.audiences),
+    )
+
+
 async def save_curated_items(
     session: AsyncSession, entries: list[CuratedItemIn]
-) -> tuple[int, int]:
-    """Cria ou atualiza os itens da curadoria pelo slug. Devolve (criados, atualizados).
+) -> tuple[int, int, int]:
+    """Cria ou atualiza os itens da curadoria pelo slug.
 
-    Rodar de novo com o mesmo arquivo não duplica nada: o slug já existe e o
-    item só é atualizado. Item que saiu do arquivo não é apagado (o filé das
+    Devolve (criados, atualizados, sem mudança). Rodar de novo com o mesmo
+    arquivo não duplica nada: o slug já existe, e o item que não mudou conta
+    como "sem mudança". Item que saiu do arquivo não é apagado (o filé das
     meninas aponta para ele); para tirá-lo das sugestões, use "active": false.
     """
     existing = {
@@ -307,6 +371,7 @@ async def save_curated_items(
     }
 
     created = 0
+    unchanged = 0
     for entry in entries:
         item = existing.get(entry.slug)
         if item is None:
@@ -314,7 +379,12 @@ async def save_curated_items(
             session.add(item)
             existing[entry.slug] = item
             created += 1
+            apply_entry(item, entry)
+            continue
+        before = curated_snapshot(item)
         apply_entry(item, entry)
+        if curated_snapshot(item) == before:
+            unchanged += 1
 
     await session.commit()
-    return created, len(entries) - created
+    return created, len(entries) - created - unchanged, unchanged

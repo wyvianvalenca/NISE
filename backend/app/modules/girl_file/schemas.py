@@ -2,7 +2,7 @@ import enum
 from datetime import date
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 from app.modules.actions.models import ActionFormat
 from app.modules.catalog.models import CuratedType, ItemKind
@@ -64,6 +64,9 @@ class FileItemOut(BaseModel):
 
     # "curadoria-12" ou "acao-7": o id do catálogo, que "Continuar" e "Abrir" usam.
     id: str
+    # Evento ou atividade. A atividade abre a A06·4a (GET /api/file/{id}); o
+    # evento abre o detalhe do evento (A06·4b, M6), não a tela da atividade.
+    kind: ItemKind
     # O tema que dá a cor ao quadradinho e à bolinha do item. Vazio quando o
     # item não tem tema; o front usa uma cor neutra.
     theme: Topic | None
@@ -75,6 +78,9 @@ class FileItemOut(BaseModel):
     details: str
     # O último dia de inscrição, só nos eventos que informam um prazo.
     deadline: date | None
+    # O evento em que ela se inscreveu (SIGNED_UP): ele fica em "Próximas
+    # aventuras", e as telas do M6 mostram "Inscrita".
+    signed_up: bool = Field(serialization_alias="signedUp")
 
 
 class FileGroupOut(BaseModel):
@@ -206,9 +212,15 @@ class FeedbackIn(BaseModel):
     uma escolhida: o "Pular" não chama a rota. As duas vazias, ou uma nota fora
     de 1 a 5, respondem 422. Os valores de `similar` são os de `SIMILAR_OPTIONS`
     no front (frontend/lib/atividade-feedback.ts).
+
+    Estrito, como a entrada da curadoria: a nota é um inteiro de verdade ("3",
+    3.0 e true respondem 422, em vez de virar 3, 3 e 1), e um campo que a tela
+    não manda também responde 422.
     """
 
-    rating: int | None = Field(default=None, ge=1, le=5)
+    model_config = ConfigDict(extra="forbid")
+
+    rating: StrictInt | None = Field(default=None, ge=1, le=5)
     similar: SimilarChoice | None = None
 
     @model_validator(mode="after")

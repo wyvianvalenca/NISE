@@ -130,4 +130,13 @@ class CuratedItemIn(BaseModel):
             raise ValueError("Evento precisa de starts_on e ends_on")
         if self.ends_on < self.starts_on:
             raise ValueError("ends_on não pode ser antes de starts_on")
+        # Inscrição depois do fim do evento não faz sentido.
+        if (
+            self.registration_deadline is not None
+            and self.registration_deadline > self.ends_on
+        ):
+            raise ValueError("registration_deadline não pode ser depois de ends_on")
+        # Vencido antes de começar, o evento nunca apareceria nas sugestões.
+        if self.expires_on is not None and self.expires_on < self.starts_on:
+            raise ValueError("expires_on não pode ser antes de starts_on")
         return self

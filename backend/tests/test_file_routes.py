@@ -190,31 +190,40 @@ async def test_cada_item_tem_tema_tipo_titulo_e_detalhes() -> None:
     assert corpo["inProgress"]["items"] == [
         {
             "id": "curadoria-1",
+            "kind": "atividade",
             "theme": "programacao",
             "typeLabel": "Curso online",
             "title": "Logica ficticia",
             "details": "Online · ~10 h",
             "deadline": None,
+            "signedUp": False,
         }
     ]
     hackathon, oficina = corpo["next"]["items"]
     # O evento mostra o prazo de inscrição; o presencial mostra a cidade.
+    # O evento vem com o tipo, para o front abrir o detalhe do evento (M6), e não a
+    # tela da atividade.
     assert hackathon == {
         "id": "curadoria-4",
+        "kind": "evento",
         "theme": "programacao",
         "typeLabel": "Hackathon",
         "title": "Hackathon ficticio",
         "details": "Presencial · Maceió",
         "deadline": "2099-02-28",
+        "signedUp": False,
     }
     # A ação de grupo não tem prazo, só "inscrições abertas".
+    # Toda ação de grupo é um evento.
     assert oficina == {
         "id": "acao-7",
+        "kind": "evento",
         "theme": "robotica",
         "typeLabel": "Oficina",
         "title": "Oficina ficticia de robos",
         "details": "Presencial · Maceió",
         "deadline": None,
+        "signedUp": False,
     }
 
 
@@ -262,6 +271,8 @@ async def test_evento_inscrita_fica_nas_proximas_aventuras() -> None:
 
     assert titulos(response, "next") == ["Hackathon ficticio"]
     assert contadores(response) == {"inProgress": 0, "next": 1, "concluded": 0}
+    # As telas do M6 mostram "Inscrita": o item diz que ela se inscreveu.
+    assert response.json()["next"]["items"][0]["signedUp"] is True
 
 
 async def test_le_so_o_que_entrou_no_file() -> None:

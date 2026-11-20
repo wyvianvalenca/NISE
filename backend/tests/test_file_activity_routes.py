@@ -17,7 +17,7 @@ from app.modules.catalog.models import CuratedItem, CuratedType, ItemKind
 from app.modules.girl_file.models import FileEntry, FileStatus
 from app.modules.girls.models import EffortBand, Girl, Topic
 from app.users.models import Role, User
-from tests.helpers import chamar_rota, sessao_com
+from tests.helpers import chamar_rota, sessao_com, sql_do_postgres
 from tests.test_discover_routes import FUTURO, curado, menina, usuaria
 from tests.test_file_undo_routes import desfazer, sessao_do_desfazer
 
@@ -218,7 +218,17 @@ async def test_evento_nao_abre_aqui() -> None:
     assert response.json() == {"error": "item_not_found"}
 
 
-@pytest.mark.parametrize("item", ["acao-7", "12", "curadoria-abc", "evento-12"])
+@pytest.mark.parametrize(
+    "item",
+    [
+        "acao-7",
+        "12",
+        "curadoria-abc",
+        "evento-12",
+        "curadoria-2147483648",
+        "curadoria-03",
+    ],
+)
 async def test_acao_de_grupo_ou_id_invalido_responde_404(item: str) -> None:
     # Uma ação de grupo é sempre um evento: nem chega a buscar a linha.
     sessao_falsa = sessao_da_atividade(menina())
@@ -231,6 +241,17 @@ async def test_acao_de_grupo_ou_id_invalido_responde_404(item: str) -> None:
 
 
 # --- PUT /api/file/{id}/status: a mudança de status ---------------------------
+
+
+async def test_mudar_o_status_trava_a_linha_antes_de_decidir() -> None:
+    sessao_falsa = sessao_da_atividade(menina(), linha(FileStatus.IN_PROGRESS), curso())
+
+    await mudar(sessao_falsa, "concluded")
+
+    # SELECT ... FOR UPDATE: um "Tirar do filé" ao mesmo tempo espera esta
+    # mudança e vê a atividade já concluída (e responde 409, sem apagar).
+    busca_da_linha = sessao_falsa.scalar.await_args_list[2].args[0]
+    assert "FOR UPDATE" in sql_do_postgres(busca_da_linha)
 
 
 async def test_marcar_como_iniciada_leva_para_em_andamento() -> None:

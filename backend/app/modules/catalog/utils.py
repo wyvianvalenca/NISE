@@ -45,8 +45,17 @@ def item_id(origin: ItemOrigin, number: int) -> str:
     return f"{origin.value}-{number}"
 
 
+# O maior id que cabe nas colunas de id do banco (integer do Postgres, int4).
+MAX_ID = 2_147_483_647
+
+
 def parse_item_id(text: str) -> tuple[ItemOrigin, int] | None:
-    """O contrário de `item_id`. Devolve None se o texto não é um id válido."""
+    """O contrário de `item_id`. Devolve None se o texto não é um id válido.
+
+    Só a forma que `item_id` escreve: sem zero à esquerda ("acao-07" não é
+    "acao-7") e dentro do que o banco guarda. Um número maior que o int4 daria
+    erro 500 na consulta, em vez do 404 de um item que não existe.
+    """
     origin_text, _, number_text = text.rpartition("-")
     try:
         origin = ItemOrigin(origin_text)
@@ -55,4 +64,9 @@ def parse_item_id(text: str) -> tuple[ItemOrigin, int] | None:
     # isascii: isdigit sozinho aceita "²", que o int() recusa.
     if not (number_text.isascii() and number_text.isdigit()):
         return None
-    return origin, int(number_text)
+    if number_text.startswith("0"):
+        return None
+    number = int(number_text)
+    if number > MAX_ID:
+        return None
+    return origin, number

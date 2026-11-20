@@ -5,10 +5,10 @@ from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
 from app.modules.catalog.models import CuratedItem
-from app.modules.catalog.service import from_curated, is_suggestible
+from app.modules.catalog.service import from_curated, suggestible_audience
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
-from app.modules.girl_file.models import FileEntry
+from app.modules.girl_file.models import FileEntry, FileStatus
 from app.modules.girl_file.schemas import (
     ActivityOut,
     ChoiceIn,
@@ -23,6 +23,7 @@ from app.modules.girl_file.service import (
     advance_status,
     file_total,
     find_activity,
+    find_entry,
     load_file,
     load_later,
     remove_choice,
@@ -33,6 +34,7 @@ from app.modules.girls.models import EffortBand, Girl
 from app.modules.girls.service import get_girl_of_user
 from app.modules.girls.utils import today_in_maceio
 from app.modules.suggestions.service import (
+    fits_profile,
     get_girl_with_topics,
     profile_of,
     why_for_you,
@@ -49,6 +51,17 @@ RESPONSES: dict[int | str, dict[str, Any]] = {
             'A conta não tem registro de menina: {"error": "profile_not_found"}.'
             " O item não existe ou ela não poderia vê-lo nas sugestões:"
             ' {"error": "item_not_found"}'
+        )
+    },
+}
+
+CHOICE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **RESPONSES,
+    status.HTTP_409_CONFLICT: {
+        "description": (
+            "O item já tem outra escolha dela que não se troca por aqui (no filé,"
+            ' concluído, inscrita ou no "Não é pra mim"): só um item sem escolha ou'
+            ' no Ver depois aceita uma escolha: {"error": "already_chosen"}'
         )
     },
 }
@@ -94,14 +107,17 @@ async def my_file(
 # sugestões, com o motivo opcional da A06·2a. Responde o novo total do filé,
 # para a pílula "Meu filé".
 #
-# `item_id` é o id do catálogo, "curadoria-12" ou "acao-7". Escolher de novo no
-# mesmo item troca a escolha anterior. A menina é sempre a da sessão: não há id
-# dela na URL nem no corpo (RNF-G.03).
-@router.put("/{item_id}", response_model=ChoiceOut, responses=RESPONSES)
+# `item_id` é o id do catálogo, "curadoria-12" ou "acao-7". Só um item sem
+# escolha dela, que ela veria nas sugestões hoje (visível, da cidade e do perfil
+# dela), ou um item do Ver depois aceita uma escolha (o "+ Quero fazer" da #110).
+# No filé, concluído, inscrita ou no "Não é pra mim" responde 409, sem apagar a
+# nota, o dia da conclusão ou a inscrição. Repetir a mesma escolha vale. A
+# menina é sempre a da sessão: não há id dela na URL nem no corpo (RNF-G.03).
+@router.put("/{item_id}", response_model=ChoiceOut, responses=CHOICE_RESPONSES)
 async def choose(
     item_id: str, data: ChoiceIn, user: AcceptedGirlDep, session: AsyncSessionDep
 ) -> ChoiceOut | JSONResponse:
-    girl = await get_girl_of_user(session, user.id)
+    girl = await get_girl_with_topics(session, user.id)
     if girl is None:
         # Não deveria acontecer: o cadastro (#51, #52) sempre cria ou liga um registro.
         return not_found("profile_not_found")
@@ -110,12 +126,27 @@ async def choose(
     if parsed is None:
         return not_found("item_not_found")
     origin, number = parsed
-    if not await is_suggestible(
-        session, origin, number, girl.city_ibge_code, today_in_maceio()
+    today = today_in_maceio()
+    audience = await suggestible_audience(
+        session, origin, number, girl.city_ibge_code, today
+    )
+    if audience is None:
+        return not_found("item_not_found")
+
+    entry = await find_entry(session, girl.id, origin, number, for_update=True)
+    # Um item novo só vale se for do perfil dela, como nas sugestões. O que já está
+    # no Ver depois foi sugerido a ela antes: o perfil pode ter mudado desde então.
+    if entry is None and not fits_profile(
+        audience.topics, audience.stages, audience.min_age, profile_of(girl, today)
     ):
         return not_found("item_not_found")
 
-    await save_choice(session, girl.id, origin, number, data.choice, data.reason)
+    if not await save_choice(
+        session, girl.id, origin, number, data.choice, data.reason, entry
+    ):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content={"error": "already_chosen"}
+        )
     return ChoiceOut(file_total=await file_total(session, girl.id))
 
 
@@ -130,9 +161,16 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
     status.HTTP_409_CONFLICT: {
         "description": (
             "Uma atividade concluída não sai do filé:"
-            ' {"error": "concluded_cannot_be_removed"}'
+            ' {"error": "concluded_cannot_be_removed"}. Um evento em que ela se'
+            ' inscreveu também não: {"error": "signed_up_cannot_be_removed"}'
         )
     },
+}
+
+# Por que a escolha não pôde ser apagada (remove_choice devolve o status).
+CANNOT_REMOVE: dict[FileStatus, str] = {
+    FileStatus.CONCLUDED: "concluded_cannot_be_removed",
+    FileStatus.SIGNED_UP: "signed_up_cannot_be_removed",
 }
 
 
@@ -144,7 +182,8 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
 # Não confere se o item ainda aparece nas sugestões: uma ação que fechou entre a
 # escolha e o "Desfazer" também precisa ser desfeita. Um item sem escolha dela
 # responde 200 sem mudar nada, então chamar duas vezes dá o mesmo resultado.
-# Uma atividade concluída não sai do filé: responde 409 (tabela de status da #78).
+# Uma atividade concluída e um evento em que ela se inscreveu não saem do filé:
+# responde 409 (tabela de status da #78).
 # A menina é sempre a da sessão; a linha de outra menina nunca é achada (RNF-G.03).
 @router.delete("/{item_id}", response_model=ChoiceOut, responses=UNDO_RESPONSES)
 async def undo_choice(
@@ -159,10 +198,11 @@ async def undo_choice(
         return not_found("item_not_found")
     origin, number = parsed
 
-    if not await remove_choice(session, girl.id, origin, number):
+    blocked = await remove_choice(session, girl.id, origin, number)
+    if blocked is not None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
-            content={"error": "concluded_cannot_be_removed"},
+            content={"error": CANNOT_REMOVE.get(blocked, "cannot_be_removed")},
         )
     return ChoiceOut(file_total=await file_total(session, girl.id))
 
@@ -238,7 +278,8 @@ async def change_status(
     if girl is None:
         return not_found("profile_not_found")
 
-    found = await find_activity(session, girl.id, item_id)
+    # Travada: um "Tirar do filé" ao mesmo tempo espera esta mudança, e o contrário.
+    found = await find_activity(session, girl.id, item_id, for_update=True)
     if found is None:
         return not_found("item_not_found")
     entry, item = found
@@ -281,7 +322,7 @@ async def send_feedback(
     if girl is None:
         return not_found("profile_not_found")
 
-    found = await find_activity(session, girl.id, item_id)
+    found = await find_activity(session, girl.id, item_id, for_update=True)
     if found is None:
         return not_found("item_not_found")
     entry, _ = found

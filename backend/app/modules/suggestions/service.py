@@ -19,6 +19,7 @@ Tudo isso são funções puras (sem sessão), para serem testadas sem banco.
 Nada aqui usa nome, e-mail ou a data de nascimento além da idade (RN-05).
 """
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import date
 
@@ -101,29 +102,40 @@ def profile_of(girl: Girl, today: date) -> GirlProfile:
     )
 
 
-def matches_profile(item: CatalogItem, profile: GirlProfile) -> bool:
-    """O item combina com os temas, a etapa de estudo e a idade dela (RF-F11.02).
+def fits_profile(
+    topics: Collection[Topic],
+    stages: Collection[StudyStage],
+    min_age: int | None,
+    profile: GirlProfile,
+) -> bool:
+    """Um item com esses temas, etapas e idade mínima é para ela (RF-F11.02)?
 
-    A cidade já foi conferida em `load_catalog` (RN-16).
-
-    - Tema: pelo menos um tema em comum. Quem pediu "me mostra de tudo", ou
-      ainda não escolheu temas, vê todos.
+    - Tema: pelo menos um tema em comum. Item sem tema (uma ação de grupo pode
+      ser cadastrada sem, RF-F17.06) serve para todos os temas, como o item sem
+      etapa serve para todas. Quem pediu "me mostra de tudo", ou ainda não
+      escolheu temas, vê todos.
     - Etapa: item sem etapas serve para todas; quem não informou a etapa vê todos.
     - Idade: item com idade mínima só aparece para quem tem essa idade. Sem a
       data de nascimento, ela não vê os itens com idade mínima.
     """
     likes_topic = (
-        not profile.topics
+        not topics
+        or not profile.topics
         or profile.all_topics
-        or bool(profile.topics.intersection(item.topics))
+        or bool(profile.topics.intersection(topics))
     )
-    fits_stage = (
-        not item.stages or profile.stage is None or profile.stage in item.stages
-    )
-    old_enough = item.min_age is None or (
-        profile.age is not None and profile.age >= item.min_age
-    )
+    fits_stage = not stages or profile.stage is None or profile.stage in stages
+    old_enough = min_age is None or (profile.age is not None and profile.age >= min_age)
     return likes_topic and fits_stage and old_enough
+
+
+def matches_profile(item: CatalogItem, profile: GirlProfile) -> bool:
+    """O item combina com os temas, a etapa de estudo e a idade dela (RF-F11.02).
+
+    A cidade já foi conferida em `load_catalog` (RN-16). As regras estão em
+    `fits_profile`, que a escolha numa sugestão também usa.
+    """
+    return fits_profile(item.topics, item.stages, item.min_age, profile)
 
 
 def choice_weight(item: CatalogItem, choice: PastChoice) -> int:
