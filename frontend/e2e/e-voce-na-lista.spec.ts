@@ -22,7 +22,11 @@ const MATCH = {
 type Mocks = {
   matches?: unknown[];
   matchesStatus?: number;
+  /** Body of an error answer from GET /api/matches. */
+  matchesError?: unknown;
   answerStatus?: number;
+  /** Body of an error answer from the answer route. */
+  answerError?: unknown;
 };
 
 /** Mocks the routes and returns the bodies the screen sent to the answer route. */
@@ -30,14 +34,21 @@ async function mockApi(page: Page, mocks: Mocks = {}): Promise<unknown[]> {
   const sent: unknown[] = [];
 
   await page.route("**/api/matches", (route) =>
-    route.fulfill({ status: mocks.matchesStatus ?? 200, json: mocks.matches ?? [MATCH] }),
+    route.fulfill(
+      (mocks.matchesStatus ?? 200) === 200
+        ? { status: 200, json: mocks.matches ?? [MATCH] }
+        : { status: mocks.matchesStatus, json: mocks.matchesError ?? { detail: "x" } },
+    ),
   );
   await page.route("**/api/matches/*/answer", (route) => {
     sent.push(route.request().postDataJSON());
     const status = mocks.answerStatus ?? 200;
     const body = route.request().postDataJSON() as { is_me: boolean; enrolled?: boolean };
     const result = !body.is_me ? "dismissed" : body.enrolled ? "enrolled" : "approved";
-    return route.fulfill({ status, json: status === 200 ? { result } : { detail: "x" } });
+    return route.fulfill({
+      status,
+      json: status === 200 ? { result } : (mocks.answerError ?? { detail: "x" }),
+    });
   });
   return sent;
 }
@@ -85,9 +96,9 @@ test.describe("A19 · É você na lista?", () => {
     await expect(send).toBeEnabled();
   });
 
-  for (const [label, enrolled, expected] of [
-    ["Já me matriculei", true, { is_me: true, enrolled: true }],
-    ["Ainda não", false, { is_me: true, enrolled: false }],
+  for (const [label, expected] of [
+    ["Já me matriculei", { is_me: true, enrolled: true }],
+    ["Ainda não", { is_me: true, enrolled: false }],
   ] as const) {
     test(`"Sou eu" + "${label}" sends ${JSON.stringify(expected)} and goes to Seu filé`, async ({
       page,
@@ -101,7 +112,6 @@ test.describe("A19 · É você na lista?", () => {
 
       await expect(page).toHaveURL(/\/file$/);
       expect(sent).toEqual([expected]);
-      expect(enrolled).toBe(expected.enrolled);
     });
   }
 
@@ -141,19 +151,54 @@ test.describe("A19 · É você na lista?", () => {
     await expect(page.getByRole("radio", { name: "Não sou eu" })).toBeChecked();
   });
 
-  test("a match answered or deleted while the screen was open", async ({ page }) => {
-    await mockApi(page, { answerStatus: 409 });
-    await page.goto("/agenda/e-voce-na-lista");
+  // 409: she already answered. 404: the match expired or was deleted (what the back
+  // answers for an expired match).
+  for (const status of [409, 404]) {
+    test(`a match answered, expired or deleted while the screen was open (${status})`, async ({ page }) => {
+      await mockApi(page, { answerStatus: status });
+      await page.goto("/agenda/e-voce-na-lista");
 
-    await page.getByRole("radio", { name: "Não sou eu" }).check();
-    await page.getByRole("button", { name: "Enviar" }).click();
+      await page.getByRole("radio", { name: "Não sou eu" }).check();
+      await page.getByRole("button", { name: "Enviar" }).click();
 
-    await expect(
-      page.getByRole("heading", { name: "Essa pergunta não está mais aqui" }),
-    ).toBeFocused();
-    await expect(page.getByRole("link", { name: "Voltar pra agenda" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Voltar pra agenda" })).toHaveCSS("color", "rgb(10, 59, 72)");
-  });
+      await expect(
+        page.getByRole("heading", { name: "Essa pergunta não está mais aqui" }),
+      ).toBeFocused();
+      await expect(page.getByRole("link", { name: "Voltar pra agenda" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Voltar pra agenda" })).toHaveCSS(
+        "color",
+        "rgb(10, 59, 72)",
+      );
+      await expect(page.getByRole("alert").filter({ hasText: "Não deu pra enviar" })).toHaveCount(0);
+    });
+  }
+
+  // "Tentar novamente" would never fix an expired session or new terms, so the screen
+  // sends her where she can fix it, like the sign-up steps do.
+  for (const [what, status, body, path] of [
+    ["an expired session", 401, { detail: "Não autenticado" }, /\/$/],
+    ["an incomplete Google sign-up", 401, { detail: "Cadastro incompleto" }, /\/cadastro\/google$/],
+    ["new terms not accepted yet", 403, { error: "terms_not_accepted" }, /\/cadastro\/termos$/],
+  ] as const) {
+    test(`loading with ${what} goes where she can fix it`, async ({ page }) => {
+      await mockApi(page, { matchesStatus: status, matchesError: body });
+      await page.goto("/agenda/e-voce-na-lista");
+
+      await expect(page).toHaveURL(path);
+      await expect(page.getByText("ALANA")).toHaveCount(0);
+    });
+
+    test(`sending with ${what} goes where she can fix it`, async ({ page }) => {
+      const sent = await mockApi(page, { answerStatus: status, answerError: body });
+      await page.goto("/agenda/e-voce-na-lista");
+
+      await page.getByRole("radio", { name: "Não sou eu" }).check();
+      await page.getByRole("button", { name: "Enviar" }).click();
+
+      await expect(page).toHaveURL(path);
+      expect(sent).toEqual([{ is_me: false }]);
+    });
+  }
 
   test("a 200 whose body is not JSON says it failed, instead of staying on Enviando…", async ({ page }) => {
     await mockApi(page);

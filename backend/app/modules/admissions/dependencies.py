@@ -3,16 +3,18 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 
-from app.auth.permissions import GirlDep
 from app.db.engine import AsyncSessionDep
+from app.modules.consents.permissions import AcceptedGirlDep
 from app.modules.girls.models import Girl
 
 
-async def get_current_girl(session: AsyncSessionDep, user: GirlDep) -> Girl:
-    """O registro de menina da conta logada.
+async def get_current_girl(session: AsyncSessionDep, user: AcceptedGirlDep) -> Girl:
+    """O registro de menina da conta logada, que aceitou a versão atual dos termos.
 
-    Só contas de menina chegam aqui (GirlDep): coordenadora e curadoria levam
-    403 antes de qualquer consulta (RNF-F31.02).
+    Só contas de menina chegam aqui: coordenadora e curadoria levam 403 antes
+    de qualquer consulta (RNF-F31.02). Sem o aceite da versão atual, 403
+    {"error": "terms_not_accepted"}: a comparação com listas oficiais depende
+    dos termos (RN-20).
     """
     girl = await session.scalar(select(Girl).where(Girl.user_id == user.id))
 

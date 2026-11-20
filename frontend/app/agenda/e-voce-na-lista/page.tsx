@@ -10,13 +10,20 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { LoadFailed } from "@/components/LoadFailed";
 import { TextLink } from "@/components/TextLink";
-import { answerMatch, firstName, getMyMatches, type ListMatch } from "@/lib/lista-oficial";
+import {
+  accessPath,
+  answerMatch,
+  firstName,
+  getMyMatches,
+  type ListMatch,
+} from "@/lib/lista-oficial";
 import styles from "./page.module.css";
 
 const AGENDA_PATH = "/agenda";
 const FILE_PATH = "/file";
 
 export default function IsItYouPage() {
+  const router = useRouter();
   // undefined: carregando. null: não há pergunta aberta. "error": a busca falhou.
   const [match, setMatch] = useState<ListMatch | null | undefined | "error">(undefined);
   const [attempt, setAttempt] = useState(0);
@@ -24,13 +31,22 @@ export default function IsItYouPage() {
   useEffect(() => {
     const controller = new AbortController();
     getMyMatches(controller.signal)
-      // Com mais de um indício, mostra o mais antigo; os outros continuam na agenda.
-      .then((matches) => setMatch(matches[0] ?? null))
+      .then((result) => {
+        if (result.ok) {
+          // Com mais de um indício, mostra o mais antigo; os outros continuam na agenda.
+          setMatch(result.matches[0] ?? null);
+        } else if (result.reason === "failed") {
+          setMatch("error");
+        } else {
+          // Login vencido ou termos novos: "Tentar novamente" não resolveria.
+          router.replace(accessPath(result.reason));
+        }
+      })
       .catch(() => {
         if (!controller.signal.aborted) setMatch("error");
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, router]);
 
   if (match === "error") {
     return (
@@ -107,6 +123,10 @@ function Question({ match }: { match: ListMatch }) {
 
     if (result.ok) {
       router.push(FILE_PATH);
+      return;
+    }
+    if (result.reason !== "gone" && result.reason !== "failed") {
+      router.replace(accessPath(result.reason));
       return;
     }
     setSending(false);

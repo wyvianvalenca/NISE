@@ -2,7 +2,11 @@
 //
 // Chama as rotas do FastAPI em /api/matches. Os tipos seguem o OpenAPI do back
 // (app/modules/admissions/schemas.py); se uma rota mudar, só este arquivo muda.
-// Só a própria menina recebe estes dados (RNF-F31.02).
+// Só a própria menina recebe estes dados (RNF-F31.02), e só depois de aceitar a
+// versão atual dos termos (RN-20): sem o aceite, 403 {"error": "terms_not_accepted"}.
+
+import { SIGNUP_PATHS } from "./signup";
+import { sessionProblem, WITHOUT_SESSION, type SessionProblem } from "./signup-api";
 
 export type CourseLevel = "tecnico" | "graduacao";
 
@@ -26,20 +30,53 @@ export type ListMatch = {
 
 export type MatchAnswer = { isMe: false } | { isMe: true; enrolled: boolean };
 
+/**
+ * Por que a rota não atendeu a sessão dela: sem login (ou o login venceu), cadastro
+ * do Google incompleto, ou uma versão nova dos termos ainda sem aceite.
+ * "Tentar novamente" não resolve nenhum desses; a tela leva para onde resolve.
+ */
+export type AccessProblem = SessionProblem | "terms_not_accepted";
+
+/** Para onde ela vai quando a sessão ou o aceite dos termos não deixam seguir. */
+export function accessPath(problem: AccessProblem): string {
+  return problem === "terms_not_accepted" ? SIGNUP_PATHS.terms : WITHOUT_SESSION[problem];
+}
+
+export type MatchesResult =
+  | { ok: true; matches: ListMatch[] }
+  | { ok: false; reason: AccessProblem | "failed" };
+
 export type AnswerResult =
   | { ok: true; result: "enrolled" | "approved" | "dismissed" }
-  /** Ela já respondeu, o indício venceu ou foi apagado com a tela aberta. */
-  | { ok: false; reason: "gone" | "failed" };
+  /** "gone": ela já respondeu, o indício venceu ou foi apagado com a tela aberta. */
+  | { ok: false; reason: AccessProblem | "gone" | "failed" };
 
-/** Os indícios sem resposta dela, do mais antigo para o mais novo. */
-export async function getMyMatches(signal?: AbortSignal): Promise<ListMatch[]> {
+/** 401 e 403 {"error": "terms_not_accepted"}; qualquer outra resposta, null. */
+export async function accessProblem(response: Response): Promise<AccessProblem | null> {
+  if (response.status === 401) return sessionProblem(response);
+  if (response.status === 403) {
+    const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
+    if (body?.error === "terms_not_accepted") return "terms_not_accepted";
+  }
+  return null;
+}
+
+/**
+ * Os indícios sem resposta dela, do mais antigo para o mais novo.
+ * Sem rede, a promessa falha (como o fetch); quem chama trata como "failed".
+ */
+export async function getMyMatches(signal?: AbortSignal): Promise<MatchesResult> {
   const response = await fetch("/api/matches", { signal });
 
   if (!response.ok) {
-    throw new Error(`matches: ${response.status}`);
+    return { ok: false, reason: (await accessProblem(response)) ?? "failed" };
   }
 
-  return (await response.json()) as ListMatch[];
+  try {
+    return { ok: true, matches: (await response.json()) as ListMatch[] };
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
 }
 
 /** Grava a resposta da A19. Só dá pra responder uma vez (409). */
@@ -61,7 +98,7 @@ export async function answerMatch(id: number, answer: MatchAnswer): Promise<Answ
     return { ok: false, reason: "gone" };
   }
   if (!response.ok) {
-    return { ok: false, reason: "failed" };
+    return { ok: false, reason: (await accessProblem(response)) ?? "failed" };
   }
 
   // Um 200 com corpo que não é JSON também é falha: sem isto, o botão

@@ -189,11 +189,13 @@
 
 /* TextLink é teal, que no papel dá 4,26:1, abaixo do AA (#169). Aqui o texto
    fica em ink, como o "Ver lista oficial", e só a seta continua teal. */
-.inkLink {
+/* A classe repetida ganha do .link do TextLink pela especificidade, não pela ordem
+   das folhas de estilo, que no build de produção pode mudar. */
+.inkLink.inkLink {
   color: var(--nise-ink);
 }
 
-.inkLink > span {
+.inkLink.inkLink > span {
   color: var(--nise-teal);
 }
 

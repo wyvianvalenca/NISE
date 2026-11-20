@@ -168,11 +168,20 @@ def token_maria() -> Iterator[str]:
     yield create_access_token(MARIA.id)
 
 
-def _sessao_rota(usuaria: User, menina: Girl | None, indicio: object) -> AsyncMock:
-    # get(User) para o login; scalar: 1º a menina da conta, 2º o indício.
+ACEITE_DOS_TERMOS = 10
+
+
+def _sessao_rota(
+    usuaria: User,
+    menina: Girl | None,
+    indicio: object,
+    aceite: int | None = ACEITE_DOS_TERMOS,
+) -> AsyncMock:
+    # get(User) para o login; scalar: 1º o aceite dos termos (o id, ou None),
+    # 2º a menina da conta, 3º o indício.
     sessao_falsa = AsyncMock()
     sessao_falsa.get.return_value = usuaria
-    sessao_falsa.scalar.side_effect = [menina, indicio]
+    sessao_falsa.scalar.side_effect = [aceite, menina, indicio]
     sessao_falsa.scalars.return_value = MagicMock(
         all=MagicMock(return_value=[indicio] if indicio else [])
     )
@@ -290,3 +299,30 @@ async def test_sem_login_da_401() -> None:
     response = await chamar_rota(app, "GET", "/api/matches", _sessao(None))
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("metodo", "url", "corpo"),
+    [
+        ("GET", "/api/matches", None),
+        ("POST", "/api/matches/11/answer", {"is_me": True, "enrolled": True}),
+    ],
+)
+async def test_sem_o_aceite_da_versao_atual_dos_termos_da_403(
+    token_maria: str, metodo: str, url: str, corpo: dict[str, object] | None
+) -> None:
+    # RN-20: a comparação com listas oficiais depende dos termos. Quando a
+    # equipe publica uma versão nova, ela não vê nem responde até aceitar.
+    sessao_falsa = _sessao_rota(MARIA, GIRL, _indicio(), aceite=None)
+
+    response = await chamar_rota(
+        app, metodo, url, sessao_falsa, token=token_maria, corpo=corpo
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"error": "terms_not_accepted"}
+    # Parou no aceite: não procurou a menina nem o indício, e não gravou nada.
+    assert sessao_falsa.scalar.await_count == 1
+    sessao_falsa.scalars.assert_not_called()
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_not_awaited()
