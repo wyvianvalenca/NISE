@@ -6,9 +6,11 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Instala as dependências primeiro para aproveitar o cache de camadas.
+# Instala as dependências primeiro para aproveitar o cache de camadas. O store
+# do pnpm fica num volume do build: quando o lockfile muda, só baixa o que é novo.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm install --frozen-lockfile --store-dir /pnpm/store
 
 COPY . .
 

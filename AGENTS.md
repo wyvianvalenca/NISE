@@ -24,7 +24,8 @@ O uv usa um workspace: `uv.lock` e `.venv` ficam na raiz. Ferramentas e o porqu�
 - Instalar: `uv sync` (raiz), `pnpm install` (em `frontend/`), `uv run prek install` (hooks, uma vez)
 - Tudo de uma vez, como o CI: `uv run prek run --all-files` (raiz)
 - Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
-- Migração nova (em `backend/`): `uv run alembic revision --autogenerate -m "..."`
+- Migração nova (em `backend/`, na máquina, não no container): `uv run alembic revision --autogenerate -m "..."`
+- Docker: `docker compose up --watch`; migrações e municípios rodam sozinhos no serviço `prestart` (de novo: `docker compose run --rm prestart`). Nunca rode `docker compose down -v` sem a pessoa pedir: apaga o banco local.
 - Front (em `frontend/`): `pnpm format`, `pnpm lint`, `pnpm typecheck` (não use `tsc --noEmit` solto), `pnpm build`, `pnpm test:e2e`
 - Tipos da API: `bash scripts/generate-client.sh` (raiz) regenera `frontend/lib/api/` do OpenAPI; o hook faz isso sozinho quando o back muda. No front, chame as rotas do back pelo cliente gerado (`@/lib/api`), não com `fetch` e tipos à mão. Nunca edite `lib/api/` à mão.
 

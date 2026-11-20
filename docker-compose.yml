@@ -1,5 +1,12 @@
 # Ambiente local da NISE: banco, back-end e front-end.
-# Subir: docker compose up -d   ·   Parar: docker compose down
+# Subir: docker compose up --watch   ·   Parar: Ctrl+C e docker compose down
+# Explicação em docs/ferramentas.md (seção 9).
+
+# Build do back, usado pelo `prestart` e pelo `backend`. Contexto na raiz: o
+# uv.lock do workspace fica lá.
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
 
 services:
   db:
@@ -13,16 +20,30 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nise -d nise"]
+      # $$ chega como $ no container, que lê as variáveis acima.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # Roda uma vez antes do back subir: aplica as migrações e carrega os
+  # municípios do IBGE (repetir não duplica). Para rodar de novo, depois de uma
+  # migração nova: docker compose run --rm prestart
+  prestart:
+    build: *backend-build
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-nise}:${POSTGRES_PASSWORD:-nise}@db:5432/${POSTGRES_DB:-nise}
+    command:
+      - sh
+      - -c
+      - uv run alembic upgrade head && uv run python -m scripts.carregar_municipios
+    depends_on:
+      db:
+        condition: service_healthy
+
   backend:
-    # Contexto na raiz: o uv.lock do workspace fica lá (veja docs/ferramentas.md).
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    build: *backend-build
     env_file: .env
     ports:
       - "8000:8000"
@@ -33,14 +54,42 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      # Monta o código para o uvicorn --reload recarregar ao salvar; a .venv
-      # fica em volume próprio para não brigar com a da máquina. O pyproject
-      # e o uv.lock da raiz também, para o `uv run` ver dependências novas.
-      - ./backend:/app/backend
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./uv.lock:/app/uv.lock
-      - backend_venv:/app/.venv
+        # Se o banco reiniciar, o back reinicia junto.
+        restart: true
+      prestart:
+        condition: service_completed_successfully
+    healthcheck:
+      # A imagem não tem curl; o Python faz a requisição.
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    develop:
+      # Com `docker compose up --watch`: o código salvo na máquina é copiado
+      # para o container, e o uvicorn --reload recarrega. Mudou dependência,
+      # a imagem é refeita sozinha.
+      watch:
+        - path: ./backend
+          target: /app/backend
+          action: sync
+          ignore:
+            - .venv/
+            - __pycache__/
+            - .mypy_cache/
+            - .ruff_cache/
+            - .pytest_cache/
+            - htmlcov/
+        - path: ./backend/pyproject.toml
+          action: rebuild
+        - path: ./pyproject.toml
+          action: rebuild
+        - path: ./uv.lock
+          action: rebuild
 
   frontend:
     build: ./frontend
@@ -49,16 +98,25 @@ services:
     environment:
       # Dentro da rede do compose o FastAPI atende pelo nome do serviço.
       BACKEND_URL: http://backend:8000
-    depends_on: [backend]
-    volumes:
-      # Monta o código para o next dev recarregar ao salvar; node_modules e
-      # .next ficam em volumes próprios para não brigarem com os da máquina.
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-      - frontend_next:/app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    develop:
+      # Com `docker compose up --watch`: o código salvo é copiado para o
+      # container, e o next dev recarrega. Mudou dependência, refaz a imagem.
+      watch:
+        - path: ./frontend
+          target: /app
+          action: sync
+          ignore:
+            - node_modules/
+            - .next/
+            - test-results/
+            - playwright-report/
+        - path: ./frontend/package.json
+          action: rebuild
+        - path: ./frontend/pnpm-lock.yaml
+          action: rebuild
 
 volumes:
   pgdata:
-  backend_venv:
-  frontend_node_modules:
-  frontend_next:

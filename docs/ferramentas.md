@@ -22,6 +22,8 @@ A base foi o [full-stack-fastapi-template](https://github.com/fastapi/full-stack
 | Segredos no commit | gitleaks | `.pre-commit-config.yaml` | Hook |
 | Segurança dos workflows | zizmor | `.pre-commit-config.yaml` | Hook e CI |
 | CI | GitHub Actions | `.github/workflows/ci.yml` | Todo PR e push em `develop`/`main` |
+| Ambiente local | Docker Compose (`--watch`) | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile` | `docker compose up --watch` |
+| Atualização de dependências | Dependabot | `.github/dependabot.yml` | Uma vez por mês |
 
 ## 1. Workspace do uv
 
@@ -177,6 +179,41 @@ No CI, o job `backend-tests` sobe um Postgres 16 (a mesma versão do docker comp
 **Cobertura:** o CI roda os testes pelo `coverage` e mostra quanto do `app/` os testes alcançam, com as linhas que ficaram de fora. Não há meta mínima (decisão do CONTRIBUTING); o relatório serve para achar o que ficou sem teste. Na máquina: `uv run coverage run -m pytest && uv run coverage html` e abra `backend/htmlcov/index.html`.
 
 **Por quê:** o template do FastAPI roda os testes no Postgres de verdade. Na NISE, várias regras são garantidas pelo banco (por exemplo, a RNF-F4.01, "nunca dois envios iguais", é uma restrição única), e o CONTRIBUTING já pedia "migrações em dia" sem nada que conferisse.
+
+## 9. Docker Compose
+
+O `docker-compose.yml` sobe o ambiente local: `db` (Postgres 16), `prestart`, `backend` e `frontend`. Em produção nada disso roda; quem publica é a Vercel.
+
+Ordem de subida, garantida pelos `depends_on` e pelos *healthchecks*:
+
+1. **`db`** sobe e fica saudável quando o `pg_isready` responde. O healthcheck usa as variáveis `POSTGRES_USER` e `POSTGRES_DB`, então trocar o usuário no `.env` não quebra mais a espera.
+2. **`prestart`** roda uma vez e termina: aplica as migrações (`alembic upgrade head`) e carrega os municípios do IBGE. É a mesma imagem do back. Para rodar de novo depois de uma migração nova: `docker compose run --rm prestart`.
+3. **`backend`** só sobe depois que o `prestart` termina sem erro. Fica saudável quando `/api/health` responde (o healthcheck usa o Python, porque a imagem não tem `curl`). Se o banco reiniciar, ele reinicia junto (`restart: true`).
+4. **`frontend`** só sobe com o back saudável.
+
+**`docker compose up --watch` no lugar das pastas montadas.** Antes, `backend/` e `frontend/` eram montadas dentro dos containers, com volumes à parte para a `.venv` e o `node_modules`. No Docker Desktop do Windows, pasta montada é lenta e às vezes não avisa o container que um arquivo mudou. Com o `watch`:
+
+- O código salvo é **copiado** para o container (`sync`), e o uvicorn e o next dev recarregam.
+- Mudança de dependência **refaz a imagem** (`rebuild`), e o container sobe de novo.
+- A cópia é **só de ida**: o que o container escreve não volta para a máquina. Por isso migração nova se gera na máquina (`cd backend && uv run alembic revision --autogenerate -m "..."`), usando o banco do Docker pela porta 5432.
+
+**Dockerfiles:**
+
+- O back usa a imagem do uv com a **versão fixada** (`0.13.6`), a mesma da máquina e do CI. A etiqueta antiga, sem versão (`python3.12-bookworm-slim`), parou de ser atualizada e trazia o uv 0.9.
+- Os dois usam um **cache do build** para os pacotes baixados (`RUN --mount=type=cache`): quando o `uv.lock` ou o `pnpm-lock.yaml` muda, o build só baixa o que é novo.
+- O build do back usa a raiz como contexto (por causa do `uv.lock` do workspace, seção 1); o `backend/Dockerfile.dockerignore` lista o que entra.
+
+## 10. Dependabot
+
+O Dependabot abre, uma vez por mês, um PR por ecossistema com as atualizações disponíveis: Python (uv), front (pnpm), imagens dos Dockerfiles, imagem do Postgres no compose e actions do CI. Configuração em `.github/dependabot.yml`.
+
+- Os PRs vão para a **`develop`**, como qualquer outro, e precisam do CI verde e de 1 aprovação.
+- **Cooldown de 7 dias:** só propõe uma versão uma semana depois de ela sair. Versões comprometidas costumam ser descobertas e retiradas nesse intervalo.
+- **Agrupado:** um PR por ecossistema por mês, em vez de um por pacote.
+- O `@hey-api/openapi-ts` fica de fora: está fixado de propósito (seção 7). Atualize à mão e regenere o cliente.
+- Nas actions, o Dependabot atualiza o hash e o comentário da versão juntos.
+
+**Por quê:** sem isso, as dependências só são atualizadas quando alguém lembra, e correções de segurança passam despercebidas. É a mesma configuração do template do FastAPI, mirando a `develop` por causa do git flow.
 
 ## Fora do escopo, por enquanto
 

@@ -61,9 +61,7 @@ O front repassa tudo que começa com `/api` para o back (`rewrites` no `frontend
 
 ### 3.2. Tudo no Docker (dia a dia)
 
-1. Suba o ambiente: `docker compose up -d --build`. O `--build` só é preciso na primeira vez ou quando mudar um `Dockerfile`, o `pyproject.toml` ou o `package.json`.
-1. Aplique as migrações: `docker compose exec backend uv run alembic upgrade head`
-1. Carregue os municípios do IBGE (só na primeira vez; repetir não duplica): `docker compose exec backend uv run python -m scripts.carregar_municipios`
+1. Suba o ambiente: `docker compose up --watch`. Na primeira vez ele constrói as imagens. Antes de o back subir, o serviço `prestart` aplica as migrações e carrega os municípios do IBGE (repetir não duplica).
 1. Confira:
 
 | O quê | Onde |
@@ -74,11 +72,14 @@ O front repassa tudo que começa com `/api` para o back (`rewrites` no `frontend
 | Banco | `docker compose exec db psql -U nise -d nise -c "select 1"` |
 | Estado dos containers | `docker compose ps` |
 
-O código de `backend/` e `frontend/` fica montado nos containers: ao salvar, o back e o front recarregam sozinhos.
+Com o `--watch`, o código que você salva em `backend/` e `frontend/` é copiado para os containers, e o back e o front recarregam sozinhos. Se mudar dependências (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`), a imagem é refeita sozinha. Se mudar um `Dockerfile`, suba com `docker compose up --watch --build`.
 
-- Logs: `docker compose logs -f backend` (ou `frontend`, `db`)
-- Nova migração depois de mudar um model: `docker compose exec backend uv run alembic revision --autogenerate -m "..."`. O arquivo aparece em `backend/alembic/versions/`; revise antes de commitar.
-- Parar: `docker compose down`. Para apagar também os dados do banco: `docker compose down -v`
+A cópia é só da máquina para o container: o que o container escreve não volta para a sua pasta. Por isso, comandos que criam arquivos rodam **na máquina**, não no container.
+
+- Logs: o `--watch` mostra no terminal; em outro terminal, `docker compose logs -f backend` (ou `frontend`, `db`).
+- Nova migração depois de mudar um model, na máquina: `cd backend && uv run alembic revision --autogenerate -m "..."`. Ela usa o banco do Docker pelo `DATABASE_URL` do `.env`. O arquivo aparece em `backend/alembic/versions/`; revise antes de commitar.
+- Aplicar uma migração nova no banco do Docker: `docker compose run --rm prestart`.
+- Parar: `Ctrl+C` e depois `docker compose down`. Para apagar também os dados do banco: `docker compose down -v`. **Cuidado:** o `-v` apaga o banco local inteiro, sem volta.
 
 ### 3.3. Só o banco no Docker (para depurar)
 
@@ -107,7 +108,9 @@ Se um hook falhar, corrija a causa em vez de pular com `--no-verify`: o CI roda 
 | --- | --- | --- |
 | `error during connect ... dockerDesktopLinuxEngine` | Docker Desktop fechado | Abra o Docker Desktop e espere iniciar |
 | `port is already allocated` | Outro programa ou o modo 3.3 usando a porta | Pare o outro processo, ou troque `POSTGRES_PORT` no `.env` (e a porta do `DATABASE_URL` junto) |
-| O back não acha um pacote recém-adicionado | O container subiu antes de o `uv.lock` (na raiz) mudar | `docker compose restart backend` (ao iniciar, o `uv run` sincroniza a `.venv` com o `uv.lock`) |
+| O back ou o front não acha um pacote recém-adicionado | O ambiente subiu sem `--watch`, e a imagem não foi refeita | `docker compose up --watch --build` |
+| O back não sobe e o `prestart` aparece com erro em `docker compose ps -a` | Migração ou carga dos municípios falhou | `docker compose logs prestart` mostra o erro |
+| Arquivo criado dentro do container não aparece na sua pasta | O `--watch` só copia da máquina para o container | Rode o comando na máquina (veja a 3.2) |
 | `ValidationError ... database_url` ao rodar o back na máquina | Falta o `.env` na raiz | Volte à 3.1 |
 | A migração não detecta a tabela nova | O `models.py` não é importado no `alembic/env.py` | Importe o módulo do model no `env.py` |
 
@@ -167,6 +170,7 @@ Não há meta de cobertura de testes, mas toda história tem testes de back para
 ## 7. Pull requests
 
 - Título no formato de Conventional Commits.
+- Os PRs do Dependabot (atualização de dependências, um por mês para cada ecossistema) seguem as mesmas regras: CI verde e 1 aprovação. Leia as notas de versão das dependências com mudança maior antes de aprovar.
 - Descrição com: história e RFs cobertos (ex.: RF-F1.01), como testar, prints no celular quando houver tela.
 - 1 aprovação obrigatória de outra pessoa, que não seja quem abriu o PR. Configurar na proteção das branches `main` e `develop` do GitHub, junto com os checks obrigatórios do CI: `hooks`, `backend-tests`, `frontend-build` e `e2e`.
 - Toda mudança de modelo vem com a migração no mesmo PR.
