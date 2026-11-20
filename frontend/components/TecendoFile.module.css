@@ -17,6 +17,13 @@
   padding: 20px 24px 24px;
 }
 
+/* Dentro de outra tela (embedded): ocupa a largura do meio dela, que já tem as margens. */
+.embedded {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .almost {
   color: var(--nise-ink);
   font-size: 16px;

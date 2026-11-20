@@ -117,11 +117,33 @@ test("uma espera curta não mostra nada no lugar das faixas", async ({ page }) =
   await expect(page.getByText("Tecendo seu filé…")).toHaveCount(0);
 });
 
+test("da espera às faixas, a barra de navegação não sai da tela em nenhum quadro", async ({ page }) => {
+  // Registra, a cada quadro desde o começo, se havia tela sem a barra de navegação.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __semBarra: number };
+    w.__semBarra = 0;
+    const tick = () => {
+      if (document.querySelector("main") && !document.querySelector("nav[aria-label='Navegação principal']")) {
+        w.__semBarra += 1;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await openWith(page, { delayMs: 2500 });
+
+  await expect(page.getByRole("heading", { name: "Tecendo seu filé…" })).toBeVisible();
+  await expect(band(page, "Primeiros passos")).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __semBarra: number }).__semBarra)).toBe(0);
+});
+
 test("uma espera longa mostra o Tecendo seu filé… (#81)", async ({ page }) => {
   await openWith(page, { delayMs: 2500 });
 
   await expect(page.getByRole("heading", { name: "Tecendo seu filé…" })).toBeVisible();
   await expect(page.getByText("Quase lá, Alana")).toBeVisible();
+  // A espera fica dentro da tela: com ela à vista, a barra de navegação já está lá.
+  expect(await page.getByRole("navigation", { name: "Navegação principal" }).count()).toBe(1);
   await expect(band(page, "Primeiros passos")).toBeVisible();
   await expect(page.getByText("Tecendo seu filé…")).toHaveCount(0);
 });
