@@ -3,6 +3,7 @@ import type { FileSection, ThemeCode } from "../lib/file";
 import { mockActivityApi } from "./activity-api";
 import { mockDiscoverApi } from "./discover-api";
 import { type MockFileItem, mockFileApi } from "./file-api";
+import { watchFrames } from "./frames";
 import { mockTermsApi } from "./terms-api";
 
 // #115 e #117 · A06·3 Seu filé, pela rota GET /api/file (#116), simulada em file-api.ts.
@@ -244,6 +245,28 @@ test("quando o filé não carrega, mostra o erro e tenta de novo", async ({ page
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
   await expect(item(page, "IA para iniciantes")).toBeVisible();
+});
+
+test("ao voltar ao filé, não mostra o filé de antes, nem por um quadro", async ({ page }) => {
+  await openWith(page, { items: [makeItem("a", "next"), makeItem("b", "next")] });
+  await expect(item(page, "Item a")).toBeVisible();
+
+  // Ela vai ao Descobrir e escolhe mais coisas. Daqui em diante o filé já vem com os itens
+  // novos, mas demora a responder.
+  await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await mockFileApi(page, {
+    items: [makeItem("c", "next"), makeItem("d", "next"), makeItem("e", "next")],
+    delayMs: 1500,
+  });
+
+  // Com cacheComponents o Next guarda o filé escondido; na volta ele busca de novo.
+  const seen = await watchFrames(page, ["Item a"]);
+  await page.goBack();
+
+  await expect(item(page, "Item c")).toBeVisible();
+  await expect(section(page, "Próximas aventuras").getByRole("article")).toHaveCount(3);
+  expect(await seen()).toEqual([]);
 });
 
 test("sem sessão, volta para o início", async ({ page }) => {
