@@ -18,9 +18,8 @@
   height: auto;
 }
 
-/* Cada quadradinho vai até a sua casa por transform; se a casa muda, ele desliza. */
+/* Cada quadradinho vai até a sua casa por transform (o deslize, quando a casa muda, fica em fileMotion.ts). */
 .square {
-  transition: transform 300ms ease-out;
   cursor: pointer;
 }
 
@@ -68,11 +67,4 @@
 
 .alignEnd {
   transform: translate(-100%, calc(-100% - 6px));
-}
-
-/* Quem pediu menos movimento vê o filé novo de uma vez, sem deslize (fileMotion.ts também não anima). */
-@media (prefers-reduced-motion: reduce) {
-  .square {
-    transition: none;
-  }
 }

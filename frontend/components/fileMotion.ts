@@ -1,4 +1,4 @@
-import type { FileChanges } from "@/lib/file";
+import { cellOrigin, type Cell, type FileChanges } from "@/lib/file";
 
 // As animações do desenho do filé (FileDrawing.tsx), pela Web Animations API.
 //
@@ -8,11 +8,19 @@ import type { FileChanges } from "@/lib/file";
 // Uma animação disparada por JavaScript roda uma vez e acaba; quem dispara (FileDrawing)
 // lembra qual rodada de mudanças já animou.
 
-/** Quanto dura a saída de um quadradinho removido. Os outros só deslizam depois dela. */
-export const LEAVE_MS = 700;
-
-// Os quadradinhos novos desenham a borda um depois do outro.
+// As etapas, nesta ordem, para ela ver cada mudança no quadradinho que ela mexeu:
+// 1. na casa antiga, o que andou se preenche (FILL_MS) e o que saiu se desfaz (LEAVE_MS);
+// 2. os que mudaram de casa deslizam para a nova (SLIDE_MS);
+// 3. os novos desenham a borda, um depois do outro (FRESH_STAGGER_MS).
+const FILL_MS = 500;
+const LEAVE_MS = 700;
+const SLIDE_MS = 350;
 const FRESH_STAGGER_MS = 120;
+
+function translate(cell: Cell) {
+  const { x, y } = cellOrigin(cell);
+  return `translate(${x}px, ${y}px)`;
+}
 
 type Callbacks = {
   /** Um quadradinho novo ou que andou terminou de se animar. */
@@ -104,6 +112,20 @@ export function playFileChanges(svg: SVGSVGElement, changes: FileChanges, { onSe
     return svg.querySelector(`[${attribute}='${CSS.escape(id)}']`);
   }
 
+  // Quando cada etapa começa.
+  const slideAt = Math.max(changes.removed.length > 0 ? LEAVE_MS : 0, changes.filled.size > 0 ? FILL_MS : 0);
+  const freshAt = slideAt + (changes.moved.size > 0 ? SLIDE_MS : 0);
+
+  // 2. Os que mudaram de casa ficam na antiga até a vez deles, e então deslizam.
+  for (const [id, { from, to }] of reduce ? [] : changes.moved) {
+    animate(group("data-square", id), [{ transform: translate(from) }, { transform: translate(to) }], {
+      duration: SLIDE_MS,
+      delay: slideAt,
+      easing: "ease-in-out",
+      fill: "backwards",
+    });
+  }
+
   let order = 0;
   for (const id of changes.fresh) {
     const square = group("data-square", id);
@@ -111,7 +133,7 @@ export function playFileChanges(svg: SVGSVGElement, changes: FileChanges, { onSe
       onSettled(id);
       continue;
     }
-    const delay = order++ * FRESH_STAGGER_MS;
+    const delay = freshAt + order++ * FRESH_STAGGER_MS;
     whenDone(
       [
         animate(part(square, "border"), BORDER_DRAWN, { duration: 600, delay, easing: "ease-out", fill: "backwards" }),
@@ -132,8 +154,8 @@ export function playFileChanges(svg: SVGSVGElement, changes: FileChanges, { onSe
     }
     whenDone(
       [
-        animate(part(square, "half"), GROW, { duration: 500, easing: "ease-out" }),
-        animate(part(square, "solid"), GROW, { duration: 500, easing: "ease-out" }),
+        animate(part(square, "half"), GROW, { duration: FILL_MS, easing: "ease-out" }),
+        animate(part(square, "solid"), GROW, { duration: FILL_MS, easing: "ease-out" }),
       ],
       () => onSettled(id),
     );
