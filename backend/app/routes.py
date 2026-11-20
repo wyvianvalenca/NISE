@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.auth.routes import router as auth_router
+from app.modules.admissions.routes import router as coordinator_router
 from app.modules.answers.routes import router as ratings_router
 from app.modules.cities.routes import router as cities_router
 from app.modules.consents.routes import preferences_router
@@ -16,6 +17,7 @@ router.include_router(preferences_router)
 router.include_router(groups_router)
 router.include_router(ratings_router)
 router.include_router(profile_router)
+router.include_router(coordinator_router)
 
 
 @router.get("/health", tags=["Health"])
