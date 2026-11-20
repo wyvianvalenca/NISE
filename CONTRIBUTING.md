@@ -95,6 +95,8 @@ Os hooks já rodam quase tudo a cada commit, e os testes do back a cada push. Pa
 - Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
 - Front (em `frontend/`): `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:e2e`
 
+Depois de mudar uma rota do back, o hook regenera o cliente da API do front; para rodar à mão: `bash scripts/generate-client.sh` (na raiz). Veja a seção 7 do [docs/ferramentas.md](docs/ferramentas.md).
+
 Use `pnpm typecheck`, não `pnpm tsc --noEmit`: o tsc solto falha num clone novo, porque os tipos de rota do Next ainda não foram gerados.
 
 Se um hook falhar, corrija a causa em vez de pular com `--no-verify`: o CI roda os mesmos hooks e vai falhar do mesmo jeito.
@@ -157,7 +159,7 @@ Rodam nos **hooks do Git** (na sua máquina, pelo prek) e no **CI** (no PR, pelo
 | Front | Lint | ESLint |
 | Front | Tipos | `pnpm typecheck` (`next typegen` + `tsc --noEmit`) |
 | Front | Build | `pnpm build` |
-| Front | Contrato com o back | Tipos do OpenAPI regenerados e commitados |
+| Front | Contrato com o back | Cliente gerado do OpenAPI (`@hey-api/openapi-ts`), regenerado pelo hook `generate-client` e commitado |
 | Front | E2E | Ferramenta a definir (sugestão: Playwright), só nos caminhos principais |
 
 Não há meta de cobertura de testes, mas toda história tem testes de back para os critérios de aceite.

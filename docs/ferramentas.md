@@ -15,6 +15,7 @@ A base foi o [full-stack-fastapi-template](https://github.com/fastapi/full-stack
 | Formatação do front | Prettier | `frontend/.prettierrc.json` | Hook e CI |
 | Lint do front | ESLint (config do Next) | `frontend/eslint.config.mjs` | Hook e CI |
 | Tipos do front | `pnpm typecheck` | `frontend/tsconfig.json` | Hook e CI |
+| Contrato front/back | `@hey-api/openapi-ts` | `frontend/openapi-ts.config.ts`, `scripts/generate-client.sh` | Hook (quando o back muda) e CI |
 | Segredos no commit | gitleaks | `.pre-commit-config.yaml` | Hook |
 | Segurança dos workflows | zizmor | `.pre-commit-config.yaml` | Hook e CI |
 | CI | GitHub Actions | `.github/workflows/ci.yml` | Todo PR e push em `develop`/`main` |
@@ -51,6 +52,7 @@ Hooks, na ordem em que rodam:
 | `gitleaks` | Tokens, senhas e client secrets no que está sendo commitado |
 | `ruff-format`, `ruff-check` | Formatação e lint do back (corrigem o que dá) |
 | `mypy` | Tipos do back |
+| `generate-client` | Cliente da API do front desatualizado em relação ao back (regenera sozinho; veja a seção 7) |
 | `prettier` | Formatação do front (corrige sozinho) |
 | `eslint` | Lint do front |
 | `typecheck` | Tipos do front |
@@ -117,6 +119,38 @@ Cuidados copiados do template:
 
 - **`.gitattributes`** força fim de linha LF em todos os sistemas. Sem isso, o Git no Windows troca para CRLF ao baixar os arquivos, o que quebra scripts shell dentro dos containers e briga com o Prettier e os hooks de espaço.
 - **`.git-blame-ignore-revs`** lista commits só de formatação. O GitHub já pula esses commits no *blame*; na sua máquina, rode uma vez `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+## 7. Contrato front/back: cliente gerado do OpenAPI
+
+O FastAPI descreve todas as rotas no OpenAPI (o mesmo documento que aparece em `/docs`). O [`@hey-api/openapi-ts`](https://heyapi.dev) lê esse documento e gera, em `frontend/lib/api/`, os tipos de entrada e saída de cada rota e uma função para chamá-la. Assim o front não reescreve à mão o que o back já declarou: se o back muda uma rota, o tipo muda junto e o `pnpm typecheck` aponta o que quebrou.
+
+Como funciona:
+
+1. `bash scripts/generate-client.sh` (na raiz) importa o app do FastAPI, sem subir servidor nem banco, e salva o OpenAPI em `frontend/openapi.json`.
+2. O `openapi-ts` lê esse arquivo e escreve `frontend/lib/api/` (configuração em `frontend/openapi-ts.config.ts`).
+3. O Prettier formata os dois, para o resultado ser sempre o mesmo.
+
+O hook `generate-client` roda esse script sempre que um arquivo do back muda. Se o cliente mudou, o commit para: confira o diff e adicione os arquivos gerados. No CI, o job `hooks` roda o mesmo script; se alguém commitou o back sem o cliente atualizado, ele falha.
+
+O `openapi.json` e o `lib/api/` são **versionados**: o diff do `openapi.json` no PR mostra exatamente o que mudou no contrato. Não edite nada em `lib/api/` à mão; ele é sobrescrito a cada geração (e fica fora do ESLint).
+
+Como usar no front:
+
+```ts
+import { listCities } from "@/lib/api";
+
+const { data, error, response } = await listCities({
+  query: { search },
+  signal,
+});
+```
+
+- A chamada **não lança erro** quando o back responde com erro: `data` vem vazio e `response.status` diz o que houve. Quando a requisição nem chega ao back (sem rede, ou cancelada pelo `signal`), `response` vem vazio e `error` tem o erro do `fetch`.
+- As chamadas saem para `/api/...` no mesmo endereço do site, como antes. O cookie `httpOnly` da sessão vai junto.
+- O nome de cada função é o nome da função da rota no back (`list_cities` vira `listCities`). Isso vem do `generate_unique_id_function` em `backend/app/main.py`; por isso **duas rotas não podem ter funções com o mesmo nome**.
+- Por enquanto, só a busca de municípios e a página `/status` usam o cliente gerado. As outras chamadas de `frontend/lib/signup-api.ts` ainda usam `fetch` com tipos à mão; a migração delas é a issue #319. Código novo já deve usar o cliente gerado.
+
+**Por quê:** a decisão de "tipos TypeScript gerados do OpenAPI do FastAPI" já estava na stack; faltava a ferramenta. O template usa a mesma, com versão fixada (ela ainda está antes da 1.0 e muda bastante entre versões).
 
 ## Fora do escopo, por enquanto
 

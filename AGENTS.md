@@ -26,7 +26,7 @@ O uv usa um workspace: `uv.lock` e `.venv` ficam na raiz. Ferramentas e o porqu�
 - Back (em `backend/`): `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
 - Migração nova (em `backend/`): `uv run alembic revision --autogenerate -m "..."`
 - Front (em `frontend/`): `pnpm format`, `pnpm lint`, `pnpm typecheck` (não use `tsc --noEmit` solto), `pnpm build`, `pnpm test:e2e`
-- Tipos da API: regenerar do OpenAPI depois de mudar qualquer rota
+- Tipos da API: `bash scripts/generate-client.sh` (raiz) regenera `frontend/lib/api/` do OpenAPI; o hook faz isso sozinho quando o back muda. No front, chame as rotas do back pelo cliente gerado (`@/lib/api`), não com `fetch` e tipos à mão. Nunca edite `lib/api/` à mão.
 
 Rode as verificações antes de dizer que terminou. O CI (`.github/workflows/ci.yml`) roda os hooks, os testes do back, o build do front e o E2E em todo PR.
 

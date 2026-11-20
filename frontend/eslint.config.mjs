@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Cliente da API gerado do OpenAPI (scripts/generate-client.sh).
+    "lib/api/**",
     // Saída do Playwright.
     "playwright-report/**",
     "test-results/**",
