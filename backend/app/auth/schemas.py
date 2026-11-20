@@ -72,6 +72,12 @@ class SessionOut(UserOut):
     next_path: str = Field(serialization_alias="nextPath")
 
 
+class HomeOut(BaseModel):
+    """A primeira tela de quem já entrou, para a A01 mandá-la adiante."""
+
+    next_path: str = Field(serialization_alias="nextPath")
+
+
 class ForgotPasswordIn(BaseModel):
     """O e-mail da conta que esqueceu a senha (A16, #331)."""
 

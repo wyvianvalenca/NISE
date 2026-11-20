@@ -41,6 +41,24 @@ export async function login(email: string, password: string): Promise<LoginResul
 }
 
 /**
+ * Where someone who is already signed in goes, decided by the server with the
+ * same rule as the login. `null` without a session (401), and also when the
+ * check fails: then she simply stays where she is.
+ */
+export async function getHomePath(signal?: AbortSignal): Promise<string | null> {
+  try {
+    const response = await fetch("/api/auth/home", { signal });
+    if (!response.ok) {
+      return null;
+    }
+    const body = (await response.json()) as { nextPath: string };
+    return body.nextPath;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Ends the session ("Sair" in the girl's account menu). The server clears the
  * httpOnly cookie, which the page itself cannot touch. Returns false when the
  * request did not go through, so the menu can say so.

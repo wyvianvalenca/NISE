@@ -1,6 +1,7 @@
 import { AppHeader } from "@/components/AppHeader";
 import { LinkButton } from "@/components/Button";
 import { FileIllustration } from "@/components/FileIllustration";
+import { SignedInRedirect } from "@/components/SignedInRedirect";
 import { TextLink } from "@/components/TextLink";
 import styles from "./page.module.css";
 
@@ -10,10 +11,13 @@ import styles from "./page.module.css";
  *
  * It stays on the server: there is no state and no fetching here, and "Criar
  * conta" is navigation, so it is a link and not a button with `router.push`.
+ * The only client piece is `SignedInRedirect`, which sends whoever is already
+ * signed in to her first screen.
  */
 export default function Home() {
   return (
     <div className={styles.page}>
+      <SignedInRedirect />
       <AppHeader>
         <TextLink href="/entrar">Entrar</TextLink>
       </AppHeader>

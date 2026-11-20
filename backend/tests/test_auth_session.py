@@ -114,3 +114,38 @@ async def test_logout_sem_estar_logada_responde_204() -> None:
     response = await chamar_rota(app, "POST", "/api/auth/logout", sessao_com(None))
 
     assert response.status_code == 204
+
+
+# A próxima tela de quem já entrou (A01 manda adiante)
+
+
+async def test_home_sem_sessao_responde_401() -> None:
+    response = await chamar_rota(app, "GET", "/api/auth/home", sessao_com(alana()))
+
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("papel", "aceite", "destino"),
+    [
+        (Role.GIRL, 1, "/por-que-file"),
+        (Role.GIRL, None, "/cadastro/termos"),
+        (Role.COORDINATOR, None, "/coordenacao/acoes"),
+    ],
+    ids=["menina", "menina-sem-os-termos", "coordenadora"],
+)
+async def test_home_devolve_a_tela_de_cada_perfil(
+    papel: Role, aceite: int | None, destino: str
+) -> None:
+    conta = alana()
+    conta.role = papel
+    sessao_falsa = sessao_com(conta)
+    # session.scalar é a busca do aceite dos termos (o id dele, ou None).
+    sessao_falsa.scalar.return_value = aceite
+
+    response = await chamar_rota(
+        app, "GET", "/api/auth/home", sessao_falsa, token=create_access_token(1)
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"nextPath": destino}

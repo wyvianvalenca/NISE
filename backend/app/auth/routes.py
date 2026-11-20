@@ -41,6 +41,7 @@ from app.auth.schemas import (
     EmailSignupIn,
     ForgotPasswordIn,
     GoogleSignupCompleteIn,
+    HomeOut,
     LoginIn,
     PendingSignupOut,
     ResetPasswordIn,
@@ -81,6 +82,13 @@ GOOGLE_ERROR_URL = "/entrar?erro=google"
 @router.get("/me", response_model=UserOut)
 async def me(user: CurrentUserDep) -> User:
     return user
+
+
+# A tela para onde vai quem já entrou: a A01 e o login usam a mesma regra
+# (home_path). Sem sessão, responde 401 e ela fica na A01.
+@router.get("/home", response_model=HomeOut)
+async def home(user: CurrentUserDep, session: AsyncSessionDep) -> HomeOut:
+    return HomeOut(next_path=await home_path(session, user))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
