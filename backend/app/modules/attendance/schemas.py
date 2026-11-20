@@ -43,6 +43,8 @@ class AttendanceGirlOut(BaseModel):
     study_stage: StudyStage | None
     # Marked with "Salvar e continuar depois" (#340). Not attendance (D-81).
     saved_present: bool
+    # Present: marked when the attendance was concluded, or afterwards (#348).
+    present: bool
 
 
 class AttendancePageOut(BaseModel):
@@ -64,6 +66,19 @@ class AttendancePageOut(BaseModel):
     saved_count: int
     # Day of the most recent registration, for "23 importadas em 16/10".
     last_registered_on: date | None
+    # The day "Concluir presença" was tapped, in Maceió time ("registrada em
+    # 24/10"), and how many were present. Null and 0 before that.
+    concluded_on: date | None
+    present_count: int
+    # Before concluding: how many invites concluding would send, for the
+    # confirmation (RF-F3.11). Registered girls with no account, no invite
+    # ever and a valid e-mail; present or absent.
+    invites_to_send: int
+    # After concluding: the invites and evaluations of this action, sent or
+    # waiting to go out, for the card "Depois da ação" (RF-F3.10, D-81).
+    # Dropped ones (address refused, she created her account) do not count.
+    invites_sent: int
+    evaluations_sent: int
     # Optional columns that have data in at least one girl (RF-F1.14).
     columns: list[str]
     girls: list[AttendanceGirlOut]
@@ -111,3 +126,9 @@ class WalkInOut(BaseModel):
 
     girl: AttendanceGirlOut
     already_registered: bool
+
+
+class ConcludeIn(BaseModel):
+    """ "Concluir presença" (#348): the registrations marked as present."""
+
+    present_ids: Annotated[list[int], Field(max_length=MAX_MARKS)]

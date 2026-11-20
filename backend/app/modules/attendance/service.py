@@ -5,19 +5,25 @@ by the coordinator's groups (GroupActionDep), so none of them looks at another
 group's data (RNF-G.03).
 """
 
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionStatus, Participation
 from app.modules.actions.service import ACTION_TIMEZONE, compute_status
+from app.modules.attendance.emails import (
+    girls_without_account,
+    is_valid_address,
+    queue_attendance_emails,
+)
 from app.modules.attendance.exceptions import (
     AlreadyConcludedError,
     TooEarlyError,
     UnknownRegistrationError,
 )
+from app.modules.attendance.models import AttendanceEmail, AttendanceEmailKind
 from app.modules.attendance.schemas import (
     AttendanceActionOut,
     AttendanceGirlOut,
@@ -43,6 +49,7 @@ async def registrations_of(
         .join(Girl, Girl.id == Participation.girl_id)
         .where(Participation.action_id == action_id)
         .order_by(Girl.name, Participation.id)
+        .execution_options(populate_existing=True)
     )
     return [(participation, girl) for participation, girl in rows]
 
@@ -54,6 +61,7 @@ def _girl_out(participation: Participation, girl: Girl) -> AttendanceGirlOut:
         email=girl.email,
         study_stage=girl.study_stage,
         saved_present=participation.saved_present,
+        present=participation.attended_at is not None,
     )
 
 
@@ -77,6 +85,31 @@ async def build_attendance_page(
         ),
         default=None,
     )
+    concluded_on = (
+        action.attendance_registered_at.astimezone(ACTION_TIMEZONE).date()
+        if action.attendance_registered_at is not None
+        else None
+    )
+    invites_to_send = 0
+    if action.attendance_registered_at is None:
+        candidates = await girls_without_account(
+            session, (girl.id for _, girl in registrations)
+        )
+        invites_to_send = sum(
+            1
+            for _, girl in registrations
+            if girl.id in candidates and is_valid_address(girl.email)
+        )
+    sent_rows = await session.execute(
+        select(AttendanceEmail.kind, func.count())
+        .where(
+            AttendanceEmail.action_id == action.id,
+            AttendanceEmail.dropped_at.is_(None),
+        )
+        .group_by(AttendanceEmail.kind)
+    )
+    sent: dict[AttendanceEmailKind, int] = {kind: total for kind, total in sent_rows}
+
     columns = (
         [STUDY_STAGE_COLUMN]
         if any(girl.study_stage is not None for _, girl in registrations)
@@ -108,6 +141,15 @@ async def build_attendance_page(
             1 for participation, _ in registrations if participation.saved_present
         ),
         last_registered_on=last_registered_on,
+        concluded_on=concluded_on,
+        present_count=sum(
+            1
+            for participation, _ in registrations
+            if participation.attended_at is not None
+        ),
+        invites_to_send=invites_to_send,
+        invites_sent=sent.get(AttendanceEmailKind.INVITE, 0),
+        evaluations_sent=sent.get(AttendanceEmailKind.EVALUATION, 0),
         columns=columns,
         girls=[_girl_out(participation, girl) for participation, girl in registrations],
     )
@@ -239,3 +281,57 @@ async def add_walk_in(
     participation, girl, already = await register_girl(session, action, data)
     await session.commit()
     return WalkInOut(girl=_girl_out(participation, girl), already_registered=already)
+
+
+async def conclude_attendance(
+    session: AsyncSession,
+    action: Action,
+    present_ids: list[int],
+    today: date,
+    now: datetime,
+) -> None:
+    """ "Concluir presença" (#348, RF-F3.05, RF-F3.07, RF-F4.01, D-81).
+
+    Marks the attendance of the girls in `present_ids` and concludes the
+    action, in one commit with the e-mails it causes: the personal invite of
+    every registered girl without an account, present or absent, and the
+    evaluation of every girl marked as present. The e-mails are only queued
+    here; the route sends them right after.
+
+    Concluding again (double tap, reload) changes nothing and queues nothing:
+    the action row is locked, so the second request waits for the first and
+    then finds it concluded. Only from the day of the event (D-80).
+    """
+    action = await lock_action(session, action)
+    if today < action.starts_on:
+        raise TooEarlyError
+    if action.attendance_registered_at is not None:
+        return
+
+    ids = set(present_ids)
+    await ensure_registrations(session, action, ids)
+
+    if ids:
+        await session.execute(
+            update(Participation)
+            .where(Participation.action_id == action.id, Participation.id.in_(ids))
+            .values(attended_at=now)
+        )
+    # The saved marks are done with: what counts from now on is attended_at.
+    await session.execute(
+        update(Participation)
+        .where(Participation.action_id == action.id)
+        .values(saved_present=False)
+    )
+    action.attendance_registered_at = now
+
+    registrations = await registrations_of(session, action.id)
+    await queue_attendance_emails(
+        session,
+        action,
+        invite_girl_ids=[girl.id for _, girl in registrations],
+        evaluation_girl_ids=[
+            girl.id for participation, girl in registrations if participation.id in ids
+        ],
+    )
+    await session.commit()

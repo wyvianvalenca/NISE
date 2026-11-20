@@ -11,6 +11,7 @@ from itertools import count
 from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.email import EmailNotConfiguredError
 from app.modules.actions.models import (
     Action,
     ActionFormat,
@@ -105,3 +106,33 @@ async def register(session: AsyncSession, action: Action, girl: Girl) -> Partici
 def at(day: date, hour: int = 12) -> datetime:
     """A moment of `day` in UTC (12:00 UTC is 09:00 in Maceió)."""
     return datetime(day.year, day.month, day.day, hour, tzinfo=UTC)
+
+
+class CorreioFalso:
+    """Stands in for the SMTP connection and records who would get what.
+
+    `failures` are raised by the next sends, in order; `configured = False`
+    makes opening the connection fail as with no SMTP account.
+    """
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[str, str, str]] = []
+        self.failures: list[Exception] = []
+        self.configured = True
+
+    def connect(self) -> "CorreioFalso":
+        if not self.configured:
+            raise EmailNotConfiguredError
+        return self
+
+    def send(self, to: str, subject: str, body: str) -> None:
+        if self.failures:
+            raise self.failures.pop(0)
+        self.sent.append((to, subject, body))
+
+    def close(self) -> None:
+        pass
+
+    def to(self, address: str) -> list[str]:
+        """The subjects sent to `address`."""
+        return [subject for to, subject, _ in self.sent if to == address]

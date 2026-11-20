@@ -19,7 +19,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from types import TracebackType
-from typing import Self
+from typing import Literal, Self
 
 from app.config import settings
 
@@ -111,3 +111,40 @@ def send_email(to: str, subject: str, body: str) -> None:
     """
     with SmtpConnection() as connection:
         connection.send(to, subject, body)
+
+
+# O que fazer com um erro do envio de um e-mail de uma fila (indícios, #275;
+# presença, #348):
+# - "drop": o problema é daquele e-mail (endereço recusado de vez, 5xx): ele é
+#   descartado e a rotina segue, para não travar a fila atrás dele.
+# - "retry": nada saiu e o problema é do servidor ou da conta (4xx temporário,
+#   cota do Gmail, remetente recusado): a rotina para e o e-mail volta à fila.
+# - "unknown": a conexão caiu no meio, e o servidor pode ter aceitado o e-mail.
+#   A rotina para e o e-mail fica como tentado: na dúvida, não reenvia
+#   (RNF-F4.01).
+SendOutcome = Literal["drop", "retry", "unknown"]
+
+
+def send_outcome(error: Exception) -> SendOutcome:
+    if isinstance(error, smtplib.SMTPRecipientsRefused):
+        codes = [code for code, _ in error.recipients.values()]
+        return "drop" if codes and all(code >= 500 for code in codes) else "retry"
+    if isinstance(error, smtplib.SMTPSenderRefused):
+        # O remetente é o mesmo em todos os e-mails: é configuração.
+        return "retry"
+    if isinstance(error, smtplib.SMTPResponseException):
+        return "drop" if 500 <= error.smtp_code < 600 else "retry"
+    if isinstance(error, smtplib.SMTPNotSupportedError):
+        # No envio (a conexão já passou do STARTTLS e do login), é o endereço
+        # dela que pede algo que o servidor não tem, como SMTPUTF8.
+        return "drop"
+    if isinstance(error, smtplib.SMTPServerDisconnected):
+        return "unknown"
+    if isinstance(error, smtplib.SMTPException):
+        return "retry"
+    if isinstance(error, OSError):
+        return "unknown"
+    # ValueError de um endereço inválido, UnicodeEncodeError e qualquer outro
+    # erro do e-mail em si: sem descartar, ele ficaria primeiro na fila e
+    # travaria todas as rodadas seguintes.
+    return "drop"
