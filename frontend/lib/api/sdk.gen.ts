@@ -12,11 +12,20 @@ import type {
   AcceptTermsData,
   AcceptTermsErrors,
   AcceptTermsResponses,
+  AnswerFollowupData,
+  AnswerFollowupErrors,
+  AnswerFollowupResponses,
   CompleteSignupData,
   CompleteSignupErrors,
   CompleteSignupResponses,
+  CurrentFollowupData,
+  CurrentFollowupErrors,
+  CurrentFollowupResponses,
   DiscardSignupData,
   DiscardSignupResponses,
+  FollowupOptionsData,
+  FollowupOptionsErrors,
+  FollowupOptionsResponses,
   GetInviteData,
   GetInviteErrors,
   GetInviteResponses,
@@ -347,6 +356,57 @@ export const updateInterests = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: "/api/profile/interests",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Current Followup
+ */
+export const currentFollowup = <ThrowOnError extends boolean = false>(
+  options?: Options<CurrentFollowupData, ThrowOnError>,
+): RequestResult<
+  CurrentFollowupResponses,
+  CurrentFollowupErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).get<
+    CurrentFollowupResponses,
+    CurrentFollowupErrors,
+    ThrowOnError
+  >({ url: "/api/followup/current", ...options });
+
+/**
+ * Followup Options
+ */
+export const followupOptions = <ThrowOnError extends boolean = false>(
+  options?: Options<FollowupOptionsData, ThrowOnError>,
+): RequestResult<
+  FollowupOptionsResponses,
+  FollowupOptionsErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).get<
+    FollowupOptionsResponses,
+    FollowupOptionsErrors,
+    ThrowOnError
+  >({ url: "/api/followup/options", ...options });
+
+/**
+ * Answer Followup
+ */
+export const answerFollowup = <ThrowOnError extends boolean = false>(
+  options: Options<AnswerFollowupData, ThrowOnError>,
+): RequestResult<AnswerFollowupResponses, AnswerFollowupErrors, ThrowOnError> =>
+  (options.client ?? client).post<
+    AnswerFollowupResponses,
+    AnswerFollowupErrors,
+    ThrowOnError
+  >({
+    url: "/api/followup/answers",
     ...options,
     headers: {
       "Content-Type": "application/json",

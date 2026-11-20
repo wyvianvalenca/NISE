@@ -5,6 +5,14 @@ export type ClientOptions = {
 };
 
 /**
+ * Activity
+ *
+ * Pergunta 4: "Desde a última vez, você…" (várias escolhas).
+ */
+export type Activity =
+  "online_course" | "event" | "self_study" | "project" | "none_yet";
+
+/**
  * CityOut
  */
 export type CityOut = {
@@ -16,6 +24,35 @@ export type CityOut = {
    * Name
    */
   name: string;
+};
+
+/**
+ * ComputingView
+ *
+ * Pergunta 1: "Hoje, computação pra você é…".
+ */
+export type ComputingView =
+  "want_to_follow" | "like_but_unsure" | "less_interested" | "not_for_me";
+
+/**
+ * CurrentFollowupOut
+ *
+ * A rodada aberta hoje para a menina da sessão (A18, #293).
+ */
+export type CurrentFollowupOut = {
+  round: FollowupRound;
+  /**
+   * Lastday
+   */
+  lastDay: string;
+  /**
+   * Firstname
+   */
+  firstName: string;
+  /**
+   * Answered
+   */
+  answered: boolean;
 };
 
 /**
@@ -54,6 +91,72 @@ export type EmailSignupIn = {
    */
   invite?: string | null;
 };
+
+/**
+ * FollowupIn
+ *
+ * As respostas da A18 (RF-F4.13, RF-F4.08).
+ *
+ * Toda pergunta é opcional, mas pelo menos uma precisa de resposta: sem
+ * nenhuma, a tela não deixa enviar, e "Agora não" não chama o back.
+ * Códigos fora das listas são recusados.
+ */
+export type FollowupIn = {
+  round: FollowupRound;
+  computingView?: ComputingView | null;
+  futureSelf?: FutureSelf | null;
+  /**
+   * Activities
+   */
+  activities?: Array<Activity>;
+  /**
+   * Helps
+   */
+  helps?: Array<HelpWanted>;
+  /**
+   * Comment
+   */
+  comment?: string | null;
+};
+
+/**
+ * FollowupOptionsOut
+ *
+ * As opções das perguntas fechadas da A18, na ordem do Figma.
+ */
+export type FollowupOptionsOut = {
+  /**
+   * Computingviews
+   */
+  computingViews: Array<OptionOut>;
+  /**
+   * Futureselves
+   */
+  futureSelves: Array<OptionOut>;
+  /**
+   * Activities
+   */
+  activities: Array<OptionOut>;
+  /**
+   * Helps
+   */
+  helps: Array<OptionOut>;
+};
+
+/**
+ * FollowupRound
+ *
+ * A rodada do questionário: quantos meses depois de criar a conta.
+ */
+export type FollowupRound =
+  "three_months" | "six_months" | "twelve_months" | "eighteen_months";
+
+/**
+ * FutureSelf
+ *
+ * Pergunta 2: "Daqui a uns anos, você se vê estudando ou trabalhando…".
+ */
+export type FutureSelf = "sure" | "maybe" | "probably_not";
 
 /**
  * GoogleSignupCompleteIn
@@ -102,6 +205,14 @@ export type HttpValidationError = {
    */
   detail?: Array<ValidationError>;
 };
+
+/**
+ * HelpWanted
+ *
+ * Pergunta 5: "O que te ajudaria agora?" (várias escolhas).
+ */
+export type HelpWanted =
+  "mentoring" | "online_courses" | "internship" | "events" | "other";
 
 /**
  * InterestOptionsOut
@@ -946,6 +1057,109 @@ export type UpdateInterestsResponses = {
 
 export type UpdateInterestsResponse =
   UpdateInterestsResponses[keyof UpdateInterestsResponses];
+
+export type CurrentFollowupData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/followup/current";
+};
+
+export type CurrentFollowupErrors = {
+  /**
+   * Sem o aceite dos termos: {"error": "terms_not_accepted"}
+   */
+  403: unknown;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type CurrentFollowupError =
+  CurrentFollowupErrors[keyof CurrentFollowupErrors];
+
+export type CurrentFollowupResponses = {
+  /**
+   * Response Current Followup
+   *
+   * Successful Response
+   */
+  200: CurrentFollowupOut | null;
+};
+
+export type CurrentFollowupResponse =
+  CurrentFollowupResponses[keyof CurrentFollowupResponses];
+
+export type FollowupOptionsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/followup/options";
+};
+
+export type FollowupOptionsErrors = {
+  /**
+   * Sem o aceite dos termos: {"error": "terms_not_accepted"}
+   */
+  403: unknown;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type FollowupOptionsError =
+  FollowupOptionsErrors[keyof FollowupOptionsErrors];
+
+export type FollowupOptionsResponses = {
+  /**
+   * Successful Response
+   */
+  200: FollowupOptionsOut;
+};
+
+export type FollowupOptionsResponse =
+  FollowupOptionsResponses[keyof FollowupOptionsResponses];
+
+export type AnswerFollowupData = {
+  body: FollowupIn;
+  path?: never;
+  query?: never;
+  url: "/api/followup/answers";
+};
+
+export type AnswerFollowupErrors = {
+  /**
+   * Sem o aceite dos termos: {"error": "terms_not_accepted"}
+   */
+  403: unknown;
+  /**
+   * Nenhuma rodada aberta, ou a rodada já fechou: {"error": "no_open_round"}
+   */
+  404: unknown;
+  /**
+   * Ela já respondeu essa rodada: {"error": "already_answered"}
+   */
+  409: unknown;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type AnswerFollowupError =
+  AnswerFollowupErrors[keyof AnswerFollowupErrors];
+
+export type AnswerFollowupResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type AnswerFollowupResponse =
+  AnswerFollowupResponses[keyof AnswerFollowupResponses];
 
 export type HealthCheckData = {
   body?: never;
