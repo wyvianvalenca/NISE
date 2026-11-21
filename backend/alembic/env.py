@@ -21,6 +21,11 @@ from app.modules.admissions.models import (  # noqa: F401
 from app.modules.answers.models import Answer  # noqa: F401
 from app.modules.cities.models import City  # noqa: F401
 from app.modules.consents.models import TermsAcceptance  # noqa: F401
+from app.modules.followup.models import (  # noqa: F401
+    FollowupActivity,
+    FollowupAnswer,
+    FollowupHelp,
+)
 from app.modules.girls.models import Girl, GirlTopic  # noqa: F401
 from app.modules.groups.models import Group, GroupCoordinator, Invite  # noqa: F401
 from app.users.models import OAuthAccount, User  # noqa: F401 (registra as tabelas para o autogenerate)
