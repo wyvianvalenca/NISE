@@ -67,6 +67,9 @@ const ICON_SIZES = {
   trash: 16,
   lock: 15,
   "calendar-sm": 14,
+  upload: 14,
+  more: 18,
+  alert: 14,
   clock: 18,
 } as const;
 
