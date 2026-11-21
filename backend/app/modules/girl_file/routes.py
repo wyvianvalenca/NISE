@@ -60,8 +60,9 @@ CHOICE_RESPONSES: dict[int | str, dict[str, Any]] = {
     status.HTTP_409_CONFLICT: {
         "description": (
             "O item já tem outra escolha dela que não se troca por aqui (no filé,"
-            ' concluído, inscrita ou no "Não é pra mim"): só um item sem escolha ou'
-            ' no Ver depois aceita uma escolha: {"error": "already_chosen"}'
+            ' concluído, inscrita ou no "Não é pra mim"): só um item sem escolha,'
+            ' no Ver depois ou um evento do "Não deu" que a curadoria adiou aceita'
+            ' uma escolha: {"error": "already_chosen"}'
         )
     },
 }
@@ -110,9 +111,11 @@ async def my_file(
 # `item_id` é o id do catálogo, "curadoria-12" ou "acao-7". Só um item sem
 # escolha dela, que ela veria nas sugestões hoje (visível, da cidade e do perfil
 # dela), ou um item do Ver depois aceita uma escolha (o "+ Quero fazer" da #110).
-# No filé, concluído, inscrita ou no "Não é pra mim" responde 409, sem apagar a
-# nota, o dia da conclusão ou a inscrição. Repetir a mesma escolha vale. A
-# menina é sempre a da sessão: não há id dela na URL nem no corpo (RNF-G.03).
+# O evento do "Não deu" (#190) também, quando a curadoria o adiou e ele voltou às
+# sugestões; antes disso ele já passou e não é visível (404). No filé, concluído,
+# inscrita ou no "Não é pra mim" responde 409, sem apagar a nota, o dia da conclusão ou
+# a inscrição. Repetir a mesma escolha vale. A menina é sempre a da sessão: não há id
+# dela na URL nem no corpo (RNF-G.03).
 @router.put("/{item_id}", response_model=ChoiceOut, responses=CHOICE_RESPONSES)
 async def choose(
     item_id: str, data: ChoiceIn, user: AcceptedGirlDep, session: AsyncSessionDep
@@ -139,7 +142,10 @@ async def choose(
     entry = await find_entry(session, girl_id, origin, number, for_update=True)
     # Um item novo só vale se for do perfil dela, como nas sugestões. O que já está
     # no Ver depois foi sugerido a ela antes: o perfil pode ter mudado desde então.
-    if entry is None and not fits_profile(
+    # O evento do "Não deu" que a curadoria adiou volta como um item novo: a
+    # curadoria pode ter mudado o público dele.
+    is_new = entry is None or entry.status is FileStatus.DID_NOT_GO
+    if is_new and not fits_profile(
         audience.topics, audience.stages, audience.min_age, profile_of(girl, today)
     ):
         return not_found("item_not_found")

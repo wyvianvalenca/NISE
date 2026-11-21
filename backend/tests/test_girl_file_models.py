@@ -12,7 +12,8 @@ TABLE = Base.metadata.tables["file_entries"]
 
 
 def test_guarda_todos_os_estados_do_file() -> None:
-    # Quero fazer, em andamento, concluído, inscrita, ver depois e não é pra mim.
+    # Quero fazer, em andamento, concluído, inscrita, ver depois, não é pra mim
+    # e o "Não deu" de um evento (#190).
     assert {status.value for status in FileStatus} == {
         "next",
         "in_progress",
@@ -20,6 +21,7 @@ def test_guarda_todos_os_estados_do_file() -> None:
         "signed_up",
         "later",
         "dismissed",
+        "did_not_go",
     }
 
 

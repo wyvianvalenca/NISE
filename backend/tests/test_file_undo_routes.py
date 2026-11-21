@@ -197,6 +197,17 @@ async def test_tirar_do_file_um_evento_em_que_ela_se_inscreveu() -> None:
     sessao_falsa.commit.assert_awaited_once()
 
 
+async def test_apagar_um_nao_deu_deixa_o_evento_ser_sugerido_de_novo() -> None:
+    # O "Não deu" (#190) já está fora do filé; apagar a linha não prende nada.
+    escolha = linha(FileStatus.DID_NOT_GO)
+    sessao_falsa = sessao_do_desfazer(menina(), escolha)
+
+    response = await desfazer(sessao_falsa)
+
+    assert response.status_code == 200
+    sessao_falsa.delete.assert_awaited_once_with(escolha)
+
+
 async def test_tirar_do_file_uma_atividade_em_andamento_apaga_a_escolha() -> None:
     escolha = linha(FileStatus.IN_PROGRESS)
     sessao_falsa = sessao_do_desfazer(menina(), escolha)
