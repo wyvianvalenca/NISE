@@ -1,4 +1,5 @@
 from datetime import UTC, date, datetime
+from typing import NamedTuple
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
@@ -15,10 +16,16 @@ from app.modules.actions.models import (
     ActionVisibility,
     Participation,
 )
-from app.modules.actions.schemas import ActionIn, ActionOut
+from app.modules.actions.schemas import (
+    ActionIn,
+    ActionListItemOut,
+    ActionListOut,
+    ActionOut,
+    ActionStatusCountsOut,
+)
 from app.modules.cities.models import City
 from app.modules.cities.service import ensure_city_exists
-from app.modules.cities.utils import city_label
+from app.modules.cities.utils import city_label, normalize_search
 
 # "The day of the event has come" is decided in Maceió time, as in the age rule
 # (RN-03), so an action does not change status at 21:00 local time because the
@@ -200,3 +207,133 @@ async def update_action(
     await session.commit()
 
     return city
+
+
+class ActionRow(NamedTuple):
+    """An action of the group with the numbers the list needs, as the query gives."""
+
+    action: Action
+    registered_count: int
+    attended_count: int
+    city_label: str | None
+
+
+# The order of the flow, which is also the order of the chips and of the groups
+# on the page (RN-37).
+STATUS_ORDER = (
+    ActionStatus.AWAITING_REGISTRATIONS,
+    ActionStatus.AWAITING_EVENT,
+    ActionStatus.AWAITING_ATTENDANCE,
+    ActionStatus.CONCLUDED,
+)
+
+# Past statuses list the most recent first; the ones still ahead, the nearest
+# first. This is the proposal of #215, still to be confirmed with design.
+_MOST_RECENT_FIRST = {ActionStatus.AWAITING_ATTENDANCE, ActionStatus.CONCLUDED}
+
+
+async def fetch_action_rows(session: AsyncSession, group_id: int) -> list[ActionRow]:
+    """Every action of the group with its registered and present counts.
+
+    The group is the only filter and comes from the coordinator, never from the
+    request, so the list cannot hold an action of another group (RNF-G.03). One
+    query: the counts and the city come joined, with no query per action.
+    """
+    statement = (
+        select(
+            Action,
+            func.count(Participation.id),
+            func.count(Participation.attended_at),
+            City.name,
+            City.state,
+        )
+        .outerjoin(Participation, Participation.action_id == Action.id)
+        .outerjoin(City, City.id == Action.city_ibge_code)
+        .where(Action.group_id == group_id)
+        .group_by(Action.id, City.id)
+    )
+    result = await session.execute(statement)
+
+    return [
+        ActionRow(
+            action,
+            registered,
+            attended,
+            city_label(city_name, city_state) if city_name is not None else None,
+        )
+        for action, registered, attended, city_name, city_state in result.all()
+    ]
+
+
+def build_action_list(
+    rows: list[ActionRow],
+    today: date,
+    status_filter: ActionStatus | None = None,
+    search: str | None = None,
+) -> ActionListOut:
+    """Filter, order and count the actions of the list (RF-F30.10).
+
+    The status of each row comes only from `compute_status`. The chip counts
+    follow the search but not the status filter: picking "Concluídas" must not
+    zero the other chips, but typing a name narrows all of them (K10, #215).
+    The search ignores accents and case, as the city search does. It runs here
+    and not in SQL because the actions have no normalized name column, and a
+    group has few actions.
+    """
+    term = normalize_search(search) if search else ""
+    matching = [row for row in rows if term in normalize_search(row.action.name)]
+    with_status = [
+        (row, compute_status(row.action, row.registered_count, today))
+        for row in matching
+    ]
+
+    counts = {status: 0 for status in STATUS_ORDER}
+    for _, status in with_status:
+        counts[status] += 1
+
+    shown = [
+        (row, status)
+        for row, status in with_status
+        if status_filter is None or status is status_filter
+    ]
+    shown.sort(
+        key=lambda pair: (
+            STATUS_ORDER.index(pair[1]),
+            (
+                -pair[0].action.starts_on.toordinal()
+                if pair[1] in _MOST_RECENT_FIRST
+                else pair[0].action.starts_on.toordinal()
+            ),
+            pair[0].action.id,
+        )
+    )
+
+    return ActionListOut(
+        items=[_list_item(row, status) for row, status in shown],
+        counts=ActionStatusCountsOut(
+            all=len(with_status),
+            awaiting_registrations=counts[ActionStatus.AWAITING_REGISTRATIONS],
+            awaiting_event=counts[ActionStatus.AWAITING_EVENT],
+            awaiting_attendance=counts[ActionStatus.AWAITING_ATTENDANCE],
+            concluded=counts[ActionStatus.CONCLUDED],
+        ),
+    )
+
+
+def _list_item(row: ActionRow, status: ActionStatus) -> ActionListItemOut:
+    action = row.action
+    has_attendance = action.attendance_registered_at is not None or row.attended_count
+    return ActionListItemOut(
+        id=action.id,
+        name=action.name,
+        type=action.type,
+        starts_on=action.starts_on,
+        ends_on=action.ends_on,
+        format=action.format,
+        city_label=row.city_label,
+        visibility=action.visibility,
+        registrations_open=action.registrations_open,
+        status=status,
+        registered_count=row.registered_count,
+        attended_count=row.attended_count if has_attendance else None,
+    )

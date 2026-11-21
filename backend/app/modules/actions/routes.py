@@ -1,14 +1,17 @@
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 
 from app.db.engine import AsyncSessionDep
 from app.modules.actions.dependencies import CoordinatorGroupIdDep, GroupActionDep
-from app.modules.actions.schemas import ActionIn, ActionOut
+from app.modules.actions.models import ActionStatus
+from app.modules.actions.schemas import ActionIn, ActionListOut, ActionOut
 from app.modules.actions.service import (
     action_to_out,
+    build_action_list,
     count_registered,
     create_action,
+    fetch_action_rows,
     today_in_maceio,
     update_action,
 )
@@ -24,6 +27,22 @@ INVALID_ACTION: dict[int | str, dict[str, Any]] = {
         )
     },
 }
+
+
+# The "Ações" page (K10, #215, RF-F30.10). The group is the coordinator's and never
+# comes from the request. `status` narrows the items only; the chip counts ignore
+# it and follow `search`. The order inside each status is "to be confirmed with
+# design" (#215).
+@router.get("", response_model=ActionListOut)
+async def list_actions_route(
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    action_status: Annotated[ActionStatus | None, Query(alias="status")] = None,
+    search: Annotated[str | None, Query(max_length=100)] = None,
+) -> ActionListOut:
+    rows = await fetch_action_rows(session, group_id)
+
+    return build_action_list(rows, today_in_maceio(), action_status, search)
 
 
 # "Salvar" in the K02 form (#211, RF-F30.01). The group is the signed-in
