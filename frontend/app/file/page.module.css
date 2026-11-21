@@ -25,9 +25,37 @@
   padding: 28px 24px 32px;
 }
 
-.profile {
+/* Faixa "Tem umas perguntinhas pra você" (#266): leva à agenda. */
+.questions {
   display: flex;
-  border-radius: 50%;
+  align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: var(--radius-8);
+  background: var(--nise-pinkSoft);
+  color: var(--nise-ink);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.questions:hover {
+  text-decoration: underline;
+}
+
+.questions:focus-visible {
+  outline: 2px solid var(--nise-pink);
+  outline-offset: 2px;
+}
+
+.questionsLink {
+  display: inline-flex;
+  align-items: center;
+  /* O Figma usa pink, que sobre pinkSoft dá 4,44:1, abaixo do AA. Mesma escolha da #260. */
+  color: var(--nise-ink);
+  font-weight: 700;
 }
 
 .titleRow {

@@ -5,19 +5,33 @@
 // Usa os dados de teste de lib/file.ts até a rota da #114 existir.
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useId, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { Avatar } from "@/components/Avatar";
+import { AccountMenu } from "@/components/AccountMenu";
 import { BottomNav } from "@/components/BottomNav";
 import { FileDrawing } from "@/components/FileDrawing";
 import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
+import { AGENDA_PATH, getToAnswer, pendingCount } from "@/lib/agenda";
+import { UndoTimerToast } from "@/components/UndoTimerToast";
+import { eventPath, takeDidNotGo, undoDidNotGo, type DidNotGo } from "@/lib/evento";
 import { getFile, type FileData, type FileItem } from "@/lib/file";
 import styles from "./page.module.css";
 
 export default function FilePage() {
   const [data, setData] = useState<FileData | null>(null);
+  // Quantas perguntas esperam por ela na agenda (RF-F31.10). Se a busca falhar, a faixa não aparece.
+  const [questions, setQuestions] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getToAnswer(controller.signal)
+      .then((result) => setQuestions(result.ok ? pendingCount(result.toAnswer) : 0))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let current = true;
@@ -32,16 +46,21 @@ export default function FilePage() {
   return (
     <div className={styles.page}>
       <AppHeader>
-        {data && (
-          // O perfil ainda não existe; por enquanto o link dá 404.
-          <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
-            <Avatar name={data.firstName} size={36} />
-          </Link>
-        )}
+        {data && <AccountMenu name={data.firstName} />}
       </AppHeader>
 
       <div className={styles.scroll}>
         <main className={styles.main}>
+          {questions > 0 && (
+            // Faixa "Tem umas perguntinhas pra você" (Figma: Link target / Perguntinhas pendentes).
+            <Link href={AGENDA_PATH} className={styles.questions}>
+              Tem umas perguntinhas pra você
+              <span className={styles.questionsLink}>
+                Ver
+                <Icon name="chevron-right" size={14} />
+              </span>
+            </Link>
+          )}
           {data ? (
             <File data={data} />
           ) : (
@@ -54,7 +73,53 @@ export default function FilePage() {
       </div>
 
       <BottomNav active="file" />
+      <DidNotGoToast />
     </div>
+  );
+}
+
+/**
+ * Aviso depois do "Não deu" de um evento de fora (#190): o evento saiu do filé, e o
+ * "Desfazer" o traz de volta para a pergunta "Você foi?". Some sozinho ou quando ela sai da tela.
+ */
+function DidNotGoToast() {
+  const router = useRouter();
+  const [notice, setNotice] = useState<DidNotGo | null>(null);
+  const [status, setStatus] = useState<"ready" | "undoing" | "error">("ready");
+
+  // Lido depois da montagem, como os dados do filé: no servidor não há sessionStorage.
+  useEffect(() => {
+    let current = true;
+    Promise.resolve().then(() => {
+      // Só lê (e esquece) se este efeito ainda vale: no modo estrito o React monta duas vezes.
+      if (!current) return;
+      const event = takeDidNotGo();
+      if (event) setNotice(event);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const close = useCallback(() => setNotice(null), []);
+
+  if (!notice) return null;
+
+  async function undo() {
+    if (!notice || status === "undoing") return;
+    setStatus("undoing");
+    try {
+      await undoDidNotGo(notice.id);
+      router.push(eventPath(notice.id));
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <UndoTimerToast status={status} errorText="Não deu pra desfazer." onUndo={undo} onTimeout={close}>
+      <strong>{notice.title}</strong> saiu do seu filé.
+    </UndoTimerToast>
   );
 }
 

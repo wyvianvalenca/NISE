@@ -1,0 +1,201 @@
+/*
+ * O que é só do evento (A06·4b). O resto (cabeçalho, visual, selos, chips e botões)
+ * vem de ../../[id]/atividade.module.css, para as duas telas do filé ficarem iguais.
+ */
+
+/* Ocupa a altura toda, para o "Tirar do filé" da versão "Inscrita" ficar no pé da tela. */
+.main {
+  min-height: 100%;
+}
+
+/* Cartão "Quando e onde". */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: 14px;
+  background: var(--nise-surface);
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rowIcon {
+  margin-top: 2px;
+  color: var(--nise-teal);
+}
+
+.rowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rowMain {
+  font-size: 15px;
+}
+
+.rowSub {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+/* O Figma deixa 8px a mais antes do botão de inscrição. */
+.actions {
+  margin-top: 8px;
+}
+
+/* "Já me inscrevi" à esquerda e "Tirar do filé" à direita. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.signedUp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--nise-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Teal no papel tem contraste 4,26:1, abaixo do AA para texto (#169): só o ícone fica teal. */
+.signedUp > span {
+  color: var(--nise-teal);
+}
+
+.signedUp:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* Desabilitado (sem a ação, ou enquanto outra é enviada): apagado. */
+.footer button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Versão "Inscrita": tema à esquerda e o selo "Inscrita" à direita. */
+.topicRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Texto ink em vez de teal, pelo contraste (4,06:1 no Figma), como o selo "Em andamento". */
+.signedUpChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1.5px solid var(--nise-teal);
+  border-radius: var(--radius-pill);
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.signedUpChip > span {
+  color: var(--nise-teal);
+}
+
+/* "Tirar do filé" centralizado no pé da tela. */
+.signedUpFooter {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.signedUpFooter > button {
+  align-self: auto;
+}
+
+/* "Você foi?" (evento de fora depois da data): 8px a mais antes da pergunta, como no Figma. */
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.questionTitle {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.questionText {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.answers {
+  display: flex;
+  gap: 12px;
+}
+
+/* Os dois do mesmo tamanho: dizer que não foi não é menos importante. */
+.answers .answer {
+  flex: 1;
+  height: 52px;
+  font-size: 16px;
+}
+
+/* "Me lembra um dia antes" (#186): cartão com a caixa, como no Figma. */
+.reminder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reminderOption {
+  align-items: flex-start;
+  padding: 14px 16px;
+}
+
+.reminderOption:has(input:checked) {
+  padding: 13px 15px;
+}
+
+.reminderOption > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.reminderTitle {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.reminderText {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+/* Erro ao carregar o evento, com "Tentar de novo". */
+.loadFailed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}

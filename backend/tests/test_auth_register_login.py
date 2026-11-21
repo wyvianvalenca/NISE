@@ -100,6 +100,55 @@ async def test_login_certo_grava_o_cookie() -> None:
     assert decode_access_token(token_do_cookie(response)) == 1
 
 
+async def test_login_da_menina_vai_para_o_file() -> None:
+    # A sessão falsa devolve a Alana em toda busca: os termos contam como aceitos.
+    response = await chamar_rota(
+        app, "POST", "/api/auth/login", sessao_para_busca(alana()), corpo=LOGIN
+    )
+
+    assert response.json() == {
+        "id": 1,
+        "email": "alana@exemplo.com",
+        "name": "Alana Ficticia",
+        "role": "girl",
+        "nextPath": "/por-que-file",
+    }
+
+
+async def test_login_da_menina_sem_os_termos_volta_para_eles() -> None:
+    sessao_falsa = sessao_para_busca(None)
+    # 1ª busca: a conta pelo e-mail; 2ª: o aceite dos termos, que não há.
+    sessao_falsa.scalar.side_effect = [alana(), None]
+
+    response = await chamar_rota(
+        app, "POST", "/api/auth/login", sessao_falsa, corpo=LOGIN
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nextPath"] == "/cadastro/termos"
+
+
+async def test_login_da_coordenadora_vai_para_as_acoes() -> None:
+    katia = User(
+        id=2,
+        email="katia@exemplo.com",
+        name="Katia Ficticia",
+        password_hash=HASH_DA_ALANA,
+        role=Role.COORDINATOR,
+    )
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        "/api/auth/login",
+        sessao_para_busca(katia),
+        corpo={**LOGIN, "email": "katia@exemplo.com"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nextPath"] == "/coordenacao/acoes"
+
+
 async def test_cookie_do_login_abre_o_me() -> None:
     # A corrente inteira: login -> cookie -> /me reconhece a usuária.
     login = await chamar_rota(
