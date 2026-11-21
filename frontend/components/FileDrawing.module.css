@@ -5,10 +5,66 @@
   padding: 8px 0;
 }
 
-/* 322px como no Figma; encolhe junto em telas de 360px. */
+/* 322px como no Figma; encolhe junto em telas de 360px. O balãozinho se posiciona por cima. */
+.board {
+  position: relative;
+  width: 100%;
+  max-width: 322px;
+}
+
 .drawing {
   display: block;
   width: 100%;
-  max-width: 322px;
   height: auto;
+}
+
+/* Cada quadradinho vai até a sua casa por transform (o deslize, quando a casa muda, fica em fileMotion.ts). */
+.square {
+  cursor: pointer;
+}
+
+/*
+ * As animações dos quadradinhos (o que entrou, o que andou, o que saiu) ficam em
+ * components/fileMotion.ts, pela Web Animations API. Aqui só os pontos de onde o miolo
+ * cresce: a metade teal, do canto de baixo; a cor do concluído, do centro.
+ */
+.half {
+  transform-box: fill-box;
+  transform-origin: 0 100%;
+}
+
+.solid {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* O que saiu fica na casa antiga só enquanto faz o caminho de volta. */
+.leaving {
+  pointer-events: none;
+}
+
+/* Balãozinho com o nome do item, logo acima do quadradinho (FileDrawing.tsx). */
+.tooltip {
+  position: absolute;
+  z-index: 1;
+  width: max-content;
+  max-width: 180px;
+  margin: 0;
+  padding: 4px 8px;
+  transform: translate(-50%, calc(-100% - 6px));
+  border-radius: 8px;
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+  pointer-events: none;
+}
+
+.alignStart {
+  transform: translate(0, calc(-100% - 6px));
+}
+
+.alignEnd {
+  transform: translate(-100%, calc(-100% - 6px));
 }

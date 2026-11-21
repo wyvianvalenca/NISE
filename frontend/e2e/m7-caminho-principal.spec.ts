@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockFileApi } from "./file-api";
 
 /**
  * E2E · M7 official list approval, main path (#276). Covers #266 and #271.
@@ -56,6 +57,9 @@ function card(match: Match) {
 
 async function serve(page: Page, base: TestBase): Promise<void> {
   const forbidden = { status: 403, json: { detail: "Sem permissão" } };
+
+  // Her filé (GET /api/file, #116), where the strip shows up.
+  await mockFileApi(page);
 
   await page.route("**/api/agenda/to-answer", (route) =>
     base.isGirl()
