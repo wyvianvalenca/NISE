@@ -1,13 +1,43 @@
 // Sugestões de uma faixa, uma de cada vez (A06·2), o motivo do "Não é pra mim" (A06·2a)
-// e o "Desfazer" da última escolha. Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103 e #107).
+// e o "Desfazer" da última escolha. Atende RF-F10.04, RF-F10.05 e RF-F11.04 (issues #102, #103, #107 e #109).
 //
-// TEMPORÁRIO: getSuggestions(), sendChoice() e undoChoice() usam dados de teste. Os tipos seguem as rotas
-// descritas na #102 e serão trocados pelos tipos gerados do OpenAPI quando o back existir.
-// Os dados são fictícios; nada sai do navegador.
+// As rotas são GET /api/discover/{faixa} e PUT /api/file/{id} (#104), e DELETE /api/file/{id}
+// para o "Desfazer" (#108). Os tipos abaixo são escritos à mão, iguais ao OpenAPI do back
+// (/docs no FastAPI), como em lib/descobrir.ts: a equipe decidiu não ter um gerador de tipos
+// por enquanto.
 
 import type { BandCode } from "./descobrir";
+import { errorCode, sessionProblem, type SessionProblem } from "./signup-api";
 
-/** Uma sugestão, com tudo o que o card mostra. */
+/** Um card como o back manda (SuggestionCardOut). O formato e o custo vêm como código e número. */
+export type SuggestionCard = {
+  /** "curadoria-12" ou "acao-7": é o id que a escolha usa. */
+  id: string;
+  /** O selo do topo do card, ex.: "Curso online". */
+  typeLabel: string;
+  title: string;
+  source: string;
+  format: "online" | "in_person";
+  /** Duração aproximada, ex.: "~10 horas". */
+  duration: string;
+  /** Em centavos; 0 é grátis e null é "não informado" (as ações dos grupos não têm custo). */
+  costCents: number | null;
+  /** null quando o item não tem idade mínima. */
+  minAge: number | null;
+  /** "Por que pra você" (RF-F11.04); null quando nenhuma regra explica. */
+  why: string | null;
+};
+
+/** A resposta de GET /api/discover/{faixa} (BandSuggestionsOut). */
+export type BandSuggestionsResponse = {
+  band: BandCode;
+  /** Quantos itens já estão no filé dela, para a pílula "Meu filé". */
+  fileTotal: number;
+  /** As sugestões da faixa, na ordem de #80. */
+  items: SuggestionCard[];
+};
+
+/** Uma sugestão como a tela mostra, com os textos já prontos. */
 export type Suggestion = {
   id: string;
   /** Tipo, no selo do topo do card, ex.: "Curso online". */
@@ -19,10 +49,10 @@ export type Suggestion = {
   format: string;
   /** Duração aproximada, ex.: "~10 horas". */
   duration: string;
-  /** "Grátis" ou o valor, ex.: "R$ 20". */
-  cost: string;
-  /** Idade mínima, em anos. */
-  minAge: number;
+  /** "Grátis" ou o valor, ex.: "R$ 20"; null esconde o chip. */
+  cost: string | null;
+  /** Idade mínima, em anos; null esconde o chip. */
+  minAge: number | null;
   /** Texto do "Por que pra você" (RF-F11.04, Could); pode faltar. */
   why?: string;
 };
@@ -48,144 +78,99 @@ export type SuggestionsData = {
   fileTotal: number;
 };
 
-/** Resposta da rota que guarda a escolha: o novo total do filé, para a pílula. */
+/** Resposta da rota que guarda a escolha (ChoiceOut): o novo total do filé, para a pílula. */
 export type ChoiceResponse = { fileTotal: number };
 
-// Os testes e2e trocam os dados definindo __NISE_MOCK_SUGESTOES__ antes da página abrir,
-// e leem as escolhas guardadas em __NISE_ESCOLHAS__.
-declare global {
-  var __NISE_MOCK_SUGESTOES__:
-    | {
-        /** Quantas sugestões a faixa tem; corta a lista de teste. */
-        count?: number;
-        fileTotal?: number;
-        /** Atraso das respostas, em ms, para testar o carregamento. */
-        delayMs?: number;
-        /**
-         * Enquanto true, a busca da faixa falha, para testar o erro. É uma chave (e não um
-         * contador) porque no dev o React roda o efeito duas vezes e gastaria a falha.
-         */
-        failLoad?: boolean;
-        /** Quantas vezes seguidas guardar a escolha falha, para testar o erro. */
-        choiceFailures?: number;
-        /** Quantas vezes seguidas o "Desfazer" falha, para testar o erro. */
-        undoFailures?: number;
-      }
-    | undefined;
-  var __NISE_ESCOLHAS__: { id: string; choice: Choice; reason?: ReasonCode }[] | undefined;
-}
-
-function wait(ms: number | undefined) {
-  return ms ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
-}
-
-type MockItem = Omit<Suggestion, "id">;
-
-const python: MockItem = {
-  kind: "Curso online",
-  title: "Lógica de programação com Python",
-  source: "Plataforma de cursos gratuitos · exemplo",
-  format: "Online",
-  duration: "~10 horas",
-  cost: "Grátis",
-  minAge: 13,
-  why: "você curtiu Programação e IA, e Python é a porta de entrada pras duas.",
+const FORMAT_LABELS: Record<SuggestionCard["format"], string> = {
+  online: "Online",
+  in_person: "Presencial",
 };
 
-// Itens fictícios. O número de cada faixa bate com as contagens do Descobrir (lib/descobrir.ts).
-const MOCK_ITEMS: Record<BandCode, MockItem[]> = {
-  "primeiros-passos": [
-    { kind: "Vídeo", title: "O que é um algoritmo?", source: "Canal de divulgação · exemplo", format: "Online", duration: "~8 min", cost: "Grátis", minAge: 10, why: "é um jeito rápido de começar em Programação." },
-    { kind: "Quiz", title: "Quiz: você sabe o que é IA?", source: "Equipe NISE · exemplo", format: "Online", duration: "~5 min", cost: "Grátis", minAge: 10, why: "você marcou IA nos seus temas." },
-    { kind: "Artigo", title: "Mulheres que criaram a computação", source: "Revista de ciência · exemplo", format: "Online", duration: "~10 min", cost: "Grátis", minAge: 12 },
-    { kind: "Vídeo", title: "Como um robô enxerga o mundo", source: "Canal de robótica · exemplo", format: "Online", duration: "~12 min", cost: "Grátis", minAge: 10, why: "você curtiu Robótica." },
-    { kind: "Quiz", title: "Senhas fortes: teste rápido", source: "Equipe NISE · exemplo", format: "Online", duration: "~5 min", cost: "Grátis", minAge: 10 },
-    { kind: "Artigo", title: "O que faz uma cientista de dados", source: "Blog de carreiras · exemplo", format: "Online", duration: "~7 min", cost: "Grátis", minAge: 13, why: "você marcou Dados nos seus temas." },
-    { kind: "Vídeo", title: "Do papel ao jogo em 10 minutos", source: "Canal de games · exemplo", format: "Online", duration: "~10 min", cost: "Grátis", minAge: 10 },
-    { kind: "Artigo", title: "Como a internet chega até você", source: "Revista de ciência · exemplo", format: "Online", duration: "~6 min", cost: "Grátis", minAge: 12 },
-    { kind: "Quiz", title: "Qual área da computação combina com você?", source: "Equipe NISE · exemplo", format: "Online", duration: "~5 min", cost: "Grátis", minAge: 10 },
-    { kind: "Vídeo", title: "Design de apps: primeiro rascunho", source: "Canal de design · exemplo", format: "Online", duration: "~9 min", cost: "Grátis", minAge: 12, why: "você curtiu Design." },
-    { kind: "Artigo", title: "Por que aprender a programar no ensino médio", source: "Blog de educação · exemplo", format: "Online", duration: "~6 min", cost: "Grátis", minAge: 13 },
-    { kind: "Vídeo", title: "Arduino em 15 minutos", source: "Canal de robótica · exemplo", format: "Online", duration: "~15 min", cost: "Grátis", minAge: 12 },
-  ],
-  "uma-tarde": [
-    { kind: "Tutorial", title: "Crie seu primeiro site com HTML", source: "Plataforma de tutoriais · exemplo", format: "Online", duration: "~3 horas", cost: "Grátis", minAge: 12, why: "você marcou Sites nos seus temas." },
-    { kind: "Mini-projeto", title: "Um jogo da velha no navegador", source: "Comunidade de jogos · exemplo", format: "Online", duration: "~4 horas", cost: "Grátis", minAge: 13, why: "você curtiu Jogos e Programação." },
-    python,
-    { kind: "Tutorial", title: "Gráficos com planilhas", source: "Plataforma de tutoriais · exemplo", format: "Online", duration: "~2 horas", cost: "Grátis", minAge: 12 },
-    { kind: "Mini-projeto", title: "Um chatbot simples", source: "Comunidade de IA · exemplo", format: "Online", duration: "~5 horas", cost: "Grátis", minAge: 14, why: "você curtiu IA." },
-    { kind: "Tutorial", title: "Animações com Scratch", source: "Plataforma de tutoriais · exemplo", format: "Online", duration: "~2 horas", cost: "Grátis", minAge: 10 },
-    { kind: "Mini-projeto", title: "Semáforo com Arduino simulado", source: "Comunidade de robótica · exemplo", format: "Online", duration: "~3 horas", cost: "Grátis", minAge: 12 },
-    { kind: "Tutorial", title: "Protótipo de app no papel e no Figma", source: "Plataforma de tutoriais · exemplo", format: "Online", duration: "~4 horas", cost: "Grátis", minAge: 13 },
-  ],
-  "no-meu-ritmo": [
-    python,
-    { kind: "Curso online", title: "Introdução à ciência de dados", source: "Universidade aberta · exemplo", format: "Online", duration: "~20 horas", cost: "Grátis", minAge: 15, why: "você marcou Dados nos seus temas." },
-    { kind: "Projeto pessoal", title: "Seu portfólio na web", source: "Equipe NISE · exemplo", format: "Online", duration: "~2 semanas", cost: "Grátis", minAge: 13 },
-    { kind: "Curso online", title: "Segurança digital para iniciantes", source: "Plataforma de cursos gratuitos · exemplo", format: "Online", duration: "~8 horas", cost: "Grátis", minAge: 13 },
-    { kind: "Curso online", title: "Desenvolvimento de jogos 2D", source: "Escola de games · exemplo", format: "Online", duration: "~15 horas", cost: "R$ 30", minAge: 14, why: "você curtiu Jogos." },
-    { kind: "Projeto pessoal", title: "Diário de bordo de um robô", source: "Equipe NISE · exemplo", format: "Online", duration: "~1 mês", cost: "Grátis", minAge: 12 },
-  ],
-  "role-com-a-galera": [
-    { kind: "Oficina", title: "Oficina de robótica com sucata", source: "Grupo de incentivo · exemplo", format: "Presencial", duration: "~4 horas", cost: "Grátis", minAge: 12, why: "é na sua cidade e você curtiu Robótica." },
-    { kind: "Palestra", title: "Meninas na computação: bate-papo", source: "Grupo de incentivo · exemplo", format: "Online", duration: "~2 horas", cost: "Grátis", minAge: 12 },
-    { kind: "Oficina", title: "Crie um site em grupo", source: "Grupo de incentivo · exemplo", format: "Presencial", duration: "~1 dia", cost: "Grátis", minAge: 13 },
-    { kind: "Encontro", title: "Café com programadoras", source: "Grupo de incentivo · exemplo", format: "Presencial", duration: "~3 horas", cost: "Grátis", minAge: 14 },
-    { kind: "Oficina", title: "Jogos com Scratch em dupla", source: "Grupo de incentivo · exemplo", format: "Online", duration: "~3 horas", cost: "Grátis", minAge: 10 },
-  ],
-  "grande-desafio": [
-    { kind: "Hackathon", title: "Hackathon de soluções para a escola", source: "Grupo de incentivo · exemplo", format: "Presencial", duration: "~2 dias", cost: "Grátis", minAge: 14, why: "você curtiu Programação e gosta de trabalhar em grupo." },
-    { kind: "Olimpíada", title: "Olimpíada de programação", source: "Olimpíada nacional · exemplo", format: "Online", duration: "~3 meses", cost: "Grátis", minAge: 12 },
-    { kind: "Clube", title: "Clube de robótica da escola", source: "Grupo de incentivo · exemplo", format: "Presencial", duration: "~1 semestre", cost: "Grátis", minAge: 12 },
-    { kind: "Curso com turma", title: "Curso de desenvolvimento web com turma", source: "Grupo de incentivo · exemplo", format: "Presencial", duration: "~2 meses", cost: "R$ 20", minAge: 15 },
-  ],
-};
-
-// O filé de teste começa com 5 itens, como no Figma.
-let mockFileTotal = 5;
-
-/** Sugestões de uma faixa e o total do filé (#102). */
-export async function getSuggestions(band: BandCode): Promise<SuggestionsData> {
-  const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
-  await wait(mock.delayMs);
-  if (mock.failLoad) {
-    throw new Error("Não foi possível carregar as sugestões.");
-  }
-  if (mock.fileTotal !== undefined) mockFileTotal = mock.fileTotal;
-  const items = MOCK_ITEMS[band].slice(0, mock.count).map((item, index) => ({
-    ...item,
-    id: `${band}-${index + 1}`,
-  }));
-  return { items, fileTotal: mockFileTotal };
+/** O custo como aparece no chip: "Grátis", "R$ 20", "R$ 12,50" ou "R$ 1.500". */
+export function costLabel(cents: number | null): string | null {
+  if (cents === null) return null;
+  if (cents === 0) return "Grátis";
+  const reais = cents / 100;
+  // Ponto no milhar e vírgula nos centavos, como se escreve no Brasil.
+  const digits = Number.isInteger(reais) ? 0 : 2;
+  const amount = reais.toLocaleString("pt-BR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return `R$ ${amount}`;
 }
 
-/** Guarda a escolha dela sobre um item, com o motivo opcional do "Não é pra mim" (#102). */
-export async function sendChoice(id: string, choice: Choice, reason?: ReasonCode): Promise<ChoiceResponse> {
-  const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
-  await wait(mock.delayMs);
-  if (mock.choiceFailures) {
-    mock.choiceFailures -= 1;
-    throw new Error("Não foi possível guardar a escolha.");
+/** O card do back com os textos da tela. */
+export function toSuggestion(card: SuggestionCard): Suggestion {
+  return {
+    id: card.id,
+    kind: card.typeLabel,
+    title: card.title,
+    source: card.source,
+    format: FORMAT_LABELS[card.format],
+    duration: card.duration,
+    cost: costLabel(card.costCents),
+    minAge: card.minAge,
+    why: card.why ?? undefined,
+  };
+}
+
+export type SuggestionsResult =
+  | { ok: true; data: SuggestionsData }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+/**
+ * As sugestões de uma faixa e o total do filé (#104). Quem escolhe e ordena é
+ * o back, pelas regras da #80; os itens que ela já escolheu não voltam.
+ */
+export async function getSuggestions(band: BandCode, signal?: AbortSignal): Promise<SuggestionsResult> {
+  const response = await fetch(`/api/discover/${band}`, { signal });
+
+  if (response.ok) {
+    const data = (await response.json()) as BandSuggestionsResponse;
+    return { ok: true, data: { items: data.items.map(toSuggestion), fileTotal: data.fileTotal } };
   }
-  globalThis.__NISE_ESCOLHAS__ = [...(globalThis.__NISE_ESCOLHAS__ ?? []), { id, choice, reason }];
-  if (choice === "quero-fazer") mockFileTotal += 1;
-  return { fileTotal: mockFileTotal };
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // O filé vem depois do aceite dos termos: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
 }
 
 /**
- * Desfaz a escolha dela sobre um item (#106): apaga a escolha guardada (e o motivo, se houver)
- * e devolve o novo total do filé. Para um item sem escolha, não faz nada.
+ * Guarda a escolha dela sobre um item, com o motivo opcional do "Não é pra mim" (#104),
+ * e devolve o novo total do filé. Escolher de novo no mesmo item troca a escolha.
+ * Qualquer resposta que não seja 200 vira erro: a tela avisa e ela pode tocar de novo.
+ */
+export async function sendChoice(id: string, choice: Choice, reason?: ReasonCode): Promise<ChoiceResponse> {
+  const response = await fetch(`/api/file/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(reason ? { choice, reason } : { choice }),
+  });
+  if (!response.ok) {
+    throw new Error("Não foi possível guardar a escolha.");
+  }
+
+  return (await response.json()) as ChoiceResponse;
+}
+
+/**
+ * Desfaz a escolha dela sobre um item (#108): o back apaga a escolha guardada (e o motivo, se
+ * houver) e devolve o novo total do filé. Para um item sem escolha, o back não faz nada.
+ * Qualquer resposta que não seja 200 vira erro: o aviso mostra "Tentar de novo".
  */
 export async function undoChoice(id: string): Promise<ChoiceResponse> {
-  const mock = globalThis.__NISE_MOCK_SUGESTOES__ ?? {};
-  await wait(mock.delayMs);
-  if (mock.undoFailures) {
-    mock.undoFailures -= 1;
+  const response = await fetch(`/api/file/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!response.ok) {
     throw new Error("Não foi possível desfazer a escolha.");
   }
-  const saved = globalThis.__NISE_ESCOLHAS__ ?? [];
-  const removed = saved.find((entry) => entry.id === id);
-  globalThis.__NISE_ESCOLHAS__ = saved.filter((entry) => entry.id !== id);
-  if (removed?.choice === "quero-fazer") mockFileTotal -= 1;
-  return { fileTotal: mockFileTotal };
+
+  return (await response.json()) as ChoiceResponse;
 }

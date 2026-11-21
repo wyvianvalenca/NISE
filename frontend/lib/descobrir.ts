@@ -1,10 +1,11 @@
-// Tela Descobrir (A06·1): as 5 faixas de esforço com o número de sugestões (#86, #87).
+// Tela Descobrir (A06·1): as 5 faixas de esforço com o número de sugestões (#86).
 //
-// TEMPORÁRIO: getDiscover() usa dados de teste. Os tipos seguem a rota descrita na
-// issue #88 e serão trocados pelos tipos gerados do OpenAPI quando ela existir; a
-// troca pela chamada a /api é a issue #89. Os dados são fictícios; nada sai do navegador.
+// As rotas são GET /api/discover e PUT /api/discover/last-band (#88). Os tipos
+// abaixo são escritos à mão, iguais ao OpenAPI do back (/docs no FastAPI), como
+// em lib/signup-api.ts: a equipe decidiu não ter um gerador de tipos por enquanto.
 
 import type { IconName } from "@/components/Icon";
+import { errorCode, sessionProblem, type SessionProblem } from "./signup-api";
 
 /** Código de cada faixa, na ordem fixa da tela (RF-F10.03). */
 export const BAND_CODES = [
@@ -17,11 +18,12 @@ export const BAND_CODES = [
 
 export type BandCode = (typeof BAND_CODES)[number];
 
-/** O que o back devolve de cada faixa: só o código e a contagem. */
+/** O que o back devolve de cada faixa: só o código e a contagem (BandCountOut). */
 export type BandCount = { code: BandCode; count: number };
 
+/** A resposta de GET /api/discover (DiscoverOut). */
 export type DiscoverData = {
-  /** Primeiro nome da menina, para o "Oi, <nome>!". Virá da sessão. */
+  /** Primeiro nome da menina, para o "Oi, <nome>!". É o da sessão. */
   firstName: string;
   /** As 5 faixas, na ordem de BAND_CODES. Uma faixa sem sugestões vem com 0. */
   bands: BandCount[];
@@ -78,37 +80,58 @@ export function bandPath(code: BandCode): string {
   return `/descobrir/${code}`;
 }
 
-// Os testes e2e trocam os dados definindo __NISE_MOCK_DESCOBRIR__ antes da página abrir.
-declare global {
-  var __NISE_MOCK_DESCOBRIR__:
-    | {
-        counts?: Partial<Record<BandCode, number>>;
-        lastBand?: BandCode | null;
-        /** Atraso da resposta, em ms, para testar o carregamento. */
-        delayMs?: number;
-      }
-    | undefined;
+export type DiscoverResult =
+  | { ok: true; data: DiscoverData }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "failed" };
+
+/**
+ * As 5 faixas com as contagens e a última faixa aberta (#88). Quem conta é o
+ * back, pelas regras das sugestões: só as duas fontes do filé, sem itens
+ * vencidos, e ações só abertas, futuras e da cidade dela (RF-F11.01, RF-F11.07, RN-16).
+ */
+export async function getDiscover(signal?: AbortSignal): Promise<DiscoverResult> {
+  const response = await fetch("/api/discover", { signal });
+
+  if (response.ok) {
+    return { ok: true, data: (await response.json()) as DiscoverData };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // O filé vem depois do aceite dos termos: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
 }
 
-// Os números do Figma.
-const MOCK_COUNTS: Record<BandCode, number> = {
-  "primeiros-passos": 12,
-  "uma-tarde": 8,
-  "no-meu-ritmo": 6,
-  "role-com-a-galera": 5,
-  "grande-desafio": 4,
-};
+/**
+ * Grava a faixa que ela acabou de tocar, para a tag "da última vez" na próxima
+ * visita. Não espera a resposta nem avisa de erro: a tag é só um atalho, e
+ * ela já está indo para as sugestões. `keepalive` deixa o pedido terminar
+ * mesmo que a página mude.
+ */
+export function saveLastBand(code: BandCode): void {
+  fetch("/api/discover/last-band", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ band: code }),
+    keepalive: true,
+  }).catch(() => {});
+}
 
-/** Faixas com contagem e a última faixa aberta (#88). */
-export async function getDiscover(): Promise<DiscoverData> {
-  const mock = globalThis.__NISE_MOCK_DESCOBRIR__ ?? {};
-  if (mock.delayMs) {
-    await new Promise((resolve) => setTimeout(resolve, mock.delayMs));
-  }
-  const counts = { ...MOCK_COUNTS, ...mock.counts };
-  return {
-    firstName: "Alana",
-    bands: BAND_CODES.map((code) => ({ code, count: counts[code] })),
-    lastBand: mock.lastBand === undefined ? "uma-tarde" : mock.lastBand,
-  };
+/**
+ * O primeiro nome dela, para o "Quase lá, <nome>" da espera (E03, #81). Vem
+ * da sessão (GET /api/auth/me), porque a espera aparece antes das contagens.
+ * `null` quando não deu para ler.
+ */
+export async function getFirstName(signal?: AbortSignal): Promise<string | null> {
+  const response = await fetch("/api/auth/me", { signal });
+  if (!response.ok) return null;
+
+  const user = (await response.json()) as { name: string };
+  return user.name.trim().split(/\s+/)[0] || null;
 }

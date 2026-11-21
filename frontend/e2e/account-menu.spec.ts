@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockDiscoverApi } from "./discover-api";
 
 /**
  * The girl's account menu: tapping the avatar shows her name, "Ver perfil"
- * and "Sair". Uses the Descobrir test data (lib/descobrir.ts), where she is
+ * and "Sair". The Descobrir routes are mocked (discover-api.ts), where she is
  * "Alana". The logout route is mocked with the real contract (204).
  */
 
@@ -11,12 +12,14 @@ function accountButton(page: Page) {
 }
 
 async function open(page: Page) {
+  await mockDiscoverApi(page);
   await page.goto("/descobrir");
   await accountButton(page).click();
   await expect(page.getByText("Alana", { exact: true })).toBeVisible();
 }
 
 test("o avatar abre o menu com o nome, o perfil e sair", async ({ page }) => {
+  await mockDiscoverApi(page);
   await page.goto("/descobrir");
 
   await expect(accountButton(page)).toHaveAttribute("aria-expanded", "false");
@@ -58,6 +61,10 @@ test("Sair encerra a sessão, apaga os dados de teste da aba e volta à A01", as
   });
 
   await open(page);
+  // Depois de sair, a sessão acabou: a A01 não a leva de volta para dentro (#330).
+  await page.route("**/api/auth/me", (route) =>
+    saiu ? route.fulfill({ status: 401, json: { detail: "Not authenticated" } }) : route.fallback(),
+  );
   await page.evaluate(() => sessionStorage.setItem("nise-mock-signup", "{}"));
   await page.getByRole("button", { name: "Sair" }).click();
 
