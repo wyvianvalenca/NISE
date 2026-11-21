@@ -1,0 +1,18 @@
+/* Fica sobre o conteúdo, logo abaixo do cabeçalho de 68px, como no Figma (A06·4b inscrita). */
+.area {
+  position: fixed;
+  top: 82px;
+  right: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 0 24px;
+  pointer-events: none;
+}
+
+.area > * {
+  width: 100%;
+  max-width: 432px;
+  pointer-events: auto;
+}

@@ -32,7 +32,7 @@ export function FileItemCard({ item }: { item: FileItem }) {
       </div>
       {/* O nome acessível leva o título, para "Abrir" não ficar ambíguo na lista. */}
       <Link
-        href={itemPath(item.id)}
+        href={itemPath(item)}
         className={`${styles.action} ${inProgress ? styles.primary : ""}`}
         aria-label={`${ACTIONS[item.status]}: ${item.title}`}
       >
