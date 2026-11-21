@@ -5,7 +5,7 @@ Maceió é só um número.
 """
 
 from collections.abc import Sequence
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -175,6 +175,7 @@ async def test_evento_de_fora_mostra_tudo_o_que_a_tela_pede() -> None:
         "registrationsOpen": True,
         "daysUntilStart": 24,
         "afterEvent": False,
+        "waitingAttendance": False,
         "cost": None,
         "stage": "Ensino médio",
         "prerequisites": ["Não precisa saber programar", "Ter 14 anos"],
@@ -424,3 +425,64 @@ async def test_sem_aceite_dos_termos_responde_403() -> None:
     response = await abrir(sessao_falsa)
 
     assert response.status_code == 403
+
+
+# --- Evento de grupo da NISE depois da data (#194, #196) ----------------------
+
+
+async def test_evento_de_grupo_passado_com_ela_inscrita_espera_a_presenca() -> None:
+    achados = da_oficina(FileStatus.SIGNED_UP, starts_on=dia(-2), ends_on=dia(-2))
+    sessao_falsa = sessao_do_evento(menina(), achados)
+
+    response = await abrir(sessao_falsa, ACAO)
+
+    assert response.json()["status"] == "in_progress"
+    assert response.json()["afterEvent"] is True
+    assert response.json()["waitingAttendance"] is True
+
+
+async def test_no_dia_do_evento_de_grupo_ainda_nao_espera_a_presenca() -> None:
+    achados = da_oficina(FileStatus.SIGNED_UP, starts_on=HOJE, ends_on=HOJE)
+    sessao_falsa = sessao_do_evento(menina(), achados)
+
+    response = await abrir(sessao_falsa, ACAO)
+
+    assert response.json()["waitingAttendance"] is False
+
+
+async def test_evento_de_grupo_passado_sem_inscricao_nao_espera_a_presenca() -> None:
+    achados = da_oficina(FileStatus.NEXT, starts_on=dia(-2), ends_on=dia(-2))
+    sessao_falsa = sessao_do_evento(menina(), achados)
+
+    response = await abrir(sessao_falsa, ACAO)
+
+    assert response.json()["waitingAttendance"] is False
+
+
+async def test_evento_de_fora_passado_nao_espera_a_presenca() -> None:
+    # O de fora pergunta "Você foi?" (#190).
+    achados = do_hackathon(
+        FileStatus.SIGNED_UP,
+        starts_on=dia(-3),
+        ends_on=dia(-1),
+        registration_deadline=dia(-10),
+    )
+    sessao_falsa = sessao_do_evento(menina(), achados)
+
+    response = await abrir(sessao_falsa)
+
+    assert response.json()["waitingAttendance"] is False
+
+
+async def test_depois_que_a_coordenadora_conclui_nao_espera_mais() -> None:
+    achados = da_oficina(
+        FileStatus.SIGNED_UP,
+        starts_on=dia(-2),
+        ends_on=dia(-2),
+        attendance_registered_at=datetime(2026, 11, 18, 15, tzinfo=UTC),
+    )
+    sessao_falsa = sessao_do_evento(menina(), achados)
+
+    response = await abrir(sessao_falsa, ACAO)
+
+    assert response.json()["waitingAttendance"] is False

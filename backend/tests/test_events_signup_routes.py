@@ -157,6 +157,24 @@ async def test_marcar_num_evento_cancelado_pela_curadoria_responde_409() -> None
     sessao_falsa.commit.assert_not_called()
 
 
+async def test_marcar_depois_que_a_coordenadora_concluiu_a_presenca() -> None:
+    # Ação de dois dias: ela conclui a presença no primeiro dia, e a menina
+    # tenta marcar no segundo. A marca ficaria esperando para sempre.
+    achados = da_oficina(
+        FileStatus.NEXT,
+        starts_on=dia(-1),
+        ends_on=HOJE,
+        attendance_registered_at=datetime(2026, 11, 18, 15, tzinfo=UTC),
+    )
+    sessao_falsa = sessao_do_evento(menina(), achados)
+
+    response = await marcar(sessao_falsa, ACAO)
+
+    assert response.status_code == 409
+    assert response.json() == {"error": "event_over"}
+    sessao_falsa.commit.assert_not_called()
+
+
 async def test_marcar_trava_a_linha_antes_de_decidir() -> None:
     sessao_falsa = sessao_do_evento(menina(), do_hackathon(FileStatus.NEXT))
 
