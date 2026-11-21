@@ -127,7 +127,9 @@ def event_phase(event: FileEvent, today: date) -> EventPhase:
 
 # O que as mudanças de status respondem quando não dá: a rota devolve 409 com
 # o código.
-EventError = Literal["event_concluded", "event_over", "event_cancelled"]
+EventError = Literal[
+    "event_concluded", "event_over", "event_cancelled", "event_not_asked"
+]
 
 
 def phase_error(phase: EventPhase) -> EventError:
@@ -178,18 +180,24 @@ async def find_event(
     origin: ItemOrigin,
     number: int,
     for_update: bool = False,
+    include_did_not_go: bool = False,
 ) -> FileEvent | None:
     """Um evento do filé dela, ou None se não há.
 
     Fica de fora o que não é um evento no filé dela: o "Ver depois", o "Não é
-    pra mim", um item sem escolha e as atividades, que abrem a A06·4a.
+    pra mim", um item sem escolha e as atividades, que abrem a A06·4a. Com
+    `include_did_not_go`, vem também o evento que saiu do filé pelo "Não deu",
+    que só o "Não deu" e o "Desfazer" dele usam.
 
     A linha é buscada pelo id dela, então a de outra menina nunca é achada
     (RNF-G.03). Com `for_update`, a linha fica travada até o fim da transação
     (`find_entry`): duas mudanças ao mesmo tempo vão uma depois da outra.
     """
     entry = await find_entry(session, girl_id, origin, number, for_update=for_update)
-    if entry is None or entry.status not in EVENT_STATUS:
+    if entry is None:
+        return None
+    did_not_go = include_did_not_go and entry.status is FileStatus.DID_NOT_GO
+    if entry.status not in EVENT_STATUS and not did_not_go:
         return None
 
     found = await load_event_item(session, origin, number)
@@ -377,5 +385,86 @@ async def undo_signed_up(
     if phase is not EventPhase.BEFORE:
         return phase_error(phase)
     entry.status = FileStatus.NEXT
+    await session.commit()
+    return None
+
+
+# --- "Você foi?" do evento de fora (A06·4b, #190) -----------------------------
+#
+# Só o evento de fora pergunta "Você foi?" (`EventPhase.ASKS_IF_WENT`); o de um
+# grupo da NISE é concluído pela presença que a coordenadora registra (#194).
+# O "Não deu" tira o evento do filé (não está em IN_FILE), mas a linha fica,
+# com o próprio status, para o "Desfazer" saber que ela estava inscrita.
+
+
+async def mark_went(
+    session: AsyncSession, event: FileEvent, today: date
+) -> EventError | None:
+    """ "Fui!": inscrita → concluído, com o dia (RF-F10.23).
+
+    Um "Fui!" repetido (clique duplo) acha o evento já concluído: vale, sem
+    mudar o dia, mesmo se a curadoria mexeu no evento entre os dois.
+    """
+    entry = event.entry
+    if event.is_group_event:
+        return "event_not_asked"
+    if entry.status is FileStatus.CONCLUDED:
+        return None
+    if (
+        entry.status is not FileStatus.SIGNED_UP
+        or event_phase(event, today) is not EventPhase.ASKS_IF_WENT
+    ):
+        return "event_not_asked"
+    entry.status = FileStatus.CONCLUDED
+    entry.concluded_on = today
+    await session.commit()
+    return None
+
+
+async def mark_did_not_go(
+    session: AsyncSession, event: FileEvent, today: date
+) -> EventError | None:
+    """ "Não deu": o evento de fora em que ela se inscreveu sai do filé (RF-F10.23).
+
+    `event` vem de `find_event(include_did_not_go=True)`. Valem as regras do
+    "Fui!". Um "Não deu" repetido acha o evento já fora do filé: vale.
+    """
+    entry = event.entry
+    if event.is_group_event:
+        return "event_not_asked"
+    if entry.status is FileStatus.DID_NOT_GO:
+        return None
+    if (
+        entry.status is not FileStatus.SIGNED_UP
+        or event_phase(event, today) is not EventPhase.ASKS_IF_WENT
+    ):
+        return "event_not_asked"
+    entry.status = FileStatus.DID_NOT_GO
+    await session.commit()
+    return None
+
+
+async def undo_did_not_go(
+    session: AsyncSession, event: FileEvent, today: date
+) -> EventError | None:
+    """O "Desfazer" do aviso do "Não deu": o evento volta, inscrita, ao filé dela.
+
+    `event` vem de `find_event(include_did_not_go=True)`. Desfazer de novo acha
+    o evento já inscrita: vale, a qualquer data (a linha não guarda se houve um
+    "Não deu" antes). Vale também se a curadoria adiou o evento depois, para a
+    linha nunca ficar presa fora do filé; não se ela o cancelou, porque ele não
+    aconteceu e, de volta ao filé, ficaria inscrita sem "Você foi?".
+    """
+    entry = event.entry
+    if event.is_group_event:
+        return "event_not_asked"
+    if entry.status is FileStatus.SIGNED_UP:
+        return None
+    if (
+        entry.status is not FileStatus.DID_NOT_GO
+        or event_phase(event, today) is EventPhase.CANCELLED
+    ):
+        return "event_not_asked"
+    entry.status = FileStatus.SIGNED_UP
     await session.commit()
     return None

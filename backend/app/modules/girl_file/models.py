@@ -14,7 +14,8 @@ class FileStatus(enum.Enum):
     "Quero fazer" põe o item em NEXT. Uma atividade anda de NEXT para
     IN_PROGRESS e de IN_PROGRESS para CONCLUDED, nessa ordem (#119). Um evento
     vira SIGNED_UP quando ela confirma a inscrição (RF-F10.14). LATER é o "Ver
-    depois" e DISMISSED é o "Não é pra mim", que guarda o motivo.
+    depois" e DISMISSED é o "Não é pra mim", que guarda o motivo. DID_NOT_GO
+    é o "Não deu" de um evento de fora que já passou (#190).
 
     "Tirar do filé", "Remover" e "Desfazer" apagam a linha: o item volta a
     poder ser sugerido.
@@ -26,6 +27,9 @@ class FileStatus(enum.Enum):
     SIGNED_UP = "signed_up"
     LATER = "later"
     DISMISSED = "dismissed"
+    # "Não deu" de um evento de fora depois da data (#190): saiu do filé, mas a
+    # linha fica para o "Desfazer" saber que ela estava inscrita.
+    DID_NOT_GO = "did_not_go"
 
 
 class DismissReason(enum.Enum):
