@@ -15,10 +15,9 @@ const ACTIONS = {
 /**
  * Item do filé (Figma: Item / ..., A06·3).
  *
- * Só a atividade tem botão: ele abre a A06·4a (GET /api/file/{id}). O detalhe do
- * evento (A06·4b) chega no M6 (#255), que escolhe a tela pelo `kind`; até lá, o
- * evento aparece sem botão, em vez de abrir a tela da atividade e mostrar "Essa
- * atividade não está no seu filé".
+ * O botão abre a A06·4a numa atividade e o detalhe do evento (A06·4b) num evento,
+ * pelo `kind` (itemPath). O detalhe do evento ainda usa dados de teste: a troca pela
+ * rota do back é a #181.
  */
 export function FileItemCard({ item }: { item: FileItem }) {
   const theme = themeOf(item.theme);
@@ -45,16 +44,14 @@ export function FileItemCard({ item }: { item: FileItem }) {
           </span>
         )}
       </div>
-      {item.kind === "atividade" && (
-        // O nome acessível leva o título, para "Abrir" não ficar ambíguo na lista.
-        <Link
-          href={itemPath(item.id)}
-          className={`${styles.action} ${inProgress ? styles.primary : ""}`}
-          aria-label={`${ACTIONS[item.status]}: ${item.title}`}
-        >
-          {ACTIONS[item.status]}
-        </Link>
-      )}
+      {/* O nome acessível leva o título, para "Abrir" não ficar ambíguo na lista. */}
+      <Link
+        href={itemPath(item)}
+        className={`${styles.action} ${inProgress ? styles.primary : ""}`}
+        aria-label={`${ACTIONS[item.status]}: ${item.title}`}
+      >
+        {ACTIONS[item.status]}
+      </Link>
     </article>
   );
 }

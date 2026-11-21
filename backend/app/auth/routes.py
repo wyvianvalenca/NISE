@@ -2,8 +2,17 @@ import secrets
 from typing import Annotated
 
 import httpx2
-from fastapi import APIRouter, Cookie, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Cookie,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.exceptions import SignupError, SignupErrorCode
 from app.auth.google import (
@@ -27,20 +36,31 @@ from app.auth.permissions import (
     set_pending_signup_cookie,
     set_session_cookie,
 )
+from app.auth.reset_email import send_reset_link
 from app.auth.schemas import (
     EmailSignupIn,
+    ForgotPasswordIn,
     GoogleSignupCompleteIn,
+    HomeOut,
     LoginIn,
     PendingSignupOut,
+    ResetPasswordIn,
+    ResetTokenIn,
+    ResetTokenOut,
+    SessionOut,
     SignupOut,
 )
 from app.auth.service import (
     authenticate_user,
     complete_google_signup,
     find_oauth_user,
+    find_reset_token_user,
+    home_path,
+    reset_password,
     signup_with_email,
 )
 from app.auth.utils import (
+    MINIMUM_PASSWORD_LENGTH,
     PendingSignup,
     create_access_token,
     create_pending_signup_token,
@@ -52,14 +72,22 @@ from app.users.service import normalize_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-GOOGLE_SUCCESS_URL = "/"
 GOOGLE_SIGNUP_URL = "/cadastro/google"
-GOOGLE_ERROR_URL = "/?erro=google"
+# A A15 mostra o aviso. Vale também para quem começou em "Criar conta com o
+# Google": ela tenta de novo por lá ou toca "Criar conta".
+GOOGLE_ERROR_URL = "/entrar?erro=google"
 
 
 @router.get("/me", response_model=UserOut)
 async def me(user: CurrentUserDep) -> User:
     return user
+
+
+# A tela para onde vai quem já entrou: a A01 e o login usam a mesma regra
+# (home_path). Sem sessão, responde 401 e ela fica na A01.
+@router.get("/home", response_model=HomeOut)
+async def home(user: CurrentUserDep, session: AsyncSessionDep) -> HomeOut:
+    return HomeOut(next_path=await home_path(session, user))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -159,8 +187,18 @@ async def discard_signup(response: Response) -> None:
     clear_pending_signup_cookie(response)
 
 
-@router.post("/login", response_model=UserOut)
-async def login(data: LoginIn, session: AsyncSessionDep, response: Response) -> User:
+# Entrar com e-mail e senha (A15, #330). A resposta diz a próxima tela, a
+# mesma para onde o Google mandaria.
+@router.post(
+    "/login",
+    response_model=SessionOut,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "E-mail ou senha incorretos"}
+    },
+)
+async def login(
+    data: LoginIn, session: AsyncSessionDep, response: Response
+) -> SessionOut:
     user = await authenticate_user(session, data)
 
     if user is None:
@@ -168,7 +206,90 @@ async def login(data: LoginIn, session: AsyncSessionDep, response: Response) -> 
 
     set_session_cookie(response, create_access_token(user.id))
 
-    return user
+    return await _session_out(session, user)
+
+
+async def _session_out(session: AsyncSession, user: User) -> SessionOut:
+    return SessionOut(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        role=user.role,
+        next_path=await home_path(session, user),
+    )
+
+
+# Recuperar o acesso (A16 e A16b, #331, RF-S2.04). Vale para menina e
+# coordenadora, e também cria uma senha para quem só entrava pelo Google.
+
+# Recusas que o front sabe mostrar, no mesmo formato do cadastro.
+INVALID_TOKEN = {"error": "invalid_token"}
+PASSWORD_TOO_SHORT = {"error": "password_too_short"}
+
+
+@router.post("/password/forgot", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    data: ForgotPasswordIn, background_tasks: BackgroundTasks
+) -> None:
+    # Responde igual exista a conta ou não: a A16 não pode dizer quem tem
+    # conta. Nem a busca roda antes da resposta, para o tempo também não
+    # denunciar (revisão do #332): tudo fica na tarefa de fundo.
+    background_tasks.add_task(send_reset_link, data.email)
+
+
+@router.post(
+    "/password/reset/check",
+    response_model=ResetTokenOut,
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Link vencido, usado ou desconhecido: {"error": '
+            '"invalid_token"}'
+        }
+    },
+)
+async def check_reset_token(
+    data: ResetTokenIn, session: AsyncSessionDep
+) -> ResetTokenOut | JSONResponse:
+    user = await find_reset_token_user(session, data.token)
+
+    if user is None:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content=INVALID_TOKEN
+        )
+
+    return ResetTokenOut(email=user.email)
+
+
+# "Salvar e entrar": troca a senha, gasta o link e já abre a sessão.
+@router.post(
+    "/password/reset",
+    response_model=SessionOut,
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Recusa, ex.: {"error": "invalid_token"} ou '
+            '{"error": "password_too_short"}'
+        }
+    },
+)
+async def reset_password_route(
+    data: ResetPasswordIn, session: AsyncSessionDep, response: Response
+) -> SessionOut | JSONResponse:
+    if len(data.password) < MINIMUM_PASSWORD_LENGTH:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content=PASSWORD_TOO_SHORT,
+        )
+
+    user = await reset_password(session, data.token, data.password)
+
+    if user is None:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content=INVALID_TOKEN
+        )
+
+    set_session_cookie(response, create_access_token(user.id))
+
+    return await _session_out(session, user)
 
 
 # O front também manda switch_account=1 em "Usar outra conta" (A02b). Não
@@ -228,7 +349,7 @@ async def google_callback(
 
         if user is not None:
             response = RedirectResponse(
-                GOOGLE_SUCCESS_URL, status_code=status.HTTP_302_FOUND
+                await home_path(session, user), status_code=status.HTTP_302_FOUND
             )
             set_session_cookie(response, create_access_token(user.id))
             clear_pending_signup_cookie(response)

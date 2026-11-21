@@ -17,6 +17,7 @@
   height: 44px;
   border-radius: 12px;
   background: var(--nise-tealSoft);
+  color: var(--nise-teal);
 }
 
 .texts {

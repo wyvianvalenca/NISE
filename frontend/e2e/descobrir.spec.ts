@@ -114,7 +114,9 @@ test("a barra inferior marca Descobrir; Agenda e o avatar têm destino provisór
   await expect(nav.getByRole("link", { name: "Descobrir" })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/agenda");
   await expect(nav.getByRole("link", { name: "Agenda" })).not.toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute("href", "/perfil");
+  // O avatar abre o menu da conta; o perfil fica dentro dele.
+  await page.getByRole("button", { name: "Sua conta" }).click();
+  await expect(page.getByRole("link", { name: "Ver perfil" })).toHaveAttribute("href", "/perfil");
 });
 
 test("uma espera curta não mostra nada no lugar das faixas", async ({ page }) => {
@@ -266,7 +268,7 @@ test("dá para escolher uma faixa só com o teclado, com foco visível", async (
 
   // A marca não é link: o primeiro Tab vai para o avatar, o segundo para a primeira faixa.
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Sua conta" })).toBeFocused();
   await page.keyboard.press("Tab");
   const first = band(page, "Primeiros passos");
   await expect(first).toBeFocused();

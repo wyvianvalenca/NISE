@@ -4,11 +4,10 @@
 // Atende RF-F10.06 e RF-F11.07 (issues #110 e #111), pela rota GET /api/later da #112
 // (integração na #113). "+ Quero fazer" e "Remover" usam PUT e DELETE /api/file/{id}.
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { Avatar } from "@/components/Avatar";
+import { AccountMenu } from "@/components/AccountMenu";
 import { BottomNav } from "@/components/BottomNav";
 import { LinkButton } from "@/components/Button";
 import { Chip } from "@/components/Chip";
@@ -142,12 +141,7 @@ export default function SavedForLaterPage() {
   return (
     <div className={styles.page}>
       <AppHeader>
-        {firstName !== null && (
-          // O perfil ainda não existe; por enquanto o link dá 404.
-          <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
-            <Avatar name={firstName} size={36} />
-          </Link>
-        )}
+        {firstName !== null && <AccountMenu name={firstName} />}
       </AppHeader>
 
       <div className={styles.scroll}>

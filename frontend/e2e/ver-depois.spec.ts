@@ -166,7 +166,7 @@ test("se Remover falha, o cartão fica e avisa", async ({ page }) => {
 test("o avatar usa o nome que vem do back", async ({ page }) => {
   await openWith(page, { firstName: "Bia" });
 
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveText("B");
+  await expect(page.getByRole("button", { name: "Sua conta" })).toHaveText("B");
 });
 
 test("quando a lista não carrega, mostra o erro e tenta de novo", async ({ page }) => {
@@ -279,7 +279,9 @@ test("a barra inferior marca Ver depois; Agenda e o avatar têm destino provisó
   await expect(nav.getByRole("link", { name: "Ver depois" })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Descobrir" })).not.toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/agenda");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute("href", "/perfil");
+  // O avatar abre o menu da conta; o perfil fica dentro dele.
+  await page.getByRole("button", { name: "Sua conta" }).click();
+  await expect(page.getByRole("link", { name: "Ver perfil" })).toHaveAttribute("href", "/perfil");
 });
 
 test("dá para filtrar e decidir só com o teclado, com foco visível", async ({ page }) => {
@@ -288,7 +290,7 @@ test("dá para filtrar e decidir só com o teclado, com foco visível", async ({
 
   // Avatar, depois os filtros.
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Sua conta" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(chip(page, "Todos")).toBeFocused();
   const outline = await chip(page, "Todos").evaluate((element) => getComputedStyle(element).outlineStyle);

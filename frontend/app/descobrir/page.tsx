@@ -3,11 +3,10 @@
 // A06·1 · Descobrir: ela escolhe quanto quer mergulhar agora, entre 5 faixas de esforço.
 // Atende RF-F10.03 (issues #86 e #87), pelas rotas da #88 (integração na #89).
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { Avatar } from "@/components/Avatar";
+import { AccountMenu } from "@/components/AccountMenu";
 import { BandCard } from "@/components/BandCard";
 import { BottomNav } from "@/components/BottomNav";
 import { LoadFailed } from "@/components/LoadFailed";
@@ -78,12 +77,7 @@ export default function DiscoverPage() {
   return (
     <div className={styles.page}>
       <AppHeader>
-        {data && (
-          // O perfil ainda não existe; por enquanto o link dá 404.
-          <Link href="/perfil" className={styles.profile} aria-label="Seu perfil">
-            <Avatar name={data.firstName} size={36} />
-          </Link>
-        )}
+        {data && <AccountMenu name={data.firstName} />}
       </AppHeader>
 
       <div className={styles.scroll}>

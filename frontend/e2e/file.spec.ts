@@ -107,9 +107,8 @@ test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluí
   await expect(
     section(page, "Em andamento").getByRole("link", { name: "Continuar: Lógica de programação com Python" }),
   ).toHaveAttribute("href", "/file/curadoria-1");
-  // Só as atividades têm botão: o hackathon (próximas) e a oficina (concluídos) são eventos.
-  await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(2);
-  await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(2);
+  await expect(section(page, "Próximas aventuras").getByRole("link", { name: /^Abrir:/ })).toHaveCount(3);
+  await expect(section(page, "Concluídos").getByRole("link", { name: /^Ver:/ })).toHaveCount(3);
 
   // A atividade (#119) é a tela de verdade: sem simular a rota dela, ela consultaria um back
   // local, se houver um rodando.
@@ -118,21 +117,21 @@ test("a ação é Continuar em andamento, Abrir nas próximas e Ver nos concluí
   await expect(page).toHaveURL(/\/file\/curadoria-4$/);
 });
 
-test("evento não abre a tela da atividade; o que tem inscrição mostra Inscrita", async ({ page }) => {
+test("evento abre o detalhe do evento, e o que tem inscrição mostra Inscrita", async ({ page }) => {
   const evento = (id: string, signedUp: boolean): MockFileItem => ({
     ...makeItem(id, "next"),
     kind: "evento",
     typeLabel: "Hackathon",
     signedUp,
   });
-  await openWith(page, { items: [evento("a", true), evento("b", false), makeItem("c", "next")] });
+  await openWith(page, { items: [evento("8", true), evento("9", false), makeItem("10", "next")] });
 
-  // O detalhe do evento (A06·4b) chega no M6; até lá, o evento não tem botão.
-  await expect(item(page, "Item a").getByRole("link")).toHaveCount(0);
-  await expect(item(page, "Item b").getByRole("link")).toHaveCount(0);
-  await expect(item(page, "Item c").getByRole("link", { name: "Abrir: Item c" })).toBeVisible();
-  await expect(item(page, "Item a").getByText("Inscrita")).toBeVisible();
-  await expect(item(page, "Item b").getByText("Inscrita")).toHaveCount(0);
+  // O evento abre a A06·4b (#178), e a atividade, a A06·4a (#119).
+  await expect(item(page, "Item 8").getByRole("link")).toHaveAttribute("href", "/file/evento/curadoria-8");
+  await expect(item(page, "Item 9").getByRole("link")).toHaveAttribute("href", "/file/evento/curadoria-9");
+  await expect(item(page, "Item 10").getByRole("link")).toHaveAttribute("href", "/file/curadoria-10");
+  await expect(item(page, "Item 8").getByText("Inscrita")).toBeVisible();
+  await expect(item(page, "Item 9").getByText("Inscrita")).toHaveCount(0);
 });
 
 test("cada item fica na seção do seu status", async ({ page }) => {
@@ -223,7 +222,9 @@ test("a barra inferior marca Filé; Agenda e o avatar têm destino provisório",
   await expect(nav.getByRole("link", { name: "Filé" })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Descobrir" })).not.toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("href", "/agenda");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toHaveAttribute("href", "/perfil");
+  // O avatar abre o menu da conta; o perfil fica dentro dele.
+  await page.getByRole("button", { name: "Sua conta" }).click();
+  await expect(page.getByRole("link", { name: "Ver perfil" })).toHaveAttribute("href", "/perfil");
 });
 
 test("mostra o carregamento enquanto o filé chega", async ({ page }) => {
@@ -514,7 +515,7 @@ test("dá para usar só com o teclado, com foco visível", async ({ page }) => {
   await expect(item(page, "IA para iniciantes")).toBeVisible();
 
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Seu perfil" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Sua conta" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "O que é o filé?" })).toBeFocused();
   await page.keyboard.press("Tab");

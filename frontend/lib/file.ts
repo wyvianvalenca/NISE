@@ -5,6 +5,7 @@
 // não ter um gerador de tipos por enquanto.
 
 import type { IconName } from "@/components/Icon";
+import { eventPath } from "./evento";
 import { errorCode, sessionProblem, type SessionProblem } from "./signup-api";
 
 /** Status de um item no filé (tabela "Status of an item in the filé" da #78). */
@@ -27,10 +28,10 @@ export type ThemeCode =
 /** A seção como o back manda (FileSection). */
 export type FileSection = "in_progress" | "next" | "concluded";
 
-/** Um item como o back manda (FileItemOut). */
 /** Evento ou atividade (ItemKind no back); os mesmos valores do Ver depois. */
 export type FileItemKind = "atividade" | "evento";
 
+/** Um item como o back manda (FileItemOut). */
 export type FileItemResponse = {
   /** "curadoria-12" ou "acao-7". */
   id: string;
@@ -71,7 +72,6 @@ export type FileResponse = {
 
 export type FileItem = {
   id: string;
-  kind: FileItemKind;
   title: string;
   theme: ThemeCode | null;
   /** Tipo do item, já escrito para a tela, ex.: "Curso online", "Hackathon". */
@@ -80,6 +80,8 @@ export type FileItem = {
   details: string;
   /** Fim das inscrições (AAAA-MM-DD), só nos eventos. */
   deadline?: string;
+  /** "event" abre o detalhe do evento (A06·4b, #178); sem ele, o da atividade (A06·4a). */
+  kind?: "event";
   status: FileStatus;
   /** Evento em que ela se inscreveu: o cartão mostra "Inscrita". */
   signedUp: boolean;
@@ -111,7 +113,7 @@ const STATUS_OF: Record<FileSection, FileStatus> = {
 function toItem(item: FileItemResponse, section: FileSection): FileItem {
   return {
     id: item.id,
-    kind: item.kind,
+    ...(item.kind === "evento" && { kind: "event" as const }),
     title: item.title,
     theme: item.theme,
     type: item.typeLabel,
@@ -235,9 +237,9 @@ export function formatDeadline(isoDate: string): string {
   return `${day}/${MONTHS[month - 1]}`;
 }
 
-/** Para onde levam "Continuar", "Abrir" e "Ver": o detalhe do item (#119, #120). */
-export function itemPath(id: string): string {
-  return `/file/${id}`;
+/** Para onde levam "Continuar", "Abrir" e "Ver": o detalhe da atividade (#119) ou do evento (#178). */
+export function itemPath(item: Pick<FileItem, "id" | "kind">): string {
+  return item.kind === "event" ? eventPath(item.id) : `/file/${item.id}`;
 }
 
 // ---------------------------------------------------------------------------
