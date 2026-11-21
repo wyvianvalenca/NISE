@@ -46,6 +46,31 @@ test("an online action opens with no city field and its end date shown", async (
   await expect(page.getByLabel("Data de fim")).toHaveValue("2026-11-11");
 });
 
+test("going online and back to in person keeps the saved city, and it saves", async ({ page }) => {
+  await page.goto("/coordenacao/acoes/1/editar");
+
+  await page.getByRole("radio", { name: "Online" }).click();
+  await expect(page.getByRole("combobox", { name: "Cidade" })).toHaveCount(0);
+  await page.getByRole("radio", { name: "Presencial" }).click();
+
+  await expect(page.getByRole("combobox", { name: "Cidade" })).toHaveValue("Maceió, AL");
+  await save(page).click();
+
+  await expect(page).toHaveURL(/\/coordenacao\/acoes\?salva=1$/);
+});
+
+test("going online and back, then changing the city text, asks for a city from the list again", async ({ page }) => {
+  await page.goto("/coordenacao/acoes/1/editar");
+
+  await page.getByRole("radio", { name: "Online" }).click();
+  await page.getByRole("radio", { name: "Presencial" }).click();
+  await page.getByRole("combobox", { name: "Cidade" }).fill("Maceio de mentira");
+  await save(page).click();
+
+  await expect(page.getByText("Escolha uma cidade da lista.")).toBeVisible();
+  await expect(page).toHaveURL(/\/editar$/);
+});
+
 test("saving a change goes back to the list and the change stays when it is opened again", async ({ page }) => {
   await page.goto("/coordenacao/acoes/1/editar");
   await page.getByLabel("Nome da ação").fill("Robótica para iniciantes");

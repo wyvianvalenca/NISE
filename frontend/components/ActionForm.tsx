@@ -94,7 +94,10 @@ export function ActionForm({ initialValues, actionId }: ActionFormProps) {
   }, []);
 
   function changeFormat(format: ActionFormValues["format"]) {
-    setCityText("");
+    // Coming back to Presencial, the city field is built again and shows the saved
+    // city (its `defaultValue`), so the text has to be that city too: otherwise the
+    // field shows "Maceió, AL" while the form still thinks there is no city.
+    setCityText(format === "in_person" ? (initialValues.city?.name ?? "") : "");
     patch({ format, city: null });
   }
 
