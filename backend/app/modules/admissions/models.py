@@ -146,3 +146,24 @@ class Enrollment(Base):
     official_list_id: Mapped[int | None] = mapped_column(
         ForeignKey("official_lists.id", ondelete="SET NULL")
     )
+
+
+class ListSearchRun(Base):
+    """Uma rodada da busca que terminou bem: só contagens (RF-F31.05, RN-24).
+
+    Nenhum nome, nem de quem foi achada. Uma rodada que parou por erro não
+    grava nada, nem esta linha (RNF-F31.04).
+    """
+
+    __tablename__ = "list_search_runs"
+
+    # "copeve" ou, depois, "ifal" (#274).
+    source: Mapped[str] = mapped_column()
+    selection_process: Mapped[str] = mapped_column()
+    # O endereço consultado (RF-F31.05: fonte e link).
+    url: Mapped[str] = mapped_column()
+    # Os cursos da rodada, ex.: "6,7". Uma rodada pode ser só uma parte.
+    courses: Mapped[str] = mapped_column()
+    queries: Mapped[int] = mapped_column()
+    rows_read: Mapped[int] = mapped_column()
+    matches_created: Mapped[int] = mapped_column()
