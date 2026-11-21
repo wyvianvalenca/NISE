@@ -7,15 +7,22 @@ hoje em Maceió, que a rota passa.
 """
 
 import enum
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.actions.models import Action, ActionFormat, ActionVisibility
+from app.modules.actions.models import (
+    Action,
+    ActionFormat,
+    ActionVisibility,
+    Participation,
+)
 from app.modules.catalog.models import CuratedItem, CuratedType, ItemKind, ItemOrigin
 from app.modules.catalog.service import (
     action_effort_band,
@@ -26,7 +33,7 @@ from app.modules.catalog.utils import ACTION_TYPE_LABELS, CURATED_TYPE_LABELS, i
 from app.modules.cities.models import City
 from app.modules.events.schemas import EventOut, EventStatus, EventType
 from app.modules.girl_file.models import FileEntry, FileStatus
-from app.modules.girl_file.service import find_entry, main_theme
+from app.modules.girl_file.service import find_entry, main_theme, new_entry
 from app.modules.girls.models import StudyStage, Topic
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS
 from app.modules.groups.models import Group
@@ -333,6 +340,10 @@ def event_out(event: FileEvent, today: date) -> EventOut:
         registrations_open=registrations_open,
         days_until_start=days_until_start,
         after_event=after_event,
+        waiting_attendance=(
+            event.entry.status is FileStatus.SIGNED_UP
+            and event_phase(event, today) is EventPhase.WAITING_ATTENDANCE
+        ),
         cost=cost,
         stage=stage,
         prerequisites=prerequisites,
@@ -468,3 +479,120 @@ async def undo_did_not_go(
     entry.status = FileStatus.SIGNED_UP
     await session.commit()
     return None
+
+
+# --- Evento de grupo da NISE e a presença (A06·4b, #194) ----------------------
+
+
+async def apply_attendance(
+    session: AsyncSession,
+    group_id: int,
+    action_id: int,
+    present: Collection[int],
+    today: date,
+    *,
+    concluding: bool,
+) -> bool:
+    """Muda o filé das meninas pela presença que a coordenadora registrou (#196).
+
+    A C3 (#135) chama em dois momentos, nunca para marcações só salvas
+    ("Salvar e continuar depois"): nada muda no filé antes de concluir (#337,
+    D-81).
+
+    - `concluding=True`, quando ela toca "Concluir presença", com quem veio.
+      Todo evento inscrita dessa ação de quem não veio sai do filé
+      (RF-F10.24), esteja ela na lista de inscritas ou não: quem marcou "Já me
+      inscrevi" e não apareceu na lista também não veio.
+    - `concluding=False`, quando ela marca alguém como presente depois de
+      concluir (aba "Faltaram" ou "Veio sem inscrição?"), só com essa menina.
+
+    Quem veio fica com o evento concluído no filé, com o dia `today`. Vale
+    também para quem tirou o evento do filé, faltou antes ou nunca o escolheu:
+    a linha é criada, já concluída. Quem já está concluída não muda. Só conta
+    como presente quem está inscrita na ação (`participations`): a C3 inscreve
+    quem veio sem inscrição antes de marcar a presença; os outros ids são
+    ignorados (RNF-G.03).
+
+    Só vale para a ação do grupo dela (`group_id`). Devolve False, sem mudar
+    nada, se a ação não é do grupo.
+
+    Não faz commit: grava na transação de quem chamou, para a presença e o
+    filé mudarem juntos. As linhas são travadas antes de decidir.
+    """
+    action_group = await session.scalar(
+        select(Action.group_id).where(Action.id == action_id)
+    )
+    if action_group is None or action_group != group_id:
+        return False
+
+    came: set[int] = set()
+    if present:
+        came = set(
+            await session.scalars(
+                select(Participation.girl_id).where(
+                    Participation.action_id == action_id,
+                    Participation.girl_id.in_(set(present)),
+                )
+            )
+        )
+    if not came and not concluding:
+        return True
+
+    # Ao concluir, todas as linhas da ação, em qualquer status, ficam travadas:
+    # um "Já me inscrevi" ao mesmo tempo espera a conclusão (e então vê a
+    # presença concluída, "event_over"), ou a conclusão espera a marca e a vê.
+    # Buscar só as inscritas deixaria passar a linha que ainda é próxima.
+    # Pelo id: duas chamadas ao mesmo tempo travam na mesma ordem, sem deadlock.
+    query = (
+        select(FileEntry).where(FileEntry.action_id == action_id).order_by(FileEntry.id)
+    )
+    if not concluding:
+        query = query.where(FileEntry.girl_id.in_(came))
+    entries = {
+        entry.girl_id: entry
+        for entry in await session.scalars(
+            query.with_for_update().execution_options(populate_existing=True)
+        )
+    }
+
+    for girl_id in sorted(came):
+        entry = entries.get(girl_id)
+        if entry is None:
+            entry = await insert_concluded(session, girl_id, action_id, today)
+        if entry.status is not FileStatus.CONCLUDED:
+            entry.status = FileStatus.CONCLUDED
+            entry.dismiss_reason = None
+            entry.concluded_on = today
+
+    if concluding:
+        for girl_id, entry in entries.items():
+            if girl_id not in came and entry.status is FileStatus.SIGNED_UP:
+                await session.delete(entry)
+
+    await session.flush()
+    return True
+
+
+async def insert_concluded(
+    session: AsyncSession, girl_id: int, action_id: int, today: date
+) -> FileEntry:
+    """Cria a linha concluída de quem veio e não tinha o evento no filé.
+
+    Se ela escolheu o evento no mesmo instante (um "Quero fazer" ao mesmo
+    tempo), o banco recusa a segunda linha (a restrição de único): devolve a
+    linha que ela criou, travada, para quem chamou concluir. O insert roda num
+    savepoint, como em `save_choice`, para a recusa não desfazer a presença.
+    """
+    entry = new_entry(girl_id, ItemOrigin.GROUP_ACTION, action_id, FileStatus.CONCLUDED)
+    entry.concluded_on = today
+    try:
+        async with session.begin_nested():
+            session.add(entry)
+    except IntegrityError:
+        found = await find_entry(
+            session, girl_id, ItemOrigin.GROUP_ACTION, action_id, for_update=True
+        )
+        if found is None:
+            raise
+        return found
+    return entry

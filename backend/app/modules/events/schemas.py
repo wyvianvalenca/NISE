@@ -74,6 +74,9 @@ class EventOut(BaseModel):
     days_until_start: int = Field(serialization_alias="daysUntilStart")
     # true depois do fim do último dia do evento, no fuso de Maceió (#190).
     after_event: bool = Field(serialization_alias="afterEvent")
+    # Evento de um grupo da NISE, depois da data, com ela inscrita: espera a
+    # coordenadora concluir a lista de presença (#194, RF-F10.24).
+    waiting_attendance: bool = Field(serialization_alias="waitingAttendance")
     # Vazio quando é grátis ou não informado: a tela mostra "Grátis".
     cost: str | None
     # A etapa mínima do público, ex.: "Ensino médio". Vazio se serve para todas.
