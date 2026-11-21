@@ -1,0 +1,226 @@
+.top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  color: var(--nise-muted);
+  font-size: 15px;
+}
+
+.lead strong {
+  font-weight: 700;
+}
+
+/* Card of the form: 880px is the width of the Figma card, so lines do not stretch on a wide screen. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 880px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+/* The inputs sit on paper inside the surface card, as in the Figma. */
+.card input:not([type="radio"]),
+.card textarea {
+  background: var(--nise-paper);
+}
+
+.card input:not([type="radio"]) {
+  height: 44px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.hint {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+.muted {
+  color: var(--nise-muted);
+  font-weight: 400;
+}
+
+.error {
+  margin-top: 8px;
+  color: var(--nise-pink);
+  font-size: 14px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.visibility {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: none;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: 10px;
+  background: var(--nise-paper);
+  cursor: pointer;
+}
+
+.option:has(:checked) {
+  padding: 11px 13px;
+  border: 2px solid var(--nise-teal);
+  background: var(--nise-tealSoft);
+}
+
+/* Ink on tealSoft passes AA; the muted text does not, so the selected card darkens it. */
+.option:has(:checked) .hint {
+  color: var(--nise-ink);
+}
+
+.radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--nise-teal);
+}
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.optionTitle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.details {
+  border: 1px dashed var(--nise-border);
+  border-radius: 10px;
+}
+
+.detailsToggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--nise-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.detailsText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detailsTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.detailsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 16px 16px;
+}
+
+.detailsBody[hidden] {
+  display: none;
+}
+
+.addDay {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.addDay:hover {
+  text-decoration: underline;
+}
+
+.counter {
+  margin-top: 6px;
+  color: var(--nise-muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Same label as the other fields (Figma: 14px medium); the shared TextArea label is the bold one of the comment screen. */
+.card label:not(.option) {
+  font-size: 14px;
+  font-weight: 500;
+}
