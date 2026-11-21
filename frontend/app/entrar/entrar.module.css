@@ -1,0 +1,85 @@
+/*
+ * Shared by the three screens of flow S2 (Figma 511:3455): A15 "Entre na
+ * NISE", A16 "Recuperar acesso" and A16b "Crie uma nova senha". Same column
+ * as A02, centred on a wide screen for the coordinator.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.google {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* "ou entre com seu e-mail" with a rule on each side. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--nise-border);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* "Esqueci minha senha": a 44px target, aligned left under the fields. */
+.forgot {
+  align-self: flex-start;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+}
+
+.fullWidth {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* The single action under a message (link sent, link no longer valid). */
+.messageAction {
+  width: 100%;
+  margin-top: 24px;
+}

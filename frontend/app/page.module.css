@@ -6,6 +6,29 @@
   min-height: 100dvh;
 }
 
+/*
+ * A browser with the session hint waits on the loading screen instead of the
+ * welcome, while SignedInRedirect asks the server where she goes. The
+ * attribute on <html> comes from the script in app/layout.tsx.
+ */
+.welcome {
+  display: contents;
+}
+
+.waiting {
+  display: none;
+}
+
+:global(html[data-entrou]) .welcome {
+  display: none;
+}
+
+:global(html[data-entrou]) .waiting {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 /* On a desktop the screen stays narrow, like the phone in Figma. */
 .main {
   display: flex;

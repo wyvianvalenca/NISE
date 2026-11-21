@@ -5,6 +5,7 @@
 // Os dados são fictícios; nada sai do navegador.
 
 import type { IconName } from "@/components/Icon";
+import { eventPath } from "./evento";
 
 /** Status de um item no filé (tabela "Status of an item in the filé" da #78). */
 export type FileStatus = "em-andamento" | "proxima" | "concluido";
@@ -30,6 +31,8 @@ export type FileItem = {
   details: string;
   /** Fim das inscrições (AAAA-MM-DD), só nos eventos. */
   deadline?: string;
+  /** "event" abre o detalhe do evento (A06·4b, #178); sem ele, o da atividade (A06·4a). */
+  kind?: "event";
   status: FileStatus;
 };
 
@@ -100,9 +103,9 @@ export function formatDeadline(isoDate: string): string {
   return `${day}/${MONTHS[month - 1]}`;
 }
 
-/** Para onde levam "Continuar", "Abrir" e "Ver": o detalhe do item (#119, #120). */
-export function itemPath(id: string): string {
-  return `/file/${id}`;
+/** Para onde levam "Continuar", "Abrir" e "Ver": o detalhe da atividade (#119) ou do evento (#178). */
+export function itemPath(item: Pick<FileItem, "id" | "kind">): string {
+  return item.kind === "event" ? eventPath(item.id) : `/file/${item.id}`;
 }
 
 // Os testes e2e trocam os dados definindo __NISE_MOCK_FILE__ antes da página abrir.
@@ -133,6 +136,7 @@ const MOCK_ITEMS: FileItem[] = [
     type: "Hackathon",
     details: "Presencial · Maceió",
     deadline: "2027-10-30",
+    kind: "event",
     status: "proxima",
   },
   {
