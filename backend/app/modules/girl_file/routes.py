@@ -163,9 +163,8 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
     },
     status.HTTP_409_CONFLICT: {
         "description": (
-            "Uma atividade concluída não sai do filé:"
-            ' {"error": "concluded_cannot_be_removed"}. Um evento em que ela se'
-            ' inscreveu também não: {"error": "signed_up_cannot_be_removed"}'
+            "Uma atividade ou um evento concluído não sai do filé:"
+            ' {"error": "concluded_cannot_be_removed"}'
         )
     },
 }
@@ -173,20 +172,19 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
 # Por que a escolha não pôde ser apagada (remove_choice devolve o status).
 CANNOT_REMOVE: dict[FileStatus, str] = {
     FileStatus.CONCLUDED: "concluded_cannot_be_removed",
-    FileStatus.SIGNED_UP: "signed_up_cannot_be_removed",
 }
 
 
 # A06·2 · "Desfazer" (#106, RF-F10.05): apaga a escolha dela sobre um item, com
 # o motivo do "Não é pra mim", e o item volta a poder ser sugerido. Responde o
 # novo total do filé, para a pílula "Meu filé". É também o "Remover" do Ver
-# depois e o "Tirar do filé" de uma atividade próxima ou em andamento (#119).
+# depois, o "Tirar do filé" de uma atividade próxima ou em andamento (#119) e o
+# de um evento próximo ou em que ela se inscreveu (#184, D-39).
 #
 # Não confere se o item ainda aparece nas sugestões: uma ação que fechou entre a
 # escolha e o "Desfazer" também precisa ser desfeita. Um item sem escolha dela
 # responde 200 sem mudar nada, então chamar duas vezes dá o mesmo resultado.
-# Uma atividade concluída e um evento em que ela se inscreveu não saem do filé:
-# responde 409 (tabela de status da #78).
+# O que foi concluído não sai do filé: responde 409 (tabela de status da #78).
 # A menina é sempre a da sessão; a linha de outra menina nunca é achada (RNF-G.03).
 @router.delete("/{item_id}", response_model=ChoiceOut, responses=UNDO_RESPONSES)
 async def undo_choice(

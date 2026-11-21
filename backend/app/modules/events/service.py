@@ -6,8 +6,10 @@ ação de um grupo da NISE (F30). As regras que dependem da data usam o dia de
 hoje em Maceió, que a rota passa.
 """
 
+import enum
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,6 +85,54 @@ def is_after_event(ends_on: date, today: date) -> bool:
     lá: no próprio último dia ainda não é "depois".
     """
     return today > ends_on
+
+
+class EventPhase(enum.Enum):
+    """Em que ponto o evento está, o mesmo para todas as meninas.
+
+    É a única regra de data e de organização do evento: cada ação da menina
+    confere o status da linha dela e a fase, e nada mais (`event_phase`).
+    """
+
+    # Ainda não acabou: dá para marcar e desfazer a inscrição.
+    BEFORE = "before"
+    # De fora, desativado pela curadoria antes de acabar, que é como ela o
+    # cancela. Continua no filé, mas não aceita mais nada. Depois do último dia,
+    # desativar é só tirar das sugestões (scripts/carregar_curadoria.py): o
+    # evento aconteceu e continua perguntando "Você foi?". Uma ação cancelada é
+    # excluída pela coordenadora (RF-F30.12) e leva a linha junto.
+    CANCELLED = "cancelled"
+    # De fora, depois do último dia: a tela pergunta "Você foi?" (#190).
+    ASKS_IF_WENT = "asks_if_went"
+    # De grupo da NISE, depois do último dia, sem a presença (#194).
+    WAITING_ATTENDANCE = "waiting_attendance"
+    # De grupo da NISE, com a presença concluída pela coordenadora (#135,
+    # RN-37). Ela pode concluir a partir do primeiro dia, antes do fim de um
+    # evento de vários dias; daí em diante o filé só muda pela presença.
+    ATTENDANCE_CONCLUDED = "attendance_concluded"
+
+
+def event_phase(event: FileEvent, today: date) -> EventPhase:
+    """A fase do evento hoje (`today` é o dia de hoje em Maceió)."""
+    after = is_after_event(event.ends_on, today)
+    if event.action is not None:
+        if event.action.attendance_registered_at is not None:
+            return EventPhase.ATTENDANCE_CONCLUDED
+        return EventPhase.WAITING_ATTENDANCE if after else EventPhase.BEFORE
+    assert event.curated is not None
+    if after:
+        return EventPhase.ASKS_IF_WENT
+    return EventPhase.BEFORE if event.curated.active else EventPhase.CANCELLED
+
+
+# O que as mudanças de status respondem quando não dá: a rota devolve 409 com
+# o código.
+EventError = Literal["event_concluded", "event_over", "event_cancelled"]
+
+
+def phase_error(phase: EventPhase) -> EventError:
+    """O erro de uma mudança que só vale antes do evento, na fase `phase`."""
+    return "event_cancelled" if phase is EventPhase.CANCELLED else "event_over"
 
 
 async def city_name(session: AsyncSession, code: int | None) -> str | None:
@@ -280,3 +330,52 @@ def event_out(event: FileEvent, today: date) -> EventOut:
         prerequisites=prerequisites,
         registration_url=registration_url,
     )
+
+
+# --- Inscrição (A09 e versão "Inscrita", #182) --------------------------------
+
+
+async def mark_signed_up(
+    session: AsyncSession, event: FileEvent, today: date
+) -> EventError | None:
+    """ "Sim, me inscrevi" e "Já me inscrevi": próxima → inscrita (RF-F10.14).
+
+    Devolve None quando deu certo, ou o erro que a rota responde. Marcar de
+    novo não muda nada e vale. O prazo não bloqueia: ela pode ter se inscrito
+    no último minuto e só voltar depois. Só antes do evento (`EventPhase`):
+    depois da data a tela pergunta "Você foi?" (#190) ou espera a presença
+    (#194), e um evento cancelado não aceita mais inscrição.
+    """
+    entry = event.entry
+    if entry.status is FileStatus.SIGNED_UP:
+        return None
+    if entry.status is not FileStatus.NEXT:
+        return "event_concluded"
+    phase = event_phase(event, today)
+    if phase is not EventPhase.BEFORE:
+        return phase_error(phase)
+    entry.status = FileStatus.SIGNED_UP
+    await session.commit()
+    return None
+
+
+async def undo_signed_up(
+    session: AsyncSession, event: FileEvent, today: date
+) -> EventError | None:
+    """ "Desfazer" do aviso "Você tá inscrita!": inscrita → próxima (RF-F10.15).
+
+    Devolve None quando deu certo, ou o erro que a rota responde. Desfazer de
+    novo não muda nada e vale. Só antes do evento, como a marca: depois da
+    data, uma próxima não teria mais como andar.
+    """
+    entry = event.entry
+    if entry.status is FileStatus.NEXT:
+        return None
+    if entry.status is not FileStatus.SIGNED_UP:
+        return "event_concluded"
+    phase = event_phase(event, today)
+    if phase is not EventPhase.BEFORE:
+        return phase_error(phase)
+    entry.status = FileStatus.NEXT
+    await session.commit()
+    return None
