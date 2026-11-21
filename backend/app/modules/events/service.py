@@ -9,10 +9,10 @@ hoje em Maceió, que a rota passa.
 import enum
 from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -34,9 +34,10 @@ from app.modules.cities.models import City
 from app.modules.events.schemas import EventOut, EventStatus, EventType
 from app.modules.girl_file.models import FileEntry, FileStatus
 from app.modules.girl_file.service import find_entry, main_theme, new_entry
-from app.modules.girls.models import StudyStage, Topic
-from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS
+from app.modules.girls.models import Girl, StudyStage, Topic
+from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, first_name
 from app.modules.groups.models import Group
+from app.users.models import User
 
 # Os status de um evento que está no filé, e como a A06·4b chama cada um. O
 # "Ver depois" e o "Não é pra mim" não estão no filé; IN_PROGRESS é só de
@@ -340,6 +341,8 @@ def event_out(event: FileEvent, today: date) -> EventOut:
         registrations_open=registrations_open,
         days_until_start=days_until_start,
         after_event=after_event,
+        # Uma linha recém-criada só ganha o padrão (false) quando vai ao banco.
+        reminder=bool(event.entry.reminder),
         waiting_attendance=(
             event.entry.status is FileStatus.SIGNED_UP
             and event_phase(event, today) is EventPhase.WAITING_ATTENDANCE
@@ -396,6 +399,8 @@ async def undo_signed_up(
     if phase is not EventPhase.BEFORE:
         return phase_error(phase)
     entry.status = FileStatus.NEXT
+    # Sem inscrição não há lembrete (#186).
+    entry.reminder = False
     await session.commit()
     return None
 
@@ -428,6 +433,7 @@ async def mark_went(
         return "event_not_asked"
     entry.status = FileStatus.CONCLUDED
     entry.concluded_on = today
+    entry.reminder = False
     await session.commit()
     return None
 
@@ -451,6 +457,7 @@ async def mark_did_not_go(
     ):
         return "event_not_asked"
     entry.status = FileStatus.DID_NOT_GO
+    entry.reminder = False
     await session.commit()
     return None
 
@@ -563,6 +570,7 @@ async def apply_attendance(
             entry.status = FileStatus.CONCLUDED
             entry.dismiss_reason = None
             entry.concluded_on = today
+            entry.reminder = False
 
     if concluding:
         for girl_id, entry in entries.items():
@@ -596,3 +604,193 @@ async def insert_concluded(
             raise
         return found
     return entry
+
+
+# --- Lembrete um dia antes (A06·4b inscrita, #186) ----------------------------
+
+
+def can_remind(starts_on: date, today: date) -> bool:
+    """O dia do lembrete, a véspera do evento, ainda está por vir.
+
+    Se o evento começa hoje ou amanhã, a véspera já passou ou é hoje: a opção
+    nem aparece (`reminderDate` em frontend/lib/evento.ts).
+    """
+    return (starts_on - today).days >= 2
+
+
+async def set_reminder(
+    session: AsyncSession, event: FileEvent, on: bool, today: date
+) -> bool:
+    """ "Me lembra um dia antes": liga ou desliga o lembrete do evento (#186).
+
+    Só num evento em que ela se inscreveu. Ligar só vale antes do evento
+    (`EventPhase.BEFORE`: um evento cancelado não é lembrado) e enquanto a
+    véspera ainda está por vir (`can_remind`); desligar vale sempre. Nos outros
+    casos devolve False sem mudar nada. Ligar ou desligar de novo não muda nada.
+    """
+    entry = event.entry
+    if entry.status is not FileStatus.SIGNED_UP:
+        # Fora da inscrição o lembrete já está desligado (o banco garante).
+        return not on
+    turning_on = on and not entry.reminder
+    if turning_on and (
+        event_phase(event, today) is not EventPhase.BEFORE
+        or not can_remind(event.starts_on, today)
+    ):
+        return False
+    if bool(entry.reminder) is not on:
+        entry.reminder = on
+        await session.commit()
+    return True
+
+
+@dataclass
+class DueReminder:
+    """Um lembrete que sai hoje: a linha, a menina, a conta e o evento, com a
+    data de agora.
+
+    A conta vai junto para o envio passar por `can_send_email` com
+    `EmailKind.EVENT_REMINDER` e `reminder_on=entry.reminder` (RN-30), como
+    todo e-mail para a menina.
+    """
+
+    entry: FileEntry
+    girl: Girl
+    user: User
+    item_id: str
+    title: str
+    starts_on: date
+
+
+async def reminders_due(session: AsyncSession, today: date) -> list[DueReminder]:
+    """Quem lembrar hoje: inscrita, com o lembrete ligado, evento amanhã (#186).
+
+    O evento precisa continuar no filé dela (a linha existe e está inscrita) e
+    o lembrete ainda não ter saído para essa data do evento. A data é a do
+    evento agora, não a do dia em que ela ligou o lembrete: se o evento mudou
+    de dia depois do lembrete, sai outro na véspera da data nova.
+
+    As linhas vêm travadas. Uma rodada ao mesmo tempo que ela mexe no lembrete
+    espera o pedido dela terminar, e duas rodadas ao mesmo tempo não mandam o
+    mesmo lembrete duas vezes: a segunda espera a primeira e, no Postgres,
+    relê a linha já marcada como enviada, que sai da busca.
+    """
+    tomorrow = today + timedelta(days=1)
+    waiting = (
+        FileEntry.status == FileStatus.SIGNED_UP,
+        FileEntry.reminder.is_(True),
+    )
+
+    curated = await session.execute(
+        select(FileEntry, Girl, User, CuratedItem.id, CuratedItem.title)
+        .join(Girl, Girl.id == FileEntry.girl_id)
+        .join(User, User.id == Girl.user_id)
+        .join(CuratedItem, CuratedItem.id == FileEntry.curated_item_id)
+        .where(
+            *waiting,
+            # Um evento que a curadoria desativou (cancelado), venceu ou deixou
+            # de ser evento não é lembrado, como nas sugestões.
+            CuratedItem.active.is_(True),
+            CuratedItem.kind == ItemKind.EVENT,
+            or_(CuratedItem.expires_on.is_(None), CuratedItem.expires_on >= today),
+            CuratedItem.starts_on == tomorrow,
+            FileEntry.reminder_sent_for.is_distinct_from(tomorrow),
+        )
+        .order_by(FileEntry.id)
+        .with_for_update(of=FileEntry)
+        .execution_options(populate_existing=True)
+    )
+    actions = await session.execute(
+        select(FileEntry, Girl, User, Action.id, Action.name)
+        .join(Girl, Girl.id == FileEntry.girl_id)
+        .join(User, User.id == Girl.user_id)
+        .join(Action, Action.id == FileEntry.action_id)
+        .where(
+            *waiting,
+            Action.starts_on == tomorrow,
+            FileEntry.reminder_sent_for.is_distinct_from(tomorrow),
+        )
+        .order_by(FileEntry.id)
+        .with_for_update(of=FileEntry)
+        .execution_options(populate_existing=True)
+    )
+
+    due = [
+        DueReminder(
+            entry, girl, user, item_id(ItemOrigin.CURATED, number), title, tomorrow
+        )
+        for entry, girl, user, number, title in curated
+    ]
+    due += [
+        DueReminder(
+            entry,
+            girl,
+            user,
+            item_id(ItemOrigin.GROUP_ACTION, number),
+            title,
+            tomorrow,
+        )
+        for entry, girl, user, number, title in actions
+    ]
+    return due
+
+
+def mark_reminder_sent(reminder: DueReminder) -> None:
+    """Guarda para que data do evento o lembrete saiu. Quem chama faz o commit,
+    antes de enviar (como os e-mails da #275): na dúvida, ela fica sem um
+    lembrete, nunca recebe dois."""
+    reminder.entry.reminder_sent_for = reminder.starts_on
+
+
+# Texto a confirmar com o design: não há tela no Figma para o e-mail.
+REMINDER_SUBJECT = "Amanhã tem {title}!"
+REMINDER_BODY = """Oi, {name}!
+
+Passando pra lembrar: amanhã, {date}, tem {title}.
+
+Ver o evento na NISE: {url}
+
+Você recebe este e-mail porque pediu pra ser lembrada um dia antes. Pra não \
+receber mais, desmarque "Me lembra um dia antes" no evento.
+
+Equipe NISE
+"""
+
+MONTHS = [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+]
+
+
+def day_text(day: date) -> str:
+    """O dia como a A06·4b escreve, ex.: "1º de dezembro", "8 de novembro"."""
+    number = "1º" if day.day == 1 else str(day.day)
+    return f"{number} de {MONTHS[day.month - 1]}"
+
+
+def reminder_email(reminder: DueReminder, event_url: str) -> tuple[str, str]:
+    """O assunto e o texto do lembrete: o nome do evento, a data e o link de volta.
+
+    `event_url` é o endereço do evento no app (/file/evento/{id}). O título vai
+    numa linha só no assunto, para um título com quebra de linha não virar
+    outro cabeçalho.
+    """
+    title = " ".join(reminder.title.split())
+    subject = REMINDER_SUBJECT.format(title=title)
+    body = REMINDER_BODY.format(
+        name=first_name(reminder.girl.name),
+        date=day_text(reminder.starts_on),
+        title=title,
+        url=event_url,
+    )
+    return subject, body

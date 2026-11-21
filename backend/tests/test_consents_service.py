@@ -131,3 +131,15 @@ def test_oportunidades_seguem_a_preferencia(enabled: bool) -> None:
     usuaria = alana(opportunity_emails=enabled)
 
     assert can_send_email(usuaria, EmailKind.OPPORTUNITIES) is enabled
+
+
+@pytest.mark.parametrize("ligado", [True, False])
+def test_lembrete_de_evento_segue_a_escolha_no_evento(ligado: bool) -> None:
+    # RF-F4.12: ela liga o lembrete em cada evento; a preferência de
+    # oportunidades não decide, e sem a escolha do evento ele não sai.
+    for oportunidades in (True, False):
+        usuaria = alana(opportunity_emails=oportunidades)
+        assert (
+            can_send_email(usuaria, EmailKind.EVENT_REMINDER, reminder_on=ligado)
+            is ligado
+        )

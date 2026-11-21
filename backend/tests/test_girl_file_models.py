@@ -121,6 +121,7 @@ def test_restricoes_do_banco() -> None:
 
     assert "ck_file_entries_one_source" in constraints
     assert "ck_file_entries_reason_only_when_dismissed" in constraints
+    assert "ck_file_entries_reminder_only_when_signed_up" in constraints
     unique_columns = {
         tuple(column.name for column in constraint.columns)
         for constraint in TABLE.constraints
@@ -146,4 +147,6 @@ def test_nenhum_dado_pessoal_nem_link_no_file() -> None:
         "rating",
         "similar_choice",
         "concluded_on",
+        "reminder",
+        "reminder_sent_for",
     }

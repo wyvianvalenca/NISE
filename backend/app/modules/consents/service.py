@@ -20,6 +20,8 @@ class EmailKind(enum.Enum):
     IMPORTANT_DATES = "important_dates"
     PASSWORD_RESET = "password_reset"
     OPPORTUNITIES = "opportunities"
+    # O lembrete de um evento na véspera (RF-F4.12, #186).
+    EVENT_REMINDER = "event_reminder"
 
 
 # Chegam para toda menina com conta, sem opção de recusar; ela é avisada no
@@ -95,17 +97,22 @@ async def set_opportunity_emails(
     return user
 
 
-def can_send_email(user: User, kind: EmailKind) -> bool:
+def can_send_email(user: User, kind: EmailKind, *, reminder_on: bool = False) -> bool:
     """A checagem única "ela aceitou receber este e-mail?" (RN-30).
 
     Todo envio de e-mail para a menina passa por aqui. O lembrete de evento
-    (RF-F4.12) é escolhido por evento e entra com a #186.
+    (RF-F4.12) é escolhido por evento, não na conta: quem envia passa em
+    `reminder_on` o "Me lembra um dia antes" da linha daquele evento
+    (`FileEntry.reminder`), e sem ele o lembrete não sai.
     """
     if kind in ALWAYS_SENT:
         return True
 
     if kind is EmailKind.OPPORTUNITIES:
         return user.opportunity_emails
+
+    if kind is EmailKind.EVENT_REMINDER:
+        return reminder_on
 
     # Tipo novo sem regra: na dúvida, não envia.
     return False
