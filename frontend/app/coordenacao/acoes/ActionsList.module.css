@@ -164,3 +164,20 @@
   font-size: 15px;
   text-align: center;
 }
+
+/* On phones the title, the button, the chips and the search stack instead of sharing a line. */
+@media (max-width: 767px) {
+  .top {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters > * {
+    min-width: 0;
+  }
+}

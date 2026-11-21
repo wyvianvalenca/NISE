@@ -199,13 +199,36 @@ async def test_conta_existente_entra(
     response = await chamar(CALLBACK + VOLTA_DO_GOOGLE, COOKIES_DO_LOGIN)
 
     assert response.status_code == 302
-    assert response.headers["location"] == "/"
+    # A mesma tela do login com e-mail e senha (#330). A sessão falsa devolve a
+    # usuária em toda busca, então os termos contam como aceitos.
+    assert response.headers["location"] == "/por-que-file"
     cookies = cookies_gravados(response)
     assert "HttpOnly" in cookies[SESSION_COOKIE]
     assert decode_access_token(valor(cookies[SESSION_COOKIE])) == 7
     assert apagado(cookies[PENDING_SIGNUP_COOKIE])
     # A troca usou o code da URL e o verificador do cookie.
     assert google.trocas == [("code-ficticio", "v")]
+
+
+@pytest.mark.parametrize(
+    ("papel", "destino"),
+    [
+        (Role.COORDINATOR, "/coordenacao/acoes"),
+        (Role.GIRL, "/cadastro/termos"),
+    ],
+    ids=["coordenadora", "menina-sem-os-termos"],
+)
+async def test_conta_existente_vai_para_a_propria_tela(
+    papel: Role, destino: str, sessao_falsa: AsyncMock
+) -> None:
+    conta = User(id=7, email="katia@exemplo.com", name="Katia Ficticia", role=papel)
+    # 1ª busca: a conta ligada ao Google; 2ª: o aceite dos termos, que não há.
+    sessao_falsa.scalar.side_effect = [conta, None]
+
+    response = await chamar(CALLBACK + VOLTA_DO_GOOGLE, COOKIES_DO_LOGIN)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == destino
 
 
 # Callback: pessoa nova
@@ -268,7 +291,7 @@ async def test_pessoa_nova_nao_vai_para_o_banco(sessao_falsa: AsyncMock) -> None
         "id-token-invalido",
     ],
 )
-async def test_falha_volta_para_o_inicio_sem_sessao(
+async def test_falha_volta_para_o_login_sem_sessao(
     consulta: str,
     cookies: dict[str, str],
     id_token: str | None,
@@ -285,7 +308,7 @@ async def test_falha_volta_para_o_inicio_sem_sessao(
 
     # Um redirect, nunca um erro 500 ou um JSON de 422 na tela dela.
     assert response.status_code == 302
-    assert response.headers["location"] == "/?erro=google"
+    assert response.headers["location"] == "/entrar?erro=google"
     gravados = cookies_gravados(response)
     assert SESSION_COOKIE not in gravados
     assert PENDING_SIGNUP_COOKIE not in gravados

@@ -104,3 +104,53 @@
   gap: 16px;
   min-width: 190px;
 }
+
+/*
+ * On phones the row has no room for five columns side by side (RNF-G.01, 360 px):
+ * the date and the name stay on top, and the line about the girls and the
+ * buttons go below the name. The "..." button stays at the top right.
+ */
+@media (max-width: 767px) {
+  .row {
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date info more"
+      ". girls girls"
+      ". buttons buttons";
+    align-items: start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .date {
+    grid-area: date;
+  }
+
+  .info {
+    grid-area: info;
+  }
+
+  .girls,
+  .girlsEmpty {
+    grid-area: girls;
+    width: auto;
+  }
+
+  .buttons {
+    grid-area: buttons;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 16px;
+    min-width: 0;
+  }
+
+  /*
+   * The "..." button is built by RowMenu (its own CSS), and it is the only button
+   * that is a direct child of the row.
+   */
+  .row > button {
+    grid-area: more;
+    margin: -10px -10px 0 0;
+  }
+}

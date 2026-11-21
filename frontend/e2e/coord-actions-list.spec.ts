@@ -245,12 +245,23 @@ test("the saved notice does not show without the parameter or with an unknown id
   await expect(page.getByText("Ação salva.")).toHaveCount(0);
 });
 
-test("the saved notice for an online action leaves the city out", async ({ page }) => {
+test("the saved notice for an open online action says it goes to all the girls", async ({ page }) => {
   await page.goto(`${URL}?salva=python-do-zero`);
 
   const notice = page.getByRole("status");
-  await expect(notice).toContainText("Ação salva.");
+  await expect(notice).toContainText("Ação salva. Já aparece nas sugestões de todas as meninas.");
   await expect(notice).not.toContainText("meninas de");
+});
+
+test("the saved notice for a closed action does not say it shows in the suggestions", async ({ page }) => {
+  // Both are in person, but a closed action is only for the girls invited (the form says so).
+  for (const id of ["hackathon-meninas-no-codigo", "visita-ao-polo-de-ti"]) {
+    await page.goto(`${URL}?salva=${id}`);
+
+    const notice = page.getByRole("status");
+    await expect(notice).toContainText("Ação salva.");
+    await expect(notice).not.toContainText("sugestões");
+  }
 });
 
 test("has no horizontal scroll at 1366 px", async ({ page }) => {
