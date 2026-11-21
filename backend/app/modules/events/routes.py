@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.engine import AsyncSessionDep
 from app.modules.catalog.utils import parse_item_id
 from app.modules.consents.permissions import AcceptedGirlDep
-from app.modules.events.schemas import EventOut
+from app.modules.events.schemas import EventOut, ReminderIn
 from app.modules.events.service import (
     FileEvent,
     event_out,
@@ -15,6 +15,7 @@ from app.modules.events.service import (
     mark_did_not_go,
     mark_signed_up,
     mark_went,
+    set_reminder,
     undo_did_not_go,
     undo_signed_up,
 )
@@ -233,4 +234,35 @@ async def undo_did_not_go_route(
     error = await undo_did_not_go(session, found, today)
     if error is not None:
         return conflict(error)
+    return event_out(found, today)
+
+
+# A06·4b inscrita · "Me lembra um dia antes" (#186): liga ou desliga o lembrete
+# por e-mail na véspera do evento. Só num evento em que ela se inscreveu, e
+# ligar só enquanto a véspera ainda está por vir (o evento começa daqui a 2
+# dias ou mais); desligar vale sempre. Nos outros casos responde 409. Desfazer
+# a inscrição ou tirar o evento do filé desliga o lembrete. Responde o detalhe.
+@router.put(
+    "/{item_id}/reminder",
+    response_model=EventOut,
+    responses={
+        **RESPONSES,
+        status.HTTP_409_CONFLICT: {
+            "description": (
+                "Ao ligar: o evento não está inscrita, a véspera já passou ou é"
+                " hoje, ou o evento de fora foi cancelado pela curadoria. Desligar"
+                ' vale sempre: {"error": "reminder_not_available"}'
+            )
+        },
+    },
+)
+async def reminder(
+    item_id: str, data: ReminderIn, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> EventOut | JSONResponse:
+    found = await event_of_session(session, user, item_id, for_update=True)
+    if isinstance(found, JSONResponse):
+        return found
+    today = today_in_maceio()
+    if not await set_reminder(session, found, data.on, today):
+        return conflict("reminder_not_available")
     return event_out(found, today)

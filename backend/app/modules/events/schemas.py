@@ -1,7 +1,7 @@
 import enum
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from app.modules.girls.models import EffortBand
 
@@ -77,6 +77,8 @@ class EventOut(BaseModel):
     # Evento de um grupo da NISE, depois da data, com ela inscrita: espera a
     # coordenadora concluir a lista de presença (#194, RF-F10.24).
     waiting_attendance: bool = Field(serialization_alias="waitingAttendance")
+    # "Me lembra um dia antes", ligado só numa inscrição (#186).
+    reminder: bool
     # Vazio quando é grátis ou não informado: a tela mostra "Grátis".
     cost: str | None
     # A etapa mínima do público, ex.: "Ensino médio". Vazio se serve para todas.
@@ -86,3 +88,11 @@ class EventOut(BaseModel):
     # O link de inscrição, como foi cadastrado. A NISE guarda só o link (RN-19).
     # Vazio numa ação fechada, que não tem link.
     registration_url: str | None = Field(serialization_alias="registrationUrl")
+
+
+class ReminderIn(BaseModel):
+    """Liga ou desliga o "Me lembra um dia antes" (#186)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    on: StrictBool

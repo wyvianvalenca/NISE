@@ -176,6 +176,7 @@ async def test_evento_de_fora_mostra_tudo_o_que_a_tela_pede() -> None:
         "daysUntilStart": 24,
         "afterEvent": False,
         "waitingAttendance": False,
+        "reminder": False,
         "cost": None,
         "stage": "Ensino médio",
         "prerequisites": ["Não precisa saber programar", "Ter 14 anos"],

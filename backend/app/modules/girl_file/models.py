@@ -1,7 +1,7 @@
 import enum
 from datetime import date
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -91,6 +91,10 @@ class FileEntry(TimestampMixin, Base):
             "status = 'CONCLUDED' OR concluded_on IS NULL",
             name="ck_file_entries_concluded_on_only_when_concluded",
         ),
+        CheckConstraint(
+            "status = 'SIGNED_UP' OR reminder = false",
+            name="ck_file_entries_reminder_only_when_signed_up",
+        ),
     )
 
     girl_id: Mapped[int] = mapped_column(
@@ -114,3 +118,10 @@ class FileEntry(TimestampMixin, Base):
     # O dia em que ela tocou "Marcar como concluída" (A06·4a, #119), no fuso de
     # Maceió. Só numa atividade concluída.
     concluded_on: Mapped[date | None] = mapped_column()
+    # "Me lembra um dia antes" de um evento em que ela se inscreveu (#186). Só
+    # numa inscrição: desfazer, tirar do filé ou concluir desliga o lembrete.
+    reminder: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # A data do evento para a qual o lembrete saiu. Uma linha por menina e
+    # evento (as restrições de único acima), então ela recebe um lembrete por
+    # data do evento (RNF-F4.01); se o evento muda de dia, sai outro.
+    reminder_sent_for: Mapped[date | None] = mapped_column()
