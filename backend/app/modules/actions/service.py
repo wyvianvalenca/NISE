@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.exceptions import ActionValidationError
@@ -12,6 +13,7 @@ from app.modules.actions.models import (
     ActionStatus,
     ActionTopic,
     ActionVisibility,
+    Participation,
 )
 from app.modules.actions.schemas import ActionIn, ActionOut
 from app.modules.cities.models import City
@@ -169,3 +171,32 @@ async def create_action(
     await session.commit()
 
     return action, city
+
+
+async def count_registered(session: AsyncSession, action_id: int) -> int:
+    """How many girls are registered in the action; the status needs it (RN-37)."""
+    count = await session.scalar(
+        select(func.count())
+        .select_from(Participation)
+        .where(Participation.action_id == action_id)
+    )
+
+    return count or 0
+
+
+async def update_action(
+    session: AsyncSession, action: Action, data: ActionIn
+) -> City | None:
+    """Change an action of the coordinator's group with the creation's rules.
+
+    The data is validated before the action is touched, so a refused edit saves
+    nothing. The group stays the action's own, and the registered girls are not
+    read or written here: `participations` is left alone (RF-F30.03). Moving the
+    date does not reschedule the reminder yet (Should of #221).
+    """
+    city = await validate_action_data(session, data)
+
+    _apply_fields(action, data)
+    await session.commit()
+
+    return city
