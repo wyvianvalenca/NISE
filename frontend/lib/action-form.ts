@@ -1,9 +1,11 @@
 /**
  * The action form (K02): its fixed lists, its validation and a provisional
- * save contract.
+ * save/load contract.
  *
- * TEMPORARY: the real route belongs to #213. Until it lands, `createAction` only
- * pretends to save. When the back-end arrives, only that function changes: the form keeps asking for a
+ * TEMPORARY: the real routes belong to #213 (create) and the back-end of the edit story (#221).
+ * Until they land, `createAction`, `getAction` and `updateAction` run against a
+ * list kept in the tab's `sessionStorage`. When the back-end
+ * arrives, only those three functions change: the form keeps asking for a
  * promise of the saved id. The field names follow the `Action` model, in
  * camelCase.
  *
@@ -166,16 +168,105 @@ export type SavedAction = {
   cityName: string | null;
 };
 
-let nextId = 1;
+/** Actions of the provisional contract, fictional like every test data. */
+const SEEDS: [number, ActionFormValues][] = [
+  [
+    1,
+    {
+      name: "Introdução à robótica",
+      type: "oficina",
+      startsOn: "2026-10-24",
+      endsOn: "",
+      startsAtTime: "14:00",
+      endsAtTime: "17:00",
+      format: "in_person",
+      city: { id: "2704302", name: "Maceió, AL" },
+      visibility: "open",
+      registrationUrl: "https://forms.gle/rendeiras-robotica",
+      address: "Campus de exemplo, Laboratório de Robótica",
+      description: "Vamos montar e programar um robô simples, em dupla.",
+      topics: ["robotica"],
+      audiences: ["medio", "tecnico"],
+    },
+  ],
+  [
+    2,
+    {
+      name: "Roda de conversa sobre carreira",
+      type: "palestra",
+      startsOn: "2026-11-10",
+      endsOn: "2026-11-11",
+      startsAtTime: "",
+      endsAtTime: "",
+      format: "online",
+      city: null,
+      visibility: "closed",
+      registrationUrl: "",
+      address: "",
+      description: "",
+      topics: [],
+      audiences: [],
+    },
+  ],
+];
+
+const STORAGE_KEY = "nise-mock-actions";
+
+/**
+ * The mock list: the seeds plus what was saved in this tab. It lives in
+ * `sessionStorage` so a save survives the page reload that opening the edit
+ * form does, as the real back-end would. Without storage it falls back to the seeds.
+ */
+function readStore(): Map<number, ActionFormValues> {
+  const store = new Map(SEEDS);
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "[]") as [number, ActionFormValues][];
+    for (const [id, values] of saved) store.set(id, values);
+  } catch {
+    return store;
+  }
+  return store;
+}
+
+/** Writes one action back to the mock list. */
+function writeStore(id: number, values: ActionFormValues) {
+  const store = readStore();
+  store.set(id, values);
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...store]));
+  } catch {
+    return;
+  }
+}
 
 /** The `?fail` switch of the dev server: the next save fails, so the error state can be seen. */
 function shouldFail(): boolean {
   return typeof location !== "undefined" && new URLSearchParams(location.search).has("fail");
 }
 
+/** Keeps stored values apart from what the form mutates later. */
+function copy(values: ActionFormValues): ActionFormValues {
+  return { ...values, topics: [...values.topics], audiences: [...values.audiences] };
+}
+
 /** Creates an action in the group of the signed-in coordinator (#213). Rejects with `?fail`. */
 export async function createAction(values: ActionFormValues): Promise<SavedAction> {
   if (shouldFail()) throw new Error("action: create failed");
-  const id = nextId++;
+  const id = Math.max(...readStore().keys()) + 1;
+  writeStore(id, copy(values));
+  return { id, cityName: values.city?.name ?? null };
+}
+
+/** The action to edit, or null when it does not exist or is not of her group (404). */
+export async function getAction(id: number): Promise<ActionFormValues | null> {
+  const found = readStore().get(id);
+  return found ? copy(found) : null;
+}
+
+/** Saves the changes of an action of her group. Rejects with `?fail`. */
+export async function updateAction(id: number, values: ActionFormValues): Promise<SavedAction> {
+  if (shouldFail()) throw new Error("action: update failed");
+  if (!readStore().has(id)) throw new Error("action: not found");
+  writeStore(id, copy(values));
   return { id, cityName: values.city?.name ?? null };
 }
