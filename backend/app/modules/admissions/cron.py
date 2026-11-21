@@ -7,7 +7,7 @@ Respondem só contagens (RN-24).
 
 import logging
 import secrets
-from typing import Annotated
+from typing import Annotated, Literal
 
 import httpx2
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -23,6 +23,7 @@ from app.modules.admissions.search import (
     RoundRunningError,
     SearchDisabledError,
     run_copeve_round,
+    run_ifal_round,
 )
 from app.modules.admissions.service import delete_expired_matches
 
@@ -48,25 +49,42 @@ CronDep = Depends(require_cron_secret)
 async def official_lists_round(
     session: AsyncSessionDep,
     course: Annotated[int | None, Query()] = None,
+    source: Annotated[Literal["copeve", "ifal"], Query()] = "copeve",
 ) -> dict[str, int]:
-    """Uma rodada da busca na COPEVE (RF-F31.07).
+    """Uma rodada da busca na COPEVE ou, com `source=ifal`, no IFAL (RF-F31.07).
 
-    Com `course`, roda só esse curso (9 consultas, uns 18 s): é assim que a
-    rodada se divide quando não cabe no limite de duração da hospedagem.
+    Com `course`, roda só esse curso da COPEVE (9 consultas, uns 18 s): é assim
+    que a rodada se divide quando não cabe no limite de duração da hospedagem.
     """
-    if course is not None and course not in TARGET_COURSES:
+    if course is not None and (source != "copeve" or course not in TARGET_COURSES):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "Curso fora dos alvos"
+        )
+
+    if (
+        source == "ifal"
+        and settings.list_search_enabled
+        and not settings.ifal_selections
+    ):
+        # Sem seleção, a rodada não consultaria nada e ainda gravaria um registro
+        # vazio. O 409 deixa a falta de configuração visível no painel de cron.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Nenhuma seleção do IFAL configurada"
         )
 
     courses = [course] if course is not None else list(TARGET_COURSES)
     async with httpx2.AsyncClient(timeout=30) as client:
         try:
-            result = await run_copeve_round(session, client, courses)
+            if source == "ifal":
+                result = await run_ifal_round(session, client)
+            else:
+                result = await run_copeve_round(session, client, courses)
         except (ReportFormatError, ReportUnavailableError) as error:
             # A rodada parou sem gravar nada (RNF-F31.04). O 502 deixa a falha
             # visível no painel de cron da hospedagem.
-            logger.warning("Busca na COPEVE parou: %s", type(error).__name__)
+            logger.warning(
+                "Busca em %s parou: %s", source.upper(), type(error).__name__
+            )
             raise HTTPException(
                 status.HTTP_502_BAD_GATEWAY, "A busca parou sem gravar nada"
             ) from None
