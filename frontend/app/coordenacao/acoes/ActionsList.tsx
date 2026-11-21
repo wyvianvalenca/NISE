@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Chip } from "@/components/Chip";
 import { DeleteActionModal } from "@/components/DeleteActionModal";
 import { Icon } from "@/components/Icon";
@@ -105,6 +105,8 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
   const [deleting, setDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  /** Set when a deletion went through: the focus goes to the title once the window closes. */
+  const focusTitleWhenClosed = useRef(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
 
@@ -119,6 +121,15 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
     actions: matching.filter((action) => action.status === status),
   })).filter((group) => group.actions.length > 0);
 
+  // The focus goes to the title only after the window has closed: while it is open the
+  // page behind is inert and the call does nothing, and closing hands the focus back to
+  // the "..." button of the row, which is gone by then.
+  useEffect(() => {
+    if (target !== null || !focusTitleWhenClosed.current) return;
+    focusTitleWhenClosed.current = false;
+    titleRef.current?.focus();
+  }, [target]);
+
   function askToDelete(action: CoordAction) {
     setDeleteFailed(false);
     setTarget(action);
@@ -132,7 +143,7 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
       const remaining = actions.filter((action) => action.id !== target.id);
       setActions(remaining);
       setCounts(countActions(remaining));
-      titleRef.current?.focus();
+      focusTitleWhenClosed.current = true;
     } catch {
       setDeleteFailed(true);
     } finally {

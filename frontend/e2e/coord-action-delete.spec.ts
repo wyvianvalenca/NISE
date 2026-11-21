@@ -169,6 +169,40 @@ test("while it deletes, the button waits and cannot be pressed twice", async ({ 
   await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toHaveCount(0);
 });
 
+test("while it deletes, Cancelar, Esc and the veil do not close the modal, and the deletion is not undone", async ({
+  page,
+}) => {
+  await page.goto(`${URL}?delay=1500`);
+
+  const dialog = await openModal(page, "Python do zero");
+  await dialog.getByRole("button", { name: "Excluir ação" }).click();
+  await expect(dialog.getByRole("button", { name: "Excluindo…" })).toBeDisabled();
+
+  // She cannot cancel anymore: Cancelar waits, and neither Esc (twice, as Chrome lets
+  // a second Esc through) nor a click on the veil closes the window.
+  await expect(dialog.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.mouse.click(5, 5);
+  await expect(dialog).toBeVisible();
+
+  // The deletion goes on, and only then the window closes.
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+});
+
+test("after deleting, the focus goes to the title of the page", async ({ page }) => {
+  await page.goto(URL);
+
+  const dialog = await openModal(page, "Python do zero");
+  await dialog.getByRole("button", { name: "Excluir ação" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: "Ações" })).toBeFocused();
+});
+
 test("when the deletion fails the action stays and a notice shows", async ({ page }) => {
   await page.goto(`${URL}?fail`);
 

@@ -11,7 +11,11 @@ type DeleteActionModalProps = {
   actionName: string;
   /** Called when she confirms. The caller does the deleting and decides what follows. */
   onConfirm: () => void;
-  /** True while the deletion runs: the confirm button waits and cannot be pressed twice. */
+  /**
+   * True while the deletion runs: the confirm button waits and cannot be pressed
+   * twice, and the window cannot be closed (Cancelar, Esc and the veil), because
+   * the deletion would go on anyway and she would think she had given up.
+   */
   busy?: boolean;
 };
 
@@ -31,10 +35,11 @@ export function DeleteActionModal({
     <Modal
       open={open}
       onClose={onClose}
+      locked={busy}
       title="Excluir ação?"
       actions={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" disabled={busy} onClick={onClose}>
             Cancelar
           </Button>
           <Button variant="danger" loading={busy} loadingLabel="Excluindo…" onClick={onConfirm}>
