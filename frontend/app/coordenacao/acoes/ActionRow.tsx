@@ -12,6 +12,7 @@ import {
 import type { ActionStatus, CoordAction } from "@/lib/coord-actions";
 import Link from "next/link";
 import { PendingLink } from "./PendingLink";
+import { RowMenu } from "./RowMenu";
 import styles from "./ActionRow.module.css";
 
 /** How filled the left bar is: the further along the flow, the darker (Figma: Progresso). */
@@ -50,14 +51,25 @@ function StatusButtons({ status, id }: { status: ActionStatus; id: string }) {
   }
 }
 
+type ActionRowProps = {
+  action: CoordAction;
+  /** Asked when she picks "Excluir ação" in the row menu. */
+  onDelete: (action: CoordAction) => void;
+};
+
 /**
  * One row of the list (Figma: Ação / ...). An action waiting for attendance is
- * highlighted with the reminder line. The "..." button has no items yet: they
- * come with the stories to edit and delete an action.
+ * highlighted with the reminder line. "Excluir ação" is in the "..." menu only
+ * while attendance is not registered (RF-F30.12, RN-15); the editing item comes
+ * with its own story.
  */
-export function ActionRow({ action }: { action: CoordAction }) {
+export function ActionRow({ action, onDelete }: ActionRowProps) {
   const date = dateTileParts(action.startsOn);
   const needsAttendance = action.status === "awaiting_attendance";
+  const menuItems =
+    action.attendanceRegisteredAt === null
+      ? [{ label: "Excluir ação", onSelect: () => onDelete(action) }]
+      : [];
 
   return (
     <li className={needsAttendance ? `${styles.row} ${styles.attention}` : styles.row}>
@@ -97,9 +109,7 @@ export function ActionRow({ action }: { action: CoordAction }) {
       <div className={styles.buttons}>
         <StatusButtons status={action.status} id={action.id} />
       </div>
-      <button type="button" className={styles.more} aria-label={`Mais opções de ${action.name}`}>
-        <Icon name="more" />
-      </button>
+      <RowMenu actionName={action.name} items={menuItems} />
     </li>
   );
 }

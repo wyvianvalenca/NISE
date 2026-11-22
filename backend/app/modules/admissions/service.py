@@ -12,6 +12,7 @@ from app.modules.admissions.exceptions import (
     MatchAlreadyAnsweredError,
     MatchNotFoundError,
 )
+from app.modules.admissions.match_email import queue_match_email
 from app.modules.admissions.models import (
     AdmissionOrigin,
     Approval,
@@ -48,8 +49,9 @@ async def create_match(
 
     Devolve None, sem criar nada, se ela já tem para essa chamada um indício,
     a marca de um indício apagado, uma aprovação ou um ingresso: assim a mesma
-    chamada nunca gera o indício de novo (RF-F31.06). Não faz commit; quem
-    chama grava a rodada inteira de uma vez.
+    chamada nunca gera o indício de novo (RF-F31.06). Põe na fila o e-mail que
+    a avisa, se ela aceitou e-mails de oportunidades (RF-F31.11, #275). Não faz
+    commit; quem chama grava a rodada inteira de uma vez.
     """
     if now is None:
         now = datetime.now(UTC)
@@ -87,6 +89,7 @@ async def create_match(
         expires_at=now + timedelta(days=MATCH_DAYS),
     )
     session.add(match)
+    await queue_match_email(session, match)
 
     return match
 

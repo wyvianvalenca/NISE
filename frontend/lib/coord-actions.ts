@@ -210,6 +210,15 @@ function byDate(a: CoordAction, b: CoordAction): number {
   return a.status === "concluded" ? -upcoming : upcoming;
 }
 
+/** How many actions each status filter holds, counted from the actions given. */
+export function countActions(actions: CoordAction[]): ActionStatusCounts {
+  const counts = { all: actions.length } as ActionStatusCounts;
+  for (const status of STATUS_ORDER) {
+    counts[status] = actions.filter((action) => action.status === status).length;
+  }
+  return counts;
+}
+
 /**
  * Every action of the coordinator's group, ordered inside each status the way
  * the real route will (RN-37 note of #215: upcoming from the nearest date,
@@ -220,9 +229,23 @@ export async function getCoordActionList(): Promise<CoordActionList> {
     (a, b) =>
       STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || byDate(a, b),
   );
-  const counts = { all: actions.length } as ActionStatusCounts;
-  for (const status of STATUS_ORDER) {
-    counts[status] = actions.filter((action) => action.status === status).length;
-  }
-  return { actions, counts };
+  return { actions, counts: countActions(actions) };
+}
+
+/**
+ * Deletes one action of the group (RF-F30.12, RN-15). Resolves when it is
+ * gone and rejects when the server refuses or does not answer.
+ *
+ * TEMPORARY: there is no route yet, so this only answers. It runs in the
+ * browser, so the test bench reads the address like the other dev benches do:
+ * `?fail` makes it reject and `?delay=<ms>` makes it slow, to see the waiting
+ * state. The real route also refuses an action with attendance, even by a
+ * direct request; the screen only offers the option when
+ * `attendanceRegisteredAt` is empty.
+ */
+export async function deleteCoordAction(id: string): Promise<void> {
+  const params = new URLSearchParams(globalThis.location?.search);
+  const delay = Number(params.get("delay") ?? 0);
+  if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+  if (params.has("fail")) throw new Error(`Could not delete action ${id}`);
 }

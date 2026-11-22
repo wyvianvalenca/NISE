@@ -206,7 +206,7 @@ test("the arrow collapses and reopens Concluídas, with aria-expanded", async ({
 test("the other groups have no collapse arrow", async ({ page }) => {
   await page.goto(URL);
 
-  await expect(page.getByRole("main").locator("[aria-expanded]")).toHaveCount(1);
+  await expect(page.getByRole("main").locator("[aria-controls]")).toHaveCount(1);
 });
 
 test("every row has a ... button named after its action", async ({ page }) => {
