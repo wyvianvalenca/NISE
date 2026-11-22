@@ -1,7 +1,7 @@
 from datetime import date, time
 from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field, StringConstraints
+from pydantic import BaseModel, Field
 
 from app.modules.actions.models import (
     ActionFormat,
@@ -10,6 +10,7 @@ from app.modules.actions.models import (
     ActionVisibility,
 )
 from app.modules.girls.models import StudyStage
+from app.modules.registrations.schemas import RegistrationIn
 
 
 class AttendanceActionOut(BaseModel):
@@ -40,7 +41,11 @@ class AttendanceGirlOut(BaseModel):
     id: int
     name: str
     email: str
+    # The optional fields of the registration (C2, #232), as the list of
+    # "Inscritas" has them.
+    whatsapp: str | None
     study_stage: StudyStage | None
+    school_year: str | None
     # Marked with "Salvar e continuar depois" (#340). Not attendance (D-81).
     saved_present: bool
     # Present: marked when the attendance was concluded, or afterwards (#348).
@@ -79,7 +84,8 @@ class AttendancePageOut(BaseModel):
     # Dropped ones (address refused, she created her account) do not count.
     invites_sent: int
     evaluations_sent: int
-    # Optional columns that have data in at least one girl (RF-F1.14).
+    # Optional columns ("whatsapp", "study_stage", "school_year") that have data in
+    # at least one girl (RF-F1.14).
     columns: list[str]
     girls: list[AttendanceGirlOut]
 
@@ -97,24 +103,12 @@ class SavedMarksIn(BaseModel):
     present_ids: Annotated[list[int], Field(max_length=MAX_MARKS)]
 
 
-NAME_MAX_LENGTH = 200
-
-
-class WalkInIn(BaseModel):
+class WalkInIn(RegistrationIn):
     """ "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03, RF-F1.09).
 
-    Name and e-mail are required; the study level is optional. WhatsApp and
-    "Série" come with the registration of C2 (#232, #235).
+    The same fields and validation as "Adicionar inscrita" of C2 (#235): name and
+    e-mail are required; WhatsApp, study level and school year are optional.
     """
-
-    name: Annotated[
-        str,
-        StringConstraints(
-            strip_whitespace=True, min_length=1, max_length=NAME_MAX_LENGTH
-        ),
-    ]
-    email: EmailStr
-    study_stage: StudyStage | None = None
 
 
 class WalkInOut(BaseModel):

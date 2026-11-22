@@ -5,7 +5,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
-from app.modules.actions.dependencies import GroupActionDep
+from app.modules.actions.dependencies import CoordinatorGroupIdsDep, GroupActionDep
 from app.modules.attendance.dependencies import ConnectDep, TodayDep
 from app.modules.attendance.emails import (
     REQUEST_TIME_BUDGET_SECONDS,
@@ -100,13 +100,16 @@ async def save_attendance_marks(
 async def add_walk_in_girl(
     data: WalkInIn,
     action: GroupActionDep,
+    group_ids: CoordinatorGroupIdsDep,
     session: AsyncSessionDep,
     today: TodayDep,
     connect: ConnectDep,
 ) -> WalkInOut | JSONResponse:
     action_id = action.id
     try:
-        result = await add_walk_in(session, action, data, today, datetime.now(UTC))
+        result = await add_walk_in(
+            session, action, group_ids, data, today, datetime.now(UTC)
+        )
     except AttendanceError as error:
         await session.rollback()
         return _refused(error)

@@ -5,10 +5,10 @@ by the coordinator's groups (GroupActionDep), so none of them looks at another
 group's data (RNF-G.03).
 """
 
+from collections.abc import Sequence
 from datetime import date, datetime
 
 from sqlalchemy import func, select, update
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionStatus, Participation
@@ -34,33 +34,40 @@ from app.modules.attendance.schemas import (
 )
 from app.modules.cities.models import City
 from app.modules.girls.models import Girl
-from app.users.service import normalize_email
-
-# Optional column of the lists, shown only when some girl has it (RF-F1.14).
-# WhatsApp and "Série" come with the registration of C2 (#232).
-STUDY_STAGE_COLUMN = "study_stage"
+from app.modules.registrations.service import (
+    OPTIONAL_COLUMNS,
+    RegistrationData,
+    register_girl,
+)
 
 
 async def registrations_of(
     session: AsyncSession, action_id: int
 ) -> list[tuple[Participation, Girl]]:
-    """The registrations of the action with their girls, in alphabetical order."""
+    """The registrations of the action with their girls, in alphabetical order.
+
+    Ordered by the shown name (see `_girl_out`), as the list of C2 is.
+    """
     rows = await session.execute(
         select(Participation, Girl)
         .join(Girl, Girl.id == Participation.girl_id)
         .where(Participation.action_id == action_id)
-        .order_by(Girl.name, Participation.id)
+        .order_by(func.coalesce(Participation.name, Girl.name), Participation.id)
         .execution_options(populate_existing=True)
     )
     return [(participation, girl) for participation, girl in rows]
 
 
 def _girl_out(participation: Participation, girl: Girl) -> AttendanceGirlOut:
+    # What this registration gave (C2, #232), falling back to the record for the
+    # name: a record may have been typed by another group (RN-01).
     return AttendanceGirlOut(
         id=participation.id,
-        name=girl.name,
+        name=participation.name or girl.name,
         email=girl.email,
-        study_stage=girl.study_stage,
+        whatsapp=participation.whatsapp,
+        study_stage=participation.study_stage,
+        school_year=participation.school_year,
         saved_present=participation.saved_present,
         present=participation.attended_at is not None,
     )
@@ -111,11 +118,14 @@ async def build_attendance_page(
     )
     sent: dict[AttendanceEmailKind, int] = {kind: total for kind, total in sent_rows}
 
-    columns = (
-        [STUDY_STAGE_COLUMN]
-        if any(girl.study_stage is not None for _, girl in registrations)
-        else []
-    )
+    columns = [
+        column
+        for column in OPTIONAL_COLUMNS
+        if any(
+            getattr(participation, column) is not None
+            for participation, _ in registrations
+        )
+    ]
 
     return AttendancePageOut(
         action=AttendanceActionOut(
@@ -222,54 +232,13 @@ async def save_marks(
     await session.commit()
 
 
-async def register_girl(
-    session: AsyncSession, action: Action, data: WalkInIn
-) -> tuple[Participation, Girl, bool]:
-    """Puts a girl in the action from her name and e-mail (RN-29, RN-27).
-
-    The thinnest version of the registration of C2 (#232), for "Veio sem
-    inscrição?": the e-mail is compared ignoring case and spaces; a record that
-    already exists (with or without an account, from any group) is linked to the
-    action and never changed, and otherwise an imported record is created, with
-    no account. Never creates an account and never sends anything. Closed
-    registrations do not block it (RF-F1.10).
-
-    Both inserts use ON CONFLICT, so two taps at the same time cannot create
-    two records or two registrations. Returns the registration, the girl and
-    whether she was already registered in this action. Does not commit.
-    """
-    email = normalize_email(data.email)
-    await session.execute(
-        insert(Girl)
-        .values(email=email, name=data.name, study_stage=data.study_stage)
-        .on_conflict_do_nothing(index_elements=[Girl.email])
-    )
-    girl = await session.scalar(
-        select(Girl)
-        .where(Girl.email == email)
-        .execution_options(populate_existing=True)
-    )
-    assert girl is not None
-
-    inserted = await session.scalar(
-        insert(Participation)
-        .values(girl_id=girl.id, action_id=action.id)
-        .on_conflict_do_nothing(
-            index_elements=[Participation.girl_id, Participation.action_id]
-        )
-        .returning(Participation.id)
-    )
-    participation = await session.scalar(
-        select(Participation)
-        .where(Participation.girl_id == girl.id, Participation.action_id == action.id)
-        .execution_options(populate_existing=True)
-    )
-    assert participation is not None
-    return participation, girl, inserted is None
-
-
 async def add_walk_in(
-    session: AsyncSession, action: Action, data: WalkInIn, today: date, now: datetime
+    session: AsyncSession,
+    action: Action,
+    group_ids: Sequence[int],
+    data: WalkInIn,
+    today: date,
+    now: datetime,
 ) -> WalkInOut:
     """ "Veio sem inscrição?" (#346 while marking, #350 after concluding).
 
@@ -285,13 +254,29 @@ async def add_walk_in(
     action = await lock_action(session, action)
     if today < action.starts_on:
         raise TooEarlyError
-    participation, girl, already = await register_girl(session, action, data)
+    # The registration of C2 (#232): one record per e-mail, never an account.
+    registered = await register_girl(
+        session,
+        action,
+        group_ids,
+        RegistrationData(
+            name=data.name,
+            email=data.email,
+            whatsapp=data.whatsapp,
+            study_stage=data.study_stage,
+            school_year=data.school_year,
+        ),
+    )
+    participation = registered.participation
     if action.attendance_registered_at is not None:
         await _mark_present_after_conclusion(
             session, action, participation, now, invite=True
         )
     await session.commit()
-    return WalkInOut(girl=_girl_out(participation, girl), already_registered=already)
+    return WalkInOut(
+        girl=_girl_out(participation, registered.girl),
+        already_registered=registered.already_registered,
+    )
 
 
 async def _mark_present_after_conclusion(
