@@ -10,12 +10,14 @@ from app.modules.admissions.schemas import (
     EnrollmentRowOut,
     EnrollmentSummaryOut,
     ListSearchOut,
+    WaitingGirlOut,
 )
 from app.modules.admissions.service import (
     ENROLLMENTS_PAGE_SIZE,
     get_enrollment_summary,
     get_list_search,
     list_group_enrollments,
+    list_waiting_girls,
 )
 from app.modules.admissions.utils import short_name
 
@@ -27,6 +29,8 @@ router = APIRouter(prefix="/coordinator", tags=["Coordinator"])
 # esta lista (RNF-G.03). Ela não confirma nada aqui (D-70).
 #
 # Uma página fora do fim responde a lista vazia com o total, e o front volta.
+# As meninas com indício sem resposta (#318) vêm como `waiting`, depois das que
+# ingressaram; a coordenadora não vê onde foram achadas nem confirma nada (RN-21).
 @router.get(
     "/enrollments",
     response_model=EnrollmentPageOut,
@@ -41,6 +45,11 @@ async def group_enrollments(
     page: Annotated[int, Query(ge=1, le=10_000)] = 1,
 ) -> EnrollmentPageOut:
     rows, total = await list_group_enrollments(session, group_id, page)
+    # Quem aguarda a menina responder vem depois de todas as que ingressaram,
+    # sem curso nem instituição, e fora da contagem (#318, D-76).
+    waiting, waiting_total = await list_waiting_girls(
+        session, group_id, page, entered_total=total, entered_shown=len(rows)
+    )
 
     return EnrollmentPageOut(
         items=[
@@ -55,6 +64,8 @@ async def group_enrollments(
             for enrollment, name in rows
         ],
         total=total,
+        waiting=[WaitingGirlOut(girl_name=short_name(name)) for _, name in waiting],
+        waiting_total=waiting_total,
         page=page,
         page_size=ENROLLMENTS_PAGE_SIZE,
     )

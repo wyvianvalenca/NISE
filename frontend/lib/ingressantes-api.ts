@@ -59,9 +59,12 @@ export function registeredLabel(isoDateTime: string): string {
   return `${MONTHS[month - 1]} ${year}`;
 }
 
-/** Quantas páginas a lista tem; uma, quando está vazia. */
+/**
+ * Quantas páginas a lista tem; uma, quando está vazia. As meninas que aguardam a
+ * resposta (#318) vêm depois das que ingressaram e ocupam linhas como elas.
+ */
 export function pageCount(page: EnrollmentPage): number {
-  return Math.max(1, Math.ceil(page.total / page.pageSize));
+  return Math.max(1, Math.ceil((page.total + page.waitingTotal) / page.pageSize));
 }
 
 export type ListSearchResult =

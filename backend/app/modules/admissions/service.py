@@ -473,3 +473,56 @@ async def get_enrollment_summary(
         found = {(girl_id, list_id) for girl_id, list_id in confirmed.tuples().all()}
 
     return build_summary(rows, girls_with_account or 0, last_search_at, found)
+
+
+# ---------------------------------------------------------------------------
+# Meninas com indício sem resposta na tela Ingressantes (C8, #318)
+# ---------------------------------------------------------------------------
+
+
+async def list_waiting_girls(
+    session: AsyncSession,
+    group_id: int,
+    page: int,
+    entered_total: int,
+    entered_shown: int,
+    now: datetime | None = None,
+) -> tuple[Sequence[tuple[int, str]], int]:
+    """As meninas do grupo com indício sem resposta que cabem na página, e o total.
+
+    Elas vêm depois de todas as que ingressaram (RF-F5.24, D-76), então a lista
+    é as que ingressaram seguida das que aguardam, cortada em páginas de 15.
+    `entered_total` é quantas ingressaram ao todo e `entered_shown` quantas já
+    ocupam esta página. Uma linha por menina, mesmo com mais de um indício, da
+    que espera há mais tempo para a mais nova; o id desempata.
+
+    Lê só quem tem um indício aberto, sem resposta e dentro do prazo: quando ela
+    responde, ou o indício é apagado (RF-F31.06), a linha some. Nunca lê curso,
+    instituição nem chamada do indício (RN-21, RNF-F31.02), e nada vai a logs.
+    """
+    if now is None:
+        now = datetime.now(UTC)
+
+    waiting = (
+        select(ListMatch.girl_id, func.min(ListMatch.created_at).label("waiting_since"))
+        .where(ListMatch.girl_id.in_(girls_of_group(group_id)), _is_open(now))
+        .group_by(ListMatch.girl_id)
+        .subquery()
+    )
+    total = await session.scalar(select(func.count()).select_from(waiting)) or 0
+
+    room = ENROLLMENTS_PAGE_SIZE - entered_shown
+    offset = max(0, (page - 1) * ENROLLMENTS_PAGE_SIZE - entered_total)
+    if room <= 0 or offset >= total:
+        return [], total
+
+    statement = (
+        select(Girl.id, Girl.name)
+        .join(waiting, waiting.c.girl_id == Girl.id)
+        .order_by(waiting.c.waiting_since, Girl.id)
+        .limit(room)
+        .offset(offset)
+    )
+    rows = (await session.execute(statement)).tuples().all()
+
+    return rows, total

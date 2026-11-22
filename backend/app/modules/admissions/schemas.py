@@ -69,12 +69,29 @@ class EnrollmentRowOut(BaseModel):
     origin: AdmissionOrigin
 
 
+class WaitingGirlOut(BaseModel):
+    """Uma menina com indício sem resposta, na última linha da lista (#318).
+
+    Só o nome curto. Nem lista, curso, instituição ou id do indício vão: só a
+    menina vê os detalhes (RN-21, RNF-F31.02).
+    """
+
+    girl_name: str = Field(serialization_alias="girlName")
+
+
 class EnrollmentPageOut(BaseModel):
     """Uma página da lista e o que a paginação precisa (D-77)."""
 
     items: list[EnrollmentRowOut]
-    # Quantas meninas a lista tem ao todo, o número ao lado do título.
+    # Quantas meninas a lista tem ao todo, o número ao lado do título. Não conta
+    # as que aguardam a menina responder.
     total: int
+    # As meninas com indício sem resposta que cabem nesta página: vêm depois de
+    # todas as que ingressaram, então só aparecem nas últimas páginas (D-76).
+    waiting: list[WaitingGirlOut]
+    # Quantas meninas aguardam ao todo, para o "+1 aguardando a menina" em toda
+    # página. As páginas contam as que ingressaram e as que aguardam juntas.
+    waiting_total: int = Field(serialization_alias="waitingTotal")
     page: int
     page_size: int = Field(serialization_alias="pageSize")
 

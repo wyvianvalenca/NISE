@@ -2,7 +2,7 @@
 
 // "Quem ingressou" (#315, RF-F5.05): uma linha por menina do grupo que entrou
 // num curso da área, 15 por página (D-77). A coordenadora não confirma nada
-// aqui (D-70).
+// aqui (D-70). Depois delas vêm as meninas com indício sem resposta (#318).
 
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
@@ -20,45 +20,68 @@ import {
 } from "@/lib/ingressantes-api";
 import styles from "./page.module.css";
 
-const COLUMNS: Column<EnrollmentRow>[] = [
+// Uma linha da tabela: quem ingressou ou, depois de todas elas, quem tem um
+// indício esperando a resposta da menina (#318).
+type Row =
+  | { kind: "entered"; key: string; entry: EnrollmentRow }
+  | { kind: "waiting"; key: string; girlName: string };
+
+// Texto proposto na #318; ainda não está no Figma. A coordenadora não vê lista,
+// curso nem instituição do indício e não confirma nada (RN-21, D-70).
+const WAITING_LABEL = "Possível aprovação · aguardando a menina";
+
+const NOT_SHOWN = <span aria-label="Não informado">—</span>;
+
+const COLUMNS: Column<Row>[] = [
   {
     key: "menina",
     header: "Menina",
     width: "190px",
     emphasis: true,
-    render: (row) => (
-      <span className={styles.girl}>
-        <Avatar name={row.girlName} size={36} />
-        {row.girlName}
-      </span>
-    ),
+    render: (row) => {
+      const name = row.kind === "entered" ? row.entry.girlName : row.girlName;
+      return (
+        <span className={styles.girl}>
+          <Avatar name={name} size={36} />
+          {name}
+        </span>
+      );
+    },
   },
-  { key: "curso", header: "Curso", render: (row) => row.course },
+  {
+    key: "curso",
+    header: "Curso",
+    render: (row) => (row.kind === "entered" ? row.entry.course : NOT_SHOWN),
+  },
   {
     key: "instituicao",
     header: "Instituição",
     width: "180px",
     // "Onde?" é opcional na A10b: sem ele, um traço (resposta 3 no #263).
-    render: (row) => row.institution ?? <span aria-label="Não informada">—</span>,
+    render: (row) => (row.kind === "entered" ? (row.entry.institution ?? NOT_SHOWN) : NOT_SHOWN),
   },
   {
     key: "registrado",
     header: "Registrado em",
     width: "130px",
-    render: (row) => registeredLabel(row.registeredAt),
+    render: (row) => (row.kind === "entered" ? registeredLabel(row.entry.registeredAt) : NOT_SHOWN),
   },
   {
     key: "origem",
     header: "Como soubemos",
     width: "200px",
-    render: (row) =>
-      row.origin === "official_list" ? (
-        <span className={styles.found}>{ORIGIN_LABELS[row.origin]}</span>
+    render: (row) => {
+      if (row.kind === "waiting") return <Tag variant="wait">{WAITING_LABEL}</Tag>;
+
+      return row.entry.origin === "official_list" ? (
+        <span className={styles.found}>{ORIGIN_LABELS[row.entry.origin]}</span>
       ) : (
-        <Tag variant="soft">{ORIGIN_LABELS[row.origin]}</Tag>
-      ),
+        <Tag variant="soft">{ORIGIN_LABELS[row.entry.origin]}</Tag>
+      );
+    },
   },
 ];
+
 
 const FAILURE_TEXT: Record<Exclude<EnrollmentPageResult, { ok: true }>["reason"], string> = {
   signed_out: "Sua sessão acabou. Entre de novo para ver a lista.",
@@ -81,7 +104,8 @@ export function WhoEntered() {
     getEnrollments(page, controller.signal)
       .then((next) => {
         // Uma página que deixou de existir (a lista diminuiu) volta para a última.
-        if (next.ok && next.page.items.length === 0 && page > pageCount(next.page)) {
+        const empty = next.ok && next.page.items.length === 0 && next.page.waiting.length === 0;
+        if (next.ok && empty && page > pageCount(next.page)) {
           setPage(pageCount(next.page));
           return;
         }
@@ -141,6 +165,13 @@ export function WhoEntered() {
 
   const data = result.page;
   const pages = pageCount(data);
+  // Quem aguarda vem depois de todas as que ingressaram, na última página (D-76).
+  const rows: Row[] = [
+    ...data.items.map((entry): Row => ({ kind: "entered", key: `e${entry.id}`, entry })),
+    ...data.waiting.map(
+      (girl, index): Row => ({ kind: "waiting", key: `w${index}`, girlName: girl.girlName }),
+    ),
+  ];
 
   return (
     <section className={styles.card} aria-labelledby="quem-ingressou">
@@ -152,6 +183,8 @@ export function WhoEntered() {
           <span className={styles.srOnly}>Total: </span>
           {data.total}
         </Tag>
+        {/* Em toda página, para ela não passar despercebida (#318). */}
+        {data.waitingTotal > 0 && <Tag variant="wait">+{data.waitingTotal} aguardando a menina</Tag>}
       </div>
       {/* Texto da resposta 6 no #263: quem confirma é a menina (D-70). */}
       <p className={styles.note}>
@@ -160,8 +193,8 @@ export function WhoEntered() {
 
       <DataTable
         columns={COLUMNS}
-        rows={data.items}
-        rowKey={(row) => String(row.id)}
+        rows={rows}
+        rowKey={(row) => row.key}
         caption={`Meninas do grupo que entraram num curso de computação, página ${data.page} de ${pages}`}
       />
 

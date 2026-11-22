@@ -1072,6 +1072,10 @@ export interface components {
             items: components["schemas"]["EnrollmentRowOut"][];
             /** Total */
             total: number;
+            /** Waiting */
+            waiting: components["schemas"]["WaitingGirlOut"][];
+            /** Waitingtotal */
+            waitingTotal: number;
             /** Page */
             page: number;
             /** Pagesize */
@@ -1714,6 +1718,17 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WaitingGirlOut
+         * @description Uma menina com indício sem resposta, na última linha da lista (#318).
+         *
+         *     Só o nome curto. Nem lista, curso, instituição ou id do indício vão: só a
+         *     menina vê os detalhes (RN-21, RNF-F31.02).
+         */
+        WaitingGirlOut: {
+            /** Girlname */
+            girlName: string;
         };
     };
     responses: never;
