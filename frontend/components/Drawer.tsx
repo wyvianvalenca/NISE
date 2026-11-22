@@ -14,15 +14,19 @@ type DrawerProps = {
   children: ReactNode;
   /** Botões fixos no rodapé. */
   footer?: ReactNode;
+  /** Beside the close button, e.g. the steps of the import (#234). */
+  headerExtra?: ReactNode;
+  /** The wide panel of the import (Figma: Drawer / Importar inscritas). */
+  wide?: boolean;
 };
 
 /** Painel lateral da coordenadora (Figma: Painel / Adicionar inscrita). */
-export function Drawer({ open, onClose, title, subtitle, children, footer }: DrawerProps) {
+export function Drawer({ open, onClose, title, subtitle, children, footer, headerExtra, wide }: DrawerProps) {
   const ref = useDialog(open, onClose);
   const titleId = useId();
 
   return (
-    <dialog ref={ref} className={styles.drawer} aria-labelledby={titleId}>
+    <dialog ref={ref} className={wide ? `${styles.drawer} ${styles.wide}` : styles.drawer} aria-labelledby={titleId}>
       <div className={styles.header}>
         <div className={styles.heading}>
           <h2 id={titleId} className={styles.title}>
@@ -30,6 +34,7 @@ export function Drawer({ open, onClose, title, subtitle, children, footer }: Dra
           </h2>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>
+        {headerExtra && <div className={styles.extra}>{headerExtra}</div>}
         <button
           type="button"
           className={styles.close}

@@ -175,3 +175,197 @@ export async function deleteAction(id: number): Promise<"deleted" | "has_attenda
   if (!response.ok && response.status !== 404) throw new Error(`delete ${response.status}`);
   return "deleted";
 }
+
+// ---- Import of a spreadsheet (#234, RF-F1.01 to RF-F1.08) ----
+// Three multipart routes. The file is never stored by the back-end, so the
+// drawer keeps the `File` and sends it again to each route.
+
+/** The column of the file for each field of the NISE; null is "Não usar". */
+export type ImportMapping = {
+  name: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  studyStage: string | null;
+  schoolYear: string | null;
+};
+
+export type ImportRead = {
+  fileName: string;
+  lineCount: number;
+  columns: string[];
+  /** Column name to the text of the first line. */
+  firstLine: Record<string, string>;
+  suggested: ImportMapping;
+};
+
+export type ImportReadyRow = {
+  line: number;
+  name: string;
+  email: string;
+  /** The label already, e.g. "Ensino médio". */
+  studyStage: string | null;
+};
+
+export type ImportReason = "incomplete_email" | "missing_email" | "missing_name";
+
+export type ImportReviewRow = { line: number; name: string; email: string; reason: ImportReason };
+
+export type ImportReview = {
+  fileName: string;
+  lineCount: number;
+  ready: ImportReadyRow[];
+  toReview: ImportReviewRow[];
+  repeated: { name: string; email: string; count: number }[];
+  alreadyInAction: number;
+  newCount: number;
+};
+
+export type ImportCorrection = { line: number; email: string };
+
+export type ImportResult = { imported: number; alreadyInAction: number; registeredCount: number };
+
+/** What the back-end says is wrong, plus "failed" for anything else. */
+export type ImportErrorCode =
+  | "unsupported_type"
+  | "unreadable_file"
+  | "empty_file"
+  | "too_large"
+  | "missing_columns"
+  | "invalid_corrections"
+  | "failed";
+
+export type ImportFailure = { ok: false; error: ImportErrorCode; lines: number[] };
+type ImportSuccess<T> = { ok: true; data: T };
+
+type MappingJson = {
+  name: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  study_stage: string | null;
+  school_year: string | null;
+};
+
+const IMPORT_CODES: ImportErrorCode[] = [
+  "unsupported_type",
+  "unreadable_file",
+  "empty_file",
+  "too_large",
+  "missing_columns",
+  "invalid_corrections",
+];
+
+function mappingFromJson(json: MappingJson): ImportMapping {
+  return {
+    name: json.name,
+    email: json.email,
+    whatsapp: json.whatsapp,
+    studyStage: json.study_stage,
+    schoolYear: json.school_year,
+  };
+}
+
+function mappingToJson(mapping: ImportMapping): string {
+  return JSON.stringify({
+    name: mapping.name,
+    email: mapping.email,
+    whatsapp: mapping.whatsapp,
+    study_stage: mapping.studyStage,
+    school_year: mapping.schoolYear,
+  } satisfies MappingJson);
+}
+
+async function postImport<T, R>(
+  id: number,
+  step: "import/read" | "import/review" | "import",
+  body: FormData,
+  convert: (json: R) => T,
+): Promise<ImportSuccess<T> | ImportFailure> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/actions/${id}/registrations/${step}`, { method: "POST", body });
+  } catch {
+    return { ok: false, error: "failed", lines: [] };
+  }
+  if (response.ok) return { ok: true, data: convert((await response.json()) as R) };
+  let code: ImportErrorCode = "failed";
+  let lines: number[] = [];
+  if (response.status === 422) {
+    const json = (await response.json().catch(() => null)) as { error?: string; lines?: number[] } | null;
+    const found = IMPORT_CODES.find((known) => known === json?.error);
+    if (found) code = found;
+    lines = json?.lines ?? [];
+  }
+  return { ok: false, error: code, lines };
+}
+
+function fileForm(file: File, mapping?: ImportMapping): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  if (mapping) form.append("mapping", mappingToJson(mapping));
+  return form;
+}
+
+/** Step 1: the columns of the file, its first line and the suggested mapping. */
+export function readImportFile(id: number, file: File) {
+  return postImport(id, "import/read", fileForm(file), (json: {
+    file_name: string;
+    line_count: number;
+    columns: string[];
+    first_line: Record<string, string>;
+    suggested: MappingJson;
+  }): ImportRead => ({
+    fileName: json.file_name,
+    lineCount: json.line_count,
+    columns: json.columns,
+    firstLine: json.first_line,
+    suggested: mappingFromJson(json.suggested),
+  }));
+}
+
+/** Step 2: ready, to review and repeated lines. Saves nothing. */
+export function reviewImport(id: number, file: File, mapping: ImportMapping) {
+  return postImport(id, "import/review", fileForm(file, mapping), (json: {
+    file_name: string;
+    line_count: number;
+    ready: { line: number; name: string; email: string; study_stage: Audience | null }[];
+    to_review: ImportReviewRow[];
+    repeated: { name: string; email: string; count: number }[];
+    already_in_action: number;
+    new_count: number;
+  }): ImportReview => ({
+    fileName: json.file_name,
+    lineCount: json.line_count,
+    ready: json.ready.map((row) => ({
+      line: row.line,
+      name: row.name,
+      email: row.email,
+      studyStage: row.study_stage === null ? null : studyStageLabel(row.study_stage),
+    })),
+    toReview: json.to_review,
+    repeated: json.repeated,
+    alreadyInAction: json.already_in_action,
+    newCount: json.new_count,
+  }));
+}
+
+/** Imports the new girls, all or nothing. */
+export function runImport(
+  id: number,
+  file: File,
+  mapping: ImportMapping,
+  corrections: ImportCorrection[],
+  skip: number[],
+) {
+  const form = fileForm(file, mapping);
+  form.append("corrections", JSON.stringify(corrections));
+  form.append("skip", JSON.stringify(skip));
+  return postImport(id, "import", form, (json: {
+    imported: number;
+    already_in_action: number;
+    registered_count: number;
+  }): ImportResult => ({
+    imported: json.imported,
+    alreadyInAction: json.already_in_action,
+    registeredCount: json.registered_count,
+  }));
+}

@@ -173,6 +173,12 @@ export type ActionPageApi = {
   deleted: number[];
   /** While true the GET of the action answers 500 (the dev server runs effects twice, so a count would not do). */
   failActions: boolean;
+  /** Steps of the import asked for, in order ("read", "review", "import"). */
+  importSteps: string[];
+  /** While true the import route answers 500 and saves nothing. */
+  failImport: boolean;
+  /** What the last import call sent besides the file (#234). */
+  lastImport: { mapping: Record<string, string | null>; corrections: { line: number; email: string }[]; skip: number[] } | null;
 };
 
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
@@ -206,6 +212,9 @@ export async function mockActionPageApi(
     listRequests: [],
     deleted: [],
     failActions: options.failActions ?? false,
+    importSteps: [],
+    failImport: false,
+    lastImport: null,
   };
 
   await page.route(
@@ -273,5 +282,211 @@ export async function mockActionPageApi(
     },
   );
 
+  await mockImportRoutes(page, data, api);
+
   return api;
+}
+
+// ---- Import of a spreadsheet (#234) ----
+
+const IMPORT_URL = /\/api\/actions\/(\d+)\/registrations\/import(?:\/(read|review))?$/;
+
+/** The text fields and the file of a multipart body (the files here are small CSV text). */
+function multipart(body: string, contentType: string) {
+  const boundary = /boundary=(.+)$/.exec(contentType)![1];
+  const fields: Record<string, string> = {};
+  let file = { name: "", text: "" };
+  for (const part of body.split(`--${boundary}`)) {
+    const [head, ...rest] = part.split("\r\n\r\n");
+    const name = /name="([^"]+)"/.exec(head)?.[1];
+    if (!name) continue;
+    const text = rest.join("\r\n\r\n").replace(/\r\n$/, "");
+    const fileName = /filename="([^"]*)"/.exec(head)?.[1];
+    if (fileName !== undefined) file = { name: fileName, text };
+    else fields[name] = text;
+  }
+  return { fields, file };
+}
+
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function stageOf(text: string): string | null {
+  const plain = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (plain.includes("fundamental")) return "fundamental";
+  if (plain.includes("medio")) return "medio";
+  return null;
+}
+
+function sheetOf(text: string) {
+  const rows = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .filter((row) => row.trim() !== "")
+    .map((row) => row.split(","));
+  const columns = rows[0] ?? [];
+  const lines = rows.slice(1).map((cells, index) => ({
+    line: index + 1,
+    values: Object.fromEntries(columns.map((column, at) => [column, (cells[at] ?? "").trim()])),
+  }));
+  return { columns, lines };
+}
+
+function suggest(columns: string[]) {
+  const find = (...words: string[]) =>
+    columns.find((column) => words.some((word) => column.toLowerCase().includes(word))) ?? null;
+  return {
+    name: find("nome"),
+    email: find("mail"),
+    whatsapp: find("telefone", "whats"),
+    study_stage: find("escolaridade"),
+    school_year: find("série", "serie"),
+  };
+}
+
+/** The three routes of the import, with the rules of the back-end (read, review, import). */
+async function mockImportRoutes(page: Page, data: Record<number, Stored>, api: ActionPageApi) {
+  await page.route(
+    (url) => IMPORT_URL.test(url.pathname),
+    async (route) => {
+      const request = route.request();
+      const [, idText, step = "import"] = IMPORT_URL.exec(new URL(request.url()).pathname)!;
+      const found = data[Number(idText)];
+      if (!found) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      api.importSteps.push(step);
+      const { fields, file } = multipart(
+        request.postDataBuffer()!.toString("utf8"),
+        request.headers()["content-type"],
+      );
+      const refuse = (error: string, extra = {}) =>
+        route.fulfill({ status: 422, json: { error, ...extra } });
+
+      if (!/\.(csv|xlsx)$/i.test(file.name)) return refuse("unsupported_type");
+      const sheet = sheetOf(file.text);
+      if (file.text.startsWith("\u0000") || sheet.columns.length === 0) return refuse("unreadable_file");
+      if (sheet.lines.length === 0) return refuse("empty_file");
+
+      if (step === "read") {
+        return route.fulfill({
+          json: {
+            file_name: file.name,
+            line_count: sheet.lines.length,
+            columns: sheet.columns,
+            first_line: sheet.lines[0].values,
+            suggested: suggest(sheet.columns),
+          },
+        });
+      }
+
+      const mapping = JSON.parse(fields.mapping) as Record<string, string | null>;
+      if (!mapping.name || !mapping.email) return refuse("missing_columns");
+      const corrections: { line: number; email: string }[] = JSON.parse(fields.corrections ?? "[]");
+      const skip: number[] = JSON.parse(fields.skip ?? "[]");
+      if (step === "import") api.lastImport = { mapping, corrections, skip };
+
+      const ready: Record<string, unknown>[] = [];
+      const toReview: Record<string, unknown>[] = [];
+      const invalid: number[] = [];
+      const seen = new Map<string, { name: string; count: number }>();
+      for (const { line, values } of sheet.lines) {
+        const name = values[mapping.name];
+        const rawEmail = values[mapping.email];
+        const reason = !name ? "missing_name" : !rawEmail ? "missing_email" : !EMAIL_OK.test(rawEmail) ? "incomplete_email" : null;
+        if (skip.includes(line) && reason) continue;
+        const fix = corrections.find((item) => item.line === line);
+        const email = fix ? fix.email : rawEmail;
+        const problem = !name ? "missing_name" : !email ? "missing_email" : !EMAIL_OK.test(email) ? "incomplete_email" : null;
+        if (fix && email && !EMAIL_OK.test(email)) invalid.push(line);
+        if (problem) {
+          toReview.push({ line, name, email, reason: problem });
+          continue;
+        }
+        const key = email.toLowerCase();
+        const known = seen.get(key);
+        if (known) {
+          known.count += 1;
+          continue;
+        }
+        seen.set(key, { name, count: 1 });
+        ready.push({
+          line,
+          name,
+          email: key,
+          whatsapp: mapping.whatsapp ? values[mapping.whatsapp] || null : null,
+          study_stage: mapping.study_stage ? stageOf(values[mapping.study_stage]) : null,
+          school_year: mapping.school_year ? values[mapping.school_year] || null : null,
+        });
+      }
+      const repeated = [...seen.entries()]
+        .filter(([, item]) => item.count > 1)
+        .map(([email, item]) => ({ name: item.name, email, count: item.count }));
+      const inAction = new Set(found.registrations.map((row) => row.email));
+      const already = ready.filter((row) => inAction.has(row.email as string)).length;
+
+      if (step === "review") {
+        return route.fulfill({
+          json: {
+            file_name: file.name,
+            line_count: sheet.lines.length,
+            ready,
+            to_review: toReview,
+            repeated,
+            already_in_action: already,
+            new_count: ready.length - already,
+          },
+        });
+      }
+
+      if (api.failImport) return route.fulfill({ status: 500, body: "" });
+      if (invalid.length) return refuse("invalid_corrections", { lines: invalid });
+      let next = Math.max(0, ...found.registrations.map((row) => row.id)) + 1;
+      for (const row of ready) {
+        if (inAction.has(row.email as string)) continue;
+        found.registrations.push({
+          id: next++,
+          name: row.name as string,
+          email: row.email as string,
+          whatsapp: row.whatsapp as string | null,
+          study_stage: row.study_stage as string | null,
+          school_year: row.school_year as string | null,
+        });
+      }
+      found.registrations.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+      found.action.status = "awaiting_event";
+      return route.fulfill({
+        json: {
+          imported: ready.length - already,
+          already_in_action: already,
+          registered_count: found.registrations.length,
+        },
+      });
+    },
+  );
+}
+
+const IMPORT_NAMES = [
+  "Alana Oliveira", "Ana Clara Lima", "Bianca Ferreira", "Débora Santos", "Fernanda Rocha",
+  "Gabriela Alves", "Helena Dias", "Isabela Martins", "Júlia Pereira", "Larissa Souza",
+  "Luana Melo", "Marina Costa", "Nicole Araújo", "Paula Ribeiro", "Rafaela Nunes",
+  "Sofia Barros", "Tainá Lopes", "Valentina Reis", "Vitória Cardoso", "Yasmin Teixeira",
+  "Clara Menezes", "Tatiane Lima", "Beatriz Nascimento",
+];
+
+const IMPORT_HEADER = "Nome completo,Endereço de e-mail,Telefone para contato,Nível de escolaridade,Série";
+
+/**
+ * The 26 lines of the Figma: 23 ready (22 names and Beatriz), 2 to review
+ * (Camila with an incomplete e-mail, Isadora with none) and Beatriz twice.
+ * Fictional names and e-mails (`@exemplo.test`).
+ */
+export function figmaSpreadsheet(): string {
+  const slug = (name: string) =>
+    name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ /g, ".");
+  const lines = IMPORT_NAMES.map(
+    (name, index) =>
+      `${name},${slug(name)}@exemplo.test,(82) 9 9999-${String(1000 + index)},${index % 2 ? "Médio incompleto" : "Fundamental incompleto"},`,
+  );
+  lines.push("Camila Souza,camila.souza@gmail,(82) 9 9999-2000,Médio completo,");
+  lines.push("Isadora Melo,,(82) 9 9999-2001,Médio incompleto,");
+  lines.push("Beatriz Nascimento,Beatriz.Nascimento@exemplo.test,(82) 9 9999-2002,Médio incompleto,");
+  return [IMPORT_HEADER, ...lines].join("\n");
 }
