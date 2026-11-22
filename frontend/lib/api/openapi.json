@@ -2951,14 +2951,7 @@
             "description": "Ela já respondeu essa rodada: {\"error\": \"already_answered\"}"
           },
           "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {\"error\": \"invalid_course_answer\"}"
           }
         }
       }
@@ -3863,6 +3856,24 @@
         "title": "CuratedType",
         "description": "Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.\n\nOs nomes que aparecem na tela ficam em `CURATED_TYPE_LABELS` (utils.py)."
       },
+      "CurrentCourseOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/CourseLevel"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "course"
+        ],
+        "title": "CurrentCourseOut",
+        "description": "O curso em que ela está hoje, para a pergunta \"Continua nesse curso?\"."
+      },
       "CurrentFollowupOut": {
         "properties": {
           "round": {
@@ -3880,6 +3891,16 @@
           "answered": {
             "type": "boolean",
             "title": "Answered"
+          },
+          "currentCourse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCourseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -4325,6 +4346,16 @@
               }
             ]
           },
+          "stillEnrolled": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StillEnrolled"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "course": {
             "anyOf": [
               {
@@ -4423,6 +4454,13 @@
             },
             "type": "array",
             "title": "Courses"
+          },
+          "stillEnrolled": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Stillenrolled"
           }
         },
         "type": "object",
@@ -4432,7 +4470,8 @@
           "activities",
           "helps",
           "courseStatuses",
-          "courses"
+          "courses",
+          "stillEnrolled"
         ],
         "title": "FollowupOptionsOut",
         "description": "As opções das perguntas fechadas da A18, na ordem do Figma."
@@ -5161,6 +5200,16 @@
         ],
         "title": "StatusIn",
         "description": "A seção para onde ela quer levar a atividade.\n\nSó o próximo passo é aceito: \"in_progress\" a partir de \"next\" e\n\"concluded\" a partir de \"in_progress\". Outro salto responde 409."
+      },
+      "StillEnrolled": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "changed",
+          "stopped"
+        ],
+        "title": "StillEnrolled",
+        "description": "Pergunta 3 para quem já registrou um curso: \"Continua nesse curso?\" (#299)."
       },
       "StudyStage": {
         "type": "string",

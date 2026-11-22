@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { mockFollowupApi, OPEN_ROUND } from "./followup-api";
+import { mockFollowupApi, OPEN_ROUND, ROUND_WITH_COURSE } from "./followup-api";
 import { mockTermsApi } from "./terms-api";
 
-// #293 · A18 Como está seu caminho? (perguntas 1, 2, 4, 5 e 6) e #294 (pergunta 3, do curso). As rotas do
+// #293 · A18 Como está seu caminho? (perguntas 1, 2, 4, 5 e 6), #294 (pergunta 3, do curso) e #299 ("Continua nesse curso?"). As rotas do
 // questionário são simuladas. Dados fictícios.
 
 const PAGE = "/caminho";
@@ -287,6 +287,103 @@ test("um clique duplo em Enviar respostas manda um envio só", async ({
   expect(sent).toHaveLength(1);
 });
 
+test('quem já tem curso vê "Continua nesse curso?" com o curso dela', async ({
+  page,
+}) => {
+  // RF-F6.06
+  await mockFollowupApi(page, { current: ROUND_WITH_COURSE });
+  await page.goto(PAGE);
+
+  await expect(page.getByText("Graduação · Ciência da Computação")).toBeVisible();
+  const q3 = page.getByRole("group", { name: "Continua nesse curso?" });
+  for (const label of ["Sim, continuo", "Mudei de curso", "Parei por enquanto"]) {
+    await expect(q3.getByRole("button", { name: label })).toBeVisible();
+  }
+  // A pergunta de entrada não aparece.
+  await expect(page.getByRole("group", { name: Q3 })).toHaveCount(0);
+});
+
+test('"Sim, continuo" envia só a resposta, sem dados de curso', async ({
+  page,
+}) => {
+  const sent = await mockFollowupApi(page, { current: ROUND_WITH_COURSE });
+  await page.goto(PAGE);
+
+  await page.getByRole("button", { name: "Sim, continuo" }).click();
+  await expect(page.getByText(/Que demais!/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Enviar respostas" }).click();
+
+  await expect(page).toHaveURL(/\/agenda$/);
+  expect(sent).toEqual([
+    expect.objectContaining({ round: "six_months", stillEnrolled: "yes" }),
+  ]);
+  expect(sent[0]).not.toHaveProperty("course");
+  expect(sent[0]).not.toHaveProperty("courseStatus", "graduacao");
+});
+
+test('"Parei por enquanto" envia só a resposta', async ({ page }) => {
+  const sent = await mockFollowupApi(page, { current: ROUND_WITH_COURSE });
+  await page.goto(PAGE);
+
+  await page.getByRole("button", { name: "Parei por enquanto" }).click();
+  await page.getByRole("button", { name: "Enviar respostas" }).click();
+
+  await expect(page).toHaveURL(/\/agenda$/);
+  expect(sent).toEqual([expect.objectContaining({ stillEnrolled: "stopped" })]);
+  expect(sent[0]).not.toHaveProperty("course");
+});
+
+test('"Mudei de curso" abre a escolha do curso e envia o novo', async ({
+  page,
+}) => {
+  // RF-F6.05
+  const sent = await mockFollowupApi(page, { current: ROUND_WITH_COURSE });
+  await page.goto(PAGE);
+
+  await page.getByRole("button", { name: "Mudei de curso" }).click();
+  const send = page.getByRole("button", { name: "Enviar respostas" });
+  // Falta o nível e o curso novo.
+  await expect(send).toBeDisabled();
+  const niveis = page.getByRole("group", { name: "Qual o novo curso?" });
+  // Mudar de curso é entrar em outro: sem "Tô tentando entrar" nem "Ainda não".
+  await expect(niveis.getByRole("button")).toHaveCount(2);
+  await niveis.getByRole("button", { name: "Curso técnico" }).click();
+  await expect(send).toBeDisabled();
+  await page.getByRole("button", { name: "Outro curso" }).click();
+  await page.getByLabel("Qual o nome do curso?").fill("Eletrônica");
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  await expect(page).toHaveURL(/\/agenda$/);
+  expect(sent).toEqual([
+    expect.objectContaining({
+      stillEnrolled: "changed",
+      courseStatus: "tecnico",
+      course: "outro",
+      otherCourse: "Eletrônica",
+      institution: null,
+    }),
+  ]);
+});
+
+test('trocar "Mudei de curso" por "Sim, continuo" descarta o curso novo', async ({
+  page,
+}) => {
+  const sent = await mockFollowupApi(page, { current: ROUND_WITH_COURSE });
+  await page.goto(PAGE);
+
+  await page.getByRole("button", { name: "Mudei de curso" }).click();
+  await page.getByRole("button", { name: "Graduação" }).click();
+  await page.getByRole("button", { name: "Redes de computadores" }).click();
+  await page.getByRole("button", { name: "Sim, continuo" }).click();
+  await page.getByRole("button", { name: "Enviar respostas" }).click();
+
+  await expect(page).toHaveURL(/\/agenda$/);
+  expect(sent[0]).toMatchObject({ stillEnrolled: "yes" });
+  expect(sent[0]).not.toHaveProperty("course");
+  expect(sent[0]).not.toHaveProperty("courseStatus");
+});
+
 test('"Agora não" não envia nada', async ({ page }) => {
   const sent = await mockFollowupApi(page);
   await page.goto(PAGE);
@@ -431,6 +528,10 @@ for (const width of [360, 1366]) {
     await expect(
       page.getByRole("button", { name: "Enviar respostas" }),
     ).toBeVisible();
+    // Com a pergunta do curso aberta por inteiro.
+    await page.getByRole("button", { name: "Graduação" }).click();
+    await page.getByRole("button", { name: "Outro curso" }).click();
+    await expect(page.getByLabel("Qual o nome do curso?")).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );

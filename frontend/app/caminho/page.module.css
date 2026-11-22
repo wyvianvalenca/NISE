@@ -72,3 +72,11 @@
 .skip:hover {
   text-decoration: underline;
 }
+
+/* O curso que ela já registrou, logo acima de "Continua nesse curso?". */
+.currentCourse {
+  margin-bottom: -10px;
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 700;
+}

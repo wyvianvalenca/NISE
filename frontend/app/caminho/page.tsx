@@ -2,7 +2,9 @@
 
 // A18 · Como está seu caminho? Questionário de acompanhamento, igual para todas
 // (D-60), 3, 6, 12 e 18 meses depois da conta (RN-02). Atende RF-F4.13,
-// RF-F4.07, RF-F4.08 e RF-S2.15 (issue #293), e a pergunta 3, do curso: RF-F6.02, RF-F6.03 (#294).
+// RF-F4.07, RF-F4.08 e RF-S2.15 (issue #293), a pergunta 3, do curso (RF-F6.02,
+// RF-F6.03, #294), e "Continua nesse curso?" para quem já registrou um curso
+// (RF-F6.05, RF-F6.06, #299).
 
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -19,8 +21,9 @@ import {
   type FollowupIn,
   type FollowupProblem,
   type FollowupScreen,
-  courseAnswerReady,
-  courseFields,
+  type StillEnrolled,
+  courseQuestionFields,
+  courseQuestionReady,
   loadFollowup,
   sendFollowup,
 } from "@/lib/caminho";
@@ -51,6 +54,8 @@ export default function FollowupPage() {
   const [futureSelf, setFutureSelf] = useState<FutureSelf | null>(null);
   const [activities, setActivities] = useState<FollowupIn["activities"]>([]);
   const [helps, setHelps] = useState<FollowupIn["helps"]>([]);
+  // Pergunta 3 de quem já tem curso registrado ("Continua nesse curso?").
+  const [stillEnrolled, setStillEnrolled] = useState<StillEnrolled | null>(null);
   const [course, setCourse] = useState<CourseAnswer>(EMPTY_COURSE_ANSWER);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
@@ -126,13 +131,22 @@ export default function FollowupPage() {
     computingView !== null ||
     futureSelf !== null ||
     course.courseStatus !== null ||
+    stillEnrolled !== null ||
     activities.length > 0 ||
     helps.length > 0 ||
     comment.trim() !== "";
 
+  const courseReady = courseQuestionReady(stillEnrolled, course);
+
+  function chooseStillEnrolled(code: StillEnrolled) {
+    // Só "Mudei de curso" leva um curso novo; trocar para outra escolha o descarta.
+    setCourse(EMPTY_COURSE_ANSWER);
+    setStillEnrolled((chosen) => (chosen === code ? null : code));
+  }
+
   async function handleSubmit() {
     const current = screen?.current;
-    if (!current || !answeredSomething || !courseAnswerReady(course)) return;
+    if (!current || !answeredSomething || !courseReady) return;
     if (sending.current) return;
     sending.current = true;
     setSaving(true);
@@ -143,7 +157,7 @@ export default function FollowupPage() {
       round: current.round,
       computingView,
       futureSelf,
-      ...courseFields(course),
+      ...courseQuestionFields(stillEnrolled, course),
       activities,
       helps,
       comment: comment.trim() || null,
@@ -283,13 +297,50 @@ export default function FollowupPage() {
           ))}
         </ChipGroup>
 
-        <CourseQuestion
-          legend="Você entrou num curso da área? (técnico ou graduação em tecnologia)"
-          firstName={current.firstName}
-          options={options}
-          value={course}
-          onChange={setCourse}
-        />
+        {current.currentCourse ? (
+          <>
+            {/* D-63: quem já registrou um curso responde se continua nele. */}
+            <p className={styles.currentCourse}>
+              {
+                options.courseStatuses.find(
+                  (option) => option.code === current.currentCourse?.level,
+                )?.label
+              }
+              {" · "}
+              {current.currentCourse.course}
+            </p>
+            <ChipGroup label="Continua nesse curso?">
+              {options.stillEnrolled.map((option) => (
+                <Chip
+                  key={option.code}
+                  size="lg"
+                  selected={stillEnrolled === option.code}
+                  onClick={() => chooseStillEnrolled(option.code as StillEnrolled)}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </ChipGroup>
+            {stillEnrolled === "changed" && (
+              <CourseQuestion
+                legend="Qual o novo curso?"
+                firstName={current.firstName}
+                options={options}
+                value={course}
+                onChange={setCourse}
+                levelsOnly
+              />
+            )}
+          </>
+        ) : (
+          <CourseQuestion
+            legend="Você entrou num curso da área? (técnico ou graduação em tecnologia)"
+            firstName={current.firstName}
+            options={options}
+            value={course}
+            onChange={setCourse}
+          />
+        )}
 
         <ChipGroup label="Desde a última vez, você… (pode marcar mais de uma)">
           {options.activities.map((option) => (
@@ -328,7 +379,7 @@ export default function FollowupPage() {
         <div className={styles.actions}>
           <Button
             className={styles.fullWidth}
-            disabled={!answeredSomething || !courseAnswerReady(course)}
+            disabled={!answeredSomething || !courseReady}
             loading={saving}
             onClick={handleSubmit}
           >

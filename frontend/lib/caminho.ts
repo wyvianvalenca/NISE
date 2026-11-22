@@ -23,6 +23,7 @@ export type FollowupIn = components["schemas"]["FollowupIn"];
 
 export type CourseStatus = NonNullable<FollowupIn["courseStatus"]>;
 export type CourseCode = NonNullable<FollowupIn["course"]>;
+export type StillEnrolled = NonNullable<FollowupIn["stillEnrolled"]>;
 
 /** A resposta da pergunta do curso, como a tela guarda (A18 e, depois, o perfil). */
 export type CourseAnswer = {
@@ -66,6 +67,38 @@ export function courseFields(
     otherCourse: answer.course === "outro" ? answer.otherCourse.trim() : null,
     institution: answer.institution.trim() || null,
   };
+}
+
+/**
+ * Pode enviar a pergunta 3. "Mudei de curso" pede um nível (técnico ou
+ * graduação) e o curso; as outras escolhas seguem a regra de `courseAnswerReady`.
+ */
+export function courseQuestionReady(
+  stillEnrolled: StillEnrolled | null,
+  answer: CourseAnswer,
+): boolean {
+  if (stillEnrolled === "changed" && !enteredCourse(answer.courseStatus)) {
+    return false;
+  }
+  return courseAnswerReady(answer);
+}
+
+/**
+ * Os campos da pergunta 3 no corpo do envio. Quem já tem curso responde
+ * `stillEnrolled`; só "Mudei de curso" leva também o curso novo.
+ */
+export function courseQuestionFields(
+  stillEnrolled: StillEnrolled | null,
+  answer: CourseAnswer,
+): Pick<
+  FollowupIn,
+  "courseStatus" | "course" | "otherCourse" | "institution" | "stillEnrolled"
+> {
+  if (stillEnrolled === "changed") {
+    return { stillEnrolled, ...courseFields(answer) };
+  }
+  if (stillEnrolled) return { stillEnrolled };
+  return courseFields(answer);
 }
 
 export type FollowupProblem = SessionProblem | "terms_not_accepted" | "failed";

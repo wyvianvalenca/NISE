@@ -1055,6 +1055,15 @@ export interface components {
          */
         CuratedType: "video" | "quiz" | "article" | "tutorial" | "mini_project" | "course" | "personal_project" | "community" | "playlist" | "game" | "olympiad" | "club" | "cohort_course" | "hackathon" | "internship" | "other";
         /**
+         * CurrentCourseOut
+         * @description O curso em que ela está hoje, para a pergunta "Continua nesse curso?".
+         */
+        CurrentCourseOut: {
+            level: components["schemas"]["CourseLevel"];
+            /** Course */
+            course: string;
+        };
+        /**
          * CurrentFollowupOut
          * @description A rodada aberta hoje para a menina da sessão (A18, #293).
          */
@@ -1069,6 +1078,7 @@ export interface components {
             firstName: string;
             /** Answered */
             answered: boolean;
+            currentCourse?: components["schemas"]["CurrentCourseOut"] | null;
         };
         /**
          * DiscoverOut
@@ -1271,6 +1281,7 @@ export interface components {
              */
             helps: components["schemas"]["HelpWanted"][];
             courseStatus?: components["schemas"]["CourseStatus"] | null;
+            stillEnrolled?: components["schemas"]["StillEnrolled"] | null;
             course?: components["schemas"]["CourseCode"] | null;
             /** Othercourse */
             otherCourse?: string | null;
@@ -1296,6 +1307,8 @@ export interface components {
             courseStatuses: components["schemas"]["OptionOut"][];
             /** Courses */
             courses: components["schemas"]["OptionOut"][];
+            /** Stillenrolled */
+            stillEnrolled: components["schemas"]["OptionOut"][];
         };
         /**
          * FollowupRound
@@ -1684,6 +1697,12 @@ export interface components {
         StatusIn: {
             status: components["schemas"]["FileSection"];
         };
+        /**
+         * StillEnrolled
+         * @description Pergunta 3 para quem já registrou um curso: "Continua nesse curso?" (#299).
+         * @enum {string}
+         */
+        StillEnrolled: "yes" | "changed" | "stopped";
         /**
          * StudyStage
          * @enum {string}
@@ -3566,14 +3585,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {"error": "invalid_course_answer"} */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };

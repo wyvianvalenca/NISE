@@ -55,6 +55,18 @@ export const OPTIONS: FollowupOptionsOut = {
     { code: "redes", label: "Redes de computadores" },
     { code: "outro", label: "Outro curso" },
   ],
+  stillEnrolled: [
+    { code: "yes", label: "Sim, continuo" },
+    { code: "changed", label: "Mudei de curso" },
+    { code: "stopped", label: "Parei por enquanto" },
+  ],
+};
+
+/** A mesma rodada para quem já registrou um curso (#299). */
+export const ROUND_WITH_COURSE: CurrentFollowupOut = {
+  ...OPEN_ROUND,
+  round: "six_months",
+  currentCourse: { level: "graduacao", course: "Ciência da Computação" },
 };
 
 type Options = {

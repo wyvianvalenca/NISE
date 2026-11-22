@@ -22,6 +22,8 @@ type CourseQuestionProps = {
   options: Pick<FollowupOptionsOut, "courseStatuses" | "courses">;
   value: CourseAnswer;
   onChange: (value: CourseAnswer) => void;
+  /** Só técnico e graduação, sem "Tô tentando entrar" nem "Ainda não" (ao mudar de curso). */
+  levelsOnly?: boolean;
 };
 
 /**
@@ -36,8 +38,12 @@ export function CourseQuestion({
   options,
   value,
   onChange,
+  levelsOnly = false,
 }: CourseQuestionProps) {
   const entered = enteredCourse(value.courseStatus);
+  const statuses = levelsOnly
+    ? options.courseStatuses.filter((option) => enteredCourse(option.code as CourseStatus))
+    : options.courseStatuses;
 
   function chooseStatus(code: CourseStatus) {
     if (value.courseStatus === code) {
@@ -52,7 +58,7 @@ export function CourseQuestion({
   return (
     <div className={styles.question}>
       <ChipGroup label={legend}>
-        {options.courseStatuses.map((option) => (
+        {statuses.map((option) => (
           <Chip
             key={option.code}
             size="lg"
