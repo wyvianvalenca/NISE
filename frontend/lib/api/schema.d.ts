@@ -635,9 +635,29 @@ export interface paths {
         };
         /**
          * To Answer
-         * @description O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10).
+         * @description O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).
          */
         get: operations["to_answer_api_agenda_to_answer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agenda/dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dates
+         * @description As datas e os questionários que ainda vão chegar (RF-F4.11b).
+         */
+        get: operations["dates_api_agenda_dates_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -962,6 +982,14 @@ export interface components {
          * @enum {string}
          */
         AdmissionOrigin: "self_declared" | "official_list";
+        /**
+         * AgendaDatesOut
+         * @description As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b).
+         */
+        AgendaDatesOut: {
+            /** Upcoming */
+            upcoming: components["schemas"]["UpcomingItemOut"][];
+        };
         /**
          * BandCountOut
          * @description Uma faixa do Descobrir e quantas sugestões ela tem (A06·1, RF-F10.03).
@@ -1484,6 +1512,18 @@ export interface components {
          */
         MatchResult: "enrolled" | "approved" | "dismissed";
         /**
+         * OpenFollowupOut
+         * @description O questionário "Como está seu caminho?" aberto e sem resposta (A18).
+         */
+        OpenFollowupOut: {
+            round: components["schemas"]["FollowupRound"];
+            /**
+             * Lastday
+             * Format: date
+             */
+            lastDay: string;
+        };
+        /**
          * OpportunityEmailsIn
          * @description A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).
          *
@@ -1717,18 +1757,42 @@ export interface components {
          * ToAnswerOut
          * @description O que a seção "Pra responder" da agenda (A14) mostra.
          *
-         *     Por enquanto só o indício de lista oficial (RF-F31.10). As avaliações e os
-         *     questionários da M5 (#129) entram aqui quando existirem.
+         *     Nada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o
+         *     sim ou não do indício, as ações que ela mesma foi e a rodada aberta.
          */
         ToAnswerOut: {
             /** List Match */
             list_match: boolean;
+            /** Ratings */
+            ratings: components["schemas"]["PendingRatingOut"][];
+            followup: components["schemas"]["OpenFollowupOut"] | null;
         };
         /**
          * Topic
          * @enum {string}
          */
         Topic: "programacao" | "robotica" | "ia" | "dados" | "ciberseguranca" | "jogos" | "sites" | "design";
+        /**
+         * UpcomingItemOut
+         * @description Uma data da agenda: lembrete da equipe ou rodada de questionário.
+         */
+        UpcomingItemOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "date" | "followup";
+            /**
+             * On
+             * Format: date
+             */
+            on: string;
+            /** Title */
+            title: string | null;
+            /** Details */
+            details: string | null;
+            round: components["schemas"]["FollowupRound"] | null;
+        };
         /** UserOut */
         UserOut: {
             /** Id */
@@ -3406,6 +3470,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ToAnswerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dates_api_agenda_dates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaDatesOut"];
                 };
             };
             /** @description Validation Error */

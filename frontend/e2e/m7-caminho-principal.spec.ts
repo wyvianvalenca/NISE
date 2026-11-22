@@ -63,7 +63,7 @@ async function serve(page: Page, base: TestBase): Promise<void> {
 
   await page.route("**/api/agenda/to-answer", (route) =>
     base.isGirl()
-      ? route.fulfill({ json: { list_match: base.open().length > 0 } })
+      ? route.fulfill({ json: { list_match: base.open().length > 0, ratings: [], followup: null } })
       : route.fulfill(forbidden),
   );
   await page.route("**/api/matches", (route) =>
