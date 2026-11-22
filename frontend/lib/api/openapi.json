@@ -1692,6 +1692,151 @@
         }
       }
     },
+    "/api/profile/course": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile Course",
+        "operationId": "profile_course_api_profile_course_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileCourseOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Register Course",
+        "operationId": "register_course_api_profile_course_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileCourseIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/discover": {
       "get": {
         "tags": [
@@ -5092,6 +5237,89 @@
         ],
         "title": "PendingSignupOut",
         "description": "O que veio do Google, para a A02b mostrar (#52). Só leitura."
+      },
+      "ProfileCourseIn": {
+        "properties": {
+          "courseStatus": {
+            "$ref": "#/components/schemas/CourseStatus"
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "courseStatus"
+        ],
+        "title": "ProfileCourseIn",
+        "description": "O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).\n\nAs mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso\n(\"Outro curso\" pede o nome); \"Tô tentando entrar\" e \"Ainda não\" não levam\ndados de curso. Campos desconhecidos são recusados."
+      },
+      "ProfileCourseOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName"
+        ],
+        "title": "ProfileCourseOut",
+        "description": "O curso atual dela no perfil (A10, #298) e o nome para a A10b.\n\n`level` e `course` vêm vazios quando ela não tem curso registrado. O nome\ndo curso é o da lista ou o que ela digitou: vai só para ela."
       },
       "ProfileOut": {
         "properties": {

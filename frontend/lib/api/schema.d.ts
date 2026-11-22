@@ -448,6 +448,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/profile/course": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Course */
+        get: operations["profile_course_api_profile_course_get"];
+        put?: never;
+        /** Register Course */
+        post: operations["register_course_api_profile_course_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/discover": {
         parameters: {
             query?: never;
@@ -1615,6 +1633,36 @@ export interface components {
             email: string;
             /** Invite */
             invite: string | null;
+        };
+        /**
+         * ProfileCourseIn
+         * @description O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).
+         *
+         *     As mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso
+         *     ("Outro curso" pede o nome); "Tô tentando entrar" e "Ainda não" não levam
+         *     dados de curso. Campos desconhecidos são recusados.
+         */
+        ProfileCourseIn: {
+            courseStatus: components["schemas"]["CourseStatus"];
+            course?: components["schemas"]["CourseCode"] | null;
+            /** Othercourse */
+            otherCourse?: string | null;
+            /** Institution */
+            institution?: string | null;
+        };
+        /**
+         * ProfileCourseOut
+         * @description O curso atual dela no perfil (A10, #298) e o nome para a A10b.
+         *
+         *     `level` e `course` vêm vazios quando ela não tem curso registrado. O nome
+         *     do curso é o da lista ou o que ela digitou: vai só para ela.
+         */
+        ProfileCourseOut: {
+            /** Firstname */
+            firstName: string;
+            level?: components["schemas"]["CourseLevel"] | null;
+            /** Course */
+            course?: string | null;
         };
         /**
          * ProfileOut
@@ -2878,6 +2926,100 @@ export interface operations {
             };
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_course_api_profile_course_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileCourseOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_course_api_profile_course_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileCourseIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {
