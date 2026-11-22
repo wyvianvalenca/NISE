@@ -1,17 +1,21 @@
 "use client";
 
 // A06·2b · Ver depois: o que ela guardou com "Talvez depois", com filtro por faixa.
-// Atende RF-F10.06 (issues #110 e #111). Usa os dados de teste de lib/ver-depois.ts
-// até a sub-issue do back existir.
+// Atende RF-F10.06 e RF-F11.07 (issues #110 e #111), pela rota GET /api/later da #112
+// (integração na #113). "+ Quero fazer" e "Remover" usam PUT e DELETE /api/file/{id}.
 
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AccountMenu } from "@/components/AccountMenu";
 import { BottomNav } from "@/components/BottomNav";
 import { LinkButton } from "@/components/Button";
 import { Chip } from "@/components/Chip";
+import { LoadFailed } from "@/components/LoadFailed";
 import { SavedItemCard } from "@/components/SavedItemCard";
 import { BAND_CODES, BANDS, type BandCode } from "@/lib/descobrir";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { WITHOUT_SESSION } from "@/lib/signup-api";
 import {
   deadlineLabel,
   getSavedItems,
@@ -20,51 +24,96 @@ import {
   removeSaved,
   typeIcon,
   type SavedItem,
+  type SavedResult,
 } from "@/lib/ver-depois";
 import styles from "./page.module.css";
 
-// O nome virá da sessão, como no Descobrir.
-const FIRST_NAME = "Alana";
-
 type Filter = BandCode | "todos";
 
+/** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
+function redirectFor(result: SavedResult | null): string | null {
+  if (!result || result.ok) return null;
+  if (result.reason === "terms_not_accepted") return SIGNUP_PATHS.terms;
+  if (result.reason === "failed") return null;
+  return WITHOUT_SESSION[result.reason];
+}
+
 export default function SavedForLaterPage() {
+  const router = useRouter();
+  const [result, setResult] = useState<SavedResult | null>(null);
+  // Muda a cada "Tentar novamente", para buscar de novo.
+  const [attempt, setAttempt] = useState(0);
   const [items, setItems] = useState<SavedItem[] | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [failure, setFailure] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
   const wantButtons = useRef(new Map<string, HTMLButtonElement>());
-  // Item que recebe o foco depois que outro sai da lista.
+  // Item que recebe o foco depois que outro sai da lista, ou depois de uma falha.
   const focusNext = useRef<string | null>(null);
+  const redirect = redirectFor(result);
 
   useEffect(() => {
-    let current = true;
-    getSavedItems().then((result) => {
-      if (current) setItems(result);
-    });
+    const controller = new AbortController();
+    getSavedItems(controller.signal).then(
+      (loaded) => {
+        setResult(loaded);
+        if (loaded.ok) setItems(loaded.data.items);
+      },
+      () => {
+        // Sem conexão, a busca falha. Sair da tela também a cancela, mas isso não é uma falha.
+        if (!controller.signal.aborted) setResult({ ok: false, reason: "failed" });
+      },
+    );
+    return () => controller.abort();
+  }, [attempt]);
+
+  // Com cacheComponents, o Next esconde esta tela (Activity) quando ela sai, em vez de
+  // desmontá-la, e na volta mostraria a lista de antes até a busca nova chegar. A limpeza de
+  // um useLayoutEffect roda quando a tela é escondida: a lista e os avisos saem, e na volta
+  // ela mostra o "Carregando…", como na primeira visita. O filtro escolhido fica. A busca
+  // acima roda de novo quando ela volta. É o mesmo que o useLongWait faz no Descobrir.
+  useLayoutEffect(() => {
     return () => {
-      current = false;
+      setResult(null);
+      setItems(null);
+      setStatus("");
+      setFailure("");
     };
   }, []);
+
+  useEffect(() => {
+    if (redirect) router.replace(redirect);
+  }, [redirect, router]);
 
   const visible = items?.filter((item) => filter === "todos" || item.band === filter) ?? [];
 
   // Quando um cartão sai, o foco vai para o próximo (ou para o título, se a lista esvaziou),
-  // para quem usa teclado não voltar ao começo da página.
+  // para quem usa teclado não voltar ao começo da página. Depois de uma falha, volta para o
+  // "+ Quero fazer" do mesmo cartão, que ficou bloqueado enquanto a escolha era salva.
   useEffect(() => {
-    if (focusNext.current === null) return;
+    if (focusNext.current === null || busyId !== null) return;
     const target = focusNext.current ? wantButtons.current.get(focusNext.current) : null;
     (target ?? titleRef.current)?.focus();
     focusNext.current = null;
-  }, [items]);
+  }, [items, busyId]);
 
   async function decide(item: SavedItem, action: "want" | "remove") {
     setBusyId(item.id);
-    if (action === "want") {
-      await moveToFile(item.id);
-    } else {
-      await removeSaved(item.id);
+    setFailure("");
+    try {
+      if (action === "want") {
+        await moveToFile(item.id);
+      } else {
+        await removeSaved(item.id);
+      }
+    } catch (error) {
+      console.warn("Não foi possível salvar a escolha do Ver depois.", error);
+      focusNext.current = item.id;
+      setBusyId(null);
+      setFailure(action === "want" ? "Não deu pra guardar. Tente de novo." : "Não deu pra remover. Tente de novo.");
+      return;
     }
     const index = visible.findIndex((other) => other.id === item.id);
     const next = visible[index + 1] ?? visible[index - 1];
@@ -76,10 +125,23 @@ export default function SavedForLaterPage() {
     );
   }
 
+  if (result && !result.ok && result.reason === "failed") {
+    return (
+      <LoadFailed
+        onRetry={() => {
+          setResult(null);
+          setAttempt(attempt + 1);
+        }}
+      />
+    );
+  }
+
+  const firstName = result?.ok ? result.data.firstName : null;
+
   return (
     <div className={styles.page}>
       <AppHeader>
-        <AccountMenu name={FIRST_NAME} />
+        {firstName !== null && <AccountMenu name={firstName} />}
       </AppHeader>
 
       <div className={styles.scroll}>
@@ -112,6 +174,12 @@ export default function SavedForLaterPage() {
                   </Chip>
                 ))}
               </div>
+
+              {failure && (
+                <p className={styles.error} role="alert">
+                  {failure}
+                </p>
+              )}
 
               <ul className={styles.list}>
                 {visible.map((item) => (

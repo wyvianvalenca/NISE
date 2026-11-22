@@ -1,52 +1,60 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, status
 
 from app.db.engine import AsyncSessionDep
-from app.modules.actions.dependencies import CoordinatorGroupIdDep
-from app.modules.admissions.schemas import EnrollmentPageOut, EnrollmentRowOut
-from app.modules.admissions.service import (
-    ENROLLMENTS_PAGE_SIZE,
-    list_group_enrollments,
+from app.modules.admissions.dependencies import CurrentGirlDep
+from app.modules.admissions.exceptions import (
+    MatchAlreadyAnsweredError,
+    MatchNotFoundError,
 )
-from app.modules.admissions.utils import short_name
+from app.modules.admissions.models import ListMatch
+from app.modules.admissions.schemas import MatchAnswerIn, MatchAnswerOut, MatchOut
+from app.modules.admissions.service import answer_match, open_matches_of_girl
+from app.modules.girls.models import Girl
 
-router = APIRouter(prefix="/coordinator", tags=["Coordinator"])
+# Rotas da própria menina. Coordenadora e curadoria levam 403 (CurrentGirlDep), e
+# o indício de outra menina dá 404, como se não existisse (RNF-F31.02).
+router = APIRouter(prefix="/matches", tags=["Matches"])
 
 
-# K06 Ingressantes · "Quem ingressou" (#315, RF-F5.05). O grupo vem sempre da
-# sessão da coordenadora, nunca da requisição: outro grupo não tem como pedir
-# esta lista (RNF-G.03). Ela não confirma nada aqui (D-70).
-#
-# Uma página fora do fim responde a lista vazia com o total, e o front volta.
-@router.get(
-    "/enrollments",
-    response_model=EnrollmentPageOut,
-    responses={
-        status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora ou sem grupo"},
-        status.HTTP_409_CONFLICT: {"description": "Coordenadora em mais de um grupo"},
-    },
-)
-async def group_enrollments(
-    group_id: CoordinatorGroupIdDep,
-    session: AsyncSessionDep,
-    page: Annotated[int, Query(ge=1, le=10_000)] = 1,
-) -> EnrollmentPageOut:
-    rows, total = await list_group_enrollments(session, group_id, page)
-
-    return EnrollmentPageOut(
-        items=[
-            EnrollmentRowOut(
-                id=enrollment.id,
-                girl_name=short_name(name),
-                course=enrollment.course,
-                institution=enrollment.institution.strip() or None,
-                registered_at=enrollment.created_at,
-                origin=enrollment.origin,
-            )
-            for enrollment, name in rows
-        ],
-        total=total,
-        page=page,
-        page_size=ENROLLMENTS_PAGE_SIZE,
+def _card(girl: Girl, match: ListMatch) -> MatchOut:
+    official_list = match.official_list
+    return MatchOut(
+        id=match.id,
+        name=girl.name,
+        institution=official_list.institution,
+        selection_process=official_list.selection_process,
+        call=official_list.call,
+        course=match.course,
+        level=match.level,
+        list_url=official_list.url,
+        expires_at=match.expires_at,
     )
+
+
+@router.get("", response_model=list[MatchOut])
+async def list_my_matches(
+    session: AsyncSessionDep, girl: CurrentGirlDep
+) -> list[MatchOut]:
+    """Os indícios sem resposta dela, para a A19 "É você na lista?"."""
+    matches = await open_matches_of_girl(session, girl.id)
+
+    return [_card(girl, match) for match in matches]
+
+
+@router.post("/{match_id}/answer", response_model=MatchAnswerOut)
+async def answer_my_match(
+    match_id: int, data: MatchAnswerIn, session: AsyncSessionDep, girl: CurrentGirlDep
+) -> MatchAnswerOut:
+    """Grava a resposta da A19 (RF-F31.04). Só dá pra responder uma vez."""
+    try:
+        result = await answer_match(session, girl.id, match_id, data)
+    except MatchNotFoundError:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Essa pergunta não está mais aqui"
+        ) from None
+    except MatchAlreadyAnsweredError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Você já respondeu essa pergunta"
+        ) from None
+
+    return MatchAnswerOut(result=result)

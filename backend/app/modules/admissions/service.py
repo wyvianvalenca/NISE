@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import ColumnElement, Select, exists, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
@@ -7,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
 from app.modules.actions.models import Action, Participation
+from app.modules.admissions.exceptions import (
+    MatchAlreadyAnsweredError,
+    MatchNotFoundError,
+)
 from app.modules.admissions.models import (
+    AdmissionOrigin,
     Approval,
     CourseLevel,
     DismissedMatch,
@@ -15,10 +21,14 @@ from app.modules.admissions.models import (
     ListMatch,
     OfficialList,
 )
+from app.modules.admissions.schemas import MatchAnswerIn, MatchResult
 from app.modules.girls.models import Girl
 
 # Sem resposta nesse prazo, o indício é apagado (RF-F31.06).
 MATCH_DAYS = 30
+
+# A data do ingresso é o dia em Maceió, não em UTC.
+LOCAL_TIMEZONE = ZoneInfo("America/Maceio")
 
 
 def _is_open(now: datetime) -> ColumnElement[bool]:
@@ -157,6 +167,77 @@ async def delete_expired_matches(
     await session.commit()
 
     return len(expired)
+
+
+async def answer_match(
+    session: AsyncSession,
+    girl_id: int,
+    match_id: int,
+    answer: MatchAnswerIn,
+    now: datetime | None = None,
+) -> MatchResult:
+    """Grava a resposta dela na A19 (RF-F31.04, RN-21, RN-22).
+
+    - "Sou eu" + "Já me matriculei": ingresso com a data e a origem da lista.
+    - "Sou eu" + "Ainda não": aprovação, não ingresso.
+    - "Não sou eu": apaga o indício e deixa só a marca (RF-F31.06).
+
+    Levanta MatchNotFoundError se o indício não é dela, não existe ou venceu, e
+    MatchAlreadyAnsweredError se ela já respondeu.
+    """
+    if now is None:
+        now = datetime.now(UTC)
+
+    # FOR UPDATE: duas respostas ao mesmo tempo não gravam dois ingressos.
+    match = await session.scalar(
+        select(ListMatch)
+        .where(ListMatch.id == match_id, ListMatch.girl_id == girl_id)
+        .options(selectinload(ListMatch.official_list))
+        .with_for_update()
+    )
+
+    if match is None or match.expires_at <= now:
+        raise MatchNotFoundError
+
+    if match.answered_at is not None:
+        raise MatchAlreadyAnsweredError
+
+    if not answer.is_me:
+        await dismiss_match(session, match)
+        await session.commit()
+        return MatchResult.DISMISSED
+
+    institution = match.official_list.institution
+    if answer.enrolled:
+        session.add(
+            Enrollment(
+                girl_id=girl_id,
+                level=match.level,
+                course=match.course,
+                institution=institution,
+                enrolled_on=now.astimezone(LOCAL_TIMEZONE).date(),
+                origin=AdmissionOrigin.OFFICIAL_LIST,
+                official_list_id=match.official_list_id,
+            )
+        )
+        result = MatchResult.ENROLLED
+    else:
+        session.add(
+            Approval(
+                girl_id=girl_id,
+                level=match.level,
+                course=match.course,
+                institution=institution,
+                origin=AdmissionOrigin.OFFICIAL_LIST,
+                official_list_id=match.official_list_id,
+            )
+        )
+        result = MatchResult.APPROVED
+
+    match.answered_at = now
+    await session.commit()
+
+    return result
 
 
 # ---------------------------------------------------------------------------

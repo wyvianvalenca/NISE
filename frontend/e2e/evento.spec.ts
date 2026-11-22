@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { FIGMA_ITEMS, mockFileApi } from "./file-api";
 
 // #179 · A06·4b Evento, versão "Próxima aventura". Usa os dados de teste de lib/evento.ts.
 
@@ -126,6 +127,9 @@ test("mostra \"Carregando…\" enquanto o evento chega", async ({ page }) => {
 });
 
 test("\"Abrir\" do hackathon no filé leva a esta tela", async ({ page }) => {
+  // O filé vem de GET /api/file (#116); o detalhe do evento ainda usa os ids de lib/evento.ts.
+  const hackathon = FIGMA_ITEMS.find((item) => item.title === "Hackathon Meninas na Tecnologia");
+  await mockFileApi(page, { items: [{ ...hackathon!, id: HACKATHON }] });
   await page.goto("/file");
   await page.getByRole("link", { name: "Abrir: Hackathon Meninas na Tecnologia" }).click();
 
