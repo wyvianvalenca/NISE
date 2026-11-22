@@ -100,3 +100,9 @@
   background: var(--nise-teal);
   border-color: var(--nise-teal);
 }
+
+/* O selo "Inscrita" do evento em que ela se inscreveu, abaixo dos detalhes. */
+.signedUp {
+  display: flex;
+  margin-top: 6px;
+}

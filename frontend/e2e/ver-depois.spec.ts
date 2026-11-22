@@ -1,23 +1,33 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockDiscoverApi } from "./discover-api";
+import { watchFrames } from "./frames";
+import { mockLaterApi, SAVED_ITEMS } from "./later-api";
+import { mockTermsApi } from "./terms-api";
 
-// #111 · A06·2b Ver depois. Usa os dados de teste de lib/ver-depois.ts.
-
-type Mock = {
-  items?: unknown[];
-  delayMs?: number;
-};
+// #111 e #113 · A06·2b Ver depois, pela rota GET /api/later (#112) e pelas rotas da escolha
+// (PUT e DELETE /api/file/{id}), simuladas em later-api.ts.
+// Algumas telas levam ao Descobrir (A06·1), que lê as contagens do back (#88).
+test.beforeEach(async ({ page }) => {
+  await mockDiscoverApi(page);
+  await mockLaterApi(page);
+});
 
 const HINT = "Toque em “Talvez depois” num cartão de sugestão pra guardar aqui.";
 
-async function openWith(page: Page, mock: Mock) {
-  await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_VER_DEPOIS__ = value as typeof globalThis.__NISE_MOCK_VER_DEPOIS__;
-  }, mock);
+/** Abre o Ver depois com outra resposta do back. A rota mais nova vale. */
+async function openWith(page: Page, options: Parameters<typeof mockLaterApi>[1]) {
+  const api = await mockLaterApi(page, options);
   await page.goto("/ver-depois");
+  return api;
 }
 
 function card(page: Page, title: string) {
   return page.getByRole("article", { name: title });
+}
+
+/** O aviso de erro da escolha. Fica no main: o Next tem outro role="alert", o anúncio de rota. */
+function failure(page: Page) {
+  return page.getByRole("main").getByRole("alert");
 }
 
 function chip(page: Page, name: string) {
@@ -101,6 +111,106 @@ test("Remover tira o cartão da lista", async ({ page }) => {
   // O item removido também some do filtro da faixa.
   await chip(page, "Grande desafio").click();
   await expect(page.getByRole("article")).toHaveCount(0);
+});
+
+test("+ Quero fazer guarda a escolha no back e o item não volta ao recarregar", async ({ page }) => {
+  const api = await openWith(page, {});
+
+  await card(page, "Lógica de programação com Python").getByRole("button", { name: "+ Quero fazer" }).click();
+  await expect(card(page, "Lógica de programação com Python")).toHaveCount(0);
+  expect(api.choices).toEqual([{ id: "curadoria-3", choice: "quero-fazer" }]);
+
+  await page.reload();
+  await expect(page.getByRole("article")).toHaveCount(3);
+  await expect(card(page, "Lógica de programação com Python")).toHaveCount(0);
+});
+
+test("Remover apaga a escolha no back e o item não volta ao recarregar", async ({ page }) => {
+  const api = await openWith(page, {});
+
+  await card(page, "Oficina: seu primeiro site").getByRole("button", { name: "Remover" }).click();
+  await expect(card(page, "Oficina: seu primeiro site")).toHaveCount(0);
+  expect(api.removed).toEqual(["acao-4"]);
+  expect(api.choices).toEqual([]);
+
+  await page.reload();
+  await expect(page.getByRole("article")).toHaveCount(3);
+});
+
+test("se a escolha não é salva, o cartão fica, avisa e o foco volta ao cartão", async ({ page }) => {
+  const api = await openWith(page, { choiceFailures: 1 });
+  const item = card(page, "Robótica com Arduino para iniciantes");
+
+  await item.getByRole("button", { name: "+ Quero fazer" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(failure(page)).toHaveText("Não deu pra guardar. Tente de novo.");
+  await expect(item).toBeVisible();
+  await expect(item.getByRole("button", { name: "+ Quero fazer" })).toBeFocused();
+
+  // Tentar de novo funciona e tira o aviso.
+  await page.keyboard.press("Enter");
+  await expect(item).toHaveCount(0);
+  await expect(failure(page)).toHaveCount(0);
+  expect(api.choices).toEqual([{ id: "curadoria-2", choice: "quero-fazer" }]);
+});
+
+test("se Remover falha, o cartão fica e avisa", async ({ page }) => {
+  await openWith(page, { choiceFailures: 1 });
+  const item = card(page, "Hackathon Meninas na Tecnologia");
+
+  await item.getByRole("button", { name: "Remover" }).click();
+  await expect(failure(page)).toHaveText("Não deu pra remover. Tente de novo.");
+  await expect(item).toBeVisible();
+});
+
+test("o avatar usa o nome que vem do back", async ({ page }) => {
+  await openWith(page, { firstName: "Bia" });
+
+  await expect(page.getByRole("button", { name: "Sua conta" })).toHaveText("B");
+});
+
+test("quando a lista não carrega, mostra o erro e tenta de novo", async ({ page }) => {
+  await openWith(page, { failure: 500 });
+
+  await expect(page.getByRole("heading", { name: "Não foi possível carregar" })).toBeVisible();
+  await mockLaterApi(page);
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Ver depois" })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(4);
+});
+
+test("ao voltar ao Ver depois, não mostra a lista de antes, nem por um quadro", async ({ page }) => {
+  await page.goto("/ver-depois");
+  await expect(card(page, "Hackathon Meninas na Tecnologia")).toBeVisible();
+
+  // Ela vai ao Descobrir e decide o hackathon por lá. Daqui em diante a lista já vem sem ele,
+  // mas demora a responder.
+  await page.getByRole("navigation").getByRole("link", { name: "Descobrir" }).click();
+  await expect(page).toHaveURL(/\/descobrir$/);
+  await mockLaterApi(page, { items: SAVED_ITEMS.slice(1), delayMs: 1500 });
+
+  // Com cacheComponents o Next guarda o Ver depois escondido; na volta ele busca de novo.
+  const seen = await watchFrames(page, ["Hackathon Meninas na Tecnologia"]);
+  await page.goBack();
+
+  await expect(card(page, "Robótica com Arduino para iniciantes")).toBeVisible();
+  await expect(card(page, "Hackathon Meninas na Tecnologia")).toHaveCount(0);
+  expect(await seen()).toEqual([]);
+});
+
+test("sem sessão, volta para o início", async ({ page }) => {
+  await openWith(page, { failure: 401 });
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
+  await openWith(page, { failure: "terms_not_accepted" });
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
 });
 
 test("os botões ficam bloqueados enquanto a escolha é salva", async ({ page }) => {
