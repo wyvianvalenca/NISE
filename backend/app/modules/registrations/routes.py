@@ -20,6 +20,7 @@ from app.modules.girls.models import Girl
 from app.modules.registrations.exceptions import EventDayReachedError
 from app.modules.registrations.schemas import (
     CorrectionBody,
+    EmailCheckIn,
     EmailCheckOut,
     GroupActionOut,
     ImportOut,
@@ -313,16 +314,17 @@ async def add_registration_route(
     )
 
 
-# While she types the e-mail (RF-F1.17, Should). Only actions of the coordinator's
+# While she types the e-mail (RF-F1.17, Should). A POST so the e-mail is not in
+# the URL (and so not in logs). Only actions of the coordinator's
 # own groups are named, so another group's data never leaks (RN-01, RN-04).
-@router.get("/email-check", response_model=EmailCheckOut, responses=NOT_FOUND)
+@router.post("/email-check", response_model=EmailCheckOut, responses=NOT_FOUND)
 async def email_check_route(
     action: GroupActionDep,
     group_ids: CoordinatorGroupIdsDep,
     session: AsyncSessionDep,
-    email: Annotated[str, Query(min_length=1, max_length=320)],
+    body: EmailCheckIn,
 ) -> EmailCheckOut:
-    exists, actions = await email_check(session, action, group_ids, email)
+    exists, actions = await email_check(session, action, group_ids, body.email)
     return EmailCheckOut(
         exists=exists,
         group_actions=[

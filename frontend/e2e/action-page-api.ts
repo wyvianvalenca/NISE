@@ -388,13 +388,14 @@ export async function mockActionPageApi(
     });
   }
 
-  // GET .../registrations/email-check?email= (#235, RF-F1.17).
+  // POST .../registrations/email-check, e-mail in the body (#235, RF-F1.17).
   await page.route(
     (url) => CHECK_URL.test(url.pathname),
     async (route) => {
       await wait(delayMs);
       const url = new URL(route.request().url());
-      const email = (url.searchParams.get("email") ?? "").trim().toLowerCase();
+      const body = route.request().postDataJSON() as { email?: string };
+      const email = (body.email ?? "").trim().toLowerCase();
       api.checked.push(email);
       if (!data[Number(CHECK_URL.exec(url.pathname)![1])])
         return route.fulfill({

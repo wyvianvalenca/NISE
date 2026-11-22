@@ -476,8 +476,12 @@ export async function checkEmail(
   email: string,
   signal?: AbortSignal,
 ): Promise<EmailCheck | null> {
-  const query = new URLSearchParams({ email });
-  const response = await fetch(`/api/actions/${id}/registrations/email-check?${query}`, { signal });
+  const response = await fetch(`/api/actions/${id}/registrations/email-check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+    signal,
+  });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`email check ${response.status}`);
   const data = (await response.json()) as {

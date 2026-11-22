@@ -129,6 +129,12 @@ class GroupActionOut(BaseModel):
     starts_on: date
 
 
+class EmailCheckIn(BaseModel):
+    """The e-mail goes in the body, never in the URL, so it stays out of access logs."""
+
+    email: Annotated[str, StringConstraints(min_length=1, max_length=320)]
+
+
 class EmailCheckOut(BaseModel):
     """Whether the e-mail is in the NISE, and which actions of the group she took part in."""
 
