@@ -497,7 +497,7 @@ Cada RNF tem um número, um limite ou um teste. As 6 linhas-modelo vazias da v0.
 | RNF-F4.01 (RNF-04.01) | Confiabilidade | Nunca há envio duplicado para a mesma menina, ação, etapa e canal. | Rodar o mesmo agendamento 3 vezes, inclusive em paralelo: um envio só por combinação. | Must | F4 |
 | RNF-F4.02 (RNF-04.02) | Confiabilidade | Uma falha no serviço de e-mail não apaga o agendamento nem impede os demais envios. | Simular o serviço fora do ar e reprocessar depois, sem duplicar os concluídos. | Must | F4 |
 | RNF-F4.03 (RNF-04.03) | Segurança | Uma menina não consegue ver nem alterar respostas de outra. | Tentar pela interface e por requisição direta: negado. | Must | F4, F6 |
-| RNF-F5.01 (RNF-05.01) | Segurança | As consultas do painel e das comparações aplicam as permissões do grupo no servidor (RN-01, RN-04). | Consultar com coordenadoras de dois grupos: nenhum dado individual de outro grupo aparece. | Must | F5, F16 |
+| RNF-F5.01 (RNF-05.01) | Segurança | As consultas do painel aplicam as permissões do grupo no servidor (RN-01, RN-04). | Consultar com coordenadoras de dois grupos: nenhum dado individual de outro grupo aparece. | Must | F5 |
 | RNF-F5.02 (RNF-05.02) | Confiabilidade | Os indicadores batem com os registros e distinguem "não respondeu" de "respondeu não". | Base de teste com resultados conhecidos: todos os totais e denominadores conferem. | Must | F5, F16 |
 | RNF-F5.03 (RNF-05.03) | Desempenho | O painel carrega em até 3 s em 95% das consultas, com 1.000 inscrições e 10 acessos simultâneos. | Teste de carga. | Should | F5 |
 | RNF-F6.01 (RNF-06.01) | Integridade | Salvar uma declaração de ingresso é atômico: ou fica um registro completo, ou nenhum. | Interromper o salvamento e repetir o envio. | Must | F6 |
