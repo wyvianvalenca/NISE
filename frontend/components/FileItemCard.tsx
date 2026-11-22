@@ -1,0 +1,57 @@
+import Link from "next/link";
+import { Icon } from "./Icon";
+import { Tag } from "./Tag";
+import { formatDeadline, itemIcon, itemPath, themeOf, type FileItem } from "@/lib/file";
+import styles from "./FileItemCard.module.css";
+
+// Ação de cada status (Figma A06·3): "Continuar" no que está em andamento,
+// "Abrir" nas próximas e "Ver" nos concluídos.
+const ACTIONS = {
+  "em-andamento": "Continuar",
+  proxima: "Abrir",
+  concluido: "Ver",
+} as const;
+
+/**
+ * Item do filé (Figma: Item / ..., A06·3).
+ *
+ * O botão abre a A06·4a numa atividade e o detalhe do evento (A06·4b) num evento,
+ * pelo `kind` (itemPath). O detalhe do evento ainda usa dados de teste: a troca pela
+ * rota do back é a #181.
+ */
+export function FileItemCard({ item }: { item: FileItem }) {
+  const theme = themeOf(item.theme);
+  // Sem tema, o selo mostra só o tipo.
+  const meta = theme.label ? `${theme.label} · ${item.type}` : item.type;
+  const inProgress = item.status === "em-andamento";
+
+  return (
+    <article className={`${styles.card} ${inProgress ? styles.inProgress : ""}`}>
+      <span className={styles.iconTile} style={{ background: theme.soft, color: theme.ink }}>
+        <Icon name={itemIcon(item)} size={20} />
+      </span>
+      <div className={styles.text}>
+        <p className={styles.meta}>
+          <span className={styles.dot} style={{ background: theme.color }} aria-hidden="true" />
+          {meta}
+        </p>
+        <h3 className={styles.title}>{item.title}</h3>
+        <p className={styles.details}>{item.details}</p>
+        {item.deadline && <p className={styles.deadline}>Inscrições até {formatDeadline(item.deadline)}</p>}
+        {item.signedUp && (
+          <span className={styles.signedUp}>
+            <Tag variant="teal">Inscrita</Tag>
+          </span>
+        )}
+      </div>
+      {/* O nome acessível leva o título, para "Abrir" não ficar ambíguo na lista. */}
+      <Link
+        href={itemPath(item)}
+        className={`${styles.action} ${inProgress ? styles.primary : ""}`}
+        aria-label={`${ACTIONS[item.status]}: ${item.title}`}
+      >
+        {ACTIONS[item.status]}
+      </Link>
+    </article>
+  );
+}

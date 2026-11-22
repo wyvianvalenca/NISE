@@ -63,3 +63,16 @@
   color: var(--nise-muted);
   font-size: 14px;
 }
+
+/* Em celular baixo, a faixa de cima encolhe para o card e os botões caberem na tela. */
+@media (max-height: 820px) {
+  .visual {
+    height: 140px;
+  }
+
+  .iconTile {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+  }
+}

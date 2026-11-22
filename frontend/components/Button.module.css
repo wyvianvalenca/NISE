@@ -33,6 +33,11 @@
   background: var(--nise-tealSoft);
 }
 
+.sm {
+  height: 44px;
+  padding: 0 16px;
+}
+
 .button:focus-visible {
   outline: 3px solid var(--nise-pink);
   outline-offset: 0;

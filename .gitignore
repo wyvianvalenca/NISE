@@ -31,3 +31,4 @@ playwright/.cache/
 .DS_Store
 Thumbs.db
 .idea/
+Session*.vim

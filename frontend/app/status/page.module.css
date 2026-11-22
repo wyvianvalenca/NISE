@@ -1,0 +1,26 @@
+.main {
+  margin: 0 auto;
+  padding: 48px 24px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+}
+
+.health h2 {
+  font-size: 1rem;
+}
+
+.health p {
+  font-family: var(--nise-font-mono);
+  font-size: 0.875rem;
+}

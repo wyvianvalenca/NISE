@@ -1,0 +1,41 @@
+/* A03 tem respiro igual entre os blocos (14px no Figma) e começa logo no topo. */
+.rating {
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.title {
+  margin-top: 4px;
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* "Agora não": botão com cara de link (Figma: Link target / Agora não). */
+.skip {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.skip:hover {
+  text-decoration: underline;
+}

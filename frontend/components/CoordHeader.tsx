@@ -3,42 +3,58 @@ import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 import styles from "./CoordHeader.module.css";
 
-// Rotas provisórias: ajustar quando as páginas da coordenadora existirem.
+/**
+ * Top menu sections (RF-F30.17). Only the ones with an `href` have a screen
+ * yet; the rest render as tabs that go nowhere, so nothing leads to a 404.
+ * Add the `href` of each one when its screen lands.
+ */
 const SECTIONS = [
-  { key: "visao-geral", label: "Visão geral", href: "/coordenacao" },
   { key: "acoes", label: "Ações", href: "/coordenacao/acoes" },
-  { key: "acompanhamento", label: "Acompanhamento", href: "/coordenacao/acompanhamento" },
-  { key: "relatorios", label: "Relatórios", href: "/coordenacao/relatorios" },
-] as const;
+  { key: "funil", label: "Funil" },
+  { key: "ingressantes", label: "Ingressantes", href: "/coordenacao/ingressantes" },
+  { key: "relatorios", label: "Relatórios" },
+  { key: "exportar", label: "Exportar" },
+] as const satisfies readonly { key: string; label: string; href?: string }[];
 
 export type CoordSection = (typeof SECTIONS)[number]["key"];
 
 type CoordHeaderProps = {
-  /** Seção da página atual; ganha o sublinhado teal. */
+  /** Section of the current page; gets the teal underline. */
   active?: CoordSection;
-  /** Nome do grupo da coordenadora, ex.: "Rendeiras do Código". */
+  /** Name of the coordinator's group, e.g. "Rendeiras do Código". */
   groupName: string;
-  /** Inicial mostrada no círculo da conta. */
+  /** Initial shown in the account circle. */
   accountInitial: string;
 };
 
-/** Cabeçalho do site da coordenadora (Figma: Header das telas K). */
+/** Coordinator site header (Figma: Header of the K screens). */
 export function CoordHeader({ active, groupName, accountInitial }: CoordHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.left}>
         <Brand />
         <nav aria-label="Seções" className={styles.nav}>
-          {SECTIONS.map((section) => (
-            <Link
-              key={section.key}
-              href={section.href}
-              className={styles.navLink}
-              aria-current={section.key === active ? "page" : undefined}
-            >
-              {section.label}
-            </Link>
-          ))}
+          {SECTIONS.map((section) =>
+            "href" in section ? (
+              <Link
+                key={section.key}
+                href={section.href}
+                className={styles.navLink}
+                aria-current={section.key === active ? "page" : undefined}
+              >
+                {section.label}
+              </Link>
+            ) : (
+              <span
+                key={section.key}
+                role="link"
+                aria-disabled="true"
+                className={styles.navLink}
+              >
+                {section.label}
+              </span>
+            ),
+          )}
         </nav>
       </div>
       <div className={styles.right}>

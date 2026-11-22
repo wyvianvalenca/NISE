@@ -25,6 +25,16 @@
   --nise-pinkTint: #fbeff3; /* caixa "Por que pra você" */
   --nise-shadow: rgba(10, 59, 72, 0.25);
   --nise-veil: rgba(10, 59, 72, 0.38); /* fundo atrás de modais */
+  --nise-fileEmpty: #d9c9b3; /* casas vazias do filé */
+
+  /* Cor de cada tema no filé (A06·3): a forte pinta o quadradinho concluído,
+   * a clara é o fundo do ícone no item. */
+  --nise-theme-programacao: var(--nise-teal);
+  --nise-theme-programacao-soft: var(--nise-tealSoft);
+  --nise-theme-robotica: #d9487a;
+  --nise-theme-robotica-soft: var(--nise-pinkSoft);
+  --nise-theme-ia: #3f6b78;
+  --nise-theme-ia-soft: #dce6e9;
 
   /* Gráficos */
   --nise-chart-1: #087a7b;

@@ -1,0 +1,189 @@
+"use client";
+
+// A04·1 · Como usamos seus dados (Etapa 1 de 3).
+// Atende RF-F7.02, RF-F7.03, RF-F7.04 e RF-F7.05 (issue #53).
+
+import { useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { Button } from "@/components/Button";
+import { Checkbox } from "@/components/Checkbox";
+import { IconList } from "@/components/IconList";
+import { Loading } from "@/components/Loading";
+import { StepProgress } from "@/components/StepProgress";
+import { TextLink } from "@/components/TextLink";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { acceptTerms, getTermsSummary, type TermsSummary, WITHOUT_SESSION } from "@/lib/signup-api";
+import styles from "../cadastro.module.css";
+
+const WHAT_WE_COLLECT = [
+  "Os eventos e ações de que você participa",
+  "Seu filé: o que você fez, guardou ou dispensou",
+  "Suas respostas a questionários e avaliações",
+  "Se você entrou num curso de TI (técnico, graduação…) ou num trabalho na área",
+];
+
+/** Primeiro item de "Pra que usamos": muda se ela veio de um grupo (RN-01) ou sozinha (RN-04). */
+function whoSees(summary: TermsSummary) {
+  if (summary.origin.kind === "group") {
+    return (
+      <>
+        <strong>A liderança do grupo {summary.origin.groupName}</strong> vê seu filé, suas respostas aos
+        questionários e suas avaliações das ações, pra saber se elas estão funcionando. Outros grupos só veem
+        números gerais, sem identificar você.
+      </>
+    );
+  }
+  return "Os grupos de incentivo cadastrados no NISE só veem números gerais, sem identificar você.";
+}
+
+export default function TermsPage() {
+  const router = useRouter();
+  const [summary, setSummary] = useState<TermsSummary | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Muda a cada nova busca do resumo, para o efeito abaixo rodar de novo.
+  const [attempt, setAttempt] = useState(0);
+  const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getTermsSummary(controller.signal).then(
+      (result) => {
+        if (result.ok) {
+          setSummary(result.summary);
+        } else if (result.reason === "failed") {
+          setLoadFailed(true);
+        } else {
+          router.replace(WITHOUT_SESSION[result.reason]);
+        }
+      },
+      () => {
+        // Sem rede. Se ela só saiu da página, não há o que mostrar.
+        if (!controller.signal.aborted) setLoadFailed(true);
+      },
+    );
+    return () => controller.abort();
+  }, [attempt, router]);
+
+  // Ao navegar, o Next esconde a página em vez de desmontá-la (Activity, com cacheComponents)
+  // e, na volta pela "Etapa anterior", mostra o mesmo estado. Sem isto, o botão voltaria preso
+  // em "Enviando…" depois de um aceite que deu certo. A caixa marcada pode ficar como está.
+  useLayoutEffect(() => {
+    return () => setSaving(false);
+  }, []);
+
+  /** Busca o resumo de novo. Ela precisa marcar "Li e concordo" de novo depois de ler. */
+  function reloadSummary() {
+    setSummary(null);
+    setLoadFailed(false);
+    setAgreed(false);
+    setAttempt((current) => current + 1);
+  }
+
+  async function handleContinue() {
+    if (!summary) return;
+    setSaving(true);
+    setError(null);
+
+    const result = await acceptTerms(summary.version).catch(() => null);
+
+    if (result?.ok) {
+      router.push(SIGNUP_PATHS.opportunities);
+      return;
+    }
+
+    setSaving(false);
+
+    if (result?.reason === "unauthenticated" || result?.reason === "incomplete_signup") {
+      router.replace(WITHOUT_SESSION[result.reason]);
+      return;
+    }
+
+    if (result?.reason === "outdated") {
+      // Ela leu um texto que já mudou: mostra o resumo atual antes de ela aceitar.
+      setError("Os termos mudaram. Leia o resumo de novo e marque Li e concordo.");
+      reloadSummary();
+      return;
+    }
+
+    setError("Não deu pra salvar. Tente de novo.");
+  }
+
+  // Nada da tela aparece antes do resumo: ela precisa ler quem vê os dados dela (RN-01, RN-04)
+  // antes de concordar, e quem está sem sessão vai para outra página sem ver os termos piscarem.
+  // Como a caixa "Li e concordo" só existe depois disso, também não há toque perdido durante a
+  // hidratação, nem caixa que muda de lugar quando o resumo chega.
+  if (!summary) {
+    return (
+      <div className={styles.screen}>
+        {loadFailed ? (
+          <div role="alert">
+            <p className={styles.error}>Não deu pra carregar quem vê seus dados.</p>
+            <Button variant="secondary" onClick={reloadSummary}>
+              Tentar de novo
+            </Button>
+          </div>
+        ) : (
+          <Loading />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.screen}>
+      <StepProgress current={1} total={3} />
+      <h1 className={styles.title}>Como usamos seus dados</h1>
+      <p className={styles.lead}>Veja o que a NISE guarda sobre você e pra quê.</p>
+
+      <h2 className={styles.sectionTitle}>O que coletamos</h2>
+      <IconList items={WHAT_WE_COLLECT.map((text) => ({ icon: "check", content: text }))} />
+
+      <h2 className={styles.sectionTitle}>Pra que usamos</h2>
+      <IconList
+        items={[
+          { icon: "arrow-right", content: whoSees(summary) },
+          { icon: "arrow-right", content: "Sugerir atividades com base no que você curtiu, fez ou não quis" },
+        ]}
+      />
+
+      <div className={styles.linkRow}>
+        <TextLink href="/termos" external>
+          Ler os termos completos
+        </TextLink>
+      </div>
+
+      <div className={styles.spacer} />
+
+      <Checkbox onCheckedChange={setAgreed}>
+        Li e concordo com os{" "}
+        <a href="/termos#uso" target="_blank" rel="noopener noreferrer">
+          Termos de uso
+        </a>{" "}
+        e a{" "}
+        <a href="/termos#privacidade" target="_blank" rel="noopener noreferrer">
+          Política de privacidade
+        </a>{" "}
+        da NISE.
+      </Checkbox>
+
+      <div className={styles.actions}>
+        <Button
+          className={styles.fullWidth}
+          disabled={!agreed}
+          loading={saving}
+          onClick={handleContinue}
+        >
+          Entendi, continuar
+        </Button>
+      </div>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+      <p className={styles.footnote}>Você pode rever suas escolhas quando quiser, em Perfil.</p>
+    </div>
+  );
+}
