@@ -12,7 +12,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { getFirstName } from "@/lib/atividade";
 import { getEvent, type EventDetail } from "@/lib/evento";
 import shared from "../../../[id]/atividade.module.css";
 import celebration from "../../../[id]/concluida/concluida.module.css";
@@ -83,7 +82,7 @@ function Celebration() {
       />
       <p className={celebration.kicker}>Mais um passo dado</p>
       <h1 ref={headingRef} tabIndex={-1} className={celebration.title}>
-        Você conseguiu, {getFirstName()}!
+        {event.firstName.trim() ? `Você conseguiu, ${event.firstName}!` : "Você conseguiu!"}
       </h1>
       <p className={celebration.activity}>{event.title}</p>
     </>

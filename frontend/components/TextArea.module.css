@@ -38,3 +38,13 @@
   outline: 3px solid var(--nise-pink);
   outline-offset: 0;
 }
+
+.input[aria-invalid="true"] {
+  border: 2px solid var(--nise-pink);
+  padding: 11px 13px;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+}

@@ -12,6 +12,8 @@ type CityFieldProps = {
   /** Reports which municipality matched, or `null` while none does. */
   onSelect: (city: City | null) => void;
   error?: string;
+  /** Text the input starts with, for a form that opens already filled in. */
+  defaultValue?: string;
 };
 
 /** Drops accents and case, so "maceió, al" matches "Maceió, AL". */
@@ -34,7 +36,7 @@ function comparable(text: string): string {
  * "sao jose" hid "São José da Tapera, AL" even though the API found it. Here
  * the list shows exactly what the API returned.
  */
-export function CityField({ value, onChange, onSelect, error }: CityFieldProps) {
+export function CityField({ value, onChange, onSelect, error, defaultValue }: CityFieldProps) {
   const inputId = useId();
   const listId = useId();
   const [cities, setCities] = useState<City[]>([]);
@@ -131,6 +133,7 @@ export function CityField({ value, onChange, onSelect, error }: CityFieldProps) 
     <Field
       id={inputId}
       label="Cidade"
+      defaultValue={defaultValue}
       placeholder="Comece a digitar"
       autoComplete="off"
       role="combobox"

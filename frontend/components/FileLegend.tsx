@@ -1,9 +1,9 @@
 import { THEMES, type FileData, type ThemeCode } from "@/lib/file";
 import styles from "./FileLegend.module.css";
 
-/** Temas que aparecem no filé dela, na ordem dos itens. */
+/** Temas que aparecem no filé dela, na ordem dos quadradinhos. Item sem tema não entra. */
 function themesIn(data: FileData): ThemeCode[] {
-  const all = [...data.done, ...data.inProgress, ...data.next].map((item) => item.theme);
+  const all = data.squares.flatMap((square) => (square.theme ? [square.theme] : []));
   return [...new Set(all)];
 }
 

@@ -2,12 +2,13 @@
 
 // A06·4b · Evento: o detalhe de um evento do filé, nas versões "Próxima aventura", "Inscrita",
 // "Você foi?" e "Concluído". Atende RF-F10.13, RF-F10.14, RF-F10.15, RF-F10.23 e RN-19, RN-36
-// (issues #178, #179, #182, #183, #190 e #191).
+// (issues #178, #179, #182, #183, #190, #191, #194 e #195), e o lembrete RF-F4.12 (#186 e #187).
 // Usa os dados de teste de lib/evento.ts.
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { UndoTimerToast } from "@/components/UndoTimerToast";
 import {
@@ -18,6 +19,7 @@ import {
   rememberDidNotGo,
   rememberLeftToSignUp,
   removeEvent,
+  setReminder,
   SIGNED_UP_PARAM,
   signUpCheckPath,
   takeLeftToSignUp,
@@ -27,7 +29,7 @@ import {
 } from "@/lib/evento";
 import shared from "../../[id]/atividade.module.css";
 import styles from "./evento.module.css";
-import { EventView } from "./EventView";
+import { EventView, type EventViewProps } from "./EventView";
 
 const FILE_PATH = "/file";
 
@@ -67,17 +69,42 @@ function EventLoader() {
   const { id } = useParams<{ id: string }>();
   // undefined: carregando. null: não está no filé.
   const [event, setEvent] = useState<EventDetail | null | undefined>(undefined);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let current = true;
-    getEvent(id).then((result) => {
-      if (current) setEvent(result);
-    });
+    getEvent(id).then(
+      (result) => {
+        if (current) setEvent(result);
+      },
+      () => {
+        // Sem isso, um erro deixaria a tela em "Carregando…" para sempre.
+        if (current) setFailed(true);
+      },
+    );
     return () => {
       current = false;
     };
-  }, [id]);
+  }, [id, attempt]);
 
+  function retry() {
+    setFailed(false);
+    setAttempt((value) => value + 1);
+  }
+
+  if (failed) {
+    return (
+      <div className={styles.loadFailed}>
+        <p className={shared.status} role="alert">
+          Não deu pra carregar o evento.
+        </p>
+        <Button variant="secondary" size="sm" onClick={retry}>
+          Tentar de novo
+        </Button>
+      </div>
+    );
+  }
   if (event === undefined) return <Loading />;
   if (event === null) return <p className={shared.status}>Esse evento não está no seu filé.</p>;
   return <Detail event={event} onChange={setEvent} />;
@@ -90,11 +117,13 @@ type DetailProps = {
 
 type Toast = { status: "ready" | "undoing" | "error" };
 
+type Saving = NonNullable<EventViewProps["saving"]>;
+
 function Detail({ event, onChange }: DetailProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [saving, setSaving] = useState<"mark" | "remove" | "went" | "didNotGo" | null>(null);
+  const [saving, setSaving] = useState<Saving | null>(null);
   const [error, setError] = useState<string | null>(null);
   // O aviso "Você tá inscrita!" chega aberto quando ela vem da A09 com "Sim, me inscrevi".
   const cameSignedUp = searchParams.has(SIGNED_UP_PARAM) && event.status === "in_progress";
@@ -185,8 +214,20 @@ function Detail({ event, onChange }: DetailProps) {
     }
   }
 
+  // Uma ação de cada vez: com duas no ar, a resposta que chega por último sobrescreve a outra
+  // (ex.: o lembrete salvo depois do "Desfazer" voltaria a tela para "Inscrita").
+  async function changeReminder(on: boolean) {
+    setSaving("reminder");
+    setError(null);
+    try {
+      onChange(await setReminder(event.id, on));
+    } finally {
+      setSaving(null);
+    }
+  }
+
   async function undo() {
-    if (toast?.status === "undoing") return;
+    if (toast?.status === "undoing" || saving) return;
     setToast({ status: "undoing" });
     try {
       onChange(await undoSignUp(event.id));
@@ -207,14 +248,16 @@ function Detail({ event, onChange }: DetailProps) {
         onOpenSignUp={() => rememberLeftToSignUp(event.id)}
         onMarkSignedUp={mark}
         onRemove={remove}
+        onReminderChange={changeReminder}
         onWent={went}
         onDidNotGo={didNotGo}
-        saving={saving}
+        saving={saving ?? (toast?.status === "undoing" ? "undo" : null)}
         error={error}
       />
       {toast && (
         <UndoTimerToast
           status={toast.status}
+          busy={saving !== null}
           errorText="Não deu pra desfazer."
           onUndo={undo}
           onTimeout={closeToast}
