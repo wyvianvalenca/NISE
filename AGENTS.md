@@ -4,7 +4,7 @@ Instruções para agentes de IA (Claude Code, Codex, Copilot, Cursor etc.) neste
 
 ## Projeto
 
-NISE liga grupos de incentivo à computação em Alagoas às meninas que vão às ações deles. Requisitos em `docs/requisitos-v2.md`; cite o RF (ex.: RF-F1.01) que o código atende.
+NISE liga grupos de incentivo à computação em Alagoas às meninas que vão às ações deles. Requisitos em `docs/requisitos-NISE.md`; cite o RF (ex.: RF-F1.01) que o código atende.
 
 Parte da equipe programa sem agentes para aprender. Escreva código simples e legível, no padrão do código ao redor, e explique no PR o que foi feito.
 
@@ -14,7 +14,7 @@ Parte da equipe programa sem agentes para aprender. Escreva código simples e le
 - Back: Python + FastAPI, uv. SQLAlchemy **assíncrono** (asyncpg), Alembic.
 - Banco: PostgreSQL (Supabase em produção). Pooler em modo transação: `statement_cache_size=0` no asyncpg.
 - Hospedagem: Vercel, projeto único; FastAPI responde em `/api`.
-- Login: Google, Microsoft e e-mail/senha; JWT em cookie `httpOnly` (nunca `localStorage`).
+- Login: Google e e-mail/senha; JWT em cookie `httpOnly` (nunca `localStorage`).
 - Sem telas administrativas: curadoria, datas e duplicadas são scripts em `backend/scripts/`.
 
 ## Comandos
