@@ -126,3 +126,30 @@ class ConcludeIn(BaseModel):
     """ "Concluir presença" (#348): the registrations marked as present."""
 
     present_ids: Annotated[list[int], Field(max_length=MAX_MARKS)]
+
+
+# The same limit as the import of the registered girls (C2, #234).
+MAX_IMPORT_LINES = 2000
+
+
+class ImportedListIn(BaseModel):
+    """ "Importar lista de presença" (#349, RF-F3.02): the e-mail of each line.
+
+    The page reads the spreadsheet and sends only the cell of the e-mail column.
+    The server never receives or keeps the file.
+    """
+
+    emails: Annotated[list[str], Field(max_length=MAX_IMPORT_LINES)]
+
+
+class ImportedListOut(BaseModel):
+    """Who the list marks. Nothing was saved: the page marks them (RF-F3.04).
+
+    `present_ids` are the registrations whose e-mail is in the list, once each.
+    `not_found_count` is the lines that match no registration (or have no
+    e-mail), only counted: which ones are not told (RN-27).
+    """
+
+    present_ids: list[int]
+    line_count: int
+    not_found_count: int

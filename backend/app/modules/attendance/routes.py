@@ -15,6 +15,8 @@ from app.modules.attendance.exceptions import AttendanceError
 from app.modules.attendance.schemas import (
     AttendancePageOut,
     ConcludeIn,
+    ImportedListIn,
+    ImportedListOut,
     SavedMarksIn,
     WalkInIn,
     WalkInOut,
@@ -24,6 +26,7 @@ from app.modules.attendance.service import (
     build_attendance_page,
     conclude_attendance,
     mark_present_later,
+    match_imported_list,
     save_marks,
 )
 
@@ -49,7 +52,7 @@ def _refused(error: AttendanceError) -> JSONResponse:
     # 422 for an id outside the action; 409 for the moment being wrong.
     code = (
         status.HTTP_422_UNPROCESSABLE_CONTENT
-        if error.code == "unknown_registration"
+        if error.code in ("unknown_registration", "empty_file")
         else status.HTTP_409_CONFLICT
     )
     return JSONResponse(status_code=code, content={"error": error.code})
@@ -178,3 +181,29 @@ async def mark_present(
 
     await _send_now(session, action_id, connect)
     return await build_attendance_page(session, action, today)
+
+
+# "Importar lista de presença" (#349, RF-F3.02, RN-27). Receives the e-mails of
+# the lines the page read and answers who of the action they mark and how many
+# lines were not found. It saves nothing: the marks are the page's until she
+# saves or concludes (RF-F3.04). From the day of the event until concluded.
+@router.post(
+    "/import",
+    response_model=ImportedListOut,
+    responses={
+        **REFUSED,
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": 'Lista sem nenhuma linha com e-mail: {"error": "empty_file"}'
+        },
+    },
+)
+async def import_attendance_list(
+    data: ImportedListIn,
+    action: GroupActionDep,
+    session: AsyncSessionDep,
+    today: TodayDep,
+) -> ImportedListOut | JSONResponse:
+    try:
+        return await match_imported_list(session, action, data.emails, today)
+    except AttendanceError as error:
+        return _refused(error)

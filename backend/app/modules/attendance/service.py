@@ -20,6 +20,7 @@ from app.modules.attendance.emails import (
 )
 from app.modules.attendance.exceptions import (
     AlreadyConcludedError,
+    EmptyListError,
     NotConcludedError,
     TooEarlyError,
     UnknownRegistrationError,
@@ -29,6 +30,7 @@ from app.modules.attendance.schemas import (
     AttendanceActionOut,
     AttendanceGirlOut,
     AttendancePageOut,
+    ImportedListOut,
     WalkInIn,
     WalkInOut,
 )
@@ -39,6 +41,7 @@ from app.modules.registrations.service import (
     RegistrationData,
     register_girl,
 )
+from app.users.service import normalize_email
 
 
 async def registrations_of(
@@ -390,3 +393,35 @@ async def conclude_attendance(
         ],
     )
     await session.commit()
+
+
+async def match_imported_list(
+    session: AsyncSession, action: Action, emails: list[str], today: date
+) -> ImportedListOut:
+    """Which registrations of the action have their e-mail in the list (RF-F3.02).
+
+    Only reads: it saves nothing, creates no girl and no account and sends
+    nothing (RN-27). The page marks the answer, and the marks are kept only
+    when she saves or concludes (RF-F3.04, D-81). The comparison ignores
+    capital letters and spaces around the e-mail. A line that is not a
+    registration is only counted: it is not stored and not logged anywhere.
+    """
+    ensure_awaiting_attendance(action, today)
+    # A list with no line, or with only blank e-mail cells, has nothing to
+    # compare: the page says the file is empty instead of "0 presentes".
+    if not any(email.strip() for email in emails):
+        raise EmptyListError
+
+    listed = {normalize_email(email) for email in emails}
+    registrations = await registrations_of(session, action.id)
+    by_email = {
+        normalize_email(girl.email): participation.id
+        for participation, girl in registrations
+    }
+    return ImportedListOut(
+        present_ids=sorted(by_email[email] for email in listed if email in by_email),
+        line_count=len(emails),
+        not_found_count=sum(
+            1 for email in emails if normalize_email(email) not in by_email
+        ),
+    )
