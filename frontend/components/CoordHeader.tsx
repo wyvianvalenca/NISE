@@ -11,7 +11,7 @@ import styles from "./CoordHeader.module.css";
 const SECTIONS = [
   { key: "acoes", label: "Ações", href: "/coordenacao/acoes" },
   { key: "funil", label: "Funil" },
-  { key: "ingressantes", label: "Ingressantes" },
+  { key: "ingressantes", label: "Ingressantes", href: "/coordenacao/ingressantes" },
   { key: "relatorios", label: "Relatórios" },
   { key: "exportar", label: "Exportar" },
 ] as const satisfies readonly { key: string; label: string; href?: string }[];
