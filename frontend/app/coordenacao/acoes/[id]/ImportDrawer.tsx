@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { DataTable, type Column } from "@/components/DataTable";
 import { Drawer } from "@/components/Drawer";
@@ -91,6 +91,13 @@ export function ImportDrawer({ action, onClose, onImported }: Props) {
   const [invalidLines, setInvalidLines] = useState<number[]>([]);
   const [error, setError] = useState<ImportErrorCode | null>(null);
   const [busy, setBusy] = useState<"reading" | "reviewing" | "importing" | null>(null);
+
+  // After a file is read, "Escolher planilha" is gone: the focus goes to the
+  // file card, so the keyboard carries on from there (RNF-G.02).
+  const fileCardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (sheet) fileCardRef.current?.focus();
+  }, [sheet]);
 
   async function pick(chosen: File) {
     setBusy("reading");
@@ -295,7 +302,7 @@ export function ImportDrawer({ action, onClose, onImported }: Props) {
           ) : (
             mapping && (
               <>
-                <div className={styles.fileCard}>
+                <div ref={fileCardRef} tabIndex={-1} className={styles.fileCard}>
                   <span className={styles.fileIcon} aria-hidden="true">
                     <Icon name="sheet" />
                   </span>

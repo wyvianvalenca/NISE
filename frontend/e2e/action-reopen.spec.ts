@@ -151,6 +151,10 @@ test("close then reopen, by keyboard", async ({ page }) => {
 
   const reopen = page.getByRole("button", { name: "Reabrir inscrições" });
   await expect(reopen).toBeVisible();
+  // The pressed button is gone: the focus goes to the card that replaced it.
+  await expect(
+    page.getByRole("heading", { name: "Precisa de mais inscritas?" }),
+  ).toBeFocused();
   const box = await reopen.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
   await reopen.focus();
@@ -163,7 +167,7 @@ test("close then reopen, by keyboard", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", { name: "Terminou de adicionar?" }),
-  ).toBeVisible();
+  ).toBeFocused();
   expect(api.closed).toEqual([FULL_ACTION_ID]);
   expect(api.reopened).toEqual([FULL_ACTION_ID]);
 });

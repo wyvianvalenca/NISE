@@ -138,9 +138,12 @@ test("step 2 shows the three counts, the lines to review, the repeated and the r
   await open(page);
   await pickFigmaFile(page);
   const panel = drawer(page);
+  // The file card takes the focus from the gone "Escolher planilha" button.
+  await expect(panel.getByText("inscricoes_introducao_robotica.csv").locator("xpath=../..")).toBeFocused();
   await panel.getByRole("button", { name: "Revisar 26 linhas" }).click();
 
-  await expect(panel.getByRole("heading", { name: "Revise antes de importar" })).toBeVisible();
+  // A new step: the focus goes to its title.
+  await expect(panel.getByRole("heading", { name: "Revise antes de importar" })).toBeFocused();
   await expect(panel.getByText("inscricoes_introducao_robotica.csv · 26 linhas")).toBeVisible();
   const counts = panel.getByRole("list", { name: "Resumo da planilha" });
   await expect(counts).toContainText("23 prontas");

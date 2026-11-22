@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Modal } from "@/components/Modal";
@@ -31,6 +31,16 @@ export function RegistrationsSwitch({
 
   const canClose =
     action.registeredCount > 0 && action.registrationsOpen && action.status === "awaiting_event";
+  // After closing or reopening, the button she pressed is gone: once the page
+  // reloads, the focus goes to the card or note that replaced it (RNF-G.02).
+  const moveFocus = useRef(false);
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    const target = action.canReopen ? "reopen-title" : canClose ? "close-title" : "closed-note";
+    document.getElementById(target)?.focus();
+  }, [action.registrationsOpen, action.canReopen, canClose]);
+
   const audience = action.cityName ? `meninas de ${action.cityName}` : "meninas";
 
   function dismiss() {
@@ -52,6 +62,7 @@ export function RegistrationsSwitch({
     }
     setBusy(false);
     setClosing(false);
+    moveFocus.current = true;
     onChanged();
   }
 
@@ -68,6 +79,7 @@ export function RegistrationsSwitch({
     }
     setBusy(false);
     setReopening(false);
+    moveFocus.current = true;
     // After a refusal the reload shows the page as the server has it now.
     onChanged();
   }
@@ -86,7 +98,7 @@ export function RegistrationsSwitch({
           <span className={styles.icon}>
             <Icon name="clipboard" size={28} />
           </span>
-          <h2 id="reopen-title" className={styles.title}>
+          <h2 id="reopen-title" tabIndex={-1} className={styles.title}>
             Precisa de mais inscritas?
           </h2>
           <p className={styles.text}>
@@ -101,7 +113,7 @@ export function RegistrationsSwitch({
             <span className={styles.icon}>
               <Icon name="clipboard" size={28} />
             </span>
-            <h2 id="close-title" className={styles.title}>
+            <h2 id="close-title" tabIndex={-1} className={styles.title}>
               Terminou de adicionar?
             </h2>
             <p className={styles.text}>
@@ -118,7 +130,7 @@ export function RegistrationsSwitch({
         </>
       )}
       {!action.registrationsOpen && action.registeredCount > 0 && (
-        <div className={styles.note}>
+        <div id="closed-note" tabIndex={-1} className={styles.note}>
           <Notice icon="eye">
             Inscrições fechadas. A ação não aparece mais nas sugestões das meninas.
           </Notice>
