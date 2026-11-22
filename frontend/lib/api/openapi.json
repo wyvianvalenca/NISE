@@ -2679,7 +2679,7 @@
           "Agenda"
         ],
         "summary": "To Answer",
-        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10).",
+        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).",
         "operationId": "to_answer_api_agenda_to_answer_get",
         "parameters": [
           {
@@ -2722,6 +2722,73 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ToAnswerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agenda/dates": {
+      "get": {
+        "tags": [
+          "API",
+          "Agenda"
+        ],
+        "summary": "Dates",
+        "description": "As datas e os questionários que ainda vão chegar (RF-F4.11b).",
+        "operationId": "dates_api_agenda_dates_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaDatesOut"
                 }
               }
             }
@@ -3680,6 +3747,23 @@
         ],
         "title": "AdmissionOrigin",
         "description": "De onde veio o registro (RF-F6.03)."
+      },
+      "AgendaDatesOut": {
+        "properties": {
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingItemOut"
+            },
+            "type": "array",
+            "title": "Upcoming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upcoming"
+        ],
+        "title": "AgendaDatesOut",
+        "description": "As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b)."
       },
       "BandCountOut": {
         "properties": {
@@ -4884,6 +4968,25 @@
         ],
         "title": "MatchResult"
       },
+      "OpenFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay"
+        ],
+        "title": "OpenFollowupOut",
+        "description": "O questionário \"Como está seu caminho?\" aberto e sem resposta (A18)."
+      },
       "OpportunityEmailsIn": {
         "properties": {
           "enabled": {
@@ -5349,14 +5452,33 @@
           "list_match": {
             "type": "boolean",
             "title": "List Match"
+          },
+          "ratings": {
+            "items": {
+              "$ref": "#/components/schemas/PendingRatingOut"
+            },
+            "type": "array",
+            "title": "Ratings"
+          },
+          "followup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenFollowupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
-          "list_match"
+          "list_match",
+          "ratings",
+          "followup"
         ],
         "title": "ToAnswerOut",
-        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nPor enquanto só o indício de lista oficial (RF-F31.10). As avaliações e os\nquestionários da M5 (#129) entram aqui quando existirem."
+        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nNada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o\nsim ou não do indício, as ações que ela mesma foi e a rodada aberta."
       },
       "Topic": {
         "type": "string",
@@ -5371,6 +5493,65 @@
           "design"
         ],
         "title": "Topic"
+      },
+      "UpcomingItemOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "date",
+              "followup"
+            ],
+            "title": "Kind"
+          },
+          "on": {
+            "type": "string",
+            "format": "date",
+            "title": "On"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowupRound"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "on",
+          "title",
+          "details",
+          "round"
+        ],
+        "title": "UpcomingItemOut",
+        "description": "Uma data da agenda: lembrete da equipe ou rodada de questionário."
       },
       "UserOut": {
         "properties": {

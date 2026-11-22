@@ -111,3 +111,45 @@
   font-size: 14px;
   font-weight: 700;
 }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--nise-muted);
+}
+
+.empty strong {
+  color: var(--nise-ink);
+  font-size: 16px;
+}
+
+/* Legenda das cores das datas: a mesma da MonthAgenda. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.teal {
+  background: var(--nise-teal);
+}
+
+.pink {
+  background: var(--nise-pink);
+}
