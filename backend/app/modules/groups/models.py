@@ -30,10 +30,11 @@ class GroupCoordinator(Base):
 class Invite(Base):
     """Link de convite de um grupo para criar conta (A01b, #51).
 
-    Por enquanto é um convite por grupo, que várias meninas podem usar até
-    vencer. O convite por menina, enviado depois da presença (RF-F4.01,
-    RN-29), vem com a F4. Quem cria conta pelo link fica com o grupo como
-    origem (Girl.origin_group_id).
+    O convite do grupo é um link que várias meninas podem usar até vencer. O
+    convite pessoal, enviado por e-mail depois da presença (RF-F4.01, RN-32,
+    #348), é uma linha desta mesma tabela com `girl_id`, e abre a mesma tela.
+    Quem cria conta pelo link fica com o grupo como origem
+    (Girl.origin_group_id).
 
     O código não é segredo: o grupo divulga o link, e ele só mostra o nome do
     grupo. Por isso fica gravado como está, e o script pode mostrá-lo de novo.
@@ -47,6 +48,13 @@ class Invite(Base):
         ForeignKey("groups.id", ondelete="CASCADE"), index=True
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # The girl of a personal invite, sent by e-mail after the attendance
+    # (RF-F4.01, RN-32, #348). Empty for the group's link, which anyone uses.
+    # A personal invite lasts 30 days and is not single-use; like the group's
+    # link, it only opens the sign-up and gives access to no data.
+    girl_id: Mapped[int | None] = mapped_column(
+        ForeignKey("girls.id", ondelete="CASCADE"), index=True
+    )
 
     # Assíncrono: carregue com selectinload(Invite.group).
     group: Mapped[Group] = relationship()
