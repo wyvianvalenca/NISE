@@ -2823,6 +2823,136 @@
         }
       }
     },
+    "/api/coordinator/results/after-action": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "After Action Route",
+        "operationId": "after_action_route_api_coordinator_results_after_action_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "12m"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterActionOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -3452,6 +3582,29 @@
         "title": "AdmissionOrigin",
         "description": "De onde veio o registro (RF-F6.03)."
       },
+      "AfterActionOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          },
+          "returned": {
+            "$ref": "#/components/schemas/ComparedOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows",
+          "returned"
+        ],
+        "title": "AfterActionOut",
+        "description": "O card \"Logo depois da ação\" (RF-F5.09). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado, e `returned` é quantas de cada lado voltaram a\noutra ação. O front calcula a porcentagem."
+      },
       "BandCountOut": {
         "properties": {
           "code": {
@@ -3560,6 +3713,25 @@
           "name"
         ],
         "title": "CityOut"
+      },
+      "ComparedOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows"
+        ],
+        "title": "ComparedOut",
+        "description": "Quantas fizeram algo, entre as participantes e entre as que não compareceram."
       },
       "CourseLevel": {
         "type": "string",
@@ -4453,6 +4625,16 @@
         ],
         "title": "PendingSignupOut",
         "description": "O que veio do Google, para a A02b mostrar (#52). Só leitura."
+      },
+      "Period": {
+        "type": "string",
+        "enum": [
+          "6m",
+          "12m",
+          "all"
+        ],
+        "title": "Period",
+        "description": "Opções do filtro \"Período\" da aba Resultados (RF-F5.06, D-94)."
       },
       "ProfileOut": {
         "properties": {

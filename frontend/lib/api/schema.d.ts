@@ -663,6 +663,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/results/after-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** After Action Route */
+        get: operations["after_action_route_api_coordinator_results_after_action_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -906,6 +923,21 @@ export interface components {
          */
         AdmissionOrigin: "self_declared" | "official_list";
         /**
+         * AfterActionOut
+         * @description O card "Logo depois da ação" (RF-F5.09). O front lê em camelCase.
+         *
+         *     Só totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`
+         *     são o "de M" de cada lado, e `returned` é quantas de cada lado voltaram a
+         *     outra ação. O front calcula a porcentagem.
+         */
+        AfterActionOut: {
+            /** Participants */
+            participants: number;
+            /** Noshows */
+            noShows: number;
+            returned: components["schemas"]["ComparedOut"];
+        };
+        /**
          * BandCountOut
          * @description Uma faixa do Descobrir e quantas sugestões ela tem (A06·1, RF-F10.03).
          *
@@ -961,6 +993,16 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /**
+         * ComparedOut
+         * @description Quantas fizeram algo, entre as participantes e entre as que não compareceram.
+         */
+        ComparedOut: {
+            /** Participants */
+            participants: number;
+            /** Noshows */
+            noShows: number;
         };
         /**
          * CourseLevel
@@ -1402,6 +1444,12 @@ export interface components {
             /** Invite */
             invite: string | null;
         };
+        /**
+         * Period
+         * @description Opções do filtro "Período" da aba Resultados (RF-F5.06, D-94).
+         * @enum {string}
+         */
+        Period: "6m" | "12m" | "all";
         /**
          * ProfileOut
          * @description O perfil da menina da sessão, do jeito que o app lê.
@@ -3304,6 +3352,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnrollmentPageOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    after_action_route_api_coordinator_results_after_action_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterActionOut"];
                 };
             };
             /** @description Não é coordenadora ou sem grupo */
