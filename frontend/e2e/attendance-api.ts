@@ -122,11 +122,16 @@ export type AttendanceApi = {
   concluded: number[][];
   /** While true the POST answers 500 and concludes nothing. */
   failConclude: boolean;
+  /** Ids of the POST that marks one girl of "Faltaram" (#350), in order. */
+  markedLater: number[];
+  /** While true that POST answers 500. */
+  failMarkLater: boolean;
   /** The registrations in the saved marks now, in the back-end's state (#340). */
   savedNow: (id: number) => number[];
 };
 
 const GIRLS_URL = /\/api\/actions\/(\d+)\/attendance\/girls$/;
+const PRESENT_URL = /\/api\/actions\/(\d+)\/attendance\/present\/(\d+)$/;
 const CONCLUDE_URL = /\/api\/actions\/(\d+)\/attendance\/conclude$/;
 const MARKS_URL = /\/api\/actions\/(\d+)\/attendance\/marks$/;
 const ATTENDANCE_URL = /\/api\/actions\/(\d+)\/attendance$/;
@@ -213,6 +218,8 @@ export async function mockAttendanceApi(
     failAttendance: false,
     saved: [],
     failSave: false,
+    markedLater: [],
+    failMarkLater: false,
     concluded: [],
     failConclude: false,
     walkIns: [],
@@ -288,6 +295,13 @@ export async function mockAttendanceApi(
         stored.registrations.push(row);
         stored.registrations.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
       }
+      // After concluding she comes in present, with her evaluation and, when she
+      // is new, her invite (#350).
+      if (stored.concludedOn !== null && !stored.present.has(row.id)) {
+        stored.present.add(row.id);
+        stored.evaluationsSent += 1;
+        if (!already) stored.invitesSent += 1;
+      }
       return route.fulfill({
         json: {
           girl: {
@@ -298,6 +312,29 @@ export async function mockAttendanceApi(
           already_registered: already,
         },
       });
+    },
+  );
+
+  // POST .../attendance/present/{id} (#350): only after concluding, only adds,
+  // and a second tap changes nothing.
+  await page.route(
+    (url) => PRESENT_URL.test(url.pathname),
+    async (route) => {
+      const found = PRESENT_URL.exec(new URL(route.request().url()).pathname)!;
+      const stored = data[Number(found[1])];
+      await wait(delayMs);
+      if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (api.failMarkLater) return route.fulfill({ status: 500, body: "" });
+      if (stored.concludedOn === null) {
+        return route.fulfill({ status: 409, json: { error: "not_concluded" } });
+      }
+      const id = Number(found[2]);
+      api.markedLater.push(id);
+      if (!stored.present.has(id)) {
+        stored.present.add(id);
+        stored.evaluationsSent += 1;
+      }
+      return route.fulfill({ json: attendancePage(stored) });
     },
   );
 

@@ -170,3 +170,12 @@ export function saveMarks(id: number, presentIds: number[]) {
 export function concludeAttendance(id: number, presentIds: number[]) {
   return send(`/api/actions/${id}/attendance/conclude`, "POST", { present_ids: presentIds });
 }
+
+/**
+ * "Marcar presença" on a row of "Faltaram" (#350, RF-F3.09): she becomes present
+ * and gets the evaluation right away. Only on a concluded action, and only adds:
+ * there is no way back. Tapping twice changes nothing.
+ */
+export function markPresentLater(id: number, participationId: number) {
+  return send(`/api/actions/${id}/attendance/present/${participationId}`, "POST");
+}

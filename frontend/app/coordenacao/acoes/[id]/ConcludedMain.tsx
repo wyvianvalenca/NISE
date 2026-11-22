@@ -19,10 +19,14 @@ export function ConcludedMain({
   action,
   attendance,
   reloadToken,
+  onMarkPresent,
+  onAddWalkIn,
 }: {
   action: ActionPage;
   attendance: AttendancePage;
   reloadToken: number;
+  onMarkPresent: (participationId: number) => Promise<boolean>;
+  onAddWalkIn: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("attendance");
 
@@ -38,7 +42,7 @@ export function ConcludedMain({
         ]}
       />
       {tab === "attendance" ? (
-        <AttendanceResult attendance={attendance} />
+        <AttendanceResult attendance={attendance} onMarkPresent={onMarkPresent} onAddWalkIn={onAddWalkIn} />
       ) : (
         <RegistrationsCard action={action} reloadToken={reloadToken} readOnly />
       )}

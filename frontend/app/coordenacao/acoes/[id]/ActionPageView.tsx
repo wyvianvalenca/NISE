@@ -11,7 +11,7 @@ import { Toast } from "@/components/Toast";
 import { StepTracker, type Step } from "@/components/StepTracker";
 import { dayMonthLabel } from "@/lib/coord-action-labels";
 import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
-import { concludeAttendance, getAttendance, saveMarks, type AttendancePage } from "@/lib/coord-attendance";
+import { concludeAttendance, getAttendance, markPresentLater, saveMarks, type AttendancePage } from "@/lib/coord-attendance";
 import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
 import { AfterActionCard } from "./AfterActionCard";
@@ -216,6 +216,15 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
     reload();
   }
 
+  /** "Marcar presença" on a row of "Faltaram" (#350). The page comes back with her among the present. */
+  async function markLater(participationId: number): Promise<boolean> {
+    if (actionId === null) return false;
+    const result = await markPresentLater(actionId, participationId);
+    if (!result.ok) return false;
+    setAttendance(result.data);
+    return true;
+  }
+
   // Leaving the page with marks that were not saved asks first (#340, Could).
   // Only while it can still be saved: concluded in another tab, nothing is lost.
   const unsaved =
@@ -289,7 +298,13 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   saveState={saveState}
                 />
               ) : action.status === "concluded" && attendance ? (
-                <ConcludedMain action={action} attendance={attendance} reloadToken={listVersion} />
+                <ConcludedMain
+                  action={action}
+                  attendance={attendance}
+                  reloadToken={listVersion}
+                  onMarkPresent={markLater}
+                  onAddWalkIn={() => setAddingWalkIn(true)}
+                />
               ) : (
                 <RegistrationsCard
                   action={action}
@@ -358,9 +373,12 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                 actionName={action.name}
                 walkIn
                 onAdded={(registration) => {
-                  // She came: she is registered and already marked (#346).
-                  setSaveState(null);
-                  setMarks((current) => toggled(current, [registration.id], true));
+                  // She came: she is registered and already marked (#346). After
+                  // concluding the server marks her and sends her evaluation (#350).
+                  if (action.status === "awaiting_attendance") {
+                    setSaveState(null);
+                    setMarks((current) => toggled(current, [registration.id], true));
+                  }
                   reload();
                 }}
                 onClose={() => setAddingWalkIn(false)}
