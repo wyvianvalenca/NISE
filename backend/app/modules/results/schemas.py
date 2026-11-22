@@ -12,11 +12,12 @@ class ComparedOut(BaseModel):
 
 
 class AfterActionOut(BaseModel):
-    """O card "Logo depois da ação" (RF-F5.09). O front lê em camelCase.
+    """O card "Logo depois da ação" (RF-F5.09, RF-F5.31). O front lê em camelCase.
 
     Só totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`
-    são o "de M" de cada lado, e `returned` é quantas de cada lado voltaram a
-    outra ação. O front calcula a porcentagem.
+    são o "de M" de cada lado. `returned`, `started_file` e `concluded_file`
+    são quantas de cada lado voltaram a outra ação, começaram o filé e
+    concluíram algo nele. O front calcula a porcentagem.
     """
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -24,3 +25,5 @@ class AfterActionOut(BaseModel):
     participants: int
     no_shows: int
     returned: ComparedOut
+    started_file: ComparedOut
+    concluded_file: ComparedOut

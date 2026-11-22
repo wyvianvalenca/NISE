@@ -3594,16 +3594,24 @@
           },
           "returned": {
             "$ref": "#/components/schemas/ComparedOut"
+          },
+          "startedFile": {
+            "$ref": "#/components/schemas/ComparedOut"
+          },
+          "concludedFile": {
+            "$ref": "#/components/schemas/ComparedOut"
           }
         },
         "type": "object",
         "required": [
           "participants",
           "noShows",
-          "returned"
+          "returned",
+          "startedFile",
+          "concludedFile"
         ],
         "title": "AfterActionOut",
-        "description": "O card \"Logo depois da ação\" (RF-F5.09). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado, e `returned` é quantas de cada lado voltaram a\noutra ação. O front calcula a porcentagem."
+        "description": "O card \"Logo depois da ação\" (RF-F5.09, RF-F5.31). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado. `returned`, `started_file` e `concluded_file`\nsão quantas de cada lado voltaram a outra ação, começaram o filé e\nconcluíram algo nele. O front calcula a porcentagem."
       },
       "BandCountOut": {
         "properties": {

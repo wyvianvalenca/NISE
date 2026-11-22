@@ -1,11 +1,12 @@
-"""Resultados · "Logo depois da ação" (C5, #367): quem voltou a outra ação.
+"""Resultados · "Logo depois da ação" (C5, #367): quem voltou a outra ação e
+quem começou o filé.
 
-Rodam no Postgres de teste (`db_session`), porque a regra é toda SQL: quem é
-participante, quem não compareceu e quem voltou. Dados fictícios. Cada teste
-diz o critério de aceite da #367 que cobre.
+Rodam no Postgres de teste (`db_session`), porque a regra vem do banco: quem é
+participante, quem não compareceu, quem voltou e o que ela guardou no filé.
+Dados fictícios. Cada teste diz o critério de aceite da #367 que cobre.
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from httpx2 import Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,10 +21,11 @@ from app.modules.actions.models import (
     ActionVisibility,
     Participation,
 )
-from app.modules.actions.service import today_in_maceio
+from app.modules.actions.service import ACTION_TIMEZONE, today_in_maceio
+from app.modules.girl_file.models import FileEntry, FileStatus
 from app.modules.girls.models import Girl, Topic
 from app.modules.groups.models import Group, GroupCoordinator
-from app.modules.results.service import Period, period_start
+from app.modules.results.service import Period, add_months, period_start
 from app.users.models import Role, User
 from tests.helpers import chamar_rota
 
@@ -34,6 +36,11 @@ SALVA = datetime(2026, 1, 1, tzinfo=UTC)
 
 def dias_atras(dias: int) -> date:
     return HOJE - timedelta(days=dias)
+
+
+def as_(hora: int, dia: date, minuto: int = 0) -> datetime:
+    """Um horário de Maceió nesse dia."""
+    return datetime.combine(dia, time(hora, minuto), tzinfo=ACTION_TIMEZONE)
 
 
 class Cenario:
@@ -103,6 +110,27 @@ class Cenario:
                 girl_id=menina.id,
                 action_id=acao.id,
                 attended_at=SALVA if veio else None,
+            )
+        )
+        await self.sessao.flush()
+
+    async def no_file(
+        self,
+        menina: Girl,
+        grupo: Group,
+        guardado_em: datetime,
+        status: FileStatus = FileStatus.NEXT,
+        concluido_em: date | None = None,
+    ) -> None:
+        """Um item no filé dela. O item é um evento fora dos números do card."""
+        item = await self.acao(grupo, dias_atras(1000), presenca_salva=False)
+        self.sessao.add(
+            FileEntry(
+                girl_id=menina.id,
+                action_id=item.id,
+                status=status,
+                concluded_on=concluido_em,
+                created_at=guardado_em,
             )
         )
         await self.sessao.flush()
@@ -276,11 +304,134 @@ async def test_sem_ninguem_responde_zero_e_nao_erro(db_session: AsyncSession) ->
 
     corpo = numeros(await pedir(db_session, katia))
 
+    zero = {"participants": 0, "noShows": 0}
     assert corpo == {
         "participants": 0,
         "noShows": 0,
-        "returned": {"participants": 0, "noShows": 0},
+        "returned": zero,
+        "startedFile": zero,
+        "concludedFile": zero,
     }
+
+
+# --- "Começaram o filé" e "Concluíram algo do filé" (RF-F5.31, D-93) -------
+
+
+async def test_comecou_e_concluiu_o_file_depois_da_acao(
+    db_session: AsyncSession,
+) -> None:
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    dia = dias_atras(60)
+    acao = await cenario.acao(grupo, dia)
+
+    ana = await cenario.menina()  # guardou um item no dia da ação
+    await cenario.inscrita(ana, acao, True)
+    await cenario.no_file(ana, grupo, as_(15, dia))
+    bia = await cenario.menina()  # guardou antes, concluiu depois
+    await cenario.inscrita(bia, acao, True)
+    await cenario.no_file(
+        bia,
+        grupo,
+        as_(10, dia - timedelta(days=30)),
+        FileStatus.CONCLUDED,
+        concluido_em=dia + timedelta(days=20),
+    )
+    carol = await cenario.menina()  # só tem item de antes da ação
+    await cenario.inscrita(carol, acao, True)
+    await cenario.no_file(carol, grupo, as_(10, dia - timedelta(days=1)))
+    dani = await cenario.menina()  # não compareceu, mas guardou e concluiu
+    await cenario.inscrita(dani, acao, False)
+    await cenario.no_file(
+        dani,
+        grupo,
+        as_(10, dia + timedelta(days=5)),
+        FileStatus.CONCLUDED,
+        concluido_em=dia + timedelta(days=10),
+    )
+    await cenario.inscrita(await cenario.menina(), acao, False)
+
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert (corpo["participants"], corpo["noShows"]) == (3, 2)
+    assert corpo["startedFile"] == {"participants": 1, "noShows": 1}
+    assert corpo["concludedFile"] == {"participants": 1, "noShows": 1}
+
+
+async def test_file_conta_ate_o_questionario_de_3_meses(
+    db_session: AsyncSession,
+) -> None:
+    # A janela vai do dia em que a ação começou até o dia anterior ao
+    # questionário de 3 meses.
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    dia = dias_atras(200)
+    questionario = add_months(dia, 3)
+    acao = await cenario.acao(grupo, dia)
+
+    ana = await cenario.menina()  # no último dia da janela: conta
+    await cenario.inscrita(ana, acao, True)
+    await cenario.no_file(
+        ana,
+        grupo,
+        as_(23, questionario - timedelta(days=1)),
+        FileStatus.CONCLUDED,
+        concluido_em=questionario - timedelta(days=1),
+    )
+    bia = await cenario.menina()  # no dia do questionário: não conta mais
+    await cenario.inscrita(bia, acao, True)
+    await cenario.no_file(
+        bia,
+        grupo,
+        as_(0, questionario),
+        FileStatus.CONCLUDED,
+        concluido_em=questionario,
+    )
+
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert corpo["startedFile"] == {"participants": 1, "noShows": 0}
+    assert corpo["concludedFile"] == {"participants": 1, "noShows": 0}
+
+
+async def test_dia_do_item_e_o_de_maceio(db_session: AsyncSession) -> None:
+    # 23h30 em Maceió, na véspera da ação, já é o dia da ação em UTC.
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    dia = dias_atras(60)
+    acao = await cenario.acao(grupo, dia)
+    ana = await cenario.menina()
+    await cenario.inscrita(ana, acao, True)
+    await cenario.no_file(ana, grupo, as_(23, dia - timedelta(days=1), minuto=30))
+
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert corpo["startedFile"] == {"participants": 0, "noShows": 0}
+
+
+async def test_ver_depois_e_nao_e_pra_mim_nao_estao_no_file(
+    db_session: AsyncSession,
+) -> None:
+    # Começar o filé é guardar um item nele; o "Ver depois" e o "Não é pra
+    # mim" ficam de fora, como na pílula "Meu filé". A inscrição num evento,
+    # que o sistema guarda sozinho, conta.
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    dia = dias_atras(60)
+    acao = await cenario.acao(grupo, dia)
+    depois = as_(10, dia + timedelta(days=3))
+    for status in (FileStatus.LATER, FileStatus.DISMISSED, FileStatus.SIGNED_UP):
+        menina = await cenario.menina()
+        await cenario.inscrita(menina, acao, True)
+        await cenario.no_file(menina, grupo, depois, status)
+
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert corpo["startedFile"] == {"participants": 1, "noShows": 0}
 
 
 # --- Filtros (RF-F5.06, D-94) --------------------------------------------------
@@ -354,7 +505,13 @@ async def test_responde_so_totais(db_session: AsyncSession) -> None:
 
     response = await pedir(db_session, katia)
 
-    assert set(response.json()) == {"participants", "noShows", "returned"}
+    assert set(response.json()) == {
+        "participants",
+        "noShows",
+        "returned",
+        "startedFile",
+        "concludedFile",
+    }
     assert ana.name not in response.text
     assert ana.email not in response.text
 
@@ -365,3 +522,8 @@ def test_ultimos_meses_contam_para_tras_a_partir_de_hoje() -> None:
     assert period_start(Period.LAST_12_MONTHS, date(2026, 11, 22)) == date(2025, 11, 22)
     assert period_start(Period.LAST_6_MONTHS, date(2026, 3, 15)) == date(2025, 9, 15)
     assert period_start(Period.ALL, date(2026, 11, 22)) is None
+
+
+def test_janela_do_file_vai_ate_3_meses_depois() -> None:
+    assert add_months(date(2026, 11, 30), 3) == date(2027, 2, 28)
+    assert add_months(date(2026, 3, 10), 3) == date(2026, 6, 10)
