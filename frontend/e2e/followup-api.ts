@@ -42,6 +42,19 @@ export const OPTIONS: FollowupOptionsOut = {
     { code: "events", label: "Eventos e oficinas" },
     { code: "other", label: "Outra coisa" },
   ],
+  courseStatuses: [
+    { code: "tecnico", label: "Curso técnico" },
+    { code: "graduacao", label: "Graduação" },
+    { code: "trying", label: "Tô tentando entrar" },
+    { code: "not_yet", label: "Ainda não" },
+  ],
+  courses: [
+    { code: "sistemas_informacao", label: "Sistemas de Informação" },
+    { code: "ciencia_computacao", label: "Ciência da Computação" },
+    { code: "engenharia_computacao", label: "Engenharia de Computação" },
+    { code: "redes", label: "Redes de computadores" },
+    { code: "outro", label: "Outro curso" },
+  ],
 };
 
 type Options = {

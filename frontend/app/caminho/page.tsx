@@ -2,20 +2,25 @@
 
 // A18 · Como está seu caminho? Questionário de acompanhamento, igual para todas
 // (D-60), 3, 6, 12 e 18 meses depois da conta (RN-02). Atende RF-F4.13,
-// RF-F4.07, RF-F4.08 e RF-S2.15 (issue #293). A pergunta 3, do curso, vem na
-// #294.
+// RF-F4.07, RF-F4.08 e RF-S2.15 (issue #293), e a pergunta 3, do curso: RF-F6.02, RF-F6.03 (#294).
 
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/Button";
 import { Chip, ChipGroup } from "@/components/Chip";
+import { CourseQuestion } from "@/components/CourseQuestion";
 import { Loading } from "@/components/Loading";
 import { TextArea } from "@/components/TextArea";
+import { AGENDA_PATH } from "@/lib/agenda";
 import {
+  type CourseAnswer,
+  EMPTY_COURSE_ANSWER,
   type FollowupIn,
   type FollowupProblem,
   type FollowupScreen,
+  courseAnswerReady,
+  courseFields,
   loadFollowup,
   sendFollowup,
 } from "@/lib/caminho";
@@ -23,9 +28,8 @@ import { SIGNUP_PATHS } from "@/lib/signup";
 import { WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
-// Para onde ela vai depois de enviar ou de "Agora não". A agenda (A14, #295)
-// ainda não existe; até lá, o filé.
-const NEXT_PATH = "/file";
+// Para onde ela vai depois de enviar ou de "Agora não": a agenda (A14, #295).
+const NEXT_PATH = AGENDA_PATH;
 
 // "Nada disso ainda" não vem junto com as outras escolhas da pergunta 4.
 const NONE_YET: Activity = "none_yet";
@@ -47,8 +51,12 @@ export default function FollowupPage() {
   const [futureSelf, setFutureSelf] = useState<FutureSelf | null>(null);
   const [activities, setActivities] = useState<FollowupIn["activities"]>([]);
   const [helps, setHelps] = useState<FollowupIn["helps"]>([]);
+  const [course, setCourse] = useState<CourseAnswer>(EMPTY_COURSE_ANSWER);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  // O `saving` só muda na próxima renderização: um clique duplo muito rápido
+  // mandaria dois envios. A trava abaixo vale na hora.
+  const sending = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   function leaveFor(reason: FollowupProblem) {
@@ -87,7 +95,10 @@ export default function FollowupPage() {
   // cacheComponents) e, se ela voltar, mostra o mesmo estado. Sem isto, os
   // botões voltariam presos em "Enviando…" depois de um envio que deu certo.
   useLayoutEffect(() => {
-    return () => setSaving(false);
+    return () => {
+      sending.current = false;
+      setSaving(false);
+    };
   }, []);
 
   function retryLoad() {
@@ -114,13 +125,16 @@ export default function FollowupPage() {
   const answeredSomething =
     computingView !== null ||
     futureSelf !== null ||
+    course.courseStatus !== null ||
     activities.length > 0 ||
     helps.length > 0 ||
     comment.trim() !== "";
 
   async function handleSubmit() {
     const current = screen?.current;
-    if (!current || !answeredSomething) return;
+    if (!current || !answeredSomething || !courseAnswerReady(course)) return;
+    if (sending.current) return;
+    sending.current = true;
     setSaving(true);
     setError(null);
 
@@ -129,6 +143,7 @@ export default function FollowupPage() {
       round: current.round,
       computingView,
       futureSelf,
+      ...courseFields(course),
       activities,
       helps,
       comment: comment.trim() || null,
@@ -142,6 +157,7 @@ export default function FollowupPage() {
       return;
     }
 
+    sending.current = false;
     setSaving(false);
 
     if (result?.reason === "no_open_round") {
@@ -226,7 +242,7 @@ export default function FollowupPage() {
             ? `Como está seu caminho, ${current.firstName}?`
             : "Como está seu caminho?"}
         </h1>
-        <p className={styles.lead}>5 perguntas. Responder é opcional, tá?</p>
+        <p className={styles.lead}>6 perguntas. Responder é opcional, tá?</p>
         {/* D-61: os grupos só veem as respostas somadas, nunca as dela sozinhas. */}
         <p className={styles.notice}>
           Os grupos de que você participou só veem as respostas de todas juntas,
@@ -267,6 +283,14 @@ export default function FollowupPage() {
           ))}
         </ChipGroup>
 
+        <CourseQuestion
+          legend="Você entrou num curso da área? (técnico ou graduação em tecnologia)"
+          firstName={current.firstName}
+          options={options}
+          value={course}
+          onChange={setCourse}
+        />
+
         <ChipGroup label="Desde a última vez, você… (pode marcar mais de uma)">
           {options.activities.map((option) => (
             <Chip
@@ -304,7 +328,7 @@ export default function FollowupPage() {
         <div className={styles.actions}>
           <Button
             className={styles.fullWidth}
-            disabled={!answeredSomething}
+            disabled={!answeredSomething || !courseAnswerReady(course)}
             loading={saving}
             onClick={handleSubmit}
           >

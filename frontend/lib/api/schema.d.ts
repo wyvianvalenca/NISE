@@ -1026,11 +1026,26 @@ export interface components {
          */
         ComputingView: "want_to_follow" | "like_but_unsure" | "less_interested" | "not_for_me";
         /**
+         * CourseCode
+         * @description O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis.
+         * @enum {string}
+         */
+        CourseCode: "sistemas_informacao" | "ciencia_computacao" | "engenharia_computacao" | "redes" | "outro";
+        /**
          * CourseLevel
          * @description Nível do curso em que ela entrou ou foi aprovada (RF-F6.02).
          * @enum {string}
          */
         CourseLevel: "tecnico" | "graduacao";
+        /**
+         * CourseStatus
+         * @description Pergunta 3: "Você entrou num curso da área?" (RF-F6.02).
+         *
+         *     Os dois primeiros valores são os mesmos de `CourseLevel` (ingresso).
+         *     "Tô tentando entrar" não conta como ingresso (RN-22).
+         * @enum {string}
+         */
+        CourseStatus: "tecnico" | "graduacao" | "trying" | "not_yet";
         /**
          * CuratedType
          * @description Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.
@@ -1255,6 +1270,12 @@ export interface components {
              * @default []
              */
             helps: components["schemas"]["HelpWanted"][];
+            courseStatus?: components["schemas"]["CourseStatus"] | null;
+            course?: components["schemas"]["CourseCode"] | null;
+            /** Othercourse */
+            otherCourse?: string | null;
+            /** Institution */
+            institution?: string | null;
             /** Comment */
             comment?: string | null;
         };
@@ -1271,6 +1292,10 @@ export interface components {
             activities: components["schemas"]["OptionOut"][];
             /** Helps */
             helps: components["schemas"]["OptionOut"][];
+            /** Coursestatuses */
+            courseStatuses: components["schemas"]["OptionOut"][];
+            /** Courses */
+            courses: components["schemas"]["OptionOut"][];
         };
         /**
          * FollowupRound

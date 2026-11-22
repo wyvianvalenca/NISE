@@ -21,6 +21,53 @@ export type FollowupOptionsOut = components["schemas"]["FollowupOptionsOut"];
 /** As respostas (POST /api/followup/answers). Toda pergunta é opcional. */
 export type FollowupIn = components["schemas"]["FollowupIn"];
 
+export type CourseStatus = NonNullable<FollowupIn["courseStatus"]>;
+export type CourseCode = NonNullable<FollowupIn["course"]>;
+
+/** A resposta da pergunta do curso, como a tela guarda (A18 e, depois, o perfil). */
+export type CourseAnswer = {
+  courseStatus: CourseStatus | null;
+  course: CourseCode | null;
+  /** O nome que ela digita em "Outro curso". Texto livre (RN-11). */
+  otherCourse: string;
+  /** "Onde?", opcional. Texto livre (RN-11). */
+  institution: string;
+};
+
+export const EMPTY_COURSE_ANSWER: CourseAnswer = {
+  courseStatus: null,
+  course: null,
+  otherCourse: "",
+  institution: "",
+};
+
+/** "Curso técnico" e "Graduação" pedem o curso; "Tô tentando entrar" e "Ainda não", não. */
+export function enteredCourse(status: CourseStatus | null): boolean {
+  return status === "tecnico" || status === "graduacao";
+}
+
+/** Pode enviar: quem entrou escolheu o curso, e "Outro curso" tem o nome. */
+export function courseAnswerReady(answer: CourseAnswer): boolean {
+  if (!enteredCourse(answer.courseStatus)) return true;
+  if (answer.course === null) return false;
+  return answer.course !== "outro" || answer.otherCourse.trim() !== "";
+}
+
+/** Os campos do corpo do envio. Só vai o que vale para a escolha de agora. */
+export function courseFields(
+  answer: CourseAnswer,
+): Pick<FollowupIn, "courseStatus" | "course" | "otherCourse" | "institution"> {
+  if (!enteredCourse(answer.courseStatus)) {
+    return { courseStatus: answer.courseStatus };
+  }
+  return {
+    courseStatus: answer.courseStatus,
+    course: answer.course,
+    otherCourse: answer.course === "outro" ? answer.otherCourse.trim() : null,
+    institution: answer.institution.trim() || null,
+  };
+}
+
 export type FollowupProblem = SessionProblem | "terms_not_accepted" | "failed";
 
 /** O que a A18 precisa para abrir: a rodada de hoje (ou nenhuma) e as opções. */

@@ -3808,6 +3808,18 @@
         "title": "ComputingView",
         "description": "Pergunta 1: \"Hoje, computação pra você é…\"."
       },
+      "CourseCode": {
+        "type": "string",
+        "enum": [
+          "sistemas_informacao",
+          "ciencia_computacao",
+          "engenharia_computacao",
+          "redes",
+          "outro"
+        ],
+        "title": "CourseCode",
+        "description": "O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis."
+      },
       "CourseLevel": {
         "type": "string",
         "enum": [
@@ -3816,6 +3828,17 @@
         ],
         "title": "CourseLevel",
         "description": "Nível do curso em que ela entrou ou foi aprovada (RF-F6.02)."
+      },
+      "CourseStatus": {
+        "type": "string",
+        "enum": [
+          "tecnico",
+          "graduacao",
+          "trying",
+          "not_yet"
+        ],
+        "title": "CourseStatus",
+        "description": "Pergunta 3: \"Você entrou num curso da área?\" (RF-F6.02).\n\nOs dois primeiros valores são os mesmos de `CourseLevel` (ingresso).\n\"Tô tentando entrar\" não conta como ingresso (RN-22)."
       },
       "CuratedType": {
         "type": "string",
@@ -4292,6 +4315,50 @@
             "title": "Helps",
             "default": []
           },
+          "courseStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
           "comment": {
             "anyOf": [
               {
@@ -4342,6 +4409,20 @@
             },
             "type": "array",
             "title": "Helps"
+          },
+          "courseStatuses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Coursestatuses"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Courses"
           }
         },
         "type": "object",
@@ -4349,7 +4430,9 @@
           "computingViews",
           "futureSelves",
           "activities",
-          "helps"
+          "helps",
+          "courseStatuses",
+          "courses"
         ],
         "title": "FollowupOptionsOut",
         "description": "As opções das perguntas fechadas da A18, na ordem do Figma."
