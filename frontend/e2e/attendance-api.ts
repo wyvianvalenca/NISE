@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import {
   girls,
   multipart,
@@ -18,6 +18,8 @@ import {
 // together with mockActionPageApi: it answers its own actions and passes
 // everything else on. Later C3 stories add their routes here.
 
+const EVENT_DAY = "2026-10-24";
+
 /** 23 girls, the day of the event (24/10), nothing marked yet. */
 export const AWAITING_ACTION_ID = 6;
 /** Two girls, already concluded, no optional column. */
@@ -26,6 +28,10 @@ export const TWO_GIRLS_ATTENDED_ACTION_ID = 4;
 export const NOBODY_ACTION_ID = 8;
 /** The day of the event, 23 girls, 14 of them already in the saved marks (#340). */
 export const SAVED_ACTION_ID = 9;
+/** The day of the event, 6 registered girls (3 with an account), 2 with the event in the filé (#351). */
+export const SIX_GIRLS_ACTION_ID = 11;
+/** The same, but the day of the event has not come yet (#351). */
+export const BEFORE_THE_DAY_ACTION_ID = 12;
 /** Concluded: 23 girls, 17 present, 18 invites and 17 evaluations sent (#348). */
 export const ATTENDED_ACTION_ID = 10;
 
@@ -41,7 +47,16 @@ type Stored = {
   concludedOn: string | null;
   invitesSent: number;
   evaluationsSent: number;
+  /** The filé of the girls (by registration id) that has this event: only "Já me inscrevi" here. */
+  file: Map<number, "signed_up" | "concluded">;
 };
+
+/**
+ * The 6 registered girls of the main path (#351), in order of name: three with an
+ * account (ids 1 to 3) and three without (ids 6 to 8). The first two and the
+ * fourth have the event in the filé as "Já me inscrevi".
+ */
+export const sixRegistered = () => girls(true).filter((row) => [1, 2, 3, 6, 7, 8].includes(row.id));
 
 /** The girls that already have an account (the first five): they get no invite. */
 const WITH_ACCOUNT = new Set([1, 2, 3, 4, 5]);
@@ -49,6 +64,7 @@ const WITH_ACCOUNT = new Set([1, 2, 3, 4, 5]);
 function seed(): Record<number, Stored> {
   const empty = { saved: new Set<number>(), present: new Set<number>(), concludedOn: null };
   const extras = girls(true);
+  const sixGirls = sixRegistered();
   return {
     [AWAITING_ACTION_ID]: {
       ...empty,
@@ -58,6 +74,7 @@ function seed(): Record<number, Stored> {
       registrations: extras,
       invitesSent: 0,
       evaluationsSent: 0,
+      file: new Map(),
     },
     [SAVED_ACTION_ID]: {
       ...empty,
@@ -68,6 +85,7 @@ function seed(): Record<number, Stored> {
       saved: new Set(extras.slice(0, 14).map((row) => row.id)),
       invitesSent: 0,
       evaluationsSent: 0,
+      file: new Map(),
     },
     [ATTENDED_ACTION_ID]: {
       ...empty,
@@ -79,6 +97,32 @@ function seed(): Record<number, Stored> {
       concludedOn: "2026-10-24",
       invitesSent: 18,
       evaluationsSent: 17,
+      file: new Map(),
+    },
+    [SIX_GIRLS_ACTION_ID]: {
+      ...empty,
+      id: SIX_GIRLS_ACTION_ID,
+      name: "Introdução à robótica",
+      today: "2026-10-24",
+      registrations: sixGirls,
+      invitesSent: 0,
+      evaluationsSent: 0,
+      // The first two (with an account) and the fourth (without) tapped "Já me inscrevi".
+      file: new Map([
+        [sixGirls[0].id, "signed_up"],
+        [sixGirls[1].id, "signed_up"],
+        [sixGirls[3].id, "signed_up"],
+      ]),
+    },
+    [BEFORE_THE_DAY_ACTION_ID]: {
+      ...empty,
+      id: BEFORE_THE_DAY_ACTION_ID,
+      name: "Introdução à robótica",
+      today: "2026-10-20",
+      registrations: sixGirls,
+      invitesSent: 0,
+      evaluationsSent: 0,
+      file: new Map(),
     },
     [NOBODY_ACTION_ID]: {
       ...empty,
@@ -88,6 +132,7 @@ function seed(): Record<number, Stored> {
       registrations: [],
       invitesSent: 0,
       evaluationsSent: 0,
+      file: new Map(),
     },
     [TWO_GIRLS_ATTENDED_ACTION_ID]: {
       ...empty,
@@ -100,6 +145,7 @@ function seed(): Record<number, Stored> {
       concludedOn: "2026-10-24",
       invitesSent: 2,
       evaluationsSent: 1,
+      file: new Map(),
     },
   };
 }
@@ -112,6 +158,8 @@ type Options = {
    * the ones above. For tests whose own mock decides the id (status and header).
    */
   awaiting?: number[];
+  /** The coordinator of another group: every action of this mock is a 404 for her. */
+  otherGroup?: boolean;
 };
 
 export type AttendanceApi = {
@@ -139,6 +187,10 @@ export type AttendanceApi = {
   imported: string[][];
   /** While true the import POST answers 500. */
   failImportList: boolean;
+  /** Every e-mail the back-end would send (the stand-in of the e-mail), in order, once per girl and kind. */
+  mails: { to: string; kind: "invite" | "evaluation" }[];
+  /** Where the event is in the filé of a registered girl now: "signed_up", "concluded" or "out". */
+  fileOf: (actionId: number, registrationId: number) => "signed_up" | "concluded" | "out";
   /** The registrations in the saved marks now, in the back-end's state (#340). */
   savedNow: (id: number) => number[];
 };
@@ -197,6 +249,11 @@ function attendancePage(stored: Stored) {
 /** The action page of the back-end (ActionPageOut) for an action after its day. */
 function actionPage(stored: Stored) {
   const concluded = stored.concludedOn !== null;
+  const status = concluded
+    ? "concluded"
+    : stored.today < EVENT_DAY
+      ? "awaiting_event"
+      : "awaiting_attendance";
   return {
     id: stored.id,
     name: stored.name,
@@ -209,7 +266,7 @@ function actionPage(stored: Stored) {
     city_name: stored.online ? null : "Maceió",
     visibility: stored.online ? "closed" : "open",
     registration_url: null,
-    status: concluded ? "concluded" : "awaiting_attendance",
+    status,
     registrations_open: false,
     registrations_closed_by_coordinator: false,
     can_reopen: false,
@@ -225,7 +282,7 @@ export async function mockAttendanceApi(
   options: Options = {},
 ): Promise<AttendanceApi> {
   const { delayMs = 0 } = options;
-  const data = seed();
+  const data: Record<number, Stored> = options.otherGroup ? {} : seed();
   for (const id of options.awaiting ?? []) {
     data[id] = { ...seed()[AWAITING_ACTION_ID], id };
   }
@@ -241,15 +298,36 @@ export async function mockAttendanceApi(
     failWalkIn: false,
     registeredNow: (id) => (data[id]?.registrations ?? []).map((row) => row.name),
     imported: [],
+    mails: [],
+    fileOf: (id, girl) => data[id]?.file.get(girl) ?? "out",
     failImportList: false,
     savedNow: (id) => [...(data[id]?.saved ?? [])],
   };
+
+  /** Before the day of the event the back-end refuses every write (RN-37, D-80). */
+  const tooEarly = (stored: Stored) => stored.today < EVENT_DAY;
+  const refuseTooEarly = (route: Route) =>
+    route.fulfill({ status: 409, json: { error: "too_early" } });
+
+  /** The stand-in of the e-mail: one invite and one evaluation at most per girl. */
+  function send(to: string, kind: "invite" | "evaluation") {
+    if (!api.mails.some((mail) => mail.to === to && mail.kind === kind)) api.mails.push({ to, kind });
+  }
 
   await page.route(
     (url) => ACTION_URL.test(url.pathname),
     async (route) => {
       const stored = data[Number(ACTION_URL.exec(new URL(route.request().url()).pathname)![1])];
-      if (!stored || route.request().method() !== "GET") return route.fallback();
+      if (!stored) return route.fallback();
+      if (route.request().method() === "DELETE") {
+        // Once the attendance is concluded the action cannot be deleted (RF-F3.05).
+        if (stored.concludedOn === null) return route.fallback();
+        return route.fulfill({
+          status: 409,
+          json: { detail: "A presença já foi registrada, então a ação não pode ser excluída" },
+        });
+      }
+      if (route.request().method() !== "GET") return route.fallback();
       await wait(delayMs);
       return route.fulfill({ json: actionPage(stored) });
     },
@@ -288,6 +366,7 @@ export async function mockAttendanceApi(
       const stored = data[Number(GIRLS_URL.exec(new URL(route.request().url()).pathname)![1])];
       await wait(delayMs);
       if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (tooEarly(stored)) return refuseTooEarly(route);
       if (api.failWalkIn) return route.fulfill({ status: 500, body: "" });
       const body = route.request().postDataJSON() as Record<string, string | null>;
       api.walkIns.push(body);
@@ -317,7 +396,12 @@ export async function mockAttendanceApi(
       if (stored.concludedOn !== null && !stored.present.has(row.id)) {
         stored.present.add(row.id);
         stored.evaluationsSent += 1;
-        if (!already) stored.invitesSent += 1;
+        send(row.email, "evaluation");
+        if (!already) {
+          stored.invitesSent += 1;
+          send(row.email, "invite");
+        }
+        stored.file.set(row.id, "concluded");
       }
       return route.fulfill({
         json: {
@@ -341,6 +425,7 @@ export async function mockAttendanceApi(
       const stored = data[Number(found[1])];
       await wait(delayMs);
       if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (tooEarly(stored)) return refuseTooEarly(route);
       if (api.failMarkLater) return route.fulfill({ status: 500, body: "" });
       if (stored.concludedOn === null) {
         return route.fulfill({ status: 409, json: { error: "not_concluded" } });
@@ -350,6 +435,8 @@ export async function mockAttendanceApi(
       if (!stored.present.has(id)) {
         stored.present.add(id);
         stored.evaluationsSent += 1;
+        send(stored.registrations.find((row) => row.id === id)!.email, "evaluation");
+        stored.file.set(id, "concluded");
       }
       return route.fulfill({ json: attendancePage(stored) });
     },
@@ -363,6 +450,7 @@ export async function mockAttendanceApi(
       const stored = data[Number(CONCLUDE_URL.exec(new URL(route.request().url()).pathname)![1])];
       await wait(delayMs);
       if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (tooEarly(stored)) return refuseTooEarly(route);
       if (api.failConclude) return route.fulfill({ status: 500, body: "" });
       const ids = (route.request().postDataJSON() as { present_ids: number[] }).present_ids;
       api.concluded.push(ids);
@@ -372,6 +460,16 @@ export async function mockAttendanceApi(
         stored.concludedOn = stored.today;
         stored.invitesSent = stored.registrations.filter((row) => !WITH_ACCOUNT.has(row.id)).length;
         stored.evaluationsSent = ids.length;
+        // The e-mails (D-81): an invite to every girl without an account, an evaluation to who came.
+        for (const row of stored.registrations) {
+          if (!WITH_ACCOUNT.has(row.id)) send(row.email, "invite");
+          if (ids.includes(row.id)) send(row.email, "evaluation");
+        }
+        // The filé (#337): who came has the event concluded; who did not leaves it.
+        for (const row of stored.registrations) {
+          if (ids.includes(row.id)) stored.file.set(row.id, "concluded");
+          else stored.file.delete(row.id);
+        }
       }
       return route.fulfill({ json: attendancePage(stored) });
     },
@@ -385,6 +483,7 @@ export async function mockAttendanceApi(
       const stored = data[Number(MARKS_URL.exec(new URL(route.request().url()).pathname)![1])];
       await wait(delayMs);
       if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (tooEarly(stored)) return refuseTooEarly(route);
       if (api.failSave) return route.fulfill({ status: 500, body: "" });
       if (stored.concludedOn !== null) {
         return route.fulfill({ status: 409, json: { error: "already_concluded" } });
@@ -431,6 +530,7 @@ export async function mockAttendanceApi(
       const stored = data[Number(IMPORT_LIST_URL.exec(new URL(route.request().url()).pathname)![1])];
       await wait(delayMs);
       if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (tooEarly(stored)) return refuseTooEarly(route);
       if (api.failImportList) return route.fulfill({ status: 500, body: "" });
       if (stored.concludedOn !== null) {
         return route.fulfill({ status: 409, json: { error: "already_concluded" } });
@@ -462,6 +562,7 @@ export async function mockAttendanceApi(
       if (!stored) {
         return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
       }
+      if (tooEarly(stored)) return refuseTooEarly(route);
       if (api.failAttendance) return route.fulfill({ status: 500, body: "" });
       return route.fulfill({ json: attendancePage(stored) });
     },
