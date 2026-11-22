@@ -3,8 +3,9 @@ import type { CurrentFollowupOut, FollowupOptionsOut } from "../lib/caminho";
 import { type Failure, fail } from "./terms-api";
 
 // Simula as rotas do questionário de acompanhamento do back (#293) para os
-// testes não dependerem do FastAPI. Os tipos são os gerados do OpenAPI: se o
-// contrato mudar, este arquivo deixa de compilar. Dados fictícios.
+// testes não dependerem do FastAPI. Os tipos vêm de lib/api/schema.d.ts (gerado
+// por `pnpm api:types`): se o contrato mudar, este arquivo deixa de
+// compilar. Dados fictícios.
 
 /** A rodada de 3 meses de uma menina fictícia, aberta até 14/05/2026. */
 export const OPEN_ROUND: CurrentFollowupOut = {

@@ -646,6 +646,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/followup/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Followup */
+        get: operations["current_followup_api_followup_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Followup Options */
+        get: operations["followup_options_api_followup_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Followup */
+        post: operations["answer_followup_api_followup_answers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/enrollments": {
         parameters: {
             query?: never;
@@ -862,6 +913,12 @@ export interface components {
          */
         ActionVisibility: "open" | "closed";
         /**
+         * Activity
+         * @description Pergunta 4: "Desde a última vez, você…" (várias escolhas).
+         * @enum {string}
+         */
+        Activity: "online_course" | "event" | "self_study" | "project" | "none_yet";
+        /**
          * ActivityOut
          * @description O detalhe de uma atividade do filé (A06·4a, RF-F10.08). O front lê em camelCase.
          *
@@ -963,6 +1020,12 @@ export interface components {
             name: string;
         };
         /**
+         * ComputingView
+         * @description Pergunta 1: "Hoje, computação pra você é…".
+         * @enum {string}
+         */
+        ComputingView: "want_to_follow" | "like_but_unsure" | "less_interested" | "not_for_me";
+        /**
          * CourseLevel
          * @description Nível do curso em que ela entrou ou foi aprovada (RF-F6.02).
          * @enum {string}
@@ -976,6 +1039,22 @@ export interface components {
          * @enum {string}
          */
         CuratedType: "video" | "quiz" | "article" | "tutorial" | "mini_project" | "course" | "personal_project" | "community" | "playlist" | "game" | "olympiad" | "club" | "cohort_course" | "hackathon" | "internship" | "other";
+        /**
+         * CurrentFollowupOut
+         * @description A rodada aberta hoje para a menina da sessão (A18, #293).
+         */
+        CurrentFollowupOut: {
+            round: components["schemas"]["FollowupRound"];
+            /**
+             * Lastday
+             * Format: date
+             */
+            lastDay: string;
+            /** Firstname */
+            firstName: string;
+            /** Answered */
+            answered: boolean;
+        };
         /**
          * DiscoverOut
          * @description A tela Descobrir (A06·1, #86). O front lê em camelCase (DiscoverData).
@@ -1155,6 +1234,51 @@ export interface components {
             section: components["schemas"]["FileSection"];
         };
         /**
+         * FollowupIn
+         * @description As respostas da A18 (RF-F4.13, RF-F4.08).
+         *
+         *     Toda pergunta é opcional, mas pelo menos uma precisa de resposta: sem
+         *     nenhuma, a tela não deixa enviar, e "Agora não" não chama o back.
+         *     Códigos fora das listas são recusados, e campos desconhecidos também.
+         */
+        FollowupIn: {
+            round: components["schemas"]["FollowupRound"];
+            computingView?: components["schemas"]["ComputingView"] | null;
+            futureSelf?: components["schemas"]["FutureSelf"] | null;
+            /**
+             * Activities
+             * @default []
+             */
+            activities: components["schemas"]["Activity"][];
+            /**
+             * Helps
+             * @default []
+             */
+            helps: components["schemas"]["HelpWanted"][];
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * FollowupOptionsOut
+         * @description As opções das perguntas fechadas da A18, na ordem do Figma.
+         */
+        FollowupOptionsOut: {
+            /** Computingviews */
+            computingViews: components["schemas"]["OptionOut"][];
+            /** Futureselves */
+            futureSelves: components["schemas"]["OptionOut"][];
+            /** Activities */
+            activities: components["schemas"]["OptionOut"][];
+            /** Helps */
+            helps: components["schemas"]["OptionOut"][];
+        };
+        /**
+         * FollowupRound
+         * @description A rodada do questionário: quantos meses depois de criar a conta.
+         * @enum {string}
+         */
+        FollowupRound: "three_months" | "six_months" | "twelve_months" | "eighteen_months";
+        /**
          * ForgotPasswordIn
          * @description O e-mail da conta que esqueceu a senha (A16, #331).
          */
@@ -1162,6 +1286,12 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * FutureSelf
+         * @description Pergunta 2: "Daqui a uns anos, você se vê estudando ou trabalhando…".
+         * @enum {string}
+         */
+        FutureSelf: "sure" | "maybe" | "probably_not";
         /**
          * GoogleSignupCompleteIn
          * @description O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).
@@ -1200,6 +1330,12 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * HelpWanted
+         * @description Pergunta 5: "O que te ajudaria agora?" (várias escolhas).
+         * @enum {string}
+         */
+        HelpWanted: "mentoring" | "online_courses" | "internship" | "events" | "other";
         /**
          * HomeOut
          * @description A primeira tela de quem já entrou, para a A01 mandá-la adiante.
@@ -3271,6 +3407,139 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ToAnswerOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_followup_api_followup_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentFollowupOut"] | null;
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    followup_options_api_followup_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowupOptionsOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_followup_api_followup_answers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nenhuma rodada aberta, ou a rodada já fechou: {"error": "no_open_round"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ela já respondeu essa rodada: {"error": "already_answered"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

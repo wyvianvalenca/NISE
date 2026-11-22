@@ -2739,6 +2739,230 @@
         }
       }
     },
+    "/api/followup/current": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Current Followup",
+        "operationId": "current_followup_api_followup_current_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CurrentFollowupOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Current Followup Api Followup Current Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/options": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Followup Options",
+        "operationId": "followup_options_api_followup_options_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupOptionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/answers": {
+      "post": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Answer Followup",
+        "operationId": "answer_followup_api_followup_answers_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "Nenhuma rodada aberta, ou a rodada já fechou: {\"error\": \"no_open_round\"}"
+          },
+          "409": {
+            "description": "Ela já respondeu essa rodada: {\"error\": \"already_answered\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/coordinator/enrollments": {
       "get": {
         "tags": [
@@ -3318,6 +3542,18 @@
         ],
         "title": "ActionVisibility"
       },
+      "Activity": {
+        "type": "string",
+        "enum": [
+          "online_course",
+          "event",
+          "self_study",
+          "project",
+          "none_yet"
+        ],
+        "title": "Activity",
+        "description": "Pergunta 4: \"Desde a última vez, você…\" (várias escolhas)."
+      },
       "ActivityOut": {
         "properties": {
           "id": {
@@ -3561,6 +3797,17 @@
         ],
         "title": "CityOut"
       },
+      "ComputingView": {
+        "type": "string",
+        "enum": [
+          "want_to_follow",
+          "like_but_unsure",
+          "less_interested",
+          "not_for_me"
+        ],
+        "title": "ComputingView",
+        "description": "Pergunta 1: \"Hoje, computação pra você é…\"."
+      },
       "CourseLevel": {
         "type": "string",
         "enum": [
@@ -3592,6 +3839,35 @@
         ],
         "title": "CuratedType",
         "description": "Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.\n\nOs nomes que aparecem na tela ficam em `CURATED_TYPE_LABELS` (utils.py)."
+      },
+      "CurrentFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "answered": {
+            "type": "boolean",
+            "title": "Answered"
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay",
+          "firstName",
+          "answered"
+        ],
+        "title": "CurrentFollowupOut",
+        "description": "A rodada aberta hoje para a menina da sessão (A18, #293)."
       },
       "DiscoverOut": {
         "properties": {
@@ -3973,6 +4249,122 @@
         "title": "FileSquareOut",
         "description": "Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma.\n\nO id e o título são os do item: o título aparece no balãozinho do quadradinho, e o\nid deixa o front reconhecer os quadradinhos novos para animá-los."
       },
+      "FollowupIn": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "computingView": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComputingView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "futureSelf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FutureSelf"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/Activity"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Activities",
+            "default": []
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/HelpWanted"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Helps",
+            "default": []
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "round"
+        ],
+        "title": "FollowupIn",
+        "description": "As respostas da A18 (RF-F4.13, RF-F4.08).\n\nToda pergunta é opcional, mas pelo menos uma precisa de resposta: sem\nnenhuma, a tela não deixa enviar, e \"Agora não\" não chama o back.\nCódigos fora das listas são recusados, e campos desconhecidos também."
+      },
+      "FollowupOptionsOut": {
+        "properties": {
+          "computingViews": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Computingviews"
+          },
+          "futureSelves": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Futureselves"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Activities"
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Helps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computingViews",
+          "futureSelves",
+          "activities",
+          "helps"
+        ],
+        "title": "FollowupOptionsOut",
+        "description": "As opções das perguntas fechadas da A18, na ordem do Figma."
+      },
+      "FollowupRound": {
+        "type": "string",
+        "enum": [
+          "three_months",
+          "six_months",
+          "twelve_months",
+          "eighteen_months"
+        ],
+        "title": "FollowupRound",
+        "description": "A rodada do questionário: quantos meses depois de criar a conta."
+      },
       "ForgotPasswordIn": {
         "properties": {
           "email": {
@@ -3987,6 +4379,16 @@
         ],
         "title": "ForgotPasswordIn",
         "description": "O e-mail da conta que esqueceu a senha (A16, #331)."
+      },
+      "FutureSelf": {
+        "type": "string",
+        "enum": [
+          "sure",
+          "maybe",
+          "probably_not"
+        ],
+        "title": "FutureSelf",
+        "description": "Pergunta 2: \"Daqui a uns anos, você se vê estudando ou trabalhando…\"."
       },
       "GoogleSignupCompleteIn": {
         "properties": {
@@ -4045,6 +4447,18 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HelpWanted": {
+        "type": "string",
+        "enum": [
+          "mentoring",
+          "online_courses",
+          "internship",
+          "events",
+          "other"
+        ],
+        "title": "HelpWanted",
+        "description": "Pergunta 5: \"O que te ajudaria agora?\" (várias escolhas)."
       },
       "HomeOut": {
         "properties": {

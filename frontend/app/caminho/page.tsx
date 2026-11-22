@@ -28,7 +28,14 @@ import styles from "./page.module.css";
 const NEXT_PATH = "/file";
 
 // "Nada disso ainda" não vem junto com as outras escolhas da pergunta 4.
-const NONE_YET = "none_yet";
+const NONE_YET: Activity = "none_yet";
+
+// Os códigos das opções chegam como string (OptionOut.code), mas vêm do mesmo
+// enum do servidor; por isso o `as` nos pontos em que eles entram nas escolhas.
+type ComputingView = NonNullable<FollowupIn["computingView"]>;
+type FutureSelf = NonNullable<FollowupIn["futureSelf"]>;
+type Activity = FollowupIn["activities"][number];
+type Help = FollowupIn["helps"][number];
 
 export default function FollowupPage() {
   const router = useRouter();
@@ -36,10 +43,10 @@ export default function FollowupPage() {
   const [loadFailed, setLoadFailed] = useState(false);
   // Muda a cada nova busca, para o efeito abaixo rodar de novo.
   const [attempt, setAttempt] = useState(0);
-  const [computingView, setComputingView] = useState<string | null>(null);
-  const [futureSelf, setFutureSelf] = useState<string | null>(null);
-  const [activities, setActivities] = useState<string[]>([]);
-  const [helps, setHelps] = useState<string[]>([]);
+  const [computingView, setComputingView] = useState<ComputingView | null>(null);
+  const [futureSelf, setFutureSelf] = useState<FutureSelf | null>(null);
+  const [activities, setActivities] = useState<FollowupIn["activities"]>([]);
+  const [helps, setHelps] = useState<FollowupIn["helps"]>([]);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +95,7 @@ export default function FollowupPage() {
     setAttempt((current) => current + 1);
   }
 
-  function toggleActivity(code: string) {
+  function toggleActivity(code: Activity) {
     setActivities((chosen) => {
       if (chosen.includes(code)) return chosen.filter((c) => c !== code);
       if (code === NONE_YET) return [NONE_YET];
@@ -96,7 +103,7 @@ export default function FollowupPage() {
     });
   }
 
-  function toggleHelp(code: string) {
+  function toggleHelp(code: Help) {
     setHelps((chosen) =>
       chosen.includes(code)
         ? chosen.filter((c) => c !== code)
@@ -234,7 +241,7 @@ export default function FollowupPage() {
               selected={computingView === option.code}
               onClick={() =>
                 setComputingView((chosen) =>
-                  chosen === option.code ? null : option.code,
+                  chosen === option.code ? null : (option.code as ComputingView),
                 )
               }
             >
@@ -251,7 +258,7 @@ export default function FollowupPage() {
               selected={futureSelf === option.code}
               onClick={() =>
                 setFutureSelf((chosen) =>
-                  chosen === option.code ? null : option.code,
+                  chosen === option.code ? null : (option.code as FutureSelf),
                 )
               }
             >
@@ -265,8 +272,8 @@ export default function FollowupPage() {
             <Chip
               key={option.code}
               size="lg"
-              selected={activities.includes(option.code)}
-              onClick={() => toggleActivity(option.code)}
+              selected={activities.includes(option.code as Activity)}
+              onClick={() => toggleActivity(option.code as Activity)}
             >
               {option.label}
             </Chip>
@@ -278,8 +285,8 @@ export default function FollowupPage() {
             <Chip
               key={option.code}
               size="lg"
-              selected={helps.includes(option.code)}
-              onClick={() => toggleHelp(option.code)}
+              selected={helps.includes(option.code as Help)}
+              onClick={() => toggleHelp(option.code as Help)}
             >
               {option.label}
             </Chip>

@@ -1,51 +1,25 @@
 /**
  * Questionário de acompanhamento "Como está seu caminho?" (A18, M5, #293).
  *
- * Chama as rotas /api/followup/ do back. Os tipos abaixo são escritos à mão,
- * iguais aos do OpenAPI do back (/docs no FastAPI). Este arquivo também traduz
+ * Chama as rotas /api/followup/ do back. Os tipos vêm do OpenAPI do FastAPI,
+ * gerados em lib/api/schema.d.ts por `pnpm api:types`. Este arquivo também traduz
  * as respostas para o que a tela precisa decidir: mostrar o formulário, um
  * aviso, ou mandar para outra página.
  */
 
+import type { components } from "./api/schema";
 import type { SessionProblem } from "@/lib/signup-api";
 
-/** As rodadas: 3, 6, 12 e 18 meses depois da criação da conta. */
-export type FollowupRound =
-  | "three_months"
-  | "six_months"
-  | "twelve_months"
-  | "eighteen_months";
+export type FollowupRound = components["schemas"]["FollowupRound"];
 
 /** A rodada aberta hoje (GET /api/followup/current); `null` se não há. */
-export type CurrentFollowupOut = {
-  round: FollowupRound;
-  /** Último dia em que dá para responder, "AAAA-MM-DD". */
-  lastDay: string;
-  firstName: string;
-  /** Ela já respondeu esta rodada. */
-  answered: boolean;
-};
-
-/** Uma opção de pergunta: o código vai para o back, o rótulo para a tela. */
-export type OptionOut = { code: string; label: string };
+export type CurrentFollowupOut = components["schemas"]["CurrentFollowupOut"];
 
 /** As opções das perguntas, na ordem do Figma (GET /api/followup/options). */
-export type FollowupOptionsOut = {
-  computingViews: OptionOut[];
-  futureSelves: OptionOut[];
-  activities: OptionOut[];
-  helps: OptionOut[];
-};
+export type FollowupOptionsOut = components["schemas"]["FollowupOptionsOut"];
 
 /** As respostas (POST /api/followup/answers). Toda pergunta é opcional. */
-export type FollowupIn = {
-  round: FollowupRound;
-  computingView?: string | null;
-  futureSelf?: string | null;
-  activities?: string[];
-  helps?: string[];
-  comment?: string | null;
-};
+export type FollowupIn = components["schemas"]["FollowupIn"];
 
 export type FollowupProblem = SessionProblem | "terms_not_accepted" | "failed";
 
