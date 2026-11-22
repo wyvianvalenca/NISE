@@ -1,7 +1,7 @@
 """cria respostas do acompanhamento
 
 Revision ID: 66dedafe4272
-Revises: b4723f18123f
+Revises: 888e73d5d48a
 Create Date: 2026-11-20 10:39:23.239861
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "66dedafe4272"
-down_revision: str | Sequence[str] | None = "b4723f18123f"
+down_revision: str | Sequence[str] | None = "888e73d5d48a"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
