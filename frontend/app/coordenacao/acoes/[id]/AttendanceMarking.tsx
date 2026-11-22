@@ -25,6 +25,8 @@ type MarkingProps = {
   onBack: () => void;
   /** "Veio sem inscrição? Adicionar participante" (#346). */
   onAddWalkIn: () => void;
+  /** "Importar lista de presença" (#349). */
+  onImport: () => void;
   /** "Concluir presença" (#348): the page asks first. */
   onConclude: () => void;
   /** "Salvar e continuar depois" (#340). */
@@ -45,7 +47,7 @@ function details(girl: AttendanceGirl, columns: AttendancePage["columns"]): stri
  * unmarking are free until the attendance is concluded (D-80). It only changes
  * this page: nothing is sent and the filé of the girls does not change (D-81).
  */
-export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onAddWalkIn, onConclude, onSave, saving, saveState }: MarkingProps) {
+export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onAddWalkIn, onImport, onConclude, onSave, saving, saveState }: MarkingProps) {
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
@@ -77,10 +79,16 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
         <h2 id="marking-title" className={styles.title}>
           Marcar presença
         </h2>
-        <button type="button" className={styles.back} onClick={onBack}>
-          <Icon name="left" />
-          Voltar
-        </button>
+        <div className={styles.links}>
+          <button type="button" className={styles.back} onClick={onImport}>
+            <Icon name="upload" />
+            Importar lista de presença
+          </button>
+          <button type="button" className={styles.back} onClick={onBack}>
+            <Icon name="left" />
+            Voltar
+          </button>
+        </div>
       </div>
       <p className={styles.help}>Marque quem esteve na ação. Dá pra desmarcar até concluir.</p>
 

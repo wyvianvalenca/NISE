@@ -179,3 +179,57 @@ export function concludeAttendance(id: number, presentIds: number[]) {
 export function markPresentLater(id: number, participationId: number) {
   return send(`/api/actions/${id}/attendance/present/${participationId}`, "POST");
 }
+
+/** Who the imported list marks (#349). Nothing was saved: the page marks them. */
+export type ImportedList = {
+  /** The registrations whose e-mail is in the list, once each. */
+  presentIds: number[];
+  lineCount: number;
+  /** Lines that match no registration. Only the number: never which ones (RN-27). */
+  notFoundCount: number;
+};
+
+/** What the route may refuse: the moment is wrong (409), or the list has no e-mail (422). */
+export type ImportedListError = "too_early" | "already_concluded" | "empty_file" | "failed";
+
+/**
+ * "Importar lista de presença" (#349, RF-F3.02): sends the e-mail of each line of
+ * the spreadsheet, which the drawer read, and answers who of the action they
+ * mark. It only reads: the marks are the page's until she saves or concludes.
+ */
+export async function matchImportedList(
+  id: number,
+  emails: string[],
+): Promise<{ ok: true; data: ImportedList } | { ok: false; error: ImportedListError }> {
+  try {
+    const response = await fetch(`/api/actions/${id}/attendance/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails }),
+    });
+    if (response.ok) {
+      const json = (await response.json()) as {
+        present_ids: number[];
+        line_count: number;
+        not_found_count: number;
+      };
+      return {
+        ok: true,
+        data: {
+          presentIds: json.present_ids,
+          lineCount: json.line_count,
+          notFoundCount: json.not_found_count,
+        },
+      };
+    }
+    if (response.status === 409 || response.status === 422) {
+      const json = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (json?.error === "too_early" || json?.error === "already_concluded" || json?.error === "empty_file") {
+        return { ok: false, error: json.error };
+      }
+    }
+  } catch {
+    // The network failed: same answer as any other failure.
+  }
+  return { ok: false, error: "failed" };
+}

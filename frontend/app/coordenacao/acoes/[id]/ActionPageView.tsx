@@ -14,6 +14,7 @@ import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
 import { concludeAttendance, getAttendance, markPresentLater, saveMarks, type AttendancePage } from "@/lib/coord-attendance";
 import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
+import { AttendanceImportDrawer } from "./AttendanceImportDrawer";
 import { AfterActionCard } from "./AfterActionCard";
 import { AfterAttendanceCard } from "./AfterAttendanceCard";
 import { AttendanceAside } from "./AttendanceAside";
@@ -121,6 +122,8 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   const [addingWalkIn, setAddingWalkIn] = useState(false);
   /** The list to mark who came is open, with the registrations marked so far (#339). */
   const [marking, setMarking] = useState(false);
+  /** The drawer "Importar lista de presença" is open (#349). */
+  const [importingList, setImportingList] = useState(false);
   const [marks, setMarks] = useState<ReadonlySet<number>>(new Set());
   const [saving, setSaving] = useState(false);
   /** The marks as they are now, for a save that answers after she marked again. */
@@ -289,6 +292,7 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   }}
                   onBack={() => setMarking(false)}
                   onAddWalkIn={() => setAddingWalkIn(true)}
+                  onImport={() => setImportingList(true)}
                   onConclude={() => {
                     setConcludeError(null);
                     setConcluding(true);
@@ -334,6 +338,20 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                 onImported={() => {
                   setImporting(false);
                   reload();
+                }}
+              />
+            )}
+            {importingList && attendance && action.status === "awaiting_attendance" && (
+              <AttendanceImportDrawer
+                action={action}
+                registeredCount={attendance.registeredCount}
+                onClose={() => setImportingList(false)}
+                onConcluded={reload}
+                onMark={(ids) => {
+                  // Only marks the page, like a click: it stays if she saves or concludes (D-81).
+                  setSaveState(null);
+                  setMarks((current) => toggled(current, ids, true));
+                  setImportingList(false);
                 }}
               />
             )}

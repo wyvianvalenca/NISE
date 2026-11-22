@@ -1,5 +1,14 @@
 import type { Page } from "@playwright/test";
-import { girls, type MockRegistration } from "./action-page-api";
+import {
+  girls,
+  multipart,
+  readJson,
+  reviewJson,
+  reviewSheet,
+  sheetOf,
+  spreadsheetRefusal,
+  type MockRegistration,
+} from "./action-page-api";
 
 // Simulates the attendance routes of the back-end (C3, #135), so the tests of
 // the action page after the day of the event do not depend on FastAPI:
@@ -126,6 +135,10 @@ export type AttendanceApi = {
   markedLater: number[];
   /** While true that POST answers 500. */
   failMarkLater: boolean;
+  /** Bodies (the e-mails of the lines) of the POST that matches the imported list (#349), in order. */
+  imported: string[][];
+  /** While true the import POST answers 500. */
+  failImportList: boolean;
   /** The registrations in the saved marks now, in the back-end's state (#340). */
   savedNow: (id: number) => number[];
 };
@@ -134,6 +147,8 @@ const GIRLS_URL = /\/api\/actions\/(\d+)\/attendance\/girls$/;
 const PRESENT_URL = /\/api\/actions\/(\d+)\/attendance\/present\/(\d+)$/;
 const CONCLUDE_URL = /\/api\/actions\/(\d+)\/attendance\/conclude$/;
 const MARKS_URL = /\/api\/actions\/(\d+)\/attendance\/marks$/;
+const IMPORT_LIST_URL = /\/api\/actions\/(\d+)\/attendance\/import$/;
+const SHEET_URL = /\/api\/actions\/(\d+)\/registrations\/import\/(read|review)$/;
 const ATTENDANCE_URL = /\/api\/actions\/(\d+)\/attendance$/;
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
 const LIST_URL = /\/api\/actions\/(\d+)\/registrations$/;
@@ -225,6 +240,8 @@ export async function mockAttendanceApi(
     walkIns: [],
     failWalkIn: false,
     registeredNow: (id) => (data[id]?.registrations ?? []).map((row) => row.name),
+    imported: [],
+    failImportList: false,
     savedNow: (id) => [...(data[id]?.saved ?? [])],
   };
 
@@ -376,6 +393,64 @@ export async function mockAttendanceApi(
       api.saved.push(ids);
       stored.saved = new Set(ids);
       return route.fulfill({ json: attendancePage(stored) });
+    },
+  );
+
+  // The reading of the spreadsheet of C2 (read and review), which the drawer of the
+  // attendance list uses (#349). Only for the actions of this mock; it saves nothing.
+  await page.route(
+    (url) => SHEET_URL.test(url.pathname),
+    async (route) => {
+      const request = route.request();
+      const [, idText, step] = SHEET_URL.exec(new URL(request.url()).pathname)!;
+      const stored = data[Number(idText)];
+      if (!stored) return route.fallback();
+      await wait(delayMs);
+      const { fields, file } = multipart(
+        request.postDataBuffer()!.toString("utf8"),
+        request.headers()["content-type"],
+      );
+      const refusal = spreadsheetRefusal(file.name, file.text);
+      if (refusal) return route.fulfill({ status: 422, json: { error: refusal } });
+      const sheet = sheetOf(file.text);
+      if (step === "read") return route.fulfill({ json: readJson(file.name, sheet) });
+      const mapping = JSON.parse(fields.mapping) as Record<string, string | null>;
+      if (!mapping.name || !mapping.email) {
+        return route.fulfill({ status: 422, json: { error: "missing_columns" } });
+      }
+      const inAction = new Set(stored.registrations.map((row) => row.email));
+      return route.fulfill({ json: reviewJson(file.name, sheet, reviewSheet(sheet, mapping), inAction) });
+    },
+  );
+
+  // POST .../attendance/import (#349): who of the action the e-mails mark. It only
+  // reads: nothing is saved, nobody is registered and the page does the marking.
+  await page.route(
+    (url) => IMPORT_LIST_URL.test(url.pathname),
+    async (route) => {
+      const stored = data[Number(IMPORT_LIST_URL.exec(new URL(route.request().url()).pathname)![1])];
+      await wait(delayMs);
+      if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (api.failImportList) return route.fulfill({ status: 500, body: "" });
+      if (stored.concludedOn !== null) {
+        return route.fulfill({ status: 409, json: { error: "already_concluded" } });
+      }
+      const emails = (route.request().postDataJSON() as { emails: string[] }).emails;
+      api.imported.push(emails);
+      if (emails.every((email) => email.trim() === "")) {
+        return route.fulfill({ status: 422, json: { error: "empty_file" } });
+      }
+      const byEmail = new Map(stored.registrations.map((row) => [row.email, row.id]));
+      const present = new Set<number>();
+      let notFound = 0;
+      for (const email of emails) {
+        const id = byEmail.get(email.trim().toLowerCase());
+        if (id === undefined) notFound += 1;
+        else present.add(id);
+      }
+      return route.fulfill({
+        json: { present_ids: [...present], line_count: emails.length, not_found_count: notFound },
+      });
     },
   );
 

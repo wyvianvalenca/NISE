@@ -519,7 +519,7 @@ export async function mockActionPageApi(
 const IMPORT_URL = /\/api\/actions\/(\d+)\/registrations\/import(?:\/(read|review))?$/;
 
 /** The text fields and the file of a multipart body (the files here are small CSV text). */
-function multipart(body: string, contentType: string) {
+export function multipart(body: string, contentType: string) {
   const boundary = /boundary=(.+)$/.exec(contentType)![1];
   const fields: Record<string, string> = {};
   let file = { name: "", text: "" };
@@ -544,7 +544,7 @@ function stageOf(text: string): string | null {
   return null;
 }
 
-function sheetOf(text: string) {
+export function sheetOf(text: string) {
   const rows = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -587,22 +587,11 @@ async function mockImportRoutes(page: Page, data: Record<number, Stored>, api: A
       const refuse = (error: string, extra = {}) =>
         route.fulfill({ status: 422, json: { error, ...extra } });
 
-      if (!/\.(csv|xlsx)$/i.test(file.name)) return refuse("unsupported_type");
+      const refusal = spreadsheetRefusal(file.name, file.text);
+      if (refusal) return refuse(refusal);
       const sheet = sheetOf(file.text);
-      if (file.text.startsWith("\u0000") || sheet.columns.length === 0) return refuse("unreadable_file");
-      if (sheet.lines.length === 0) return refuse("empty_file");
 
-      if (step === "read") {
-        return route.fulfill({
-          json: {
-            file_name: file.name,
-            line_count: sheet.lines.length,
-            columns: sheet.columns,
-            first_line: sheet.lines[0].values,
-            suggested: suggest(sheet.columns),
-          },
-        });
-      }
+      if (step === "read") return route.fulfill({ json: readJson(file.name, sheet) });
 
       const mapping = JSON.parse(fields.mapping) as Record<string, string | null>;
       if (!mapping.name || !mapping.email) return refuse("missing_columns");
@@ -610,57 +599,12 @@ async function mockImportRoutes(page: Page, data: Record<number, Stored>, api: A
       const skip: number[] = JSON.parse(fields.skip ?? "[]");
       if (step === "import") api.lastImport = { mapping, corrections, skip };
 
-      const ready: Record<string, unknown>[] = [];
-      const toReview: Record<string, unknown>[] = [];
-      const invalid: number[] = [];
-      const seen = new Map<string, { name: string; count: number }>();
-      for (const { line, values } of sheet.lines) {
-        const name = values[mapping.name];
-        const rawEmail = values[mapping.email];
-        const reason = !name ? "missing_name" : !rawEmail ? "missing_email" : !EMAIL_OK.test(rawEmail) ? "incomplete_email" : null;
-        if (skip.includes(line) && reason) continue;
-        const fix = corrections.find((item) => item.line === line);
-        const email = fix ? fix.email : rawEmail;
-        const problem = !name ? "missing_name" : !email ? "missing_email" : !EMAIL_OK.test(email) ? "incomplete_email" : null;
-        if (fix && email && !EMAIL_OK.test(email)) invalid.push(line);
-        if (problem) {
-          toReview.push({ line, name, email, reason: problem });
-          continue;
-        }
-        const key = email.toLowerCase();
-        const known = seen.get(key);
-        if (known) {
-          known.count += 1;
-          continue;
-        }
-        seen.set(key, { name, count: 1 });
-        ready.push({
-          line,
-          name,
-          email: key,
-          whatsapp: mapping.whatsapp ? values[mapping.whatsapp] || null : null,
-          study_stage: mapping.study_stage ? stageOf(values[mapping.study_stage]) : null,
-          school_year: mapping.school_year ? values[mapping.school_year] || null : null,
-        });
-      }
-      const repeated = [...seen.entries()]
-        .filter(([, item]) => item.count > 1)
-        .map(([email, item]) => ({ name: item.name, email, count: item.count }));
+      const { ready, toReview, invalid, repeated } = reviewSheet(sheet, mapping, corrections, skip);
       const inAction = new Set(found.registrations.map((row) => row.email));
       const already = ready.filter((row) => inAction.has(row.email as string)).length;
 
       if (step === "review") {
-        return route.fulfill({
-          json: {
-            file_name: file.name,
-            line_count: sheet.lines.length,
-            ready,
-            to_review: toReview,
-            repeated,
-            already_in_action: already,
-            new_count: ready.length - already,
-          },
-        });
+        return route.fulfill({ json: reviewJson(file.name, sheet, { ready, toReview, repeated }, inAction) });
       }
 
       if (api.failImport) return route.fulfill({ status: 500, body: "" });
@@ -717,3 +661,95 @@ export function figmaSpreadsheet(): string {
   lines.push("Beatriz Nascimento,Beatriz.Nascimento@exemplo.test,(82) 9 9999-2002,Médio incompleto,");
   return [IMPORT_HEADER, ...lines].join("\n");
 }
+
+// ---- Pieces of the import routes that the attendance mock reuses (#349) ----
+
+type Sheet = ReturnType<typeof sheetOf>;
+
+/** What the back-end refuses before reading a spreadsheet, or null when it can be read. */
+export function spreadsheetRefusal(fileName: string, text: string): string | null {
+  const sheet = sheetOf(text);
+  if (!/\.(csv|xlsx)$/i.test(fileName)) return "unsupported_type";
+  if (text.startsWith("\u0000") || sheet.columns.length === 0) return "unreadable_file";
+  if (sheet.lines.length === 0) return "empty_file";
+  return null;
+}
+
+/** The answer of `.../registrations/import/read`. */
+export function readJson(fileName: string, sheet: Sheet) {
+  return {
+    file_name: fileName,
+    line_count: sheet.lines.length,
+    columns: sheet.columns,
+    first_line: sheet.lines[0].values,
+    suggested: suggest(sheet.columns),
+  };
+}
+
+/** Splits the lines into ready, to review and repeated, with the rules of the back-end. */
+export function reviewSheet(
+  sheet: Sheet,
+  mapping: Record<string, string | null>,
+  corrections: { line: number; email: string }[] = [],
+  skip: number[] = [],
+) {
+  const name = mapping.name!;
+  const emailColumn = mapping.email!;
+  const ready: Record<string, unknown>[] = [];
+  const toReview: Record<string, unknown>[] = [];
+  const invalid: number[] = [];
+  const seen = new Map<string, { name: string; count: number }>();
+  for (const { line, values } of sheet.lines) {
+    const person = values[name];
+    const rawEmail = values[emailColumn];
+    const reason = !person ? "missing_name" : !rawEmail ? "missing_email" : !EMAIL_OK.test(rawEmail) ? "incomplete_email" : null;
+    if (skip.includes(line) && reason) continue;
+    const fix = corrections.find((item) => item.line === line);
+    const email = fix ? fix.email : rawEmail;
+    const problem = !person ? "missing_name" : !email ? "missing_email" : !EMAIL_OK.test(email) ? "incomplete_email" : null;
+    if (fix && email && !EMAIL_OK.test(email)) invalid.push(line);
+    if (problem) {
+      toReview.push({ line, name: person, email, reason: problem });
+      continue;
+    }
+    const key = email.toLowerCase();
+    const known = seen.get(key);
+    if (known) {
+      known.count += 1;
+      continue;
+    }
+    seen.set(key, { name: person, count: 1 });
+    ready.push({
+      line,
+      name: person,
+      email: key,
+      whatsapp: mapping.whatsapp ? values[mapping.whatsapp] || null : null,
+      study_stage: mapping.study_stage ? stageOf(values[mapping.study_stage]) : null,
+      school_year: mapping.school_year ? values[mapping.school_year] || null : null,
+    });
+  }
+  const repeated = [...seen.entries()]
+    .filter(([, item]) => item.count > 1)
+    .map(([email, item]) => ({ name: item.name, email, count: item.count }));
+  return { ready, toReview, invalid, repeated };
+}
+
+/** The answer of `.../registrations/import/review`. */
+export function reviewJson(
+  fileName: string,
+  sheet: Sheet,
+  review: Pick<ReturnType<typeof reviewSheet>, "ready" | "toReview" | "repeated">,
+  inAction: Set<string>,
+) {
+  const already = review.ready.filter((row) => inAction.has(row.email as string)).length;
+  return {
+    file_name: fileName,
+    line_count: sheet.lines.length,
+    ready: review.ready,
+    to_review: review.toReview,
+    repeated: review.repeated,
+    already_in_action: already,
+    new_count: review.ready.length - already,
+  };
+}
+
