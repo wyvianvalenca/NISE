@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import asdict
 from typing import Annotated, Any
@@ -117,7 +118,8 @@ def _error(code: str, **extra: object) -> JSONResponse:
 async def _read_sheet(file: UploadFile) -> Sheet:
     # One byte more than the limit is enough to know it is too large.
     content = await file.read(MAX_BYTES + 1)
-    return read_spreadsheet(file.filename or "", content)
+    # Reading an XLSX is slow and blocking: off the event loop.
+    return await asyncio.to_thread(read_spreadsheet, file.filename or "", content)
 
 
 def _parse_mapping(text: str) -> Mapping:

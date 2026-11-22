@@ -117,9 +117,18 @@ def _read_xlsx_rows(content: bytes) -> list[list[str]]:
         sheet = workbook.worksheets[0] if workbook.worksheets else None
         if sheet is None:
             raise SpreadsheetError("empty_file")
-        return [
-            [_cell_text(c) for c in row] for row in sheet.iter_rows(values_only=True)
-        ]
+        # Stops at the line limit (header + MAX_LINES) instead of loading a
+        # huge sheet whole: blank rows don't count, as below.
+        rows: list[list[str]] = []
+        filled = 0
+        for values in sheet.iter_rows(values_only=True):
+            row = [_cell_text(c) for c in values]
+            rows.append(row)
+            if any(cell.strip() for cell in row):
+                filled += 1
+                if filled > MAX_LINES + 1:
+                    raise SpreadsheetError("too_large")
+        return rows
     except SpreadsheetError:
         raise
     except Exception:  # noqa: BLE001
