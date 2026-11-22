@@ -175,3 +175,17 @@
     margin: -10px -10px 0 0;
   }
 }
+
+.nameLink {
+  color: inherit;
+}
+
+.nameLink:hover {
+  color: var(--nise-teal);
+  text-decoration: underline;
+}
+
+.nameLink:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
+}

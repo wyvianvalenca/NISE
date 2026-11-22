@@ -13,11 +13,13 @@ from app.modules.girl_file.routes import later_router
 from app.modules.girl_file.routes import router as file_router
 from app.modules.girls.routes import router as profile_router
 from app.modules.groups.routes import router as groups_router
+from app.modules.registrations.routes import router as registrations_router
 from app.modules.suggestions.routes import router as discover_router
 
 router = APIRouter()
 router.include_router(auth_router)
 router.include_router(actions_router)
+router.include_router(registrations_router)
 router.include_router(cities_router)
 router.include_router(consents_router)
 router.include_router(preferences_router)

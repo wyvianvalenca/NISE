@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -167,3 +167,67 @@ async def register_girl(
         record_existed=created_girl is None,
         already_registered=inserted is None,
     )
+
+
+# The optional fields, in the order of the columns of the page (RF-F1.14).
+OPTIONAL_COLUMNS = ("whatsapp", "study_stage", "school_year")
+
+
+def _escape_like(term: str) -> str:
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+async def list_registrations(
+    session: AsyncSession, action: Action, search: str | None, offset: int, limit: int
+) -> tuple[list[tuple[Participation, str, str]], int]:
+    """The girls of the action, by shown name, with the total of the matches.
+
+    The shown name is the one this registration gave, falling back to the record
+    (never another group's typing, RN-01). The search is a case-insensitive
+    "contains" on that name or on the e-mail. Returns rows of
+    (participation, shown name, e-mail).
+    """
+    shown_name = func.coalesce(Participation.name, Girl.name)
+    conditions = [Participation.action_id == action.id]
+    term = search.strip() if search else ""
+    if term:
+        pattern = f"%{_escape_like(term)}%"
+        conditions.append(
+            or_(
+                shown_name.ilike(pattern, escape="\\"),
+                Girl.email.ilike(pattern, escape="\\"),
+            )
+        )
+
+    base = select(Participation, shown_name, Girl.email).join(
+        Girl, Girl.id == Participation.girl_id
+    )
+    total = await session.scalar(
+        select(func.count())
+        .select_from(Participation)
+        .join(Girl, Girl.id == Participation.girl_id)
+        .where(*conditions)
+    )
+    rows = await session.execute(
+        base.where(*conditions)
+        .order_by(shown_name, Participation.id)
+        .offset(offset)
+        .limit(limit)
+    )
+
+    return [(p, n, e) for p, n, e in rows.all()], total or 0
+
+
+async def registration_columns(session: AsyncSession, action: Action) -> list[str]:
+    """The optional fields with data in any registration of the action."""
+    row = (
+        await session.execute(
+            select(
+                func.bool_or(Participation.whatsapp.is_not(None)),
+                func.bool_or(Participation.study_stage.is_not(None)),
+                func.bool_or(Participation.school_year.is_not(None)),
+            ).where(Participation.action_id == action.id)
+        )
+    ).one()
+
+    return [name for name, has in zip(OPTIONAL_COLUMNS, row, strict=True) if has]

@@ -121,11 +121,17 @@ test("each status shows its own button and girls line", async ({ page }) => {
   await page.goto(URL);
 
   const waiting = rowOf(page, "Introdução à robótica");
-  await expect(waiting.getByRole("link", { name: "Importar inscritas", disabled: true })).toBeVisible();
+  await expect(waiting.getByRole("link", { name: "Importar inscritas" })).toHaveAttribute(
+    "href",
+    "/coordenacao/acoes/introducao-a-robotica",
+  );
   await expect(waiting.getByText("Sem inscritas ainda")).toBeVisible();
 
   const event = rowOf(page, "Scratch: crie seu primeiro jogo");
-  await expect(event.getByRole("link", { name: "Ver inscritas", disabled: true })).toBeVisible();
+  await expect(event.getByRole("link", { name: "Ver inscritas" })).toHaveAttribute(
+    "href",
+    "/coordenacao/acoes/scratch-primeiro-jogo",
+  );
   await expect(event.getByText("26 inscritas")).toBeVisible();
 
   const attendance = rowOf(page, "Visita ao Polo de TI");
@@ -211,10 +217,16 @@ test("every row has a ... button named after its action", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Mais opções de Python do zero" })).toBeVisible();
 });
 
-test("the row buttons have no href and go nowhere", async ({ page }) => {
+test("the row leads to the action page; the buttons of later screens go nowhere", async ({
+  page,
+}) => {
   await page.goto(URL);
 
-  await expect(page.locator("main a[href]")).toHaveCount(0);
+  // Only the action name of each visible row (7) and the two inscritas buttons are links.
+  await expect(page.locator("main a[href]")).toHaveCount(7 + 4);
+  await expect(
+    rowOf(page, "Introdução à robótica").getByRole("link", { name: "Introdução à robótica" }),
+  ).toHaveAttribute("href", "/coordenacao/acoes/introducao-a-robotica");
   const button = page.getByRole("link", { name: "Marcar presença", disabled: true });
   await expect(button).toHaveAttribute("aria-disabled", "true");
   await button.click({ force: true });
