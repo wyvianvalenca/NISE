@@ -4,6 +4,7 @@ import {
   ATTENDED_ACTION_ID,
   AWAITING_ACTION_ID,
   NOBODY_ACTION_ID,
+  NOBODY_ATTENDED_ACTION_ID,
   SAVED_ACTION_ID,
   mockAttendanceApi,
 } from "./attendance-api";
@@ -227,4 +228,17 @@ test("works with the keyboard: Enter on the button opens the confirmation, Esc c
   await expect(modal(page)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(modal(page)).toBeHidden();
+});
+
+test("the tab Inscritas of a concluded action with nobody registered does not tell her to import", async ({
+  page,
+}) => {
+  await open(page, NOBODY_ATTENDED_ACTION_ID);
+  await page.getByRole("tab", { name: /Inscritas/ }).click();
+
+  const card = page.getByRole("region", { name: /Inscritas/ });
+  await expect(card.getByRole("heading", { name: "Nenhuma inscrita ainda" })).toBeVisible();
+  // There are no buttons in a concluded action, so no text about importing.
+  await expect(card.getByText(/baixe a planilha/)).toHaveCount(0);
+  await expect(card.getByRole("button")).toHaveCount(0);
 });

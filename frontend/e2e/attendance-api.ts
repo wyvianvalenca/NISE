@@ -32,6 +32,8 @@ export const SAVED_ACTION_ID = 9;
 export const SIX_GIRLS_ACTION_ID = 11;
 /** The same, but the day of the event has not come yet (#351). */
 export const BEFORE_THE_DAY_ACTION_ID = 12;
+/** Concluded with nobody registered (#348). */
+export const NOBODY_ATTENDED_ACTION_ID = 13;
 /** Concluded: 23 girls, 17 present, 18 invites and 17 evaluations sent (#348). */
 export const ATTENDED_ACTION_ID = 10;
 
@@ -120,6 +122,17 @@ function seed(): Record<number, Stored> {
       name: "Introdução à robótica",
       today: "2026-10-20",
       registrations: sixGirls,
+      invitesSent: 0,
+      evaluationsSent: 0,
+      file: new Map(),
+    },
+    [NOBODY_ATTENDED_ACTION_ID]: {
+      ...empty,
+      id: NOBODY_ATTENDED_ACTION_ID,
+      name: "Introdução à robótica",
+      today: "2026-10-30",
+      registrations: [],
+      concludedOn: "2026-10-24",
       invitesSent: 0,
       evaluationsSent: 0,
       file: new Map(),

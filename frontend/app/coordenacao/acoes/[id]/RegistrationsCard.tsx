@@ -162,10 +162,13 @@ export function RegistrationsCard({ action, onImport, onAdd, readOnly = false, r
       {!hasGirls ? (
         <div className={styles.empty}>
           <h3 className={styles.emptyTitle}>Nenhuma inscrita ainda</h3>
-          <p className={styles.emptyText}>
-            Quando as respostas chegarem no formulário, baixe a planilha e importe aqui. Dá pra
-            importar de novo depois.
-          </p>
+          {/* Read only (concluded action): there are no buttons, so nothing to say about importing. */}
+          {!readOnly && (
+            <p className={styles.emptyText}>
+              Quando as respostas chegarem no formulário, baixe a planilha e importe aqui. Dá pra
+              importar de novo depois.
+            </p>
+          )}
           {!readOnly && (
             <div className={styles.emptyButtons}>
               <Button onClick={onImport}>Importar inscritas</Button>
