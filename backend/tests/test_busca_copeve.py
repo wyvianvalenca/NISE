@@ -190,9 +190,11 @@ def indicios(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, str, str]]:
     """Troca a gravação dos indícios (já testada na #270) por uma lista."""
     criados: list[tuple[int, str, str]] = []
 
-    async def lista(_session: object, call: str) -> OfficialList:
+    async def lista(
+        _session: object, institution: str, selection: str, call: str, url: str
+    ) -> OfficialList:
         return OfficialList(
-            institution="UFAL", selection_process="Sisu 2026", call=call
+            institution=institution, selection_process=selection, call=call, url=url
         )
 
     async def criar(
@@ -561,9 +563,10 @@ async def test_script_imprime_so_contagens(
 
     assert codigo == 0
     assert capsys.readouterr().out.splitlines() == [
-        "Consultas: 54",
-        "Linhas lidas: 900",
-        "Indícios novos: 2",
+        "COPEVE",
+        "  Consultas: 54",
+        "  Linhas lidas: 900",
+        "  Indícios novos: 2",
     ]
 
 
