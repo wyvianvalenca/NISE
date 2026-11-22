@@ -118,10 +118,12 @@ def _still_wanted(match: ListMatch, user: User, now: datetime) -> bool:
 # - "unknown": a conexão caiu no meio, e o servidor pode ter aceitado o e-mail.
 #   A rotina para e o e-mail fica como tentado: na dúvida, não reenvia
 #   (RNF-F4.01).
-_Outcome = Literal["drop", "retry", "unknown"]
+SendOutcome = Literal["drop", "retry", "unknown"]
 
 
-def _outcome(error: Exception) -> _Outcome:
+def send_outcome(error: Exception) -> SendOutcome:
+    """O que fazer com um e-mail cujo envio deu erro. Usada também pelo
+    lembrete de evento (`events/reminder_email.py`)."""
     if isinstance(error, smtplib.SMTPRecipientsRefused):
         codes = [code for code, _ in error.recipients.values()]
         return "drop" if codes and all(code >= 500 for code in codes) else "retry"
@@ -249,7 +251,7 @@ async def send_match_emails(
             # Qualquer erro: um endereço inválido (ValueError) ou outro erro do
             # e-mail em si não pode travar a fila nem virar 500 (revisão do #287).
             except Exception as error:  # noqa: BLE001
-                outcome = _outcome(error)
+                outcome = send_outcome(error)
                 # A mensagem do erro pode trazer o endereço: só o tipo vai ao log.
                 logger.warning(
                     "E-mail de indício não enviado (%s): %s",

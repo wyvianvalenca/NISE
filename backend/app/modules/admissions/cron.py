@@ -26,6 +26,7 @@ from app.modules.admissions.search import (
     run_copeve_round,
 )
 from app.modules.admissions.service import delete_expired_matches
+from app.modules.events.reminder_email import send_event_reminders
 
 logger = logging.getLogger(__name__)
 
@@ -110,5 +111,21 @@ async def match_emails(session: AsyncSessionDep) -> dict[str, int]:
     if result.stopped:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, "O envio parou; o resto fica na fila"
+        )
+    return {"sent": result.sent, "dropped": result.dropped}
+
+
+@router.get("/event-reminders", dependencies=[CronDep])
+async def event_reminders(session: AsyncSessionDep) -> dict[str, int]:
+    """Envia os lembretes "Me lembra um dia antes" dos eventos de amanhã (RF-F4.12, #188).
+
+    Roda uma vez por dia, de manhã em Maceió. Responde só contagens. Se o envio
+    parar (SMTP fora do ar ou não configurado), responde 502 para a falha
+    aparecer no painel de cron; o que não saiu pode ser repetido no mesmo dia.
+    """
+    result = await send_event_reminders(session)
+    if result.stopped:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "O envio parou; repita a rotina hoje"
         )
     return {"sent": result.sent, "dropped": result.dropped}
