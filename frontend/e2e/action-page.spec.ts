@@ -7,6 +7,7 @@ import {
   MISSING_ACTION_ID,
   mockActionPageApi,
 } from "./action-page-api";
+import { mockAttendanceApi } from "./attendance-api";
 
 // #233 · K11 Ação: where the action stands and the girls registered in it, by
 // GET /api/actions/{id} and GET /api/actions/{id}/registrations (simulated in
@@ -154,6 +155,7 @@ test("without extra data there are only the Nome and E-mail columns", async ({
   page,
 }) => {
   await mockActionPageApi(page);
+  await mockAttendanceApi(page);
   await page.goto(`/coordenacao/acoes/${CONCLUDED_ACTION_ID}`);
 
   await expect(page.getByRole("columnheader")).toHaveText(["Nome", "E-mail"]);
@@ -188,6 +190,7 @@ test("Excluir ação is hidden once the attendance is saved", async ({
   page,
 }) => {
   await mockActionPageApi(page);
+  await mockAttendanceApi(page);
   await page.goto(`/coordenacao/acoes/${CONCLUDED_ACTION_ID}`);
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

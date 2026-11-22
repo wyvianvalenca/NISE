@@ -6,7 +6,7 @@ import type { Page, Route } from "@playwright/test";
 
 type Column = "whatsapp" | "study_stage" | "school_year";
 
-type MockRegistration = {
+export type MockRegistration = {
   id: number;
   name: string;
   email: string;
@@ -104,7 +104,7 @@ const FIRST_NAMES = [
 const STAGES = ["fundamental", "medio", "tecnico"];
 
 /** 23 fictional girls, already in order of name. */
-function girls(withExtras: boolean): MockRegistration[] {
+export function girls(withExtras: boolean): MockRegistration[] {
   return FIRST_NAMES.map((first, index) => ({
     id: index + 1,
     name: `${first} Fictícia`,

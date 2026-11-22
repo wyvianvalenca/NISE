@@ -8,8 +8,10 @@ import { Loading } from "@/components/Loading";
 import { StepTracker, type Step } from "@/components/StepTracker";
 import { dayMonthLabel } from "@/lib/coord-action-labels";
 import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
+import { getAttendance, type AttendancePage } from "@/lib/coord-attendance";
 import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
+import { AttendanceAside } from "./AttendanceAside";
 import { ImportDrawer } from "./ImportDrawer";
 import { RegistrationsCard } from "./RegistrationsCard";
 import { RegistrationsSwitch } from "./RegistrationsSwitch";
@@ -23,21 +25,36 @@ function registrationsStepText(action: ActionPage): string {
   return `${count} ${count === 1 ? "adicionada" : "adicionadas"} · ${state}`;
 }
 
-function steps(action: ActionPage): Step[] {
+/** "Inscritas" text under the step once the day of the event came (#338). */
+function attendanceRegistrationsText(attendance: AttendancePage): string {
+  if (attendance.registeredCount === 0 || attendance.lastRegisteredOn === null) {
+    return "Nenhuma inscrita";
+  }
+  const count = attendance.registeredCount;
+  return `${count} ${count === 1 ? "importada" : "importadas"} em ${dayMonthLabel(attendance.lastRegisteredOn)}`;
+}
+
+function steps(action: ActionPage, attendance: AttendancePage | undefined): Step[] {
   const eventHasCome = action.status === "awaiting_attendance" || action.status === "concluded";
   const created = `${action.createdOn.slice(8, 10)}/${action.createdOn.slice(5, 7)}`;
   return [
     { label: "Cadastro", description: `Feito em ${created}`, status: "done" },
     {
       label: "Inscritas",
-      description: registrationsStepText(action),
+      description:
+        eventHasCome && attendance
+          ? attendanceRegistrationsText(attendance)
+          : registrationsStepText(action),
       status: eventHasCome ? "done" : "current",
     },
     {
       label: "Presença",
-      description: eventHasCome
-        ? `Aconteceu em ${dayMonthLabel(action.startsOn)}`
-        : `Depois do evento, em ${dayMonthLabel(action.startsOn)}`,
+      description:
+        action.status === "concluded"
+          ? `Aconteceu em ${dayMonthLabel(action.startsOn)}`
+          : eventHasCome
+            ? `Marque depois do evento, em ${dayMonthLabel(action.startsOn)}`
+            : `Depois do evento, em ${dayMonthLabel(action.startsOn)}`,
       status: action.status === "concluded" ? "done" : eventHasCome ? "current" : "todo",
     },
   ];
@@ -64,6 +81,8 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   const [action, setAction] = useState<ActionPage | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  /** The attendance around the page, only once the day of the event came (C3). undefined: loading. */
+  const [attendance, setAttendance] = useState<AttendancePage | null | undefined>(undefined);
   const [listVersion, setListVersion] = useState(0);
   const [importing, setImporting] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -83,15 +102,33 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
     return () => controller.abort();
   }, [actionId, attempt]);
 
+  const hasAttendance = action?.status === "awaiting_attendance" || action?.status === "concluded";
+
+  // From the day of the event the page is the one of the attendance (RN-37).
+  useEffect(() => {
+    if (actionId === null || !hasAttendance) return;
+    const controller = new AbortController();
+    getAttendance(actionId, controller.signal).then(
+      (found) => {
+        setFailed(false);
+        setAttendance(found);
+      },
+      () => {
+        if (!controller.signal.aborted) setFailed(true);
+      },
+    );
+    return () => controller.abort();
+  }, [actionId, hasAttendance, attempt]);
+
   /** Fetches the action and the list again. */
   function reload() {
     setAttempt((value) => value + 1);
     setListVersion((value) => value + 1);
   }
 
-  if (actionId === null || action === null) notFound();
+  if (actionId === null || action === null || attendance === null) notFound();
 
-  if (failed && action === undefined) {
+  if (failed && (action === undefined || (hasAttendance && attendance === undefined))) {
     return <LoadFailed onRetry={() => {
           setFailed(false);
           reload();
@@ -102,13 +139,13 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
     <>
       <CoordHeader active="acoes" groupName={groupName} accountInitial={accountInitial} />
       <main className={styles.main}>
-        {action === undefined ? (
+        {action === undefined || (hasAttendance && attendance === undefined) ? (
           <Loading label="Carregando a ação…" />
         ) : (
           <>
             <ActionHeader action={action} />
             <div className={styles.steps}>
-              <StepTracker steps={steps(action)} />
+              <StepTracker steps={steps(action, attendance)} />
             </div>
             <div className={styles.columns}>
               <RegistrationsCard
@@ -118,7 +155,11 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                 onAdd={() => setAdding(true)}
               />
               <aside className={styles.aside} aria-label="Próximos passos">
-                <RegistrationsSwitch action={action} onChanged={reload} />
+                {action.status === "awaiting_attendance" ? (
+                  <AttendanceAside action={action} />
+                ) : (
+                  <RegistrationsSwitch action={action} onChanged={reload} />
+                )}
               </aside>
             </div>
             {importing && (

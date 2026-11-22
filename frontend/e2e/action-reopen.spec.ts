@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockAttendanceApi } from "./attendance-api";
 import {
   CLOSED_ACTION_ID,
   EVENT_DAY_ACTION_ID,
@@ -82,12 +83,14 @@ test("on the day of the event there is no button to reopen", async ({
   page,
 }) => {
   await mockActionPageApi(page);
+  await mockAttendanceApi(page);
   await page.goto(`/coordenacao/acoes/${EVENT_DAY_ACTION_ID}`);
 
   await expect(page.getByText("Nenhuma inscrita")).toHaveCount(0);
+  // From the day of the event the page is the one of the attendance (#338).
   await expect(
     page.getByRole("list").filter({ hasText: "Cadastro" }),
-  ).toContainText("23 adicionadas · inscrições fechadas");
+  ).toContainText("23 importadas em 16/10");
   await expect(page.getByRole("heading", { name: CARD })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Reabrir inscrições" }),
@@ -99,7 +102,10 @@ test("a refusal of the server (event day) says why and reloads", async ({
 }) => {
   const api = await mockActionPageApi(page);
   await page.goto(`/coordenacao/acoes/${CLOSED_ACTION_ID}`);
+  await expect(page.getByRole("button", { name: "Reabrir inscrições" })).toBeVisible();
   api.reopenTooLate = true;
+  // After the refusal the page reloads as the action of the day of the event.
+  await mockAttendanceApi(page, { awaiting: [CLOSED_ACTION_ID] });
 
   await page.getByRole("button", { name: "Reabrir inscrições" }).click();
   await page
@@ -107,10 +113,11 @@ test("a refusal of the server (event day) says why and reloads", async ({
     .getByRole("button", { name: "Reabrir inscrições" })
     .click();
 
+  // The page reloads as it is now: waiting for the attendance, with the note
+  // that the registrations closed (#338).
+  await expect(page.locator("header").nth(1)).toContainText("Aguardando presença");
   await expect(
-    page.getByText(
-      "As inscrições fecharam sozinhas no dia do evento e não podem ser reabertas.",
-    ),
+    page.getByText("As inscrições fecharam e ela saiu das sugestões das meninas."),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: CARD })).toHaveCount(0);
   await expect(
