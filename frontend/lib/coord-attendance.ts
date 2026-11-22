@@ -115,3 +115,49 @@ export async function getAttendance(
   if (!response.ok) throw new Error(`attendance ${response.status}`);
   return toAttendancePage((await response.json()) as AttendancePageResponse);
 }
+
+/** What the back-end may refuse: the moment is wrong (409) or an id is not hers (422). */
+export type AttendanceError = "too_early" | "already_concluded" | "not_concluded" | "unknown_registration" | "failed";
+
+export type AttendanceResult<T> = { ok: true; data: T } | { ok: false; error: AttendanceError };
+
+const ATTENDANCE_ERRORS: AttendanceError[] = [
+  "too_early",
+  "already_concluded",
+  "not_concluded",
+  "unknown_registration",
+];
+
+/** The answer of a route that writes: the page, or the code of the refusal. */
+async function toResult(response: Response): Promise<AttendanceResult<AttendancePage>> {
+  if (response.ok) {
+    return { ok: true, data: toAttendancePage((await response.json()) as AttendancePageResponse) };
+  }
+  if (response.status === 409 || response.status === 422) {
+    const json = (await response.json().catch(() => null)) as { error?: string } | null;
+    const found = ATTENDANCE_ERRORS.find((known) => known === json?.error);
+    if (found) return { ok: false, error: found };
+  }
+  return { ok: false, error: "failed" };
+}
+
+async function send(path: string, method: string, body?: unknown): Promise<AttendanceResult<AttendancePage>> {
+  try {
+    const response = await fetch(path, {
+      method,
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return await toResult(response);
+  } catch {
+    return { ok: false, error: "failed" };
+  }
+}
+
+/**
+ * "Salvar e continuar depois" (#340, RF-F3.04): replaces the saved marks with
+ * these registrations. It sends nothing and does not conclude (D-81).
+ */
+export function saveMarks(id: number, presentIds: number[]) {
+  return send(`/api/actions/${id}/attendance/marks`, "PUT", { present_ids: presentIds });
+}

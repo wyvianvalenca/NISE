@@ -15,6 +15,8 @@ export const AWAITING_ACTION_ID = 6;
 export const TWO_GIRLS_CONCLUDED_ACTION_ID = 4;
 /** The day of the event and nobody registered. */
 export const NOBODY_ACTION_ID = 8;
+/** The day of the event, 23 girls, 14 of them already in the saved marks (#340). */
+export const SAVED_ACTION_ID = 9;
 
 type Stored = {
   id: number;
@@ -43,6 +45,16 @@ function seed(): Record<number, Stored> {
       name: "Introdução à robótica",
       today: "2026-10-24",
       registrations: extras,
+      invitesSent: 0,
+      evaluationsSent: 0,
+    },
+    [SAVED_ACTION_ID]: {
+      ...empty,
+      id: SAVED_ACTION_ID,
+      name: "Introdução à robótica",
+      today: "2026-10-24",
+      registrations: extras,
+      saved: new Set(extras.slice(0, 14).map((row) => row.id)),
       invitesSent: 0,
       evaluationsSent: 0,
     },
@@ -83,8 +95,15 @@ type Options = {
 export type AttendanceApi = {
   /** While true the GET of the attendance answers 500. */
   failAttendance: boolean;
+  /** Bodies (the registration ids) of the PUT that saves the marks (#340), in order. */
+  saved: number[][];
+  /** While true the PUT answers 500 and saves nothing. */
+  failSave: boolean;
+  /** The registrations in the saved marks now, in the back-end's state (#340). */
+  savedNow: (id: number) => number[];
 };
 
+const MARKS_URL = /\/api\/actions\/(\d+)\/attendance\/marks$/;
 const ATTENDANCE_URL = /\/api\/actions\/(\d+)\/attendance$/;
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
 const LIST_URL = /\/api\/actions\/(\d+)\/registrations$/;
@@ -165,7 +184,12 @@ export async function mockAttendanceApi(
   for (const id of options.awaiting ?? []) {
     data[id] = { ...seed()[AWAITING_ACTION_ID], id };
   }
-  const api: AttendanceApi = { failAttendance: false };
+  const api: AttendanceApi = {
+    failAttendance: false,
+    saved: [],
+    failSave: false,
+    savedNow: (id) => [...(data[id]?.saved ?? [])],
+  };
 
   await page.route(
     (url) => ACTION_URL.test(url.pathname),
@@ -199,6 +223,25 @@ export async function mockAttendanceApi(
           columns: columnsOf(stored.registrations),
         },
       });
+    },
+  );
+
+  // PUT .../attendance/marks (#340): replaces the saved marks. Before the day
+  // and after concluding it refuses, as the back-end does.
+  await page.route(
+    (url) => MARKS_URL.test(url.pathname),
+    async (route) => {
+      const stored = data[Number(MARKS_URL.exec(new URL(route.request().url()).pathname)![1])];
+      await wait(delayMs);
+      if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (api.failSave) return route.fulfill({ status: 500, body: "" });
+      if (stored.concludedOn !== null) {
+        return route.fulfill({ status: 409, json: { error: "already_concluded" } });
+      }
+      const ids = (route.request().postDataJSON() as { present_ids: number[] }).present_ids;
+      api.saved.push(ids);
+      stored.saved = new Set(ids);
+      return route.fulfill({ json: attendancePage(stored) });
     },
   );
 

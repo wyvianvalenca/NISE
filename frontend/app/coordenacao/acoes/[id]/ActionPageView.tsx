@@ -1,14 +1,14 @@
 "use client";
 
 import { notFound, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CoordHeader } from "@/components/CoordHeader";
 import { LoadFailed } from "@/components/LoadFailed";
 import { Loading } from "@/components/Loading";
 import { StepTracker, type Step } from "@/components/StepTracker";
 import { dayMonthLabel } from "@/lib/coord-action-labels";
 import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
-import { getAttendance, type AttendancePage } from "@/lib/coord-attendance";
+import { getAttendance, saveMarks, type AttendancePage } from "@/lib/coord-attendance";
 import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
 import { AfterAttendanceCard } from "./AfterAttendanceCard";
@@ -101,6 +101,13 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   /** The list to mark who came is open, with the registrations marked so far (#339). */
   const [marking, setMarking] = useState(false);
   const [marks, setMarks] = useState<ReadonlySet<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+  /** The marks as they are now, for a save that answers after she marked again. */
+  const marksRef = useRef(marks);
+  useEffect(() => {
+    marksRef.current = marks;
+  }, [marks]);
+  const [saveState, setSaveState] = useState<"saved" | "failed" | "refused" | null>(null);
 
   useEffect(() => {
     if (actionId === null) return;
@@ -137,9 +144,44 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
 
   /** Opens the list to mark. Every opening starts from what was saved: the rest is lost (#339). */
   function openList() {
-    setMarks(new Set());
+    const saved = attendance?.girls.filter((girl) => girl.savedPresent) ?? [];
+    setMarks(new Set(saved.map((girl) => girl.id)));
+    setSaveState(null);
     setMarking(true);
   }
+
+  /** "Salvar e continuar depois" (#340): keeps the marks, stays on the list. */
+  async function save() {
+    if (actionId === null || saving) return;
+    setSaving(true);
+    const sent = marks;
+    const result = await saveMarks(actionId, [...sent]);
+    setSaving(false);
+    if (result.ok) {
+      setAttendance(result.data);
+      // Marked or unmarked while it saved: those changes are not saved yet.
+      setSaveState(marksRef.current === sent ? "saved" : null);
+      return;
+    }
+    // Concluded in the meantime (another tab): the page shows it as it is now.
+    setSaveState(result.error === "failed" ? "failed" : "refused");
+    if (result.error !== "failed") reload();
+  }
+
+  // Leaving the page with marks that were not saved asks first (#340, Could).
+  // Only while it can still be saved: concluded in another tab, nothing is lost.
+  const unsaved =
+    marking &&
+    action?.status === "awaiting_attendance" &&
+    attendance != null &&
+    (marks.size !== attendance.savedCount ||
+      attendance.girls.some((girl) => girl.savedPresent !== marks.has(girl.id)));
+  useEffect(() => {
+    if (!unsaved) return;
+    const ask = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", ask);
+    return () => window.removeEventListener("beforeunload", ask);
+  }, [unsaved]);
 
   /** Fetches the action and the list again. */
   function reload() {
@@ -169,17 +211,24 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
               <StepTracker steps={steps(action, attendance)} />
             </div>
             <div className={styles.columns}>
-              {marking && attendance ? (
+              {marking && attendance && action.status === "awaiting_attendance" ? (
                 <AttendanceMarking
                   attendance={attendance}
                   marks={marks}
-                  onToggle={(id, marked) => setMarks((current) => toggled(current, [id], marked))}
-                  onToggleAll={(marked) =>
+                  onToggle={(id, marked) => {
+                    setSaveState(null);
+                    setMarks((current) => toggled(current, [id], marked));
+                  }}
+                  onToggleAll={(marked) => {
+                    setSaveState(null);
                     setMarks((current) =>
                       toggled(current, attendance.girls.map((girl) => girl.id), marked),
-                    )
-                  }
+                    );
+                  }}
                   onBack={() => setMarking(false)}
+                  onSave={save}
+                  saving={saving}
+                  saveState={saveState}
                 />
               ) : (
                 <RegistrationsCard
@@ -194,7 +243,7 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   marking ? (
                     <AfterAttendanceCard />
                   ) : (
-                    <AttendanceAside action={action} onMark={openList} />
+                    <AttendanceAside action={action} attendance={attendance!} onMark={openList} />
                   )
                 ) : (
                   <RegistrationsSwitch action={action} onChanged={reload} />

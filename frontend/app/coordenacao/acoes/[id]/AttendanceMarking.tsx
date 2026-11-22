@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { Icon } from "@/components/Icon";
+import { Notice } from "@/components/Notice";
 import { SearchField } from "@/components/SearchField";
+import { Toast } from "@/components/Toast";
 import { comparableText } from "@/lib/coord-action-labels";
 import type { AttendanceGirl, AttendancePage } from "@/lib/coord-attendance";
 import styles from "./AttendanceMarking.module.css";
@@ -21,6 +23,11 @@ type MarkingProps = {
   onToggleAll: (marked: boolean) => void;
   /** Closes the list. What was not saved is lost. */
   onBack: () => void;
+  /** "Salvar e continuar depois" (#340). */
+  onSave: () => void;
+  saving: boolean;
+  /** What happened to the last save: a message, or why it did not work. */
+  saveState: "saved" | "failed" | "refused" | null;
 };
 
 /** Name and e-mail always; the other fields only when some girl has them (RF-F1.14). */
@@ -34,7 +41,7 @@ function details(girl: AttendanceGirl, columns: AttendancePage["columns"]): stri
  * unmarking are free until the attendance is concluded (D-80). It only changes
  * this page: nothing is sent and the filé of the girls does not change (D-81).
  */
-export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack }: MarkingProps) {
+export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onSave, saving, saveState }: MarkingProps) {
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   // The boxes keep their own state (see Checkbox), so "Marcar todas" gives them a new key.
@@ -119,9 +126,32 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
         </>
       )}
 
-      <p role="status" className={styles.footer}>
-        <b>{marks.size}</b> de {total} marcadas como presentes
-      </p>
+      {saveState === "saved" && (
+        <Toast>
+          <strong>Marcações salvas.</strong> {marks.size} de {total} marcadas. Você pode continuar
+          depois.
+        </Toast>
+      )}
+      {saveState === "failed" && (
+        <Notice tone="pink" icon="info">
+          Não deu pra salvar agora. Suas marcações continuam na tela. Tente de novo.
+        </Notice>
+      )}
+      {saveState === "refused" && (
+        <Notice tone="pink" icon="info">
+          Não dá mais pra salvar: a presença já foi concluída. A página foi atualizada.
+        </Notice>
+      )}
+      <div className={styles.footer}>
+        <p role="status">
+          <b>{marks.size}</b> de {total} marcadas como presentes
+        </p>
+        <div className={styles.buttons}>
+          <Button variant="secondary" loading={saving} loadingLabel="Salvando…" onClick={onSave}>
+            Salvar e continuar depois
+          </Button>
+        </div>
+      </div>
     </section>
   );
 }
