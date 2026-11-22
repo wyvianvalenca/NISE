@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { Icon } from "@/components/Icon";
@@ -23,6 +23,8 @@ type MarkingProps = {
   onToggleAll: (marked: boolean) => void;
   /** Closes the list. What was not saved is lost. */
   onBack: () => void;
+  /** "Veio sem inscrição? Adicionar participante" (#346). */
+  onAddWalkIn: () => void;
   /** "Salvar e continuar depois" (#340). */
   onSave: () => void;
   saving: boolean;
@@ -41,11 +43,18 @@ function details(girl: AttendanceGirl, columns: AttendancePage["columns"]): stri
  * unmarking are free until the attendance is concluded (D-80). It only changes
  * this page: nothing is sent and the filé of the girls does not change (D-81).
  */
-export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onSave, saving, saveState }: MarkingProps) {
+export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onAddWalkIn, onSave, saving, saveState }: MarkingProps) {
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
-  // The boxes keep their own state (see Checkbox), so "Marcar todas" gives them a new key.
-  const [version, setVersion] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // The boxes keep their own state (see Checkbox). When the marks change from
+  // outside a click ("Marcar todas", someone added), the boxes follow them.
+  useEffect(() => {
+    for (const box of listRef.current?.querySelectorAll<HTMLInputElement>("input[data-id]") ?? []) {
+      box.checked = marks.has(Number(box.dataset.id));
+    }
+  }, [marks, search, showAll]);
 
   const total = attendance.girls.length;
   const allMarked = total > 0 && marks.size === total;
@@ -58,7 +67,6 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
 
   function toggleAll() {
     onToggleAll(!allMarked);
-    setVersion((value) => value + 1);
   }
 
   return (
@@ -75,7 +83,7 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
       <p className={styles.help}>Marque quem esteve na ação. Dá pra desmarcar até concluir.</p>
 
       {total === 0 ? (
-        <p className={styles.none}>Ninguém se inscreveu nesta ação.</p>
+        <p className={styles.none}>Ninguém se inscreveu nesta ação. Se alguém veio, adicione abaixo.</p>
       ) : (
         <>
           <div className={styles.tools}>
@@ -95,11 +103,12 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
               Ninguém com esse nome ou e-mail.
             </p>
           ) : (
-            <ul className={styles.list} aria-label="Inscritas">
+            <ul ref={listRef} className={styles.list} aria-label="Inscritas">
               {shown.map((girl) => (
-                <li key={`${girl.id}-${version}`}>
+                <li key={girl.id}>
                   <Checkbox
                     variant="card"
+                    data-id={girl.id}
                     defaultChecked={marks.has(girl.id)}
                     onCheckedChange={(checked) => onToggle(girl.id, checked)}
                   >
@@ -125,6 +134,11 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
           )}
         </>
       )}
+
+      <button type="button" className={styles.walkIn} onClick={onAddWalkIn}>
+        <Icon name="user-plus" />
+        Veio sem inscrição? Adicionar participante
+      </button>
 
       {saveState === "saved" && (
         <Toast>

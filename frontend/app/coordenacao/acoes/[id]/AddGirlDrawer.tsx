@@ -11,8 +11,10 @@ import { AUDIENCES } from "@/lib/action-form";
 import { dayMonthLabel } from "@/lib/coord-action-labels";
 import {
   addRegistration,
+  addWalkIn,
   checkEmail,
   type EmailCheck,
+  type Registration,
   type RegistrationField,
 } from "@/lib/coord-action-page";
 import styles from "./AddGirlDrawer.module.css";
@@ -29,8 +31,13 @@ const FORM_ID = "add-girl-form";
 type DrawerProps = {
   actionId: number;
   actionName: string;
+  /**
+   * Someone who came without signing up (C3, #346): she is added through the
+   * attendance, and someone already registered is not an error, only marked.
+   */
+  walkIn?: boolean;
   /** She was added, so the page can fetch the action and the list again. */
-  onAdded: () => void;
+  onAdded: (registration: Registration) => void;
   /** The drawer closed (button, Esc or the veil). */
   onClose: () => void;
 };
@@ -50,7 +57,7 @@ function actionsSentence(actions: EmailCheck["groupActions"]) {
  * open, so every opening starts clean. It works with the registrations closed
  * (RF-F1.10) and never creates an account or sends a message (RN-27).
  */
-export function AddGirlDrawer({ actionId, actionName, onAdded, onClose }: DrawerProps) {
+export function AddGirlDrawer({ actionId, actionName, walkIn = false, onAdded, onClose }: DrawerProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
@@ -131,21 +138,25 @@ export function AddGirlDrawer({ actionId, actionName, onAdded, onClose }: Drawer
 
     setSaving(true);
     try {
-      const result = await addRegistration(actionId, input);
+      const result = await (walkIn ? addWalkIn : addRegistration)(actionId, input);
       if (result === null) {
         setFailed(true);
       } else if (result.kind === "invalid") {
         setErrors(result.errors);
         const first = result.errors.name ? NAME_FIELD_ID : "add-girl-email";
         document.getElementById(first)?.focus();
-      } else if (result.alreadyRegistered) {
+      } else if (result.alreadyRegistered && !walkIn) {
         // Nothing changed, so the fields stay for her to fix the e-mail.
         setErrors({ email: "Ela já está nesta ação." });
         document.getElementById("add-girl-email")?.focus();
       } else {
-        onAdded();
+        onAdded(result.registration);
         if (another) {
-          setConfirmation(`${result.registration.name} foi adicionada.`);
+          setConfirmation(
+            walkIn
+              ? `${result.registration.name} foi adicionada e marcada como presente.`
+              : `${result.registration.name} foi adicionada.`,
+          );
           setKnown(null);
           setRound((value) => value + 1);
         } else {

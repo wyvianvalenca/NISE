@@ -115,3 +115,23 @@
   align-items: center;
   gap: 12px;
 }
+
+.walkIn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.walkIn:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}

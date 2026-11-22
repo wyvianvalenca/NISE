@@ -407,16 +407,24 @@ function invalidMessage(field: RegistrationField, value: string): string {
   return "Use até 40 caracteres";
 }
 
+/** The answer of a route that adds a girl, as the drawer needs it. */
+type AddedJson = {
+  registration: RegistrationListResponse["items"][number];
+  already_registered: boolean;
+  record_existed: boolean;
+};
+
 /**
- * Puts a girl in the action. `null` when the action is not the group's (404).
- * Works with the registrations closed (RF-F1.10). A 422 becomes messages per
- * field; any other failure throws.
+ * Posts the fields of the drawer to a route that adds a girl. `null` when the
+ * action is not the group's (404). A 422 becomes messages per field; any other
+ * failure throws.
  */
-export async function addRegistration(
-  id: number,
+async function postRegistration(
+  url: string,
   input: NewRegistration,
+  toAdded: (json: unknown) => AddedJson,
 ): Promise<AddRegistrationResult | null> {
-  const response = await fetch(`/api/actions/${id}/registrations`, {
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -442,11 +450,7 @@ export async function addRegistration(
     return { kind: "invalid", errors };
   }
   if (!response.ok) throw new Error(`add registration ${response.status}`);
-  const data = (await response.json()) as {
-    registration: RegistrationListResponse["items"][number];
-    already_registered: boolean;
-    record_existed: boolean;
-  };
+  const data = toAdded(await response.json());
   const row = data.registration;
   return {
     kind: "added",
@@ -461,6 +465,33 @@ export async function addRegistration(
       schoolYear: row.school_year,
     },
   };
+}
+
+/**
+ * Puts a girl in the action. `null` when the action is not the group's (404).
+ * Works with the registrations closed (RF-F1.10).
+ */
+export function addRegistration(
+  id: number,
+  input: NewRegistration,
+): Promise<AddRegistrationResult | null> {
+  return postRegistration(`/api/actions/${id}/registrations`, input, (json) => json as AddedJson);
+}
+
+/**
+ * "Veio sem inscrição?" (C3, #346): the same fields and answers as
+ * `addRegistration`, but the route belongs to the attendance, which only works
+ * from the day of the event. The answer carries the girl as the attendance
+ * lists have her, so it is read here as a registration.
+ */
+export function addWalkIn(
+  id: number,
+  input: NewRegistration,
+): Promise<AddRegistrationResult | null> {
+  return postRegistration(`/api/actions/${id}/attendance/girls`, input, (json) => {
+    const data = json as { girl: RegistrationListResponse["items"][number]; already_registered: boolean };
+    return { registration: data.girl, already_registered: data.already_registered, record_existed: false };
+  });
 }
 
 export type EmailCheck = {

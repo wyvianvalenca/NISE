@@ -98,6 +98,8 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   const [listVersion, setListVersion] = useState(0);
   const [importing, setImporting] = useState(false);
   const [adding, setAdding] = useState(false);
+  /** The same drawer, opened from the list to mark: "Veio sem inscrição?" (#346). */
+  const [addingWalkIn, setAddingWalkIn] = useState(false);
   /** The list to mark who came is open, with the registrations marked so far (#339). */
   const [marking, setMarking] = useState(false);
   const [marks, setMarks] = useState<ReadonlySet<number>>(new Set());
@@ -226,6 +228,7 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                     );
                   }}
                   onBack={() => setMarking(false)}
+                  onAddWalkIn={() => setAddingWalkIn(true)}
                   onSave={save}
                   saving={saving}
                   saveState={saveState}
@@ -258,6 +261,20 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   setImporting(false);
                   reload();
                 }}
+              />
+            )}
+            {addingWalkIn && (
+              <AddGirlDrawer
+                actionId={action.id}
+                actionName={action.name}
+                walkIn
+                onAdded={(registration) => {
+                  // She came: she is registered and already marked (#346).
+                  setSaveState(null);
+                  setMarks((current) => toggled(current, [registration.id], true));
+                  reload();
+                }}
+                onClose={() => setAddingWalkIn(false)}
               />
             )}
             {adding && (

@@ -99,10 +99,17 @@ export type AttendanceApi = {
   saved: number[][];
   /** While true the PUT answers 500 and saves nothing. */
   failSave: boolean;
+  /** Bodies of the POST that adds someone who came without signing up (#346), in order. */
+  walkIns: Record<string, string | null>[];
+  /** While true the POST answers 500 and adds nobody. */
+  failWalkIn: boolean;
+  /** Names of the registrations of the action now, in the back-end's state. */
+  registeredNow: (id: number) => string[];
   /** The registrations in the saved marks now, in the back-end's state (#340). */
   savedNow: (id: number) => number[];
 };
 
+const GIRLS_URL = /\/api\/actions\/(\d+)\/attendance\/girls$/;
 const MARKS_URL = /\/api\/actions\/(\d+)\/attendance\/marks$/;
 const ATTENDANCE_URL = /\/api\/actions\/(\d+)\/attendance$/;
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
@@ -188,6 +195,9 @@ export async function mockAttendanceApi(
     failAttendance: false,
     saved: [],
     failSave: false,
+    walkIns: [],
+    failWalkIn: false,
+    registeredNow: (id) => (data[id]?.registrations ?? []).map((row) => row.name),
     savedNow: (id) => [...(data[id]?.saved ?? [])],
   };
 
@@ -221,6 +231,51 @@ export async function mockAttendanceApi(
           items: matches.slice(offset, offset + limit),
           total: matches.length,
           columns: columnsOf(stored.registrations),
+        },
+      });
+    },
+  );
+
+  // POST .../attendance/girls (#346): registers her, like the back-end, with one
+  // record per e-mail. While marking she is not marked by the server: the page does.
+  await page.route(
+    (url) => GIRLS_URL.test(url.pathname),
+    async (route) => {
+      const stored = data[Number(GIRLS_URL.exec(new URL(route.request().url()).pathname)![1])];
+      await wait(delayMs);
+      if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (api.failWalkIn) return route.fulfill({ status: 500, body: "" });
+      const body = route.request().postDataJSON() as Record<string, string | null>;
+      api.walkIns.push(body);
+      const email = String(body.email).trim().toLowerCase();
+      if (!email.includes("@")) {
+        return route.fulfill({
+          status: 422,
+          json: { detail: [{ loc: ["body", "email"], msg: "invalid", type: "value_error" }] },
+        });
+      }
+      let row = stored.registrations.find((item) => item.email === email);
+      const already = row !== undefined;
+      if (!row) {
+        row = {
+          id: 100 + stored.registrations.length,
+          name: String(body.name).trim(),
+          email,
+          whatsapp: body.whatsapp?.trim() || null,
+          study_stage: body.study_stage || null,
+          school_year: body.school_year?.trim() || null,
+        };
+        stored.registrations.push(row);
+        stored.registrations.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+      }
+      return route.fulfill({
+        json: {
+          girl: {
+            ...row,
+            saved_present: stored.saved.has(row.id),
+            present: stored.present.has(row.id),
+          },
+          already_registered: already,
         },
       });
     },
