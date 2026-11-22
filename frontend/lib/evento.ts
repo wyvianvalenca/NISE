@@ -60,6 +60,8 @@ export type EventDetail = {
   prerequisites: string[];
   /** Link de inscrição do grupo. A NISE guarda só o link (RN-19). */
   registrationUrl: string;
+  /** Primeiro nome dela, para a celebração, como na rota da atividade (#121). */
+  firstName: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -213,7 +215,15 @@ export function daysUntilText(days: number): string {
 /** Um evento de teste, com as datas em dias a partir de hoje, para não envelhecer. */
 type MockEvent = Omit<
   EventDetail,
-  "startsOn" | "endsOn" | "deadline" | "daysLeft" | "registrationsOpen" | "daysUntilStart" | "afterEvent" | "reminder"
+  | "startsOn"
+  | "endsOn"
+  | "deadline"
+  | "daysLeft"
+  | "registrationsOpen"
+  | "daysUntilStart"
+  | "afterEvent"
+  | "reminder"
+  | "firstName"
 > & {
   /** Dias de hoje até o fim das inscrições; negativo se já fecharam. */
   deadlineIn: number;
@@ -420,6 +430,7 @@ function toDetail(mock: MockEvent, status: EventStatus, reminder: boolean): Even
     daysUntilStart: Math.max(startsIn, 0),
     afterEvent: startsIn + length - 1 < 0,
     reminder,
+    firstName: "Alana",
   };
 }
 

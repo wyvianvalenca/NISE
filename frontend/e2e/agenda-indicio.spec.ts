@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockFileApi } from "./file-api";
 
 /**
  * The agenda item "Achamos seu nome numa lista de aprovados!" and the filé
@@ -132,6 +133,10 @@ test.describe("Sua agenda · Pra responder", () => {
 
 test.describe("Seu filé · Tem umas perguntinhas pra você", () => {
   test.use({ viewport: { width: 360, height: 800 } });
+
+  test.beforeEach(async ({ page }) => {
+    await mockFileApi(page);
+  });
 
   test("with a match, the strip takes her to the agenda with the item", async ({ page }) => {
     await mockToAnswer(page, true);

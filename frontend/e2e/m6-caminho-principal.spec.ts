@@ -1,13 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fileResponse, type MockFileItem } from "./file-api";
 
 /**
  * E2E · M6 event sign-up, main path (#198). Covers #178, #182, #186, #190 and #194.
  *
  * The routes of the back-end (#180, #184, #188, #192, #196) do not exist yet, so the
- * screens use the test data of lib/evento.ts and lib/file.ts. The test base links the
- * two, as the back-end will: the items of the filé come from the status that the event
- * screens save (the "banco" of lib/evento.ts, in the sessionStorage of the tab). So
- * what she does on an event shows up in the right section of her filé.
+ * event screens use the test data of lib/evento.ts, and the filé (GET /api/file, #116)
+ * is simulated here. The test base links the two, as the back-end will: the items of
+ * the filé come from the status that the event screens save (the "banco" of
+ * lib/evento.ts, in the sessionStorage of the tab). So what she does on an event shows
+ * up in the right section of her filé.
  *
  * The data is fictional (never real data of a girl): an outside event and a NISE group
  * event in her "Próximas aventuras", and one of each that already happened, with her
@@ -86,29 +88,45 @@ async function serve(page: Page): Promise<void> {
   await page.context().route("https://example.com/**", (route) => route.fulfill({ body: "ok" }));
 
   await page.addInitScript(
-    ({ today, status, items, key }) => {
+    ({ today, status }) => {
       globalThis.__NISE_MOCK_EVENTO__ = { today, status };
-
-      const fileStatus = { next: "proxima", in_progress: "em-andamento", concluded: "concluido" } as const;
-      globalThis.__NISE_MOCK_FILE__ = {
-        // Read on every load of the filé, like the route of #114 will.
-        get items() {
-          const saved = sessionStorage.getItem(key);
-          const base = saved
-            ? (JSON.parse(saved) as { status: Record<string, EventStatus>; removed: string[] })
-            : { status, removed: [] };
-          return items
-            .filter((item) => !base.removed.includes(item.id))
-            .map((item) => ({
-              ...item,
-              kind: "event" as const,
-              status: fileStatus[base.status[item.id] ?? status[item.id]],
-            }));
-        },
-      };
     },
-    { today: TODAY, status: START_STATUS, items: FILE_ITEMS, key: STORAGE_KEY },
+    { today: TODAY, status: START_STATUS },
   );
+  // The badge of the Next dev tools (only in next dev, never in production) sits over
+  // "Tirar do filé" at 360 px and takes the click.
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = "nextjs-portal { display: none !important; }";
+      document.head.append(style);
+    });
+  });
+
+  // GET /api/file (#116) answers from the "banco" of the event screens, read on every
+  // load of the filé: what she did on an event shows up in the right section.
+  await page.route("**/api/file", async (route) => {
+    const saved = await page.evaluate((key) => sessionStorage.getItem(key), STORAGE_KEY);
+    const base = saved
+      ? (JSON.parse(saved) as { status: Record<string, EventStatus>; removed: string[] })
+      : { status: START_STATUS, removed: [] };
+    const items: MockFileItem[] = FILE_ITEMS.filter((item) => !base.removed.includes(item.id)).map((item) => {
+      const status = base.status[item.id] ?? START_STATUS[item.id];
+      return {
+        id: item.id,
+        kind: "evento",
+        title: item.title,
+        theme: item.theme,
+        typeLabel: item.type,
+        details: item.details,
+        deadline: item.deadline ?? null,
+        // In the M6 model, "in_progress" is the event she marked as signed up ("Inscrita").
+        signedUp: status === "in_progress",
+        section: status,
+      };
+    });
+    await route.fulfill({ json: fileResponse(items) });
+  });
 }
 
 /** The coordinator saves the attendance of the NISE group event (#135): present or absent. */

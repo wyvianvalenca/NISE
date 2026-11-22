@@ -5,8 +5,17 @@ from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
 from app.modules.consents.permissions import AcceptedGirlDep
-from app.modules.girls.schemas import InterestOptionsOut, InterestsIn, OptionOut
-from app.modules.girls.service import save_interests
+from app.modules.girls.schemas import (
+    InterestOptionsOut,
+    InterestsIn,
+    OptionOut,
+    ProfileOut,
+)
+from app.modules.girls.service import (
+    get_girl_of_user,
+    mark_file_intro_seen,
+    save_interests,
+)
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
@@ -70,5 +79,65 @@ async def update_interests(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": "profile_not_found"},
         )
+
+    return None
+
+
+PROFILE_NOT_FOUND: dict[int | str, dict[str, Any]] = {
+    status.HTTP_404_NOT_FOUND: {
+        "description": (
+            'A conta não tem registro de menina: {"error": "profile_not_found"}'
+        )
+    },
+}
+
+
+def profile_not_found() -> JSONResponse:
+    # Não deveria acontecer: o cadastro (#51, #52) sempre cria ou liga um
+    # registro de menina à conta.
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"error": "profile_not_found"},
+    )
+
+
+# O perfil da menina da sessão. Por enquanto só diz se ela já viu "Por que
+# filé?", para a A06·0 abrir sozinha só na primeira vez (RF-F10.02, #84).
+#
+# Não há id na URL: ela só lê o próprio perfil, o da sessão (RNF-G.03).
+@router.get(
+    "",
+    response_model=ProfileOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def profile(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ProfileOut | JSONResponse:
+    girl = await get_girl_of_user(session, user.id)
+
+    if girl is None:
+        return profile_not_found()
+
+    return ProfileOut(file_intro_seen=girl.file_intro_seen)
+
+
+# "Começar meu filé" na A06·0: depois disso a explicação não abre mais
+# sozinha, só pelo "?" ao lado de "Seu filé" (RF-F10.02). Marcar duas vezes
+# não muda nada.
+#
+# Sem id na URL nem no corpo: ela só marca o próprio perfil (RNF-G.03).
+@router.put(
+    "/file-intro-seen",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def file_intro_seen(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> JSONResponse | None:
+    marked = await mark_file_intro_seen(session, user.id)
+
+    if not marked:
+        return profile_not_found()
 
     return None

@@ -48,10 +48,30 @@ class AppSettings(BaseSettings):
         "https://copeve.ufal.br/concursos/sisu_2026_acompanhamento.php"
     )
     copeve_selection_process: str = "Sisu 2026"
+    # Listas de convocação do IFAL, em PDF (#274). Cada edição tem as suas
+    # seleções na API pública: o número da seleção e o nome do processo seletivo
+    # vêm daqui, não do código, ex.: IFAL_SELECTIONS='{"123": "SiSU 2027"}'.
+    ifal_api_url: str = "https://exame-api.ifal.edu.br/api"
+    ifal_selections: dict[int, str] = {}
+    # Cursos-alvo do IFAL (RF-F31.02), como (curso, campus) aparecem no PDF.
+    ifal_target_courses: list[tuple[str, str]] = [("Sistemas de Informação", "Maceió")]
+    # Um PDF maior que isso para a rodada sem ser lido inteiro. Os do spike
+    # tinham uns 1 MB; os maiores achados antes, uns 5 MB.
+    ifal_max_pdf_bytes: int = 15 * 1024 * 1024
     # Intervalo mínimo entre duas requisições do robô (RNF-F31.05).
     list_search_interval_seconds: float = 2.0
     # Segredo das rotas chamadas pelo agendador da hospedagem. Vazio recusa tudo.
     cron_secret: str = ""
+
+    # E-mails automáticos pela conta Gmail da equipe (#275). SMTP com STARTTLS
+    # e senha de app do Google. Sem SMTP_USER e SMTP_PASSWORD, o envio fica
+    # desligado: os e-mails esperam na fila até a conta ser configurada.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    # Remetente, ex.: "NISE <conta@gmail.com>". Vazio usa o SMTP_USER.
+    email_from: str = ""
 
 
 settings = AppSettings()

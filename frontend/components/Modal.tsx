@@ -11,14 +11,16 @@ type ModalProps = {
   children?: ReactNode;
   /** Botões no rodapé, alinhados à direita. */
   actions?: ReactNode;
+  /** Enquanto algo está em andamento: Esc e o clique no véu não fecham a janela. */
+  locked?: boolean;
 };
 
 /**
  * Janela de confirmação no centro da tela
  * (Figma: Janela / Finalizar inscrições, com o Véu atrás).
  */
-export function Modal({ open, onClose, title, children, actions }: ModalProps) {
-  const ref = useDialog(open, onClose);
+export function Modal({ open, onClose, title, children, actions, locked = false }: ModalProps) {
+  const ref = useDialog(open, onClose, locked);
   const titleId = useId();
 
   return (

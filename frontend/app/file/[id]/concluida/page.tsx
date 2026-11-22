@@ -1,7 +1,8 @@
 "use client";
 
 // A06·5 · Concluído, a parte da celebração ("Mais um passo dado").
-// Atende RF-F10.08 (issues #119 e #120). A parte de avaliação, logo abaixo, é da #124.
+// Atende RF-F10.08 (issues #119 e #120), pela rota GET /api/file/{id} (integração na #122).
+// A parte de avaliação, logo abaixo, é da #124.
 //
 // Fora daqui de propósito: a linha "Outras meninas da NISE também fizeram esse curso."
 // do Figma, porque a RN-28 diz que o filé não compara meninas (a decidir com o design).
@@ -9,10 +10,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { ActivityFeedback } from "@/components/ActivityFeedback";
-import { getActivity, getFirstName, type ActivityDetail } from "@/lib/atividade";
+import { Button } from "@/components/Button";
 import styles from "../atividade.module.css";
+import { useActivity } from "../useActivity";
 import celebration from "./concluida.module.css";
 
 const FILE_PATH = "/file";
@@ -48,26 +50,28 @@ function Loading() {
 function Celebration() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [activity, setActivity] = useState<ActivityDetail | null | undefined>(undefined);
+  const { result, redirecting, retry } = useActivity(id);
+  const activity = result?.ok ? result.data : null;
   const headingRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => {
-    let current = true;
-    getActivity(id).then((result) => {
-      if (current) setActivity(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [id]);
 
   // Leva o foco ao título quando a tela abre, para o leitor de tela anunciar a conquista.
   useEffect(() => {
     if (activity) headingRef.current?.focus();
   }, [activity]);
 
-  if (activity === undefined) return <Loading />;
-  if (activity === null) return <p className={styles.status}>Essa atividade não está no seu filé.</p>;
+  // Sem sessão ou sem o aceite dos termos, o hook já leva para a tela certa.
+  if (!result || redirecting) return <Loading />;
+  if (!result.ok && result.reason === "not_found") {
+    return <p className={styles.status}>Essa atividade não está no seu filé.</p>;
+  }
+  if (!activity) {
+    return (
+      <div role="alert">
+        <p className={styles.status}>Não foi possível carregar. Sua conexão pode ter sido interrompida.</p>
+        <Button onClick={retry}>Tentar novamente</Button>
+      </div>
+    );
+  }
   return (
     <>
       <Image
@@ -80,7 +84,7 @@ function Celebration() {
       />
       <p className={celebration.kicker}>Mais um passo dado</p>
       <h1 ref={headingRef} tabIndex={-1} className={celebration.title}>
-        Você conseguiu, {getFirstName()}!
+        {activity.firstName.trim() ? `Você conseguiu, ${activity.firstName}!` : "Você conseguiu!"}
       </h1>
       <p className={celebration.activity}>{activity.title}</p>
 

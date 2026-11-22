@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
 from httpx2 import ASGITransport, AsyncClient, Response
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.sql import ClauseElement
 
 from app.auth.permissions import SESSION_COOKIE
 from app.db.engine import get_session
@@ -14,6 +16,8 @@ def sessao_com(usuaria: User | None) -> AsyncMock:
     # session.get(User, id) devolve a usuária, ou None se ela não existe mais.
     sessao_falsa = AsyncMock()
     sessao_falsa.get.return_value = usuaria
+    # session.begin_nested() é usado com "async with" (um savepoint), não com await.
+    sessao_falsa.begin_nested = MagicMock()
     return sessao_falsa
 
 
@@ -61,3 +65,9 @@ async def chamar_rota(
             return await client.request(metodo, url, json=corpo)
     finally:
         app.dependency_overrides.clear()
+
+
+def sql_do_postgres(consulta: ClauseElement) -> str:
+    """O SQL de uma consulta como o Postgres a recebe (ex.: para ver o FOR UPDATE)."""
+    dialeto = postgresql.dialect()  # type: ignore[no-untyped-call]
+    return str(consulta.compile(dialect=dialeto))

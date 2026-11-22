@@ -1,251 +1,177 @@
 // Detalhe de uma atividade do filé (A06·4a) e mudança de status (#119, #120).
 //
-// TEMPORÁRIO: as funções abaixo usam dados de teste guardados na memória do navegador.
-// Os tipos seguem as rotas descritas na #119 e serão trocados pelos tipos gerados do
-// OpenAPI quando o back existir; a troca pela chamada a /api é a sub-issue de integração.
-// Os dados são fictícios; nada sai do navegador.
+// As rotas são GET /api/file/{id} e PUT /api/file/{id}/status (#121), e DELETE
+// /api/file/{id} para o "Tirar do filé" (#108). Os tipos abaixo são escritos à mão,
+// iguais ao OpenAPI do back (/docs no FastAPI), como em lib/file.ts: a equipe decidiu
+// não ter um gerador de tipos por enquanto. Integração na #122.
 
 import type { BandCode } from "./descobrir";
+import { themeOf, type ThemeCode } from "./file";
+import { errorCode, sessionProblem, type SessionProblem } from "./signup-api";
+import { costLabel } from "./sugestoes";
 
 /** Status de uma atividade no filé, na ordem em que ela anda (tabela da #78). */
 export type ActivityStatus = "next" | "in_progress" | "concluded";
+
+// ---------------------------------------------------------------------------
+// O que o back devolve
+
+/** A resposta de GET /api/file/{id} e de PUT /api/file/{id}/status (ActivityOut). */
+export type ActivityResponse = {
+  /** "curadoria-12": o id do catálogo, o mesmo do filé. */
+  id: string;
+  status: ActivityStatus;
+  /** Código do tipo (CuratedType no back), ex.: "course", "video". */
+  type: string;
+  /** O selo do topo, ex.: "Curso online". */
+  typeLabel: string;
+  /** Tema que dá o nome na linha "Programação · No meu ritmo"; null quando o item não tem tema. */
+  theme: ThemeCode | null;
+  band: BandCode;
+  title: string;
+  source: string;
+  description: string;
+  /** Site externo. Abrir o site não muda o status. */
+  url: string;
+  format: "online" | "in_person";
+  /** Duração aproximada, ex.: "~10 horas". */
+  duration: string;
+  /** Em centavos; 0 é grátis. */
+  costCents: number | null;
+  /** null quando o item não tem idade mínima. */
+  minAge: number | null;
+  /** "Por que pra você" (RF-F11.04); null quando nenhuma regra explica. */
+  why: string | null;
+  /** Dia em que ela marcou como concluída (AAAA-MM-DD); null nas outras seções. */
+  concludedOn: string | null;
+  /** Primeiro nome dela, para "Você conseguiu, <nome>!". É o da sessão. */
+  firstName: string;
+};
+
+// ---------------------------------------------------------------------------
+// O que a tela usa
 
 export type ActivityDetail = {
   id: string;
   status: ActivityStatus;
   /** Tipo mostrado no selo, ex.: "Curso online". */
   kind: string;
-  /** "course" muda o texto dos botões para "site do curso". */
-  kindCode: "course" | "community" | "video" | "quiz";
+  /** Curso fala em "site do curso"; os outros tipos, só em "site". */
+  isCourse: boolean;
+  /** Nome do tema, ex.: "Programação"; vazio quando o item não tem tema. */
   topic: string;
   band: BandCode;
   title: string;
-  /** Quem oferece, ex.: "Plataforma de cursos gratuitos · exemplo". */
+  /** Quem oferece. */
   source: string;
+  /** "Online" ou "Presencial". */
   format: string;
   duration: string;
-  /** null quando é gratuita: aparece "Grátis". */
+  /** O valor, ex.: "R$ 20"; null quando é gratuita: aparece "Grátis". */
   cost: string | null;
   minAge: number | null;
   description: string;
   /** Explicação da recomendação (RF-F11.04); pode faltar. */
   reason: string | null;
-  /** Site externo da atividade. Abrir o site não muda o status. */
   url: string;
+  /** Primeiro nome dela, para a celebração. */
+  firstName: string;
 };
 
-// Os testes e2e trocam os dados definindo __NISE_MOCK_ATIVIDADE__ antes da página abrir.
-declare global {
-  var __NISE_MOCK_ATIVIDADE__:
-    | {
-        /** Status inicial de cada atividade, pelo id. */
-        status?: Record<string, ActivityStatus>;
-        /** Atraso das respostas, em ms, para testar o carregamento. */
-        delayMs?: number;
-        /** Faz a mudança de status falhar, para testar a mensagem de erro. */
-        failUpdates?: boolean;
-      }
-    | undefined;
-}
+// "Curso com turma" também é curso.
+const COURSE_TYPES = ["course", "cohort_course"];
 
-// Ids iguais aos do mock do filé (#115). O hackathon é evento e abre a A06·4b (#118), não esta tela.
-const MOCK_ACTIVITIES: ActivityDetail[] = [
-  {
-    id: "logica-de-programacao-com-python",
-    status: "in_progress",
-    kind: "Curso online",
-    kindCode: "course",
-    topic: "Programação",
-    band: "no-meu-ritmo",
-    title: "Lógica de programação com Python",
-    source: "Plataforma de cursos gratuitos · exemplo",
-    format: "Online",
-    duration: "~10 horas",
-    cost: null,
-    minAge: 13,
-    description:
-      "Aprenda a pensar como programadora resolvendo problemas do dia a dia, sem precisar instalar nada.",
-    reason: "você curtiu Programação e IA, e Python é a porta de entrada pras duas.",
-    url: "https://example.com/cursos/logica-com-python",
-  },
-  {
-    id: "ia-para-iniciantes",
-    status: "next",
-    kind: "Curso online",
-    kindCode: "course",
-    topic: "Inteligência artificial",
-    band: "no-meu-ritmo",
-    title: "IA para iniciantes",
-    source: "Plataforma de cursos gratuitos · exemplo",
-    format: "Online",
-    duration: "~6 horas",
-    cost: null,
-    minAge: 13,
-    description: "Entenda como a inteligência artificial aprende com exemplos e onde ela já aparece no seu dia.",
-    reason: "você marcou Inteligência artificial nos seus interesses.",
-    url: "https://example.com/cursos/ia-para-iniciantes",
-  },
-  {
-    id: "comunidade-de-robotica-no-discord",
-    status: "next",
-    kind: "Comunidade",
-    kindCode: "community",
-    topic: "Robótica",
-    band: "uma-tarde",
-    title: "Comunidade de robótica no Discord",
-    source: "Grupo de robótica · exemplo",
-    format: "Online",
-    duration: "No seu ritmo",
-    cost: null,
-    minAge: 13,
-    description: "Um lugar pra tirar dúvidas, mostrar seus projetos e conhecer outras meninas que curtem robôs.",
-    reason: null,
-    url: "https://example.com/comunidades/robotica",
-  },
-  {
-    id: "oficina-de-scratch",
-    status: "concluded",
-    kind: "Tutorial",
-    kindCode: "course",
-    topic: "Jogos",
-    band: "uma-tarde",
-    title: "Oficina de Scratch",
-    source: "Plataforma de cursos gratuitos · exemplo",
-    format: "Online",
-    duration: "~3 horas",
-    cost: null,
-    minAge: 13,
-    description: "Monte seu primeiro jogo arrastando blocos, sem precisar escrever código.",
-    reason: "você curtiu Jogos.",
-    url: "https://example.com/tutoriais/scratch",
-  },
-  {
-    id: "como-funciona-um-robo",
-    status: "concluded",
-    kind: "Vídeo",
-    kindCode: "video",
-    topic: "Robótica",
-    band: "primeiros-passos",
-    title: "Como funciona um robô",
-    source: "Canal de divulgação científica · exemplo",
-    format: "Online",
-    duration: "12 min",
-    cost: null,
-    minAge: null,
-    description: "Sensores, motores e um cérebro: o básico de qualquer robô em poucos minutos.",
-    reason: null,
-    url: "https://example.com/videos/como-funciona-um-robo",
-  },
-  {
-    id: "quiz-ia-no-dia-a-dia",
-    status: "concluded",
-    kind: "Quiz",
-    kindCode: "quiz",
-    topic: "Inteligência artificial",
-    band: "primeiros-passos",
-    title: "Quiz: IA no dia a dia",
-    source: "NISE · exemplo",
-    format: "Online",
-    duration: "5 min",
-    cost: null,
-    minAge: null,
-    description: "Dez perguntas rápidas pra descobrir onde a IA aparece sem você perceber.",
-    reason: null,
-    url: "https://example.com/quizzes/ia-no-dia-a-dia",
-  },
-];
-
-// O "banco" do mock. Fica no sessionStorage para sobreviver a um recarregamento
-// (o filé ainda dá 404 e recarrega a página); some quando a aba fecha.
-const STORAGE_KEY = "nise-mock-atividade";
-type Saved = { status: Record<string, ActivityStatus>; removed: string[] };
-
-function load(): Saved {
-  try {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved) as Saved;
-  } catch {
-    // Sem sessionStorage (aba anônima bloqueada etc.): começa do zero.
-  }
-  return { status: globalThis.__NISE_MOCK_ATIVIDADE__?.status ?? {}, removed: [] };
-}
-
-function save(saved: Saved) {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  } catch {
-    // Sem sessionStorage, a mudança vale só até recarregar.
-  }
-}
-
-function getStore(): Map<string, ActivityDetail> {
-  const saved = load();
-  return new Map(
-    MOCK_ACTIVITIES.filter((activity) => !saved.removed.includes(activity.id)).map((activity) => [
-      activity.id,
-      { ...activity, status: saved.status[activity.id] ?? activity.status },
-    ]),
-  );
-}
-
-async function wait() {
-  const delayMs = globalThis.__NISE_MOCK_ATIVIDADE__?.delayMs;
-  if (delayMs) {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-  }
-}
-
-/** Primeiro nome da menina, para "Você conseguiu, <nome>!". Virá da sessão. */
-export function getFirstName(): string {
-  return "Alana";
-}
-
-/** Detalhe de uma atividade do filé dela; null se não está no filé. */
-export async function getActivity(id: string): Promise<ActivityDetail | null> {
-  await wait();
-  const activity = getStore().get(id);
-  return activity ? { ...activity } : null;
-}
-
-const NEXT_STATUS: Record<ActivityStatus, ActivityStatus | null> = {
-  next: "in_progress",
-  in_progress: "concluded",
-  concluded: null,
+const FORMAT_LABELS: Record<ActivityResponse["format"], string> = {
+  online: "Online",
+  in_person: "Presencial",
 };
+
+/** Passa a resposta do back para o formato da tela. */
+export function toActivity(response: ActivityResponse): ActivityDetail {
+  return {
+    id: response.id,
+    status: response.status,
+    kind: response.typeLabel,
+    isCourse: COURSE_TYPES.includes(response.type),
+    topic: themeOf(response.theme).label,
+    band: response.band,
+    title: response.title,
+    source: response.source,
+    format: FORMAT_LABELS[response.format],
+    duration: response.duration,
+    // Um item da curadoria sempre informa o custo; 0 é grátis.
+    cost: response.costCents ? costLabel(response.costCents) : null,
+    minAge: response.minAge,
+    description: response.description,
+    reason: response.why,
+    url: response.url,
+    firstName: response.firstName,
+  };
+}
+
+export type ActivityResult =
+  | { ok: true; data: ActivityDetail }
+  | { ok: false; reason: SessionProblem | "terms_not_accepted" | "not_found" | "failed" };
+
+function activityUrl(id: string): string {
+  return `/api/file/${encodeURIComponent(id)}`;
+}
 
 /**
- * Anda um passo no status: próxima → em andamento → concluída.
- * Outro salto é recusado, como o back vai fazer.
+ * Uma atividade do filé dela (#121). "not_found" quando o item não é uma atividade
+ * do filé dela: sem escolha, no Ver depois, no "Não é pra mim", ou um evento.
+ */
+export async function getActivity(id: string, signal?: AbortSignal): Promise<ActivityResult> {
+  const response = await fetch(activityUrl(id), { signal });
+
+  if (response.ok) {
+    return { ok: true, data: toActivity((await response.json()) as ActivityResponse) };
+  }
+
+  if (response.status === 401) {
+    return { ok: false, reason: await sessionProblem(response) };
+  }
+
+  // O filé vem depois do aceite dos termos: 403 {"error": "terms_not_accepted"}.
+  if (response.status === 403 && (await errorCode(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  // 404 {"error": "item_not_found"}. O "profile_not_found" não deveria acontecer
+  // (o cadastro sempre cria o registro) e cai em "failed".
+  if (response.status === 404 && (await errorCode(response)) === "item_not_found") {
+    return { ok: false, reason: "not_found" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
+
+/**
+ * Anda um passo no status: próxima → em andamento → concluída (#121). O back recusa
+ * outro salto com 409. Devolve o detalhe já com o status novo; qualquer resposta que
+ * não seja 200 vira erro, e a tela avisa.
  */
 export async function setActivityStatus(id: string, status: ActivityStatus): Promise<ActivityDetail> {
-  await wait();
-  const activity = getStore().get(id);
-  if (globalThis.__NISE_MOCK_ATIVIDADE__?.failUpdates) {
-    throw new Error("Falha simulada");
+  const response = await fetch(`${activityUrl(id)}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) {
+    throw new Error("Não foi possível mudar o status.");
   }
-  if (!activity || NEXT_STATUS[activity.status] !== status) {
-    throw new Error(`Mudança de status recusada: ${activity?.status} → ${status}`);
-  }
-  const saved = load();
-  save({ ...saved, status: { ...saved.status, [id]: status } });
-  return { ...activity, status };
+
+  return toActivity((await response.json()) as ActivityResponse);
 }
 
-/** "Tirar do filé": funciona para próxima e em andamento; concluída é recusada (#108). */
+/**
+ * "Tirar do filé": a mesma rota do "Desfazer" (#108). Vale para próxima e em
+ * andamento; o back recusa uma concluída com 409. Qualquer resposta que não seja
+ * 200 vira erro, e a tela avisa.
+ */
 export async function removeActivity(id: string): Promise<void> {
-  await wait();
-  const activity = getStore().get(id);
-  if (globalThis.__NISE_MOCK_ATIVIDADE__?.failUpdates) {
-    throw new Error("Falha simulada");
+  const response = await fetch(activityUrl(id), { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error("Não foi possível tirar a atividade do filé.");
   }
-  if (!activity || activity.status === "concluded") {
-    throw new Error("Não dá para tirar essa atividade do filé");
-  }
-  const saved = load();
-  save({ ...saved, removed: [...saved.removed, id] });
-}
-
-/** Endereço do detalhe, usado pelos itens do filé (#115). */
-export function activityPath(id: string): string {
-  return `/file/${id}`;
 }
