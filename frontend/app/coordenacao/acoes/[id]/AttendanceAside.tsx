@@ -10,7 +10,7 @@ import styles from "./AttendanceAside.module.css";
  * "Próxima etapa: presença" and the note under it. The action waits from the
  * first day of the event, with or without registered girls.
  */
-export function AttendanceAside({ action }: { action: ActionPage }) {
+export function AttendanceAside({ action, onMark }: { action: ActionPage; onMark: () => void }) {
   return (
     <>
       <section className={styles.card} aria-labelledby="next-step-title">
@@ -24,8 +24,7 @@ export function AttendanceAside({ action }: { action: ActionPage }) {
           No dia {dayMonthLabel(action.startsOn)}, marque quem esteve na ação. Dá pra marcar na
           lista ou importar a lista de presença.
         </p>
-        {/* The list this button opens comes with "Mark who came" (#339). */}
-        <Button disabled>Marcar presença</Button>
+        <Button onClick={onMark}>Marcar presença</Button>
       </section>
       <div className={styles.note}>
         <Notice icon="eye">

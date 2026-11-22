@@ -11,7 +11,9 @@ import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
 import { getAttendance, type AttendancePage } from "@/lib/coord-attendance";
 import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
+import { AfterAttendanceCard } from "./AfterAttendanceCard";
 import { AttendanceAside } from "./AttendanceAside";
+import { AttendanceMarking } from "./AttendanceMarking";
 import { ImportDrawer } from "./ImportDrawer";
 import { RegistrationsCard } from "./RegistrationsCard";
 import { RegistrationsSwitch } from "./RegistrationsSwitch";
@@ -60,6 +62,16 @@ function steps(action: ActionPage, attendance: AttendancePage | undefined): Step
   ];
 }
 
+/** A copy of the marks with these registrations marked or unmarked. */
+function toggled(marks: ReadonlySet<number>, ids: number[], marked: boolean): ReadonlySet<number> {
+  const next = new Set(marks);
+  for (const id of ids) {
+    if (marked) next.add(id);
+    else next.delete(id);
+  }
+  return next;
+}
+
 type ViewProps = { groupName: string; accountInitial: string };
 
 /**
@@ -86,6 +98,9 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   const [listVersion, setListVersion] = useState(0);
   const [importing, setImporting] = useState(false);
   const [adding, setAdding] = useState(false);
+  /** The list to mark who came is open, with the registrations marked so far (#339). */
+  const [marking, setMarking] = useState(false);
+  const [marks, setMarks] = useState<ReadonlySet<number>>(new Set());
 
   useEffect(() => {
     if (actionId === null) return;
@@ -120,6 +135,12 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
     return () => controller.abort();
   }, [actionId, hasAttendance, attempt]);
 
+  /** Opens the list to mark. Every opening starts from what was saved: the rest is lost (#339). */
+  function openList() {
+    setMarks(new Set());
+    setMarking(true);
+  }
+
   /** Fetches the action and the list again. */
   function reload() {
     setAttempt((value) => value + 1);
@@ -148,15 +169,33 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
               <StepTracker steps={steps(action, attendance)} />
             </div>
             <div className={styles.columns}>
-              <RegistrationsCard
-                action={action}
-                reloadToken={listVersion}
-                onImport={() => setImporting(true)}
-                onAdd={() => setAdding(true)}
-              />
+              {marking && attendance ? (
+                <AttendanceMarking
+                  attendance={attendance}
+                  marks={marks}
+                  onToggle={(id, marked) => setMarks((current) => toggled(current, [id], marked))}
+                  onToggleAll={(marked) =>
+                    setMarks((current) =>
+                      toggled(current, attendance.girls.map((girl) => girl.id), marked),
+                    )
+                  }
+                  onBack={() => setMarking(false)}
+                />
+              ) : (
+                <RegistrationsCard
+                  action={action}
+                  reloadToken={listVersion}
+                  onImport={() => setImporting(true)}
+                  onAdd={() => setAdding(true)}
+                />
+              )}
               <aside className={styles.aside} aria-label="Próximos passos">
                 {action.status === "awaiting_attendance" ? (
-                  <AttendanceAside action={action} />
+                  marking ? (
+                    <AfterAttendanceCard />
+                  ) : (
+                    <AttendanceAside action={action} onMark={openList} />
+                  )
                 ) : (
                   <RegistrationsSwitch action={action} onChanged={reload} />
                 )}

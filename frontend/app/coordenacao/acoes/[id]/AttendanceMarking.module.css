@@ -1,0 +1,107 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}
+
+.help {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.search {
+  width: 280px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Name, e-mail and the optional columns side by side. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.cell {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nise-muted);
+  font-size: 14px;
+  text-overflow: ellipsis;
+}
+
+.none {
+  padding: 16px 4px;
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.more {
+  align-self: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--nise-teal);
+}
+
+.footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--nise-track);
+  font-size: 14px;
+}
