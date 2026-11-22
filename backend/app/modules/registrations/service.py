@@ -78,9 +78,13 @@ def parse_study_stage(text: str | None) -> StudyStage | None:
 _YEAR_RULES: list[tuple[re.Pattern[str], StudyStage]] = [
     (re.compile(r"tecnic|modulo"), StudyStage.TECNICO),
     (re.compile(r"periodo|semestre"), StudyStage.GRADUACAO),
-    (re.compile(r"\bserie\b|\bem\b|medio"), StudyStage.MEDIO),
-    (re.compile(r"\b[1-9]\s*(o|a)?\s*ano\b|\bano\b"), StudyStage.FUNDAMENTAL),
+    (re.compile(r"medio|\bem\b"), StudyStage.MEDIO),
+    (re.compile(r"fundamental|\bef\b"), StudyStage.FUNDAMENTAL),
 ]
+
+# "8ª série" and "9º ano" are the fundamental; "1ª série" and "3º ano" are the
+# médio. The girls of an action are teenagers, so a bare 1 to 3 is the médio.
+_YEAR_NUMBER = re.compile(r"\b([1-9])\s*(?:o|a)?\s*(?:serie|ano)\b")
 
 
 def infer_study_stage(
@@ -95,7 +99,10 @@ def infer_study_stage(
     for pattern, stage in _YEAR_RULES:
         if pattern.search(plain):
             return stage
-    return None
+    number = _YEAR_NUMBER.search(plain)
+    if number is None:
+        return None
+    return StudyStage.MEDIO if int(number.group(1)) <= 3 else StudyStage.FUNDAMENTAL
 
 
 def registrations_are_open(action: Action, today: date) -> bool:
