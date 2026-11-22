@@ -93,3 +93,46 @@ class ListSearchOut(BaseModel):
     last_search_at: datetime | None = Field(serialization_alias="lastSearchAt")
     # Dia previsto da próxima (D-72). Null se nunca rodou.
     next_search_on: date | None = Field(serialization_alias="nextSearchOn")
+
+
+class LevelSummaryOut(BaseModel):
+    """Quantas ingressaram num nível e em quais instituições."""
+
+    count: int
+    # Cada instituição uma vez, em ordem alfabética (pergunta 4 da #316). Vazias
+    # ficam de fora.
+    institutions: list[str]
+
+
+class RecentGirlOut(BaseModel):
+    """Uma menina de "Mais recentes": o primeiro nome, o curso e a instituição."""
+
+    first_name: str = Field(serialization_alias="firstName")
+    course: str
+    institution: str | None
+
+
+class RecentFoundOut(BaseModel):
+    """As ingressantes que a última busca achou e que confirmaram (RF-F5.22)."""
+
+    # Quando a última busca terminou: a tela mostra o mês, igual ao do card.
+    searched_at: datetime = Field(serialization_alias="searchedAt")
+    girls: list[RecentGirlOut]
+
+
+class EnrollmentSummaryOut(BaseModel):
+    """O resumo do topo da tela Ingressantes (#316, RF-F5.21).
+
+    Mostra os números mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75).
+    """
+
+    # Quantas meninas ingressaram: o mesmo número da lista "Quem ingressou".
+    total: int
+    # Ingressantes sobre as meninas que foram a ações do grupo e criaram conta,
+    # em número inteiro (D-78). Zero se nenhuma foi.
+    percent: int
+    graduacao: LevelSummaryOut
+    tecnico: LevelSummaryOut
+    # Null quando a última busca não achou ninguém da lista, ou nunca rodou: a
+    # frase "Mais recentes" some.
+    recent: RecentFoundOut | None

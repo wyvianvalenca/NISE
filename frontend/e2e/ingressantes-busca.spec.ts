@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { mockEnrollmentsApi, mockListSearchApi } from "./ingressantes-api";
+import { mockEnrollmentsApi, mockListSearchApi, mockSummaryApi } from "./ingressantes-api";
 
 // K06 Ingressantes · card "Busca nas listas de ingressantes" (#317). Dados fictícios.
 
@@ -7,6 +7,7 @@ const URL = "/coordenacao/ingressantes";
 
 test.beforeEach(async ({ page }) => {
   await mockEnrollmentsApi(page);
+  await mockSummaryApi(page);
 });
 
 test("says what NISE looks for and shows the UFAL chip", async ({ page }) => {

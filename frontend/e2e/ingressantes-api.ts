@@ -1,5 +1,10 @@
 import type { Page } from "@playwright/test";
-import type { EnrollmentPage, EnrollmentRow, ListSearch } from "../lib/ingressantes-api";
+import type {
+  EnrollmentPage,
+  EnrollmentRow,
+  EnrollmentSummary,
+  ListSearch,
+} from "../lib/ingressantes-api";
 
 // Simula GET /api/coordinator/enrollments (#315) para os testes não dependerem
 // do FastAPI. Dados fictícios.
@@ -113,5 +118,37 @@ export async function mockListSearchApi(page: Page, options: SearchOptions = {})
 
   await page.route("**/api/coordinator/list-search", (route) =>
     status ? route.fulfill({ status, json: { detail: "erro" } }) : route.fulfill({ json: search }),
+  );
+}
+
+/** O resumo do Figma: 5 meninas, 28% de quem criou conta, 3 na graduação e 2 no técnico. */
+export const FIGMA_SUMMARY: EnrollmentSummary = {
+  total: 5,
+  percent: 28,
+  graduacao: { count: 3, institutions: ["UFAL", "UNEAL"] },
+  tecnico: { count: 2, institutions: ["IFAL"] },
+  recent: {
+    // Meio-dia em Maceió.
+    searchedAt: "2026-10-10T15:00:00Z",
+    girls: [
+      { firstName: "Júlia", course: "Sistemas de Informação", institution: "UNEAL" },
+      { firstName: "Lara", course: "Técnico em Redes", institution: "IFAL" },
+    ],
+  },
+};
+
+type SummaryOptions = {
+  /** O que a rota devolve. Padrão: FIGMA_SUMMARY. */
+  summary?: EnrollmentSummary;
+  /** Status de erro, no lugar do resumo. */
+  status?: 401 | 403 | 409 | 500;
+};
+
+/** Simula GET /api/coordinator/enrollments/summary (#316). Dados fictícios. */
+export async function mockSummaryApi(page: Page, options: SummaryOptions = {}): Promise<void> {
+  const { summary = FIGMA_SUMMARY, status } = options;
+
+  await page.route("**/api/coordinator/enrollments/summary", (route) =>
+    status ? route.fulfill({ status, json: { detail: "erro" } }) : route.fulfill({ json: summary }),
   );
 }

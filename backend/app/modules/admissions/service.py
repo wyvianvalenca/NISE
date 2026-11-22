@@ -1,4 +1,5 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -23,7 +24,15 @@ from app.modules.admissions.models import (
     ListSearchRun,
     OfficialList,
 )
-from app.modules.admissions.schemas import ListSearchOut, MatchAnswerIn, MatchResult
+from app.modules.admissions.schemas import (
+    EnrollmentSummaryOut,
+    LevelSummaryOut,
+    ListSearchOut,
+    MatchAnswerIn,
+    MatchResult,
+    RecentFoundOut,
+    RecentGirlOut,
+)
 from app.modules.admissions.utils import add_months
 from app.modules.girls.models import Girl
 
@@ -276,6 +285,26 @@ def girls_of_group(group_id: int) -> Select[int]:
     )
 
 
+def latest_enrollments(group_id: int) -> type[Enrollment]:
+    """O ingresso mais recente de cada menina do grupo, para usar como Enrollment.
+
+    É a base da lista "Quem ingressou" (#315) e do resumo (#316): os dois partem
+    das mesmas linhas, e por isso os números batem. Quando ela corrige a
+    declaração (RF-F6.05), vale o curso novo. Só ingresso entra; aprovação,
+    indício sem resposta e "Não sou eu" não (RN-21, RN-22).
+    """
+    return aliased(
+        Enrollment,
+        select(Enrollment)
+        .where(Enrollment.girl_id.in_(girls_of_group(group_id)))
+        .ext(distinct_on(Enrollment.girl_id))
+        .order_by(
+            Enrollment.girl_id, Enrollment.created_at.desc(), Enrollment.id.desc()
+        )
+        .subquery(),
+    )
+
+
 async def list_group_enrollments(
     session: AsyncSession, group_id: int, page: int
 ) -> tuple[Sequence[tuple[Enrollment, str]], int]:
@@ -288,16 +317,7 @@ async def list_group_enrollments(
     A ordem é a do registro, das mais recentes para as mais antigas (D-77). O
     id desempata, para a mesma menina não pular de página.
     """
-    latest = aliased(
-        Enrollment,
-        select(Enrollment)
-        .where(Enrollment.girl_id.in_(girls_of_group(group_id)))
-        .ext(distinct_on(Enrollment.girl_id))
-        .order_by(
-            Enrollment.girl_id, Enrollment.created_at.desc(), Enrollment.id.desc()
-        )
-        .subquery(),
-    )
+    latest = latest_enrollments(group_id)
 
     total = await session.scalar(select(func.count()).select_from(latest))
 
@@ -337,3 +357,119 @@ async def get_list_search(session: AsyncSession) -> ListSearchOut:
     return ListSearchOut(
         sources=SEARCH_SOURCES, last_search_at=last, next_search_on=next_on
     )
+
+
+# ---------------------------------------------------------------------------
+# Resumo do topo da tela Ingressantes (C8, #316)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SummaryRow:
+    """Uma ingressante da lista, só com o que o resumo usa."""
+
+    girl_id: int
+    girl_name: str
+    level: CourseLevel
+    course: str
+    institution: str
+    origin: AdmissionOrigin
+    official_list_id: int | None
+
+
+def _level_summary(rows: Iterable[SummaryRow], level: CourseLevel) -> LevelSummaryOut:
+    of_level = [row for row in rows if row.level == level]
+    # Cada instituição uma vez, em ordem alfabética, sem as vazias.
+    institutions = {row.institution.strip() for row in of_level} - {""}
+
+    return LevelSummaryOut(
+        count=len(of_level), institutions=sorted(institutions, key=str.casefold)
+    )
+
+
+def build_summary(
+    rows: Sequence[SummaryRow],
+    girls_with_account: int,
+    last_search_at: datetime | None,
+    found_by_last_search: set[tuple[int, int]],
+) -> EnrollmentSummaryOut:
+    """Monta o resumo a partir das linhas da lista (RF-F5.21, RF-F5.22).
+
+    `rows` são as mesmas meninas da lista "Quem ingressou", das mais recentes
+    para as mais antigas. `girls_with_account` são as que foram a ações do grupo
+    e criaram conta. `found_by_last_search` são pares (menina, chamada) de
+    indícios da última busca que a menina confirmou.
+    """
+    total = len(rows)
+    # Arredonda para o inteiro mais próximo: 5 de 18 é 27,8 e mostra 28%.
+    percent = 0
+    if girls_with_account:
+        percent = (total * 100 + girls_with_account // 2) // girls_with_account
+
+    # Só as que a busca achou: quem declarou o curso sozinha nunca aparece aqui.
+    recent = [
+        RecentGirlOut(
+            first_name=row.girl_name.split()[0],
+            course=row.course,
+            institution=row.institution.strip() or None,
+        )
+        for row in rows
+        if row.origin == AdmissionOrigin.OFFICIAL_LIST
+        and row.official_list_id is not None
+        and (row.girl_id, row.official_list_id) in found_by_last_search
+    ]
+
+    return EnrollmentSummaryOut(
+        total=total,
+        percent=percent,
+        graduacao=_level_summary(rows, CourseLevel.GRADUACAO),
+        tecnico=_level_summary(rows, CourseLevel.TECNICO),
+        recent=(
+            RecentFoundOut(searched_at=last_search_at, girls=recent)
+            if recent and last_search_at is not None
+            else None
+        ),
+    )
+
+
+async def get_enrollment_summary(
+    session: AsyncSession, group_id: int
+) -> EnrollmentSummaryOut:
+    """O resumo do grupo, com as mesmas meninas da lista "Quem ingressou"."""
+    latest = latest_enrollments(group_id)
+    statement = (
+        select(
+            latest.girl_id,
+            Girl.name,
+            latest.level,
+            latest.course,
+            latest.institution,
+            latest.origin,
+            latest.official_list_id,
+        )
+        .join(Girl, Girl.id == latest.girl_id)
+        .order_by(latest.created_at.desc(), latest.id.desc())
+    )
+    rows = [
+        SummaryRow(*row) for row in (await session.execute(statement)).tuples().all()
+    ]
+
+    girls_with_account = await session.scalar(
+        select(func.count()).select_from(girls_of_group(group_id).subquery())
+    )
+    last_search_at = await session.scalar(select(func.max(ListSearchRun.created_at)))
+
+    # Os indícios criados pela última rodada têm o mesmo created_at dela: os dois
+    # são gravados na mesma transação (search.py), e now() do Postgres é o
+    # início dela. Só os que a menina confirmou ("Sou eu") contam.
+    found: set[tuple[int, int]] = set()
+    if last_search_at is not None:
+        confirmed = await session.execute(
+            select(ListMatch.girl_id, ListMatch.official_list_id).where(
+                ListMatch.created_at == last_search_at,
+                ListMatch.answered_at.is_not(None),
+            )
+        )
+        found = {(girl_id, list_id) for girl_id, list_id in confirmed.tuples().all()}
+
+    return build_summary(rows, girls_with_account or 0, last_search_at, found)

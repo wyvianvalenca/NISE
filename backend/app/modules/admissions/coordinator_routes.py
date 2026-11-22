@@ -8,10 +8,12 @@ from app.modules.actions.dependencies import CoordinatorGroupIdDep
 from app.modules.admissions.schemas import (
     EnrollmentPageOut,
     EnrollmentRowOut,
+    EnrollmentSummaryOut,
     ListSearchOut,
 )
 from app.modules.admissions.service import (
     ENROLLMENTS_PAGE_SIZE,
+    get_enrollment_summary,
     get_list_search,
     list_group_enrollments,
 )
@@ -56,6 +58,23 @@ async def group_enrollments(
         page=page,
         page_size=ENROLLMENTS_PAGE_SIZE,
     )
+
+
+# K06 Ingressantes · resumo do topo (#316, RF-F5.21, RF-F5.22). Mesma regra de
+# permissão da lista: o grupo vem da sessão (RNF-G.03). Os números aparecem
+# mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75).
+@router.get(
+    "/enrollments/summary",
+    response_model=EnrollmentSummaryOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora ou sem grupo"},
+        status.HTTP_409_CONFLICT: {"description": "Coordenadora em mais de um grupo"},
+    },
+)
+async def group_enrollment_summary(
+    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep
+) -> EnrollmentSummaryOut:
+    return await get_enrollment_summary(session, group_id)
 
 
 # K06 Ingressantes · card "Busca nas listas de ingressantes" (#317, RF-F5.23).
