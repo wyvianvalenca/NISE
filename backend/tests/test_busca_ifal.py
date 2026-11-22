@@ -46,7 +46,16 @@ from app.modules.admissions.schemas import MatchAnswerIn, MatchResult
 from app.modules.admissions.search import run_ifal_round
 from app.modules.admissions.service import answer_match
 from tests.copeve_ficticio import nome_ficticio
-from tests.ifal_ficticio import HEADER, Linha, lista_pdf, montar_pdf, pdf_imagem
+from tests.ifal_ficticio import (
+    HEADER,
+    Linha,
+    cabecalho_matricula,
+    linha_matricula,
+    lista_pdf,
+    montar_pdf,
+    pagina_matricula,
+    pdf_imagem,
+)
 
 ALVO = TargetCourse("Sistemas de Informação", "Maceió")
 SELECAO = 101
@@ -76,6 +85,8 @@ def configuracao(monkeypatch: pytest.MonkeyPatch) -> None:
         "Resultado Final - Classificados",
         "Resultado Final - Classificados - Sistemas de Informação - Maceió",
         "Edital de Convocação para a Matrícula Presencial em 1ª Chamada",
+        "Resultado Final da Matrícula - Chamada Regular (retificada)",
+        "Resultado Final - Classificados (retificado)",
     ],
 )
 def test_titulos_de_convocacao(titulo: str) -> None:
@@ -91,6 +102,8 @@ def test_titulos_de_convocacao(titulo: str) -> None:
         "Candidatos Desclassificados",
         "Edital de Abertura",
         "Retificação do Resultado Final - Classificados",
+        "Retificação do Edital de Convocação",
+        "Resultado Preliminar das Matrículas - Chamada Regular",
     ],
 )
 def test_titulos_que_nao_sao_convocacao(titulo: str) -> None:
@@ -107,6 +120,15 @@ def test_lista_de_outro_curso_pelo_titulo() -> None:
     )
     # Sem curso no título: pode ter qualquer curso dentro.
     assert not is_other_course(CLASSIFICADOS, [ALVO])
+
+
+def test_lista_de_outro_campus_pelo_primeiro_trecho_do_titulo() -> None:
+    assert is_other_course("Campus Arapiraca - Resultado Final - Classificados", [ALVO])
+    assert not is_other_course(
+        "Campus Maceió - Resultado Final - Classificados", [ALVO]
+    )
+    # Um primeiro trecho que não é um campus do IFAL não diz nada.
+    assert not is_other_course("Campus Novo - Resultado Final - Classificados", [ALVO])
 
 
 @pytest.mark.parametrize(
@@ -352,7 +374,7 @@ def test_arquivo_que_nao_e_pdf_para_a_rodada() -> None:
 
 
 def test_cabecalho_sem_nome_para_a_rodada() -> None:
-    cabecalho = [c if c != "Nome" else "Candidato" for c in HEADER]
+    cabecalho = [c if c != "Nome" else "Aluno" for c in HEADER]
 
     with pytest.raises(ReportFormatError):
         parse_convocation(
@@ -362,17 +384,168 @@ def test_cabecalho_sem_nome_para_a_rodada() -> None:
         )
 
 
-def test_coluna_a_mais_para_a_rodada() -> None:
-    # O cabeçalho tem 5 colunas; a linha do candidato passa a ter 6.
+def test_cabecalho_candidato_vale_como_nome() -> None:
+    cabecalho = [c if c != "Nome" else "Candidato" for c in HEADER]
+
+    lista = parse_convocation(
+        lista_pdf([Linha(nome_ficticio(0))], cabecalho=cabecalho),
+        "Resultado Final - Classificados - Sistemas de Informação - Maceió",
+        [ALVO],
+    )
+
+    assert [item.name for item in lista.convoked] == ["ana clara lima da ficticia"]
+
+
+def test_coluna_a_mais_nao_para_a_rodada() -> None:
+    # O cabeçalho tem 5 colunas; a linha do candidato passa a ter 6. A largura
+    # exata não é mais exigida: o nome é a primeira célula que parece nome.
     pdf = lista_pdf([Linha(nome_ficticio(0), "A0   Sim")])
 
-    with pytest.raises(ReportFormatError):
-        parse_convocation(pdf, CLASSIFICADOS, [ALVO])
+    lista = parse_convocation(
+        pdf, "Resultado Final - Classificados - Sistemas de Informação - Maceió", [ALVO]
+    )
+
+    assert lista.rows_read == 1
+    assert [item.name for item in lista.convoked] == ["ana clara lima da ficticia"]
 
 
 def test_lista_sem_ninguem_para_a_rodada() -> None:
     with pytest.raises(ReportFormatError):
         parse_convocation(lista_pdf([]), CLASSIFICADOS, [ALVO])
+
+
+# --- Documentos de matrícula (layout real do IFAL Maceió) ----------------------
+
+TOPO = "RESULTADO FINAL DA CHAMADA REGULAR DO SISU – CAMPUS MACEIÓ"
+CHAMADA = "CHAMADA REGULAR - SISU 2026.1 – Edital nº 60/2026 – DSI/PROEN-IFAL"
+TITULO_MATRICULA = "Resultado Final da Matrícula - Chamada Regular (retificada)"
+EMAIL = "pendente para o e-mail: cra.maceio@ifal.edu.br."
+
+
+def _matricula() -> bytes:
+    """Três páginas: a 3ª sem texto. Nomes 0 a 11 (SI-Maceió deferidos: 0-2 e 5)."""
+    n = nome_ficticio
+    pagina1 = pagina_matricula(
+        [
+            TOPO,
+            CHAMADA,
+            "BACHARELADO EM SISTEMAS DE INFORMAÇÃO - 2026.1",
+            cabecalho_matricula(),
+            linha_matricula(1, n(0), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+            "NÃO ANEXOU: Autodeclaração étnica",
+            linha_matricula(2, n(1), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+            linha_matricula(3, n(2), "DEFERIDA", None, "ASSINATURA"),
+            EMAIL,
+            CHAMADA,
+            "LICENCIATURA EM QUÍMICA - 2026.2",
+            cabecalho_matricula("MOTIVO"),
+            linha_matricula(1, n(3), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+            linha_matricula(2, n(4), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+        ]
+    )
+    pagina2 = pagina_matricula(
+        [
+            CHAMADA,
+            "BACHARELADO EM SISTEMAS DE INFORMAÇÃO – 2026.2 – INÍCIO DAS AULAS 19/02/2026",
+            cabecalho_matricula("MOTIVO"),
+            linha_matricula(1, n(5), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+            "prática",
+            linha_matricula(2, n(6), "INDEFERIDA", "NÃO ANEXOU"),
+            linha_matricula(3, n(7), "DESISTENTE"),
+            linha_matricula(4, n(8), "DESISTENTE"),
+            EMAIL,
+            CHAMADA,
+            "TECNOLOGIA EM HOTELARIA 2026.1",
+            cabecalho_matricula(),
+            linha_matricula(1, n(9), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+            CHAMADA,
+            "(IFAL CORURIPE)",
+            "BACHARELADO EM SISTEMAS DE INFORMAÇÃO - 2026.1",
+            cabecalho_matricula(),
+            linha_matricula(1, n(10), "DEFERIDA", "DOCUMENTAÇÃO ACEITA"),
+        ]
+    )
+    return montar_pdf([pagina1, pagina2, ""])
+
+
+def test_matricula_so_devolve_deferidos_de_si_maceio() -> None:
+    lista = parse_convocation(_matricula(), TITULO_MATRICULA, [ALVO])
+
+    assert lista.rows_read == 11
+    assert [item.name for item in lista.convoked] == [
+        nome_ficticio(i).lower() for i in (0, 1, 2, 5)
+    ]
+    assert {item.course for item in lista.convoked} == {ALVO}
+
+
+def test_matricula_com_o_campus_so_na_primeira_pagina_vale_nas_seguintes() -> None:
+    # A 2ª seção de SI (página 2) não cita campus: vale o do documento.
+    nomes = [item.name for item in parse_convocation(_matricula(), "", [ALVO]).convoked]
+
+    assert nome_ficticio(5).lower() in nomes
+    assert nome_ficticio(10).lower() not in nomes
+
+
+def test_matricula_preliminar_nao_e_convocacao_mas_le() -> None:
+    assert is_convocation(TITULO_MATRICULA)
+    assert not is_convocation("Resultado Preliminar das Matrículas - Chamada Regular")
+
+
+def _pagina_com_linhas_ilegiveis(legiveis: int, ilegiveis: int) -> bytes:
+    linhas: list[str | list[str | None]] = [
+        TOPO,
+        "BACHARELADO EM SISTEMAS DE INFORMAÇÃO - 2026.1",
+        cabecalho_matricula(),
+    ]
+    linhas += [
+        linha_matricula(i + 1, nome_ficticio(i), "DEFERIDA") for i in range(legiveis)
+    ]
+    # Número e nada que pareça nome.
+    linhas += [
+        [str(100 + i), "12345678", None, None, None, None] for i in range(ilegiveis)
+    ]
+    return montar_pdf([pagina_matricula(linhas)])
+
+
+def test_ate_20_por_cento_de_linhas_ilegiveis_e_aceito() -> None:
+    lista = parse_convocation(_pagina_com_linhas_ilegiveis(4, 1), CLASSIFICADOS, [ALVO])
+
+    assert lista.rows_read == 4
+    assert len(lista.convoked) == 4
+
+
+def test_mais_de_20_por_cento_de_linhas_ilegiveis_para_a_rodada() -> None:
+    with pytest.raises(ReportFormatError):
+        parse_convocation(_pagina_com_linhas_ilegiveis(3, 1), CLASSIFICADOS, [ALVO])
+
+
+def test_so_linhas_ilegiveis_para_a_rodada() -> None:
+    with pytest.raises(ReportFormatError):
+        parse_convocation(_pagina_com_linhas_ilegiveis(0, 3), CLASSIFICADOS, [ALVO])
+
+
+def test_curso_de_outro_nome_depois_do_alvo_nao_fica_com_o_alvo() -> None:
+    # Sem a palavra "curso" nem "campus": só o tipo de curso no começo da linha.
+    pdf = montar_pdf(
+        [
+            pagina_matricula(
+                [
+                    TOPO,
+                    "BACHARELADO EM SISTEMAS DE INFORMAÇÃO - 2026.1",
+                    cabecalho_matricula(),
+                    linha_matricula(1, nome_ficticio(0), "DEFERIDA"),
+                    "TECNOLÓGICO EM GESTÃO DE TURISMO - 2026.1",
+                    cabecalho_matricula(),
+                    linha_matricula(1, nome_ficticio(1), "DEFERIDA"),
+                ]
+            )
+        ]
+    )
+
+    lista = parse_convocation(pdf, TITULO_MATRICULA, [ALVO])
+
+    assert lista.rows_read == 2
+    assert [item.name for item in lista.convoked] == [nome_ficticio(0).lower()]
 
 
 # --- Rodada ------------------------------------------------------------------
@@ -771,13 +944,37 @@ async def test_listagem_num_formato_novo_para_sem_gravar_nada(corpo: object) -> 
     sessao_falsa.commit.assert_not_called()
 
 
-async def test_pdf_imagem_no_meio_da_rodada_para_sem_gravar_nada(
-    indicios: list[tuple[int, str, str, str]],
+async def test_pdf_imagem_no_meio_da_rodada_nao_para_a_rodada(
+    indicios: list[tuple[int, str, str, str]], caplog: pytest.LogCaptureFixture
 ) -> None:
-    # O 1º PDF acha a menina; o 2º é uma imagem.
+    # O 1º PDF acha a menina; o 2º é uma imagem: é ignorado e contado no log.
     cliente, _ = _cliente(
         [
             (1, CLASSIFICADOS, lista_pdf([Linha(nome_ficticio(0))])),
+            (2, "Edital de Convocação em 1ª Chamada", pdf_imagem()),
+            (3, "Edital de Convocação em 2ª Chamada", b"<html>x</html>"),
+        ]
+    )
+    sessao_falsa = _sessao([(1, nome_ficticio(0))])
+
+    with caplog.at_level(logging.INFO, logger=search.logger.name):
+        resultado = await run_ifal_round(sessao_falsa, cliente, _sem_espera, AGORA)
+
+    assert resultado.matches_created == 1
+    assert [i[0] for i in indicios] == [1]
+    sessao_falsa.commit.assert_called_once()
+    texto = caplog.text
+    assert "documento 2 ignorado: ReportFormatError" in texto
+    assert "2 de 3 documentos ignorados" in texto
+    assert nome_ficticio(0) not in texto
+
+
+async def test_todos_os_documentos_com_erro_param_a_rodada_sem_gravar_nada(
+    indicios: list[tuple[int, str, str, str]],
+) -> None:
+    cliente, _ = _cliente(
+        [
+            (1, CLASSIFICADOS, pdf_imagem()),
             (2, "Edital de Convocação em 1ª Chamada", pdf_imagem()),
         ]
     )

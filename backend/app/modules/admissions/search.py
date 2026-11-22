@@ -22,6 +22,8 @@ from app.config import settings
 from app.modules.admissions.copeve import (
     DEMANDS,
     TARGET_COURSES,
+    ReportFormatError,
+    ReportUnavailableError,
     fetch_report,
     parse_report,
 )
@@ -259,9 +261,11 @@ async def run_ifal_round(
     Para cada seleção configurada, lista os documentos, baixa só os que pelo
     título são listas de convocação e compara os nomes dos cursos-alvo, do
     mesmo jeito que a COPEVE. Cada PDF é lido em memória e descartado antes do
-    próximo. Levanta ReportFormatError, ReportUnavailableError ou
-    RoundRunningError sem ter gravado nada (RNF-F31.04), e SearchDisabledError
-    sem consultar nada.
+    próximo. Um documento que não abre ou muda de formato é ignorado e contado no
+    log; se todos os baixados falham, ou se a listagem falha, levanta
+    ReportFormatError ou ReportUnavailableError sem ter gravado nada
+    (RNF-F31.04). Levanta também RoundRunningError, e SearchDisabledError sem
+    consultar nada.
     """
     # RN-20: só compara nomes com listas oficiais depois do Comitê de Ética.
     if not settings.list_search_enabled:
@@ -276,7 +280,8 @@ async def run_ifal_round(
     # Fecha a transação de leitura antes dos downloads (veja run_copeve_round).
     await session.rollback()
     found: set[_Found] = set()
-    queries = rows_read = 0
+    queries = rows_read = tried = failed = 0
+    last_error: ReportFormatError | ReportUnavailableError | None = None
 
     async def request_slot() -> None:
         # Uma requisição a cada 2 s, contando listagens e downloads (RNF-F31.05).
@@ -295,12 +300,23 @@ async def run_ifal_round(
                 continue
             url = download_url(api_url, selection, document.id)
             await request_slot()
-            pdf = await fetch_pdf(client, url, settings.ifal_max_pdf_bytes)
-            # O pypdf leva tempo num PDF grande (até 15 MB): numa thread, para
-            # não travar as outras requisições do servidor enquanto lê.
-            convocation = await asyncio.to_thread(
-                parse_convocation, pdf, document.title, targets
-            )
+            tried += 1
+            try:
+                pdf = await fetch_pdf(client, url, settings.ifal_max_pdf_bytes)
+                # O pypdf leva tempo num PDF grande (até 15 MB): numa thread,
+                # para não travar as outras requisições do servidor enquanto lê.
+                convocation = await asyncio.to_thread(
+                    parse_convocation, pdf, document.title, targets
+                )
+            except (ReportFormatError, ReportUnavailableError) as error:
+                # Um documento ruim não derruba a rodada: só o número dele e o
+                # tipo do erro vão para o log, nunca o texto (RNF-F31.01).
+                failed += 1
+                last_error = error
+                logger.warning(
+                    "IFAL: documento %s ignorado: %s", document.id, type(error).__name__
+                )
+                continue
             del pdf
             rows_read += convocation.rows_read
             for convoked in convocation.convoked:
@@ -318,6 +334,10 @@ async def run_ifal_round(
                         )
                     )
 
+    if last_error is not None and failed == tried:
+        # Nenhum documento deu certo: a rodada para como antes, sem gravar nada.
+        raise last_error
+
     created = await _save_matches(session, IFAL_INSTITUTION, found, now)
 
     session.add(
@@ -334,9 +354,12 @@ async def run_ifal_round(
     await session.commit()
 
     logger.info(
-        "Busca no IFAL: %s requisições, %s linhas lidas, %s indícios novos",
+        "Busca no IFAL: %s requisições, %s linhas lidas, %s indícios novos,"
+        " %s de %s documentos ignorados",
         queries,
         rows_read,
         created,
+        failed,
+        tried,
     )
     return RoundResult(queries=queries, rows_read=rows_read, matches_created=created)

@@ -10,6 +10,11 @@ O layout é o que o spike (#274) achou: curso e campus no topo da página (e,
 às vezes, no título do documento), uma linha de cabeçalho com "Nome" e um
 candidato por linha. O pypdf, no modo "layout", mantém as colunas na ordem
 visual, separadas por dois ou mais espaços.
+
+Os documentos reais de matrícula do IFAL Maceió têm outro layout: o cabeçalho é
+"Candidato | Cota | Situação | Motivo | Entregou Declaração" (o número e o nome
+ficam sob "Candidato"), vários cursos por página, a linha do curso sem a palavra
+"curso" e o motivo quebrado em várias linhas. O leitor aceita os dois.
 """
 
 import io
@@ -40,7 +45,7 @@ LISTING_CAP = 20
 # preliminares, retificações e editais.
 _CONVOCATION = re.compile(r"\bclassificad[oa]s\b|\bconvoca(cao|dos|das)\b|\bchamada\b")
 _NOT_CONVOCATION = re.compile(
-    r"suplente|espera|desclassificad|eliminad|indeferid|preliminar|retifica|recurso"
+    r"suplente|espera|desclassificad|eliminad|indeferid|preliminar|retificacao|recurso"
 )
 
 # Os campi do IFAL, para reconhecer o "<curso> - <campus>" no fim de um título.
@@ -76,14 +81,34 @@ _COURSE_OF = re.compile(r"\bcurso (de|do|da|em)\b")
 # Palavras que só aparecem no nome de um curso. Com uma delas, o texto diz um
 # curso mesmo sem a palavra "curso" ("TÉCNICO EM AGROPECUÁRIA - CAMPUS SATUBA").
 _COURSE_KIND = re.compile(
-    r"\b(curso|bacharelado|licenciatura|tecnico|tecnologo|tecnologia|engenharia"
-    r"|integrado|subsequente|proeja)\b"
+    r"\b(curso|bacharelado|licenciatura|tecnico|tecnologico|tecnologo|tecnologia"
+    r"|engenharia|integrado|subsequente|proeja)\b"
 )
+# Uma linha que começa por uma dessas palavras é o nome de um curso, mesmo sem a
+# palavra "curso": "BACHARELADO EM SISTEMAS DE INFORMAÇÃO - 2026.1".
+_COURSE_START = re.compile(
+    r"^(curso|bacharelado|licenciatura|tecnico|tecnologico|tecnologo|tecnologia"
+    r"|engenharia|integrado|subsequente|proeja)\b"
+)
+# "(IFAL CORURIPE)": o campus citado sem a palavra "campus".
+_IFAL_CAMPUS = re.compile(r"\bifal\b")
+# E-mails ("cra.maceio@ifal.edu.br") aparecem no motivo e não citam campus.
+_EMAIL = re.compile(r"\S+@\S+")
 # O penúltimo trecho de um título que não é nome de curso: "SiSU 2027 - 1ª
 # Chamada - Maceió" é a lista do campus inteiro, não de um curso.
 _NOT_A_COURSE_SEGMENT = re.compile(
     r"\bchamada\b|classificad|convoca|resultado|\blista\b|aprovad"
 )
+
+# Nos documentos de matrícula há uma coluna "Situação". Só quem está deferido
+# (matrícula aceita) conta como convocado; indeferido e desistente são lidos,
+# mas não voltam. O time decidiu (22/11) que só a matrícula deferida conta.
+# Para mudar, troque esta constante (ou `_is_convoked`).
+_ENROLLED_SITUATIONS = frozenset({"deferida", "deferido", "matriculada", "matriculado"})
+# O cabeçalho que cobre o número e o nome nos documentos de matrícula.
+_NAME_HEADERS = frozenset({"candidato", "candidata", "candidato(a)"})
+# Mais que isso de linhas de candidato sem nome: o layout mudou.
+_MAX_UNREADABLE = 0.2
 
 # Duas colunas da página ficam separadas por dois ou mais espaços.
 _COLUMNS = re.compile(r"\s{2,}")
@@ -150,7 +175,14 @@ def is_other_course(title: str, targets: Sequence[TargetCourse]) -> bool:
     """
     segments = [normalize_search(part) for part in title.split(" - ")]
     campi = {normalize_search(campus) for campus in IFAL_CAMPI}
-    campi |= {normalize_search(target.campus) for target in targets}
+    target_campi = {normalize_search(target.campus) for target in targets}
+    campi |= target_campi
+    # "Campus Arapiraca - Resultado ...": a lista é de outro campus.
+    if (
+        segments[0].startswith("campus ")
+        and segments[0].removeprefix("campus ") in campi - target_campi
+    ):
+        return True
     names_a_course = (
         len(segments) >= 3
         and segments[-1] in campi
@@ -240,13 +272,34 @@ def _cells(line: str) -> list[str]:
     return [cell.strip(" *") for cell in _COLUMNS.split(line.strip())]
 
 
+def _is_name_header(cell: str) -> bool:
+    normalized = normalize_search(cell)
+    return normalized.startswith("nome") or normalized in _NAME_HEADERS
+
+
 def _is_header(cells: list[str]) -> bool:
-    return any(normalize_search(cell).startswith("nome") for cell in cells)
+    return any(_is_name_header(cell) for cell in cells)
+
+
+def _has_situation(cells: list[str]) -> bool:
+    return any(normalize_search(cell).startswith("situacao") for cell in cells)
+
+
+def _is_convoked(cells: list[str], has_situation: bool) -> bool:
+    """Se a linha conta como convocado. Sem coluna Situação, toda linha conta."""
+    if not has_situation:
+        return True
+    return any(normalize_search(c) in _ENROLLED_SITUATIONS for c in cells[1:])
+
+
+def _name(cells: list[str]) -> str | None:
+    """O primeiro nome completo depois do número (a inscrição tem só dígitos)."""
+    return next((cell for cell in cells[1:] if _NAME.fullmatch(cell)), None)
 
 
 def _campi_in(text: str, targets: Sequence[TargetCourse]) -> set[str]:
     """Os campi (normalizados) que o texto cita como palavra inteira."""
-    normalized = normalize_search(text)
+    normalized = normalize_search(_EMAIL.sub(" ", text))
     campi = {normalize_search(campus) for campus in IFAL_CAMPI}
     campi |= {normalize_search(target.campus) for target in targets}
     return {
@@ -256,43 +309,78 @@ def _campi_in(text: str, targets: Sequence[TargetCourse]) -> set[str]:
     }
 
 
+def _names_course_or_campus(line: str, targets: Sequence[TargetCourse]) -> bool:
+    """Se a linha diz curso ou campus (e não é só um texto de motivo).
+
+    Diz quando é uma linha "Curso: ...", um "Curso de ...", começa pelo nome de
+    um tipo de curso ("BACHARELADO EM ..."), cita um campus junto de "curso" ou
+    "campus", ou é o "(IFAL CORURIPE)". Um e-mail com "maceio" não conta.
+    """
+    normalized = normalize_search(_EMAIL.sub(" ", line))
+    if (
+        _COURSE_LABEL.match(normalized)
+        or _COURSE_OF.search(normalized)
+        or _COURSE_START.match(normalized)
+    ):
+        return True
+    campi = _campi_in(line, targets)
+    return bool(campi) and bool(
+        _COURSE_WORD.search(normalized) or _IFAL_CAMPUS.search(normalized)
+    )
+
+
+def _document_campus(title: str, targets: Sequence[TargetCourse]) -> str | None:
+    """O campus do documento, se o título cita um só."""
+    campi = _campi_in(title, targets)
+    return next(iter(campi)) if len(campi) == 1 else None
+
+
 def _section_course(
     lines: list[str],
     targets: Sequence[TargetCourse],
     current: TargetCourse | None,
-) -> tuple[bool, TargetCourse | None]:
+    doc_campus: str | None,
+) -> tuple[bool, TargetCourse | None, str | None]:
     """Se o texto antes de um cabeçalho ou candidato diz de qual curso é o trecho.
 
-    Devolve (diz, curso-alvo). O texto diz o curso quando tem "curso" ou
-    "campus" como palavra e, além disso, uma linha de curso ou campus ("Curso:
-    Química", "1.2 Curso: Agronomia"), um "Curso de ..." ou o nome de um campus
-    ("TÉCNICO EM AGROPECUÁRIA - CAMPUS SATUBA"). Um texto que só cita a palavra
-    ("Recurso: prazo de 2 dias", "CONCURSO SISU 2027", "Dúvidas sobre o curso")
-    não diz nada, e o trecho continua no curso de antes.
+    Devolve (diz, curso-alvo, campus do documento). Só contam as linhas que
+    dizem curso ou campus (`_names_course_or_campus`): o texto livre do motivo
+    ("pendente para o e-mail: cra.maceio@ifal.edu.br") não troca o trecho. Um
+    texto que só cita a palavra ("Recurso: prazo de 2 dias", "CONCURSO SISU
+    2027", "Dúvidas sobre o curso") também não diz nada, e o trecho continua no
+    curso de antes.
 
-    Quando diz, o trecho é de outro curso por padrão (curso-alvo None). Só fica
-    num curso-alvo se o texto nomeia esse curso e esse campus, ou se concorda
-    com o curso de antes: um topo só com o campus ("Campus: Maceió") ou só com
-    o curso ("Curso: Bacharelado em Sistemas de Informação") do curso atual não
-    tira os nomes dele.
+    O campus do trecho é o que o texto cita; sem isso, o do documento (do
+    título ou da primeira linha com "campus", que nos documentos de matrícula
+    aparece só na página 1). O trecho é de um curso-alvo só se o texto nomeia
+    esse curso e o campus do trecho é o do alvo. Fora isso, é de outro curso
+    (curso-alvo None), a não ser que o texto concorde com o curso de antes: um
+    topo só com o campus ("Campus: Maceió") ou só com um curso que não é
+    outro ("Curso: Bacharelado em Sistemas de Informação") não tira os nomes.
     """
-    text = " ".join(lines)
-    normalized = normalize_search(text)
-    if not _COURSE_WORD.search(normalized):
-        return False, None
+    course_lines = [line for line in lines if _names_course_or_campus(line, targets)]
+    if not course_lines:
+        return False, None, doc_campus
 
-    target = next((t for t in targets if t.found_in(text)), None)
-    if target is not None:
-        return True, target
-
+    text = " ".join(course_lines)
+    normalized = normalize_search(_EMAIL.sub(" ", text))
     campi = _campi_in(text, targets)
-    labeled = any(
-        _COURSE_LABEL.match(normalize_search(cell))
-        for line in lines
-        for cell in _cells(line)
-    )
-    if not (labeled or campi or _COURSE_OF.search(normalized)):
-        return False, None
+    if doc_campus is None:
+        with_word = {
+            campus
+            for line in course_lines
+            if re.search(r"\bcampus\b", normalize_search(line))
+            for campus in _campi_in(line, targets)
+        }
+        if len(with_word) == 1:
+            doc_campus = next(iter(with_word))
+
+    section_campi = campi or ({doc_campus} if doc_campus else set())
+    for target in targets:
+        if normalize_search(target.course) in normalized and section_campi == {
+            normalize_search(target.campus)
+        }:
+            return True, target, doc_campus
 
     if current is not None:
         same_campus = campi <= {normalize_search(current.campus)}
@@ -300,9 +388,9 @@ def _section_course(
         # Sem "curso", "técnico", "licenciatura"... o texto não diz curso nenhum.
         names_no_course = not _COURSE_KIND.search(normalized)
         if same_campus and (names_current_course or names_no_course):
-            return True, current
+            return True, current, doc_campus
 
-    return True, None
+    return True, None, doc_campus
 
 
 def parse_convocation(
@@ -314,8 +402,8 @@ def parse_convocation(
     subtítulo com "Curso" ou "Campus"); sem isso, vale o título do documento.
     Número de inscrição, posição, concorrência e nota nunca são lidos (RN-23).
     Levanta ReportFormatError se o PDF não abre, não tem texto (é imagem), não
-    tem a linha de cabeçalho com Nome, ou uma linha de candidato não cabe nas
-    colunas (RNF-F31.04).
+    tem a linha de cabeçalho (Nome ou Candidato), ou mais de 20% das linhas de
+    candidato não têm um nome legível (RNF-F31.04).
     """
     try:
         reader = PdfReader(io.BytesIO(pdf))
@@ -327,10 +415,11 @@ def parse_convocation(
         raise ReportFormatError from error
 
     current = next((target for target in targets if target.found_in(title)), None)
-    # (número de colunas, coluna do nome), da última linha de cabeçalho.
-    header: tuple[int, int] | None = None
+    doc_campus = _document_campus(title, targets)
+    header_seen = False
+    has_situation = False
     context: list[str] = []
-    rows_read = 0
+    rows_read = unreadable = 0
     convoked: list[ConvokedName] = []
 
     for line in "\n".join(pages).splitlines():
@@ -340,7 +429,7 @@ def parse_convocation(
         is_header = _is_header(cells)
         # Uma linha de candidato tem mais de uma célula: o número da página
         # sozinho no rodapé ("1") também começa com dígito e não é candidato.
-        is_row = header is not None and len(cells) > 1 and cells[0].isdigit()
+        is_row = header_seen and len(cells) > 1 and cells[0].isdigit()
         if not is_header and not is_row:
             context.append(line)
             continue
@@ -348,30 +437,34 @@ def parse_convocation(
         # Um cabeçalho ou candidato depois de um texto que diz o curso ou o
         # campus: começou o trecho de outro curso, que pode não ser alvo.
         if context:
-            names_course, target = _section_course(context, targets, current)
+            names_course, target, doc_campus = _section_course(
+                context, targets, current, doc_campus
+            )
             if names_course:
                 current = target
         context = []
 
-        if is_header or header is None:
-            name_col = next(
-                i for i, c in enumerate(cells) if normalize_search(c).startswith("nome")
-            )
-            header = (len(cells), name_col)
+        if is_header or not header_seen:
+            header_seen = True
+            has_situation = _has_situation(cells)
             continue
 
-        width, name_col = header
-        if len(cells) != width or not _NAME.fullmatch(cells[name_col]):
-            # Colunas grudadas ou deslocadas: melhor parar que errar.
-            raise ReportFormatError
+        name = _name(cells)
+        if name is None:
+            # Sem nome entre as células: não dá para saber de quem é a linha.
+            unreadable += 1
+            continue
         rows_read += 1
-        if current is not None:
-            convoked.append(
-                ConvokedName(name=normalize_search(cells[name_col]), course=current)
-            )
+        if current is not None and _is_convoked(cells, has_situation):
+            convoked.append(ConvokedName(name=normalize_search(name), course=current))
 
-    if header is None or rows_read == 0:
-        # Sem cabeçalho ou sem nenhum candidato: imagem ou layout novo.
+    # Melhor parar que errar: sem cabeçalho, sem nenhum candidato ou com linhas
+    # demais que não deram para ler, é imagem ou layout novo.
+    if (
+        not header_seen
+        or rows_read == 0
+        or unreadable > _MAX_UNREADABLE * (rows_read + unreadable)
+    ):
         raise ReportFormatError
 
     return ConvocationList(rows_read=rows_read, convoked=convoked)

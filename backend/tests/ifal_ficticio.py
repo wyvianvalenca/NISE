@@ -140,6 +140,48 @@ def lista_pdf(
     return montar_pdf(paginas)
 
 
+# Onde cada célula começa no layout dos documentos de matrícula: número, nome,
+# cota, situação, motivo e, às vezes, um pedaço a mais do motivo.
+COLUNAS_MATRICULA = [30, 55, 250, 320, 385, 470]
+CABECALHO_MATRICULA = ["Candidato", "Cota", "Situação", "Motivo", "Entregou Declaração"]
+
+
+def linha_matricula(
+    posicao: int,
+    nome: str,
+    situacao: str,
+    motivo: str | None = None,
+    sobra: str | None = None,
+) -> list[str | None]:
+    """Uma linha de candidato: o número e o nome ficam sob "Candidato".
+
+    `sobra` é um pedaço do motivo que caiu na última coluna.
+    """
+    return [str(posicao), nome, "LI_PPI", situacao, motivo, sobra]
+
+
+def cabecalho_matricula(motivo: str = "Motivo") -> list[str | None]:
+    # O "Candidato" do cabeçalho cobre o número e o nome: começa na coluna 1.
+    return [None, "Candidato", "Cota", "Situação", motivo, "Entregou Declaração"]
+
+
+def pagina_matricula(linhas: list[str | list[str | None]]) -> str:
+    """Uma página de documento de matrícula, linha a linha.
+
+    Uma string é uma linha de uma célula só (título, curso, motivo quebrado);
+    uma lista são as células, nas colunas da matrícula, e None pula a coluna.
+    """
+    partes = []
+    for i, linha in enumerate(linhas):
+        y = 800 - 13 * i
+        if isinstance(linha, str):
+            partes.append(_linha(y, [linha], [40]))
+            continue
+        celulas = [(x, c) for x, c in zip(COLUNAS_MATRICULA, linha, strict=True) if c]
+        partes.append(_linha(y, [c for _, c in celulas], [x for x, _ in celulas]))
+    return "".join(partes)
+
+
 def pdf_imagem() -> bytes:
     """Uma página sem texto, só um retângulo: como uma lista escaneada."""
     return montar_pdf(["0 0 0 rg 40 40 500 700 re f\n"])
