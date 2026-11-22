@@ -492,3 +492,15 @@ export async function checkEmail(
     })),
   };
 }
+
+/**
+ * "Fechar inscrições" (#236, RF-F1.10): the action page as it is now. The status
+ * does not change. `null` when the action is not the group's; any other failure
+ * throws, so the screen can say it did not work and leave everything as it was.
+ */
+export async function closeRegistrations(id: number): Promise<ActionPage | null> {
+  const response = await fetch(`/api/actions/${id}/registrations/close`, { method: "POST" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`close registrations ${response.status}`);
+  return toActionPage((await response.json()) as ActionPageResponse);
+}

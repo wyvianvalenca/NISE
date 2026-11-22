@@ -18,16 +18,15 @@ from app.modules.actions.schemas import (
 )
 from app.modules.actions.service import (
     action_to_out,
-    action_to_page_out,
     build_action_list,
     count_registered,
     create_action,
     delete_action,
     fetch_action_rows,
+    load_action_page,
     today_in_maceio,
     update_action,
 )
-from app.modules.cities.models import City
 
 router = APIRouter(prefix="/actions", tags=["Actions"])
 
@@ -68,14 +67,7 @@ async def list_actions_route(
 async def get_action_page_route(
     action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
 ) -> ActionPageOut:
-    city = (
-        await session.get(City, action.city_ibge_code)
-        if action.city_ibge_code is not None
-        else None
-    )
-    registered = await count_registered(session, action.id)
-
-    return action_to_page_out(action, city, registered, today)
+    return await load_action_page(session, action, today)
 
 
 # "Salvar" in the K02 form (#211, RF-F30.01). The group is the signed-in

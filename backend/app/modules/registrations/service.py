@@ -104,6 +104,18 @@ def can_reopen(action: Action, today: date) -> bool:
     return not action.registrations_open and today < action.starts_on
 
 
+async def close_registrations(session: AsyncSession, action: Action) -> None:
+    """The coordinator closes the sign-ups (RF-F1.10, RN-37).
+
+    The action leaves Descobrir and Ver depois through `registrations_open`
+    (`action_is_visible`, RN-16) and stays in the filé of whoever had it (RN-36).
+    The status is computed, so nothing else changes. Idempotent.
+    """
+    if action.registrations_open:
+        action.registrations_open = False
+        await session.commit()
+
+
 async def register_girl(
     session: AsyncSession,
     action: Action,

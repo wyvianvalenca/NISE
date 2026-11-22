@@ -12,6 +12,7 @@ import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
 import { ImportDrawer } from "./ImportDrawer";
 import { RegistrationsCard } from "./RegistrationsCard";
+import { RegistrationsSwitch } from "./RegistrationsSwitch";
 import styles from "./ActionPageView.module.css";
 
 /** "Inscritas" text under the step (RN-37, RF-F1.16). */
@@ -54,7 +55,7 @@ type ViewProps = { groupName: string; accountInitial: string };
  * - `reload()` fetches the action and the list again (after an import, an added
  *   girl, closing or reopening); `listVersion` makes the card reload its list.
  * - `onImport` / `onAdd` are given to the card (#234, #235 open their drawers).
- * - the `<aside>` is the right column (#236, #237 put the close/reopen card there).
+ * - the `<aside>` is the right column (RegistrationsSwitch: close/reopen, #236, #237).
  */
 export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   const { id } = useParams<{ id: string }>();
@@ -116,7 +117,9 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                 onImport={() => setImporting(true)}
                 onAdd={() => setAdding(true)}
               />
-              <aside className={styles.aside} aria-label="Próximos passos" />
+              <aside className={styles.aside} aria-label="Próximos passos">
+                <RegistrationsSwitch action={action} onChanged={reload} />
+              </aside>
             </div>
             {importing && (
               <ImportDrawer

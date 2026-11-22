@@ -185,6 +185,20 @@ def action_to_page_out(
     )
 
 
+async def load_action_page(
+    session: AsyncSession, action: Action, today: date
+) -> ActionPageOut:
+    """The page of an action (K11, #233); also what closing/reopening answers."""
+    city = (
+        await session.get(City, action.city_ibge_code)
+        if action.city_ibge_code is not None
+        else None
+    )
+    registered = await count_registered(session, action.id)
+
+    return action_to_page_out(action, city, registered, today)
+
+
 async def create_action(
     session: AsyncSession, group_id: int, data: ActionIn
 ) -> tuple[Action, City | None]:

@@ -8,8 +8,14 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, select
 
 from app.db.engine import AsyncSessionDep
-from app.modules.actions.dependencies import CoordinatorGroupIdsDep, GroupActionDep
+from app.modules.actions.dependencies import (
+    CoordinatorGroupIdsDep,
+    GroupActionDep,
+    TodayDep,
+)
 from app.modules.actions.models import Action, Participation
+from app.modules.actions.schemas import ActionPageOut
+from app.modules.actions.service import load_action_page
 from app.modules.girls.models import Girl
 from app.modules.registrations.schemas import (
     CorrectionBody,
@@ -29,6 +35,7 @@ from app.modules.registrations.schemas import (
 )
 from app.modules.registrations.service import (
     RegistrationData,
+    close_registrations,
     email_check,
     list_registrations,
     register_girl,
@@ -320,3 +327,15 @@ async def email_check_route(
             GroupActionOut(name=a.name, starts_on=a.starts_on) for a in actions
         ],
     )
+
+
+# "Fechar inscrições" on the action page (K11, #236, RF-F1.10). The status stays
+# (RN-37) and closing twice is not an error. An action of another group is a 404
+# (RNF-G.03).
+@router.post("/close", response_model=ActionPageOut, responses=NOT_FOUND)
+async def close_registrations_route(
+    action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
+) -> ActionPageOut:
+    await close_registrations(session, action)
+
+    return await load_action_page(session, action, today)

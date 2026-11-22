@@ -1,7 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 
 // Simulates GET /api/actions/{id}, GET /api/actions/{id}/registrations and
-// DELETE /api/actions/{id} of the back-end (#240), so the tests of the action page
+// DELETE /api/actions/{id} (and POST .../registrations/close, #236) of the back-end (#240), so the tests of the action page
 // (K11) do not depend on FastAPI. Fictional data. Later C2 issues add their routes here.
 
 type Column = "whatsapp" | "study_stage" | "school_year";
@@ -67,6 +67,8 @@ export const FULL_ACTION_ID = 2;
 export const CLOSED_ACTION_ID = 3;
 /** 2 girls from a spreadsheet with no extra column, attendance already saved. */
 export const CONCLUDED_ACTION_ID = 4;
+/** An online action with 23 girls and the registrations open (#236). */
+export const ONLINE_ACTION_ID = 5;
 /** An id that does not exist or belongs to another group: both answer 404. */
 export const MISSING_ACTION_ID = 99;
 
@@ -136,6 +138,17 @@ function stored(): Record<number, Stored> {
       },
       registrations: girls(true),
     },
+    [ONLINE_ACTION_ID]: {
+      action: {
+        ...BASE,
+        id: ONLINE_ACTION_ID,
+        name: "Python do zero",
+        status: "awaiting_event",
+        format: "online",
+        city_name: null,
+      },
+      registrations: girls(true),
+    },
     [CONCLUDED_ACTION_ID]: {
       action: {
         ...BASE,
@@ -192,9 +205,14 @@ export type ActionPageApi = {
   failImport: boolean;
   /** What the last import call sent besides the file (#234). */
   lastImport: { mapping: Record<string, string | null>; corrections: { line: number; email: string }[]; skip: number[] } | null;
+  /** Ids received in POST .../registrations/close, in order (#236). */
+  closed: number[];
+  /** While true the close route answers 500 (the action stays open). */
+  failClose: boolean;
 };
 
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
+const CLOSE_URL = /\/api\/actions\/(\d+)\/registrations\/close$/;
 const LIST_URL = /\/api\/actions\/(\d+)\/registrations$/;
 const CHECK_URL = /\/api\/actions\/(\d+)\/registrations\/email-check$/;
 
@@ -234,6 +252,8 @@ export async function mockActionPageApi(
     importSteps: [],
     failImport: false,
     lastImport: null,
+    closed: [],
+    failClose: false,
   };
 
   await page.route(
@@ -338,6 +358,34 @@ export async function mockActionPageApi(
       const actions = api.knownEmails[email];
       return route.fulfill({
         json: { exists: actions !== undefined, group_actions: actions ?? [] },
+      });
+    },
+  );
+
+  // #236: the action page as it is after closing; the status does not change.
+  await page.route(
+    (url) => CLOSE_URL.test(url.pathname),
+    async (route) => {
+      await wait(delayMs);
+      const id = Number(
+        CLOSE_URL.exec(new URL(route.request().url()).pathname)![1],
+      );
+      const found = data[id];
+      if (!found)
+        return route.fulfill({
+          status: 404,
+          json: { detail: "Ação não encontrada" },
+        });
+      if (api.failClose) return route.fulfill({ status: 500, body: "" });
+      api.closed.push(id);
+      found.action = {
+        ...found.action,
+        registrations_open: false,
+        registrations_closed_by_coordinator: true,
+        can_reopen: found.action.today < found.action.starts_on,
+      };
+      return route.fulfill({
+        json: { ...found.action, registered_count: found.registrations.length },
       });
     },
   );
