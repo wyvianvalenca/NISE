@@ -63,8 +63,14 @@ async function serve(page: Page, base: TestBase): Promise<void> {
 
   await page.route("**/api/agenda/to-answer", (route) =>
     base.isGirl()
-      ? route.fulfill({ json: { list_match: base.open().length > 0, ratings: [], followup: null } })
+      ? route.fulfill({
+          json: { list_match: base.open().length > 0, ratings: [], followup: null },
+        })
       : route.fulfill(forbidden),
+  );
+  // The agenda also asks for the dates (#295); here there are none.
+  await page.route("**/api/agenda/dates", (route) =>
+    base.isGirl() ? route.fulfill({ json: { upcoming: [] } }) : route.fulfill(forbidden),
   );
   await page.route("**/api/matches", (route) =>
     base.isGirl() ? route.fulfill({ json: base.open().map(card) }) : route.fulfill(forbidden),
