@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from app.auth.routes import router as auth_router
+from app.modules.actions.routes import router as actions_router
+from app.modules.admissions.coordinator_routes import router as coordinator_router
 from app.modules.admissions.cron import router as cron_router
 from app.modules.admissions.routes import router as admissions_router
 from app.modules.agenda.routes import router as agenda_router
@@ -17,6 +19,7 @@ from app.modules.suggestions.routes import router as discover_router
 
 router = APIRouter()
 router.include_router(auth_router)
+router.include_router(actions_router)
 router.include_router(cities_router)
 router.include_router(consents_router)
 router.include_router(preferences_router)
@@ -30,6 +33,7 @@ router.include_router(admissions_router)
 router.include_router(agenda_router)
 router.include_router(cron_router)
 router.include_router(events_router)
+router.include_router(coordinator_router)
 
 
 @router.get("/health", tags=["Health"])

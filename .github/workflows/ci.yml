@@ -1,0 +1,123 @@
+# CI básico da NISE (primeira fatia da issue #289).
+# Só as checagens que o CONTRIBUTING (§6) já promete: back e front.
+# Fora desta fatia: hooks (prek), Prettier, zizmor, gitleaks, E2E, Dependabot.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Uma execução por branch/PR: um push novo cancela a anterior.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# O CI só lê o repositório; nada aqui precisa de escrita.
+permissions:
+  contents: read
+
+jobs:
+  back:
+    name: Back · ruff, mypy, pytest, migrações
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nise
+          POSTGRES_PASSWORD: nise
+          POSTGRES_DB: nise
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nise -d nise"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Valores fictícios, só para este banco descartável do CI.
+      DATABASE_URL: postgresql+asyncpg://nise:nise@localhost:5432/nise
+      JWT_SECRET: segredo-ficticio-do-ci-com-32-caracteres
+      COOKIE_SECURE: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Instalar dependências (respeita o uv.lock)
+        run: uv sync --locked
+
+      - name: ruff format
+        run: uv run ruff format --check .
+
+      - name: ruff check
+        run: uv run ruff check .
+
+      - name: mypy
+        run: uv run mypy .
+
+      - name: pytest
+        run: uv run pytest -q
+
+      # Os testes usam um mock do banco; as migrações são testadas aqui,
+      # num Postgres de verdade (a issue #291 vai mover isso para a suíte).
+      - name: Alembic · uma única cabeça
+        run: |
+          heads=$(uv run alembic heads | grep -c '(head)')
+          echo "cabeças encontradas: $heads"
+          test "$heads" -eq 1
+
+      - name: Alembic · subir, descer e subir de novo
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+      - name: Alembic · modelo e migrações em dia
+        run: uv run alembic check
+
+  front:
+    name: Front · lint, tipos, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A versão do pnpm vem do campo "packageManager" do package.json.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Instalar dependências (respeita o pnpm-lock.yaml)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Tipos
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
