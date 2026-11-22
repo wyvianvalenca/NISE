@@ -4,11 +4,19 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
+from app.modules.admissions.service import (
+    add_self_declared_enrollment,
+    current_enrollment,
+)
 from app.modules.consents.permissions import AcceptedGirlDep
+from app.modules.followup.models import CourseCode
+from app.modules.followup.utils import COURSE_LABELS
 from app.modules.girls.schemas import (
     InterestOptionsOut,
     InterestsIn,
     OptionOut,
+    ProfileCourseIn,
+    ProfileCourseOut,
     ProfileOut,
 )
 from app.modules.girls.service import (
@@ -16,7 +24,7 @@ from app.modules.girls.service import (
     mark_file_intro_seen,
     save_interests,
 )
-from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS
+from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, today_in_maceio
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
@@ -139,5 +147,77 @@ async def file_intro_seen(
 
     if not marked:
         return profile_not_found()
+
+    return None
+
+
+# "Seu caminho" no perfil (A10, #298): o curso em que ela está hoje e o nome
+# para a A10b. Sem id na URL: ela só lê o próprio curso (RNF-G.03).
+@router.get(
+    "/course",
+    response_model=ProfileCourseOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def profile_course(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ProfileCourseOut | JSONResponse:
+    girl = await get_girl_of_user(session, user.id)
+
+    if girl is None:
+        return profile_not_found()
+
+    enrollment = await current_enrollment(session, girl.id)
+    first_name = girl.name.split()[0] if girl.name.strip() else ""
+
+    if enrollment is None:
+        return ProfileCourseOut(first_name=first_name)
+
+    return ProfileCourseOut(
+        first_name=first_name, level=enrollment.level, course=enrollment.course
+    )
+
+
+# "Salvar" na A10b (RF-F6.04, RF-F6.05): ela registra o ingresso quando quiser,
+# sem esperar o questionário, e não cria resposta de questionário nenhum.
+# Registrar de novo troca o curso: o anterior fica com a data em que ela saiu.
+#
+# "Tô tentando entrar" e "Ainda não" não são ingresso (RN-22): respondem 204 e
+# não gravam nada.
+@router.post(
+    "/course",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def register_course(
+    data: ProfileCourseIn, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> JSONResponse | None:
+    girl = await get_girl_of_user(session, user.id)
+
+    if girl is None:
+        return profile_not_found()
+
+    level = data.level
+    if level is None:
+        return None
+
+    # Um curso atual só: o anterior ganha a data de saída, como em "Mudei de
+    # curso" no questionário (record_followup, followup/service.py), e fica de
+    # histórico (RF-F6.05).
+    previous = await current_enrollment(session, girl.id)
+    if previous:
+        previous.left_on = today_in_maceio()
+
+    # O que ela digitou em "Outro curso", ou o nome da lista. Texto livre: não
+    # vai para logs (RN-11).
+    assert data.course is not None
+    if data.course is CourseCode.OUTRO and data.other_course:
+        course = data.other_course
+    else:
+        course = COURSE_LABELS[data.course]
+    add_self_declared_enrollment(session, girl.id, level, course, data.institution)
+
+    # Um commit só: ou troca o curso, ou nada muda (RNF-F6.01).
+    await session.commit()
 
     return None
