@@ -14,6 +14,7 @@ from app.modules.girl_file.routes import later_router
 from app.modules.girl_file.routes import router as file_router
 from app.modules.girls.routes import router as profile_router
 from app.modules.groups.routes import router as groups_router
+from app.modules.results.routes import router as results_router
 from app.modules.suggestions.routes import router as discover_router
 
 router = APIRouter()
@@ -32,6 +33,7 @@ router.include_router(admissions_router)
 router.include_router(agenda_router)
 router.include_router(cron_router)
 router.include_router(coordinator_router)
+router.include_router(results_router)
 
 
 @router.get("/health", tags=["Health"])
