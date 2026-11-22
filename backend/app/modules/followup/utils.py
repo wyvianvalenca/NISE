@@ -10,6 +10,7 @@ from app.modules.followup.models import (
     FollowupRound,
     FutureSelf,
     HelpWanted,
+    StillEnrolled,
 )
 
 # Quantos meses depois de criar a conta cada rodada sai (RN-02).
@@ -111,4 +112,10 @@ COURSE_LABELS: dict[CourseCode, str] = {
     CourseCode.ENGENHARIA_COMPUTACAO: "Engenharia de Computação",
     CourseCode.REDES: "Redes de computadores",
     CourseCode.OUTRO: "Outro curso",
+}
+
+STILL_ENROLLED_LABELS: dict[StillEnrolled, str] = {
+    StillEnrolled.YES: "Sim, continuo",
+    StillEnrolled.CHANGED: "Mudei de curso",
+    StillEnrolled.STOPPED: "Parei por enquanto",
 }

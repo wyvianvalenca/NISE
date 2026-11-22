@@ -85,6 +85,14 @@ class CourseCode(enum.Enum):
     OUTRO = "outro"
 
 
+class StillEnrolled(enum.Enum):
+    """Pergunta 3 para quem já registrou um curso: "Continua nesse curso?" (#299)."""
+
+    YES = "yes"
+    CHANGED = "changed"
+    STOPPED = "stopped"
+
+
 class FollowupAnswer(Base):
     """As respostas de uma menina a uma rodada do questionário (RF-F4.07).
 
@@ -109,6 +117,8 @@ class FollowupAnswer(Base):
     # Pergunta 3, para quem não tem curso registrado. O curso em si fica em
     # `Enrollment` (admissions), gravado junto com esta resposta (RNF-F6.01).
     course_status: Mapped[CourseStatus | None] = mapped_column()
+    # Pergunta 3, para quem já tem curso registrado (#299).
+    still_enrolled: Mapped[StillEnrolled | None] = mapped_column()
     # Pergunta 6, "Quer contar mais?". Texto livre: nunca vai para logs, LLM
     # nem exportações (RN-11).
     comment: Mapped[str | None] = mapped_column()

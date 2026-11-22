@@ -20,11 +20,22 @@ from app.modules.followup.models import (
     FollowupRound,
     FutureSelf,
     HelpWanted,
+    StillEnrolled,
 )
 from app.modules.girls.schemas import OptionOut
 
 # O front lê e manda em camelCase (lastDay, firstName, computingView).
 CAMEL_CASE = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class CurrentCourseOut(BaseModel):
+    """O curso em que ela está hoje, para a pergunta "Continua nesse curso?"."""
+
+    model_config = CAMEL_CASE
+
+    level: CourseLevel
+    # O nome do curso, ou o que ela digitou em "Outro curso". Vai só para ela.
+    course: str
 
 
 class CurrentFollowupOut(BaseModel):
@@ -39,6 +50,9 @@ class CurrentFollowupOut(BaseModel):
     first_name: str
     # Ela já respondeu esta rodada: a tela mostra o aviso em vez do formulário.
     answered: bool
+    # O curso que ela já registrou, se houver: a pergunta 3 vira "Continua
+    # nesse curso?" (#299).
+    current_course: CurrentCourseOut | None = None
 
 
 class FollowupOptionsOut(BaseModel):
@@ -52,6 +66,7 @@ class FollowupOptionsOut(BaseModel):
     helps: list[OptionOut]
     course_statuses: list[OptionOut]
     courses: list[OptionOut]
+    still_enrolled: list[OptionOut]
 
 
 def _without_repeats[T](choices: list[T]) -> list[T]:
@@ -100,6 +115,9 @@ class FollowupIn(BaseModel):
     ] = []
     # Pergunta 3 para quem ainda não tem curso registrado (#294).
     course_status: CourseStatus | None = None
+    # Pergunta 3 para quem já tem (#299). Com "Mudei de curso" vêm também
+    # `course_status` (o nível) e o curso novo.
+    still_enrolled: StillEnrolled | None = None
     course: CourseCode | None = None
     other_course: Annotated[FreeText | None, AfterValidator(_blank_is_none)] = None
     institution: Annotated[FreeText | None, AfterValidator(_blank_is_none)] = None
@@ -117,6 +135,7 @@ class FollowupIn(BaseModel):
         answered = (
             self.computing_view is not None
             or self.course_status is not None
+            or self.still_enrolled is not None
             or self.future_self is not None
             or self.activities
             or self.helps
@@ -135,6 +154,14 @@ class FollowupIn(BaseModel):
 
     def _check_course_question(self) -> None:
         course_fields = (self.course, self.other_course, self.institution)
+
+        if self.still_enrolled in (StillEnrolled.YES, StillEnrolled.STOPPED):
+            if self.course_status is not None or any(course_fields):
+                raise ValueError("Continuar ou parar não leva dados de curso")
+            return
+
+        if self.still_enrolled is StillEnrolled.CHANGED and self.level is None:
+            raise ValueError("Mudar de curso pede o nível e o curso novo")
 
         if self.level is None:
             # "Tô tentando entrar" e "Ainda não" não registram curso.

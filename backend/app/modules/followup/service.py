@@ -5,14 +5,19 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.admissions.service import add_self_declared_enrollment
+from app.modules.admissions.service import (
+    add_self_declared_enrollment,
+    current_enrollment,
+)
 from app.modules.followup.models import (
     CourseCode,
     FollowupActivity,
     FollowupAnswer,
     FollowupHelp,
+    StillEnrolled,
 )
 from app.modules.followup.schemas import (
+    CurrentCourseOut,
     CurrentFollowupOut,
     FollowupIn,
 )
@@ -27,6 +32,9 @@ class FollowupResult(enum.Enum):
     # Não há rodada aberta hoje, ou a rodada enviada já fechou.
     NO_OPEN_ROUND = "no_open_round"
     ALREADY_ANSWERED = "already_answered"
+    # A pergunta 3 enviada não é a que ela vê: "Continua nesse curso?" sem curso
+    # registrado, ou a pergunta de entrada com curso registrado.
+    INVALID_COURSE_ANSWER = "invalid_course_answer"
 
 
 async def _open_round_for(
@@ -82,12 +90,18 @@ async def get_current_followup(
         return None
 
     girl_id, name, current = found
+    enrollment = await current_enrollment(session, girl_id)
 
     return CurrentFollowupOut(
         round=current.round,
         last_day=current.last_day,
         first_name=name.split()[0] if name.strip() else "",
         answered=await _already_answered(session, girl_id, current),
+        current_course=(
+            CurrentCourseOut(level=enrollment.level, course=enrollment.course)
+            if enrollment
+            else None
+        ),
     )
 
 
@@ -109,9 +123,9 @@ async def record_followup(
 ) -> FollowupResult:
     """Grava as respostas da menina da sessão à rodada aberta (RF-F4.07).
 
-    Só a rodada aberta hoje aceita resposta, e só uma vez. A resposta e o curso
-    que ela declarou (novo ingresso) vão no mesmo commit: ou grava tudo, ou nada
-    (RNF-F6.01).
+    Só a rodada aberta hoje aceita resposta, e só uma vez. A resposta e o que ela
+    muda nos cursos dela (novo ingresso, ou a data em que parou) vão no mesmo
+    commit: ou grava tudo, ou nada (RNF-F6.01).
     """
     found = await _open_round_for(session, user_id, now)
 
@@ -126,6 +140,23 @@ async def record_followup(
     if await _already_answered(session, girl_id, current):
         return FollowupResult.ALREADY_ANSWERED
 
+    enrollment = await current_enrollment(session, girl_id)
+
+    # "Continua nesse curso?" só para quem tem curso; a pergunta de entrada, só
+    # para quem não tem (D-63).
+    if data.still_enrolled is not None and enrollment is None:
+        return FollowupResult.INVALID_COURSE_ANSWER
+    if data.still_enrolled is None and enrollment and data.course_status:
+        return FollowupResult.INVALID_COURSE_ANSWER
+
+    today = today_in_maceio(now)
+    # "Mudei de curso" e "Parei por enquanto": o ingresso fica, com a data em
+    # que ela saiu (RF-F6.05, RF-F6.06).
+    if enrollment and data.still_enrolled in (
+        StillEnrolled.CHANGED,
+        StillEnrolled.STOPPED,
+    ):
+        enrollment.left_on = today
     if data.level is not None:
         add_self_declared_enrollment(
             session,
@@ -141,6 +172,7 @@ async def record_followup(
             girl_id=girl_id,
             round=current.round,
             course_status=data.course_status,
+            still_enrolled=data.still_enrolled,
             computing_view=data.computing_view,
             future_self=data.future_self,
             # Comentário vazio é o mesmo que nenhum.

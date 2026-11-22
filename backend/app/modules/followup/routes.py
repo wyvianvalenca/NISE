@@ -22,6 +22,7 @@ from app.modules.followup.utils import (
     COURSE_STATUS_LABELS,
     FUTURE_SELF_LABELS,
     HELP_WANTED_LABELS,
+    STILL_ENROLLED_LABELS,
 )
 from app.modules.girls.schemas import OptionOut
 
@@ -82,6 +83,10 @@ async def followup_options(user: AcceptedGirlDep) -> FollowupOptionsOut:
             OptionOut(code=option.value, label=label)
             for option, label in COURSE_LABELS.items()
         ],
+        still_enrolled=[
+            OptionOut(code=option.value, label=label)
+            for option, label in STILL_ENROLLED_LABELS.items()
+        ],
     )
 
 
@@ -101,6 +106,12 @@ async def followup_options(user: AcceptedGirlDep) -> FollowupOptionsOut:
         status.HTTP_409_CONFLICT: {
             "description": 'Ela já respondeu essa rodada: {"error": "already_answered"}'
         },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": (
+                "Resposta inválida. Também quando a pergunta 3 enviada não é a que "
+                'ela vê (tem curso registrado ou não): {"error": "invalid_course_answer"}'
+            )
+        },
     },
 )
 async def answer_followup(
@@ -112,6 +123,12 @@ async def answer_followup(
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"error": "no_open_round"},
+        )
+
+    if result is FollowupResult.INVALID_COURSE_ANSWER:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"error": "invalid_course_answer"},
         )
 
     if result is FollowupResult.ALREADY_ANSWERED:

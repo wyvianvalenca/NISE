@@ -23,6 +23,7 @@ from app.modules.followup.models import (
     FollowupHelp,
     FollowupRound,
     HelpWanted,
+    StillEnrolled,
 )
 from app.modules.followup.schemas import FollowupIn
 from app.modules.followup.service import (
@@ -39,6 +40,8 @@ CONTA_CRIADA = datetime(2026, 1, 15, 15, 0, tzinfo=UTC)
 ANTES_DA_RODADA = datetime(2026, 4, 14, 15, 0, tzinfo=UTC)
 RODADA_ABERTA = datetime(2026, 4, 20, 15, 0, tzinfo=UTC)
 RODADA_FECHADA = datetime(2026, 5, 15, 15, 0, tzinfo=UTC)
+# A rodada de 6 meses abre em 15/07/2026.
+RODADA_DE_6_MESES = datetime(2026, 7, 20, 15, 0, tzinfo=UTC)
 
 
 async def criar_menina(
@@ -387,3 +390,242 @@ async def test_erro_de_integridade_que_nao_e_de_resposta_repetida_sobe(
         await record_followup(
             db_session, user.id, respostas(futureSelf="maybe"), RODADA_ABERTA
         )
+
+
+# --- "Continua nesse curso?" (#299) -------------------------------------------------
+
+
+async def declarar_curso(db_session: AsyncSession, user: User) -> None:
+    """Ela declara Graduação em Redes de computadores na rodada de 3 meses."""
+    await record_followup(
+        db_session,
+        user.id,
+        respostas(courseStatus="graduacao", course="redes", institution="UFAL"),
+        RODADA_ABERTA,
+    )
+
+
+async def ingressos(db_session: AsyncSession) -> list[Enrollment]:
+    result = await db_session.scalars(select(Enrollment).order_by(Enrollment.id))
+    return list(result)
+
+
+async def test_sem_curso_registrado_nao_ha_curso_atual(
+    db_session: AsyncSession,
+) -> None:
+    user = await criar_menina(db_session)
+
+    atual = await get_current_followup(db_session, user.id, RODADA_ABERTA)
+
+    assert atual is not None
+    assert atual.current_course is None
+
+
+async def test_com_curso_registrado_a_tela_recebe_o_curso_atual(
+    db_session: AsyncSession,
+) -> None:
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+
+    atual = await get_current_followup(db_session, user.id, RODADA_DE_6_MESES)
+
+    assert atual is not None
+    assert atual.answered is False
+    assert atual.current_course is not None
+    assert atual.current_course.level is CourseLevel.GRADUACAO
+    assert atual.current_course.course == "Redes de computadores"
+
+
+async def test_sim_continuo_nao_muda_o_curso(db_session: AsyncSession) -> None:
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+
+    resultado = await record_followup(
+        db_session,
+        user.id,
+        respostas(round="six_months", stillEnrolled="yes"),
+        RODADA_DE_6_MESES,
+    )
+
+    assert resultado is FollowupResult.SAVED
+    [curso] = await ingressos(db_session)
+    assert curso.left_on is None
+    resposta = await db_session.scalar(
+        select(FollowupAnswer).where(FollowupAnswer.round == FollowupRound.SIX_MONTHS)
+    )
+    assert resposta is not None
+    assert resposta.still_enrolled is StillEnrolled.YES
+
+
+async def test_mudei_de_curso_guarda_o_anterior_com_a_data_e_registra_o_novo(
+    db_session: AsyncSession,
+) -> None:
+    # RF-F6.05
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+
+    resultado = await record_followup(
+        db_session,
+        user.id,
+        respostas(
+            round="six_months",
+            stillEnrolled="changed",
+            courseStatus="tecnico",
+            course="outro",
+            otherCourse="Eletrônica",
+        ),
+        RODADA_DE_6_MESES,
+    )
+
+    assert resultado is FollowupResult.SAVED
+    antigo, novo = await ingressos(db_session)
+    assert antigo.course == "Redes de computadores"
+    assert antigo.enrolled_on == date(2026, 4, 20)
+    assert antigo.left_on == date(2026, 7, 20)
+    assert novo.level is CourseLevel.TECNICO
+    assert novo.course == "Eletrônica"
+    assert novo.enrolled_on == date(2026, 7, 20)
+    assert novo.origin is AdmissionOrigin.SELF_DECLARED
+    assert novo.left_on is None
+    atual = await get_current_followup(db_session, user.id, RODADA_DE_6_MESES)
+    assert atual is not None
+    assert atual.current_course is not None
+    assert atual.current_course.course == "Eletrônica"
+
+
+async def test_parei_por_enquanto_registra_a_saida_e_guarda_o_ingresso(
+    db_session: AsyncSession,
+) -> None:
+    # RF-F6.06
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+
+    resultado = await record_followup(
+        db_session,
+        user.id,
+        respostas(round="six_months", stillEnrolled="stopped"),
+        RODADA_DE_6_MESES,
+    )
+
+    assert resultado is FollowupResult.SAVED
+    [curso] = await ingressos(db_session)
+    assert curso.course == "Redes de computadores"
+    assert curso.enrolled_on == date(2026, 4, 20)
+    assert curso.left_on == date(2026, 7, 20)
+
+
+async def test_depois_de_parar_a_proxima_rodada_pergunta_a_entrada_de_novo(
+    db_session: AsyncSession,
+) -> None:
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+    await record_followup(
+        db_session,
+        user.id,
+        respostas(round="six_months", stillEnrolled="stopped"),
+        RODADA_DE_6_MESES,
+    )
+    doze_meses = datetime(2027, 1, 20, 15, 0, tzinfo=UTC)
+
+    atual = await get_current_followup(db_session, user.id, doze_meses)
+
+    assert atual is not None
+    assert atual.current_course is None
+    # E ela pode declarar um curso de novo, como na primeira vez.
+    resultado = await record_followup(
+        db_session,
+        user.id,
+        respostas(
+            round="twelve_months", courseStatus="graduacao", course="ciencia_computacao"
+        ),
+        doze_meses,
+    )
+    assert resultado is FollowupResult.SAVED
+    assert len(await ingressos(db_session)) == 2
+
+
+async def test_quem_estava_tentando_entrar_declara_o_curso_na_rodada_seguinte(
+    db_session: AsyncSession,
+) -> None:
+    user = await criar_menina(db_session)
+    await record_followup(
+        db_session, user.id, respostas(courseStatus="trying"), RODADA_ABERTA
+    )
+
+    atual = await get_current_followup(db_session, user.id, RODADA_DE_6_MESES)
+    assert atual is not None
+    assert atual.current_course is None
+    resultado = await record_followup(
+        db_session,
+        user.id,
+        respostas(round="six_months", courseStatus="graduacao", course="redes"),
+        RODADA_DE_6_MESES,
+    )
+
+    assert resultado is FollowupResult.SAVED
+    assert len(await ingressos(db_session)) == 1
+
+
+async def test_continua_nesse_curso_sem_curso_registrado_e_recusado(
+    db_session: AsyncSession,
+) -> None:
+    # Escolha: o back recusa (422 na rota) e não grava nada.
+    user = await criar_menina(db_session)
+
+    resultado = await record_followup(
+        db_session, user.id, respostas(stillEnrolled="yes"), RODADA_ABERTA
+    )
+
+    assert resultado is FollowupResult.INVALID_COURSE_ANSWER
+    total = await db_session.scalar(select(func.count()).select_from(FollowupAnswer))
+    assert total == 0
+
+
+async def test_pergunta_de_entrada_com_curso_registrado_e_recusada(
+    db_session: AsyncSession,
+) -> None:
+    # Com curso registrado a pergunta é "Continua nesse curso?" (D-63): declarar
+    # outro curso sem dizer que mudou deixaria dois cursos em andamento.
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+
+    resultado = await record_followup(
+        db_session,
+        user.id,
+        respostas(round="six_months", courseStatus="graduacao", course="redes"),
+        RODADA_DE_6_MESES,
+    )
+
+    assert resultado is FollowupResult.INVALID_COURSE_ANSWER
+    assert len(await ingressos(db_session)) == 1
+
+
+async def test_falha_ao_gravar_parei_nao_deixa_a_saida_pela_metade(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # RNF-F6.01: a resposta e a data de saída vão no mesmo commit.
+    user = await criar_menina(db_session)
+    await declarar_curso(db_session, user)
+    commit_de_verdade = db_session.commit
+
+    async def falha_depois_de_gravar() -> None:
+        await db_session.flush()
+        raise RuntimeError("queda no commit")
+
+    monkeypatch.setattr(db_session, "commit", falha_depois_de_gravar)
+    with pytest.raises(RuntimeError):
+        await record_followup(
+            db_session,
+            user.id,
+            respostas(round="six_months", stillEnrolled="stopped"),
+            RODADA_DE_6_MESES,
+        )
+    await db_session.rollback()
+    monkeypatch.setattr(db_session, "commit", commit_de_verdade)
+
+    [curso] = await ingressos(db_session)
+    assert curso.left_on is None
+    resposta = await db_session.scalar(
+        select(FollowupAnswer).where(FollowupAnswer.round == FollowupRound.SIX_MONTHS)
+    )
+    assert resposta is None

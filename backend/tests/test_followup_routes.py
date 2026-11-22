@@ -14,9 +14,10 @@ from httpx2 import Response
 
 from app.auth.utils import create_access_token
 from app.main import app
+from app.modules.admissions.models import CourseLevel
 from app.modules.followup import routes
 from app.modules.followup.models import FollowupRound
-from app.modules.followup.schemas import CurrentFollowupOut
+from app.modules.followup.schemas import CurrentCourseOut, CurrentFollowupOut
 from app.modules.followup.service import FollowupResult
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
@@ -65,6 +66,30 @@ async def test_rodada_aberta_vem_em_camel_case(servico: dict[str, AsyncMock]) ->
         "lastDay": "2026-05-14",
         "firstName": "Bia",
         "answered": False,
+        "currentCourse": None,
+    }
+
+
+async def test_rodada_aberta_traz_o_curso_atual_dela(
+    servico: dict[str, AsyncMock],
+) -> None:
+    servico["get_current_followup"].return_value = CurrentFollowupOut(
+        round=FollowupRound.SIX_MONTHS,
+        last_day=date(2026, 8, 13),
+        first_name="Bia",
+        answered=False,
+        current_course=CurrentCourseOut(
+            level=CourseLevel.GRADUACAO, course="Ciência da Computação"
+        ),
+    )
+
+    response = await chamar_rota(
+        app, "GET", "/api/followup/current", sessao(bia()), token=create_access_token(1)
+    )
+
+    assert response.json()["currentCourse"] == {
+        "level": "graduacao",
+        "course": "Ciência da Computação",
     }
 
 
@@ -158,6 +183,11 @@ async def test_opcoes_vem_na_ordem_do_figma() -> None:
         ("engenharia_computacao", "Engenharia de Computação"),
         ("redes", "Redes de computadores"),
         ("outro", "Outro curso"),
+    ]
+    assert [(o["code"], o["label"]) for o in opcoes["stillEnrolled"]] == [
+        ("yes", "Sim, continuo"),
+        ("changed", "Mudei de curso"),
+        ("stopped", "Parei por enquanto"),
     ]
 
 
@@ -257,6 +287,32 @@ async def test_segunda_resposta_responde_409(servico: dict[str, AsyncMock]) -> N
             "course": "redes",
             "institution": "a" * 121,
         },
+        # "Continua nesse curso?": sim e parei não levam dados de curso; mudei
+        # pede o nível e o curso novo.
+        {"round": "three_months", "stillEnrolled": "yes", "courseStatus": "tecnico"},
+        {
+            "round": "three_months",
+            "stillEnrolled": "stopped",
+            "course": "redes",
+        },
+        {"round": "three_months", "stillEnrolled": "changed"},
+        {
+            "round": "three_months",
+            "stillEnrolled": "changed",
+            "courseStatus": "trying",
+        },
+        {
+            "round": "three_months",
+            "stillEnrolled": "changed",
+            "courseStatus": "graduacao",
+        },
+        {
+            "round": "three_months",
+            "stillEnrolled": "changed",
+            "courseStatus": "graduacao",
+            "course": "outro",
+        },
+        {"round": "three_months", "stillEnrolled": "talvez"},
         # Campo desconhecido: a menina vem sempre da sessão, nunca do corpo.
         {"round": "three_months", "futureSelf": "maybe", "girlId": 1},
     ],
@@ -268,3 +324,36 @@ async def test_envio_invalido_e_recusado(
 
     assert response.status_code == 422
     servico["record_followup"].assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        {"round": "three_months", "stillEnrolled": "yes"},
+        {"round": "three_months", "stillEnrolled": "stopped"},
+        {
+            "round": "three_months",
+            "stillEnrolled": "changed",
+            "courseStatus": "tecnico",
+            "course": "redes",
+        },
+    ],
+)
+async def test_continua_nesse_curso_valido_chega_ao_servico(
+    servico: dict[str, AsyncMock], corpo: dict[str, object]
+) -> None:
+    response = await enviar(corpo)
+
+    assert response.status_code == 204
+    servico["record_followup"].assert_awaited_once()
+
+
+async def test_pergunta_3_que_nao_e_a_dela_responde_422(
+    servico: dict[str, AsyncMock],
+) -> None:
+    servico["record_followup"].return_value = FollowupResult.INVALID_COURSE_ANSWER
+
+    response = await enviar({"round": "three_months", "stillEnrolled": "yes"})
+
+    assert response.status_code == 422
+    assert response.json() == {"error": "invalid_course_answer"}
