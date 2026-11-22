@@ -161,3 +161,12 @@ async function send(path: string, method: string, body?: unknown): Promise<Atten
 export function saveMarks(id: number, presentIds: number[]) {
   return send(`/api/actions/${id}/attendance/marks`, "PUT", { present_ids: presentIds });
 }
+
+/**
+ * "Concluir presença" (#348, RF-F3.05): marks these registrations as present,
+ * concludes the action and queues the invites and evaluations (D-81). Concluding
+ * again answers the same page and changes nothing.
+ */
+export function concludeAttendance(id: number, presentIds: number[]) {
+  return send(`/api/actions/${id}/attendance/conclude`, "POST", { present_ids: presentIds });
+}

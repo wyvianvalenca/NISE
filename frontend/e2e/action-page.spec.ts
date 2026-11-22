@@ -157,6 +157,8 @@ test("without extra data there are only the Nome and E-mail columns", async ({
   await mockActionPageApi(page);
   await mockAttendanceApi(page);
   await page.goto(`/coordenacao/acoes/${CONCLUDED_ACTION_ID}`);
+  // A concluded action opens on the tab Presença (#348); the girls are in Inscritas.
+  await page.getByRole("tab", { name: "Inscritas 2" }).click();
 
   await expect(page.getByRole("columnheader")).toHaveText(["Nome", "E-mail"]);
   await expect(rowsOf(page)).toHaveCount(2);
@@ -186,7 +188,7 @@ test("closed registrations: steps and card say so", async ({ page }) => {
   ).toBeEnabled();
 });
 
-test("Excluir ação is hidden once the attendance is saved", async ({
+test("Excluir ação and Editar ação are hidden once the attendance is concluded", async ({
   page,
 }) => {
   await mockActionPageApi(page);
@@ -197,7 +199,8 @@ test("Excluir ação is hidden once the attendance is saved", async ({
   await expect(page.getByRole("button", { name: "Excluir ação" })).toHaveCount(
     0,
   );
-  await expect(page.getByRole("link", { name: "Editar ação" })).toBeVisible();
+  // The concluded page of the Figma has no "Editar ação" either (#348).
+  await expect(page.getByRole("link", { name: "Editar ação" })).toHaveCount(0);
 });
 
 test("Excluir ação asks first, then deletes and goes back to the list", async ({

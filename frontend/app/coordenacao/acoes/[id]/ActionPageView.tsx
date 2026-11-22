@@ -3,17 +3,22 @@
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CoordHeader } from "@/components/CoordHeader";
+import { Button } from "@/components/Button";
 import { LoadFailed } from "@/components/LoadFailed";
 import { Loading } from "@/components/Loading";
+import { Modal } from "@/components/Modal";
+import { Toast } from "@/components/Toast";
 import { StepTracker, type Step } from "@/components/StepTracker";
 import { dayMonthLabel } from "@/lib/coord-action-labels";
 import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
-import { getAttendance, saveMarks, type AttendancePage } from "@/lib/coord-attendance";
+import { concludeAttendance, getAttendance, saveMarks, type AttendancePage } from "@/lib/coord-attendance";
 import { ActionHeader } from "./ActionHeader";
 import { AddGirlDrawer } from "./AddGirlDrawer";
+import { AfterActionCard } from "./AfterActionCard";
 import { AfterAttendanceCard } from "./AfterAttendanceCard";
 import { AttendanceAside } from "./AttendanceAside";
 import { AttendanceMarking } from "./AttendanceMarking";
+import { ConcludedMain } from "./ConcludedMain";
 import { ImportDrawer } from "./ImportDrawer";
 import { RegistrationsCard } from "./RegistrationsCard";
 import { RegistrationsSwitch } from "./RegistrationsSwitch";
@@ -36,6 +41,15 @@ function attendanceRegistrationsText(attendance: AttendancePage): string {
   return `${count} ${count === 1 ? "importada" : "importadas"} em ${dayMonthLabel(attendance.lastRegisteredOn)}`;
 }
 
+/** "17 presentes, registrada em 24/10" (#348). */
+function concludedStepText(attendance: AttendancePage | undefined, action: ActionPage): string {
+  if (!attendance || attendance.concludedOn === null) {
+    return `Aconteceu em ${dayMonthLabel(action.startsOn)}`;
+  }
+  const count = attendance.presentCount;
+  return `${count} ${count === 1 ? "presente" : "presentes"}, registrada em ${dayMonthLabel(attendance.concludedOn)}`;
+}
+
 function steps(action: ActionPage, attendance: AttendancePage | undefined): Step[] {
   const eventHasCome = action.status === "awaiting_attendance" || action.status === "concluded";
   const created = `${action.createdOn.slice(8, 10)}/${action.createdOn.slice(5, 7)}`;
@@ -53,13 +67,18 @@ function steps(action: ActionPage, attendance: AttendancePage | undefined): Step
       label: "Presença",
       description:
         action.status === "concluded"
-          ? `Aconteceu em ${dayMonthLabel(action.startsOn)}`
+          ? concludedStepText(attendance, action)
           : eventHasCome
             ? `Marque depois do evento, em ${dayMonthLabel(action.startsOn)}`
             : `Depois do evento, em ${dayMonthLabel(action.startsOn)}`,
       status: action.status === "concluded" ? "done" : eventHasCome ? "current" : "todo",
     },
   ];
+}
+
+/** "1 convite" / "18 convites". */
+function countOf(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
 }
 
 /** A copy of the marks with these registrations marked or unmarked. */
@@ -109,6 +128,12 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   useEffect(() => {
     marksRef.current = marks;
   }, [marks]);
+  /** The confirmation before concluding is open (#348, RF-F3.11). */
+  const [concluding, setConcluding] = useState(false);
+  const [concludeBusy, setConcludeBusy] = useState(false);
+  const [concludeError, setConcludeError] = useState<"failed" | "refused" | null>(null);
+  /** The message after concluding, above the page. */
+  const [concludedMessage, setConcludedMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"saved" | "failed" | "refused" | null>(null);
 
   useEffect(() => {
@@ -170,6 +195,27 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
     if (result.error !== "failed") reload();
   }
 
+  /** "Concluir presença" (#348): after the confirmation, sends the marks and concludes. */
+  async function conclude() {
+    if (actionId === null || concludeBusy) return;
+    setConcludeBusy(true);
+    setConcludeError(null);
+    const result = await concludeAttendance(actionId, [...marks]);
+    setConcludeBusy(false);
+    if (!result.ok) {
+      setConcludeError(result.error === "failed" ? "failed" : "refused");
+      if (result.error !== "failed") reload();
+      return;
+    }
+    setAttendance(result.data);
+    setConcluding(false);
+    setMarking(false);
+    setConcludedMessage(
+      `Presença registrada. ${result.data.presentCount} de ${result.data.registeredCount} estiveram presentes.`,
+    );
+    reload();
+  }
+
   // Leaving the page with marks that were not saved asks first (#340, Could).
   // Only while it can still be saved: concluded in another tab, nothing is lost.
   const unsaved =
@@ -209,6 +255,11 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
         ) : (
           <>
             <ActionHeader action={action} />
+            {concludedMessage && action.status === "concluded" && (
+              <div className={styles.message}>
+                <Toast>{concludedMessage}</Toast>
+              </div>
+            )}
             <div className={styles.steps}>
               <StepTracker steps={steps(action, attendance)} />
             </div>
@@ -229,10 +280,16 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   }}
                   onBack={() => setMarking(false)}
                   onAddWalkIn={() => setAddingWalkIn(true)}
+                  onConclude={() => {
+                    setConcludeError(null);
+                    setConcluding(true);
+                  }}
                   onSave={save}
                   saving={saving}
                   saveState={saveState}
                 />
+              ) : action.status === "concluded" && attendance ? (
+                <ConcludedMain action={action} attendance={attendance} reloadToken={listVersion} />
               ) : (
                 <RegistrationsCard
                   action={action}
@@ -248,6 +305,8 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   ) : (
                     <AttendanceAside action={action} attendance={attendance!} onMark={openList} />
                   )
+                ) : action.status === "concluded" && attendance ? (
+                  <AfterActionCard attendance={attendance} />
                 ) : (
                   <RegistrationsSwitch action={action} onChanged={reload} />
                 )}
@@ -262,6 +321,36 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   reload();
                 }}
               />
+            )}
+            {concluding && attendance && (
+              <Modal
+                open
+                onClose={() => setConcluding(false)}
+                title="Concluir a presença?"
+                actions={
+                  <>
+                    <Button variant="secondary" onClick={() => setConcluding(false)}>
+                      Cancelar
+                    </Button>
+                    <Button loading={concludeBusy} loadingLabel="Concluindo…" onClick={conclude}>
+                      Concluir presença
+                    </Button>
+                  </>
+                }
+              >
+                <p>
+                  Vão sair {countOf(attendance.invitesToSend, "convite", "convites")} e{" "}
+                  {countOf(marks.size, "avaliação", "avaliações")}. Depois de concluir, só dá pra
+                  acrescentar presentes, não dá pra desmarcar.
+                </p>
+                {concludeError && (
+                  <p role="alert" className={styles.error}>
+                    {concludeError === "failed"
+                      ? "Não deu pra concluir agora. Suas marcações continuam na tela. Tente de novo."
+                      : "A presença não pôde ser concluída agora. A página foi atualizada."}
+                  </p>
+                )}
+              </Modal>
             )}
             {addingWalkIn && (
               <AddGirlDrawer

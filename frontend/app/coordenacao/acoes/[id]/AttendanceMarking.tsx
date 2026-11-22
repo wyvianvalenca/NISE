@@ -25,6 +25,8 @@ type MarkingProps = {
   onBack: () => void;
   /** "Veio sem inscrição? Adicionar participante" (#346). */
   onAddWalkIn: () => void;
+  /** "Concluir presença" (#348): the page asks first. */
+  onConclude: () => void;
   /** "Salvar e continuar depois" (#340). */
   onSave: () => void;
   saving: boolean;
@@ -43,7 +45,7 @@ function details(girl: AttendanceGirl, columns: AttendancePage["columns"]): stri
  * unmarking are free until the attendance is concluded (D-80). It only changes
  * this page: nothing is sent and the filé of the girls does not change (D-81).
  */
-export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onAddWalkIn, onSave, saving, saveState }: MarkingProps) {
+export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, onBack, onAddWalkIn, onConclude, onSave, saving, saveState }: MarkingProps) {
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
@@ -164,6 +166,7 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
           <Button variant="secondary" loading={saving} loadingLabel="Salvando…" onClick={onSave}>
             Salvar e continuar depois
           </Button>
+          <Button onClick={onConclude}>Concluir presença</Button>
         </div>
       </div>
     </section>

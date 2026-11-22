@@ -12,11 +12,13 @@ import { girls, type MockRegistration } from "./action-page-api";
 /** 23 girls, the day of the event (24/10), nothing marked yet. */
 export const AWAITING_ACTION_ID = 6;
 /** Two girls, already concluded, no optional column. */
-export const TWO_GIRLS_CONCLUDED_ACTION_ID = 4;
+export const TWO_GIRLS_ATTENDED_ACTION_ID = 4;
 /** The day of the event and nobody registered. */
 export const NOBODY_ACTION_ID = 8;
 /** The day of the event, 23 girls, 14 of them already in the saved marks (#340). */
 export const SAVED_ACTION_ID = 9;
+/** Concluded: 23 girls, 17 present, 18 invites and 17 evaluations sent (#348). */
+export const ATTENDED_ACTION_ID = 10;
 
 type Stored = {
   id: number;
@@ -58,6 +60,17 @@ function seed(): Record<number, Stored> {
       invitesSent: 0,
       evaluationsSent: 0,
     },
+    [ATTENDED_ACTION_ID]: {
+      ...empty,
+      id: ATTENDED_ACTION_ID,
+      name: "Introdução à robótica",
+      today: "2026-10-30",
+      registrations: extras,
+      present: new Set(extras.slice(0, 17).map((row) => row.id)),
+      concludedOn: "2026-10-24",
+      invitesSent: 18,
+      evaluationsSent: 17,
+    },
     [NOBODY_ACTION_ID]: {
       ...empty,
       id: NOBODY_ACTION_ID,
@@ -67,9 +80,9 @@ function seed(): Record<number, Stored> {
       invitesSent: 0,
       evaluationsSent: 0,
     },
-    [TWO_GIRLS_CONCLUDED_ACTION_ID]: {
+    [TWO_GIRLS_ATTENDED_ACTION_ID]: {
       ...empty,
-      id: TWO_GIRLS_CONCLUDED_ACTION_ID,
+      id: TWO_GIRLS_ATTENDED_ACTION_ID,
       name: "Python do zero",
       online: true,
       today: "2026-10-30",
@@ -105,11 +118,16 @@ export type AttendanceApi = {
   failWalkIn: boolean;
   /** Names of the registrations of the action now, in the back-end's state. */
   registeredNow: (id: number) => string[];
+  /** Bodies (the registration ids) of the POST that concludes (#348), in order. */
+  concluded: number[][];
+  /** While true the POST answers 500 and concludes nothing. */
+  failConclude: boolean;
   /** The registrations in the saved marks now, in the back-end's state (#340). */
   savedNow: (id: number) => number[];
 };
 
 const GIRLS_URL = /\/api\/actions\/(\d+)\/attendance\/girls$/;
+const CONCLUDE_URL = /\/api\/actions\/(\d+)\/attendance\/conclude$/;
 const MARKS_URL = /\/api\/actions\/(\d+)\/attendance\/marks$/;
 const ATTENDANCE_URL = /\/api\/actions\/(\d+)\/attendance$/;
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
@@ -195,6 +213,8 @@ export async function mockAttendanceApi(
     failAttendance: false,
     saved: [],
     failSave: false,
+    concluded: [],
+    failConclude: false,
     walkIns: [],
     failWalkIn: false,
     registeredNow: (id) => (data[id]?.registrations ?? []).map((row) => row.name),
@@ -278,6 +298,28 @@ export async function mockAttendanceApi(
           already_registered: already,
         },
       });
+    },
+  );
+
+  // POST .../attendance/conclude (#348): marks who came, concludes and counts
+  // the e-mails. Concluding again answers the same page and changes nothing.
+  await page.route(
+    (url) => CONCLUDE_URL.test(url.pathname),
+    async (route) => {
+      const stored = data[Number(CONCLUDE_URL.exec(new URL(route.request().url()).pathname)![1])];
+      await wait(delayMs);
+      if (!stored) return route.fulfill({ status: 404, json: { detail: "Ação não encontrada" } });
+      if (api.failConclude) return route.fulfill({ status: 500, body: "" });
+      const ids = (route.request().postDataJSON() as { present_ids: number[] }).present_ids;
+      api.concluded.push(ids);
+      if (stored.concludedOn === null) {
+        stored.present = new Set(ids);
+        stored.saved = new Set();
+        stored.concludedOn = stored.today;
+        stored.invitesSent = stored.registrations.filter((row) => !WITH_ACCOUNT.has(row.id)).length;
+        stored.evaluationsSent = ids.length;
+      }
+      return route.fulfill({ json: attendancePage(stored) });
     },
   );
 
