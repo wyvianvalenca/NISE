@@ -5,12 +5,13 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Modal } from "@/components/Modal";
 import { Notice } from "@/components/Notice";
-import { closeRegistrations, type ActionPage } from "@/lib/coord-action-page";
+import { closeRegistrations, reopenRegistrations, type ActionPage } from "@/lib/coord-action-page";
 import styles from "./RegistrationsSwitch.module.css";
 
 /**
- * Right column of K11: the card that closes the registrations (#236, RF-F1.10)
- * and, once closed, the note that says so. Closing never changes the status
+ * Right column of K11: the card that closes the registrations (#236, RF-F1.10),
+ * the one that reopens them until the day of the event (#237, RF-F1.13) and,
+ * once closed, the note that says so. Closing never changes the status
  * (RN-37); it only takes the action out of the girls' suggestions (RN-16).
  * `onChanged` reloads the page after the server answered.
  */
@@ -22,6 +23,9 @@ export function RegistrationsSwitch({
   onChanged: () => void;
 }) {
   const [closing, setClosing] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  /** The server refused: the event day came while the page was open. */
+  const [tooLate, setTooLate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -31,6 +35,7 @@ export function RegistrationsSwitch({
 
   function dismiss() {
     setClosing(false);
+    setReopening(false);
     setFailed(false);
   }
 
@@ -50,8 +55,46 @@ export function RegistrationsSwitch({
     onChanged();
   }
 
+  async function confirmReopen() {
+    setBusy(true);
+    setFailed(false);
+    try {
+      const answer = await reopenRegistrations(action.id);
+      setTooLate(answer?.result === "event_day_reached");
+    } catch {
+      setFailed(true);
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    setReopening(false);
+    // After a refusal the reload shows the page as the server has it now.
+    onChanged();
+  }
+
   return (
     <>
+      {tooLate && !action.canReopen && (
+        <div className={styles.note} role="alert">
+          <Notice icon="alert">
+            As inscrições fecharam sozinhas no dia do evento e não podem ser reabertas.
+          </Notice>
+        </div>
+      )}
+      {action.canReopen && (
+        <section className={styles.card} aria-labelledby="reopen-title">
+          <span className={styles.icon}>
+            <Icon name="clipboard" size={28} />
+          </span>
+          <h2 id="reopen-title" className={styles.title}>
+            Precisa de mais inscritas?
+          </h2>
+          <p className={styles.text}>
+            Reabra as inscrições pra ação voltar às sugestões das meninas. O status não muda.
+          </p>
+          <Button onClick={() => setReopening(true)}>Reabrir inscrições</Button>
+        </section>
+      )}
       {canClose && (
         <>
           <section className={styles.card} aria-labelledby="close-title">
@@ -106,6 +149,33 @@ export function RegistrationsSwitch({
           {failed && (
             <p role="alert" className={styles.error}>
               Não deu pra fechar as inscrições. Nada mudou. Tente de novo.
+            </p>
+          )}
+        </Modal>
+      )}
+      {reopening && (
+        <Modal
+          open
+          onClose={dismiss}
+          title="Reabrir inscrições?"
+          actions={
+            <>
+              <Button variant="secondary" onClick={dismiss}>
+                Agora não
+              </Button>
+              <Button loading={busy} loadingLabel="Reabrindo…" onClick={confirmReopen}>
+                Reabrir inscrições
+              </Button>
+            </>
+          }
+        >
+          <p>
+            {action.name} volta para as sugestões das meninas. Você pode fechar de novo quando
+            quiser.
+          </p>
+          {failed && (
+            <p role="alert" className={styles.error}>
+              Não deu pra reabrir as inscrições. Nada mudou. Tente de novo.
             </p>
           )}
         </Modal>

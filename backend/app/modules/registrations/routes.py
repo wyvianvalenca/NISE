@@ -17,6 +17,7 @@ from app.modules.actions.models import Action, Participation
 from app.modules.actions.schemas import ActionPageOut
 from app.modules.actions.service import load_action_page
 from app.modules.girls.models import Girl
+from app.modules.registrations.exceptions import EventDayReachedError
 from app.modules.registrations.schemas import (
     CorrectionBody,
     EmailCheckOut,
@@ -40,6 +41,7 @@ from app.modules.registrations.service import (
     list_registrations,
     register_girl,
     registration_columns,
+    reopen_registrations,
 )
 from app.modules.registrations.spreadsheet import (
     MAX_BYTES,
@@ -337,5 +339,31 @@ async def close_registrations_route(
     action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
 ) -> ActionPageOut:
     await close_registrations(session, action)
+
+    return await load_action_page(session, action, today)
+
+
+# "Reabrir inscrições" (K11, #237, RF-F1.13, Should). Only until the day of the
+# event, when they close by themselves (RF-F1.16): after that it is a 409 even by
+# a direct request. The status stays (RN-37). Another group's action is a 404.
+@router.post(
+    "/reopen",
+    response_model=ActionPageOut,
+    responses={
+        **NOT_FOUND,
+        status.HTTP_409_CONFLICT: {
+            "description": 'O dia do evento chegou: {"error": "event_day_reached"}'
+        },
+    },
+)
+async def reopen_registrations_route(
+    action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
+) -> ActionPageOut | JSONResponse:
+    try:
+        await reopen_registrations(session, action, today)
+    except EventDayReachedError:
+        return JSONResponse(
+            {"error": "event_day_reached"}, status_code=status.HTTP_409_CONFLICT
+        )
 
     return await load_action_page(session, action, today)

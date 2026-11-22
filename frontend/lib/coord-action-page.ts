@@ -504,3 +504,21 @@ export async function closeRegistrations(id: number): Promise<ActionPage | null>
   if (!response.ok) throw new Error(`close registrations ${response.status}`);
   return toActionPage((await response.json()) as ActionPageResponse);
 }
+
+/**
+ * "Reabrir inscrições" (#237, RF-F1.13). `event_day_reached` is the 409 of the
+ * server: from the day of the event the registrations stay closed. `null` when
+ * the action is not the group's; any other failure throws.
+ */
+export async function reopenRegistrations(
+  id: number,
+): Promise<{ result: "reopened"; action: ActionPage } | { result: "event_day_reached" } | null> {
+  const response = await fetch(`/api/actions/${id}/registrations/reopen`, { method: "POST" });
+  if (response.status === 404) return null;
+  if (response.status === 409) return { result: "event_day_reached" };
+  if (!response.ok) throw new Error(`reopen registrations ${response.status}`);
+  return {
+    result: "reopened",
+    action: toActionPage((await response.json()) as ActionPageResponse),
+  };
+}

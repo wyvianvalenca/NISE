@@ -69,6 +69,8 @@ export const CLOSED_ACTION_ID = 3;
 export const CONCLUDED_ACTION_ID = 4;
 /** An online action with 23 girls and the registrations open (#236). */
 export const ONLINE_ACTION_ID = 5;
+/** 23 girls, closed by the coordinator, and today is the day of the event (#237). */
+export const EVENT_DAY_ACTION_ID = 6;
 /** An id that does not exist or belongs to another group: both answer 404. */
 export const MISSING_ACTION_ID = 99;
 
@@ -149,6 +151,18 @@ function stored(): Record<number, Stored> {
       },
       registrations: girls(true),
     },
+    [EVENT_DAY_ACTION_ID]: {
+      action: {
+        ...BASE,
+        id: EVENT_DAY_ACTION_ID,
+        status: "awaiting_attendance",
+        registrations_open: false,
+        registrations_closed_by_coordinator: true,
+        can_reopen: false,
+        today: "2026-10-24",
+      },
+      registrations: girls(true),
+    },
     [CONCLUDED_ACTION_ID]: {
       action: {
         ...BASE,
@@ -209,10 +223,17 @@ export type ActionPageApi = {
   closed: number[];
   /** While true the close route answers 500 (the action stays open). */
   failClose: boolean;
+  /** Ids received in POST .../registrations/reopen, in order (#237). */
+  reopened: number[];
+  /** While true the reopen route answers 500. */
+  failReopen: boolean;
+  /** While true the reopen route answers 409 event_day_reached and the action turns into the event day's. */
+  reopenTooLate: boolean;
 };
 
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
 const CLOSE_URL = /\/api\/actions\/(\d+)\/registrations\/close$/;
+const REOPEN_URL = /\/api\/actions\/(\d+)\/registrations\/reopen$/;
 const LIST_URL = /\/api\/actions\/(\d+)\/registrations$/;
 const CHECK_URL = /\/api\/actions\/(\d+)\/registrations\/email-check$/;
 
@@ -254,6 +275,9 @@ export async function mockActionPageApi(
     lastImport: null,
     closed: [],
     failClose: false,
+    reopened: [],
+    failReopen: false,
+    reopenTooLate: false,
   };
 
   await page.route(
@@ -383,6 +407,46 @@ export async function mockActionPageApi(
         registrations_open: false,
         registrations_closed_by_coordinator: true,
         can_reopen: found.action.today < found.action.starts_on,
+      };
+      return route.fulfill({
+        json: { ...found.action, registered_count: found.registrations.length },
+      });
+    },
+  );
+
+  // #237: the same page after reopening, or the refusal of the event day.
+  await page.route(
+    (url) => REOPEN_URL.test(url.pathname),
+    async (route) => {
+      await wait(delayMs);
+      const id = Number(
+        REOPEN_URL.exec(new URL(route.request().url()).pathname)![1],
+      );
+      const found = data[id];
+      if (!found)
+        return route.fulfill({
+          status: 404,
+          json: { detail: "Ação não encontrada" },
+        });
+      if (api.failReopen) return route.fulfill({ status: 500, body: "" });
+      if (api.reopenTooLate) {
+        found.action = {
+          ...found.action,
+          status: "awaiting_attendance",
+          can_reopen: false,
+          today: found.action.starts_on,
+        };
+        return route.fulfill({
+          status: 409,
+          json: { error: "event_day_reached" },
+        });
+      }
+      api.reopened.push(id);
+      found.action = {
+        ...found.action,
+        registrations_open: true,
+        registrations_closed_by_coordinator: false,
+        can_reopen: false,
       };
       return route.fulfill({
         json: { ...found.action, registered_count: found.registrations.length },

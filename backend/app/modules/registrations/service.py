@@ -16,7 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, Participation
 from app.modules.girls.models import Girl, StudyStage
-from app.modules.registrations.exceptions import ActionNotInGroupError
+from app.modules.registrations.exceptions import (
+    ActionNotInGroupError,
+    EventDayReachedError,
+)
 from app.users.service import normalize_email
 
 
@@ -113,6 +116,23 @@ async def close_registrations(session: AsyncSession, action: Action) -> None:
     """
     if action.registrations_open:
         action.registrations_open = False
+        await session.commit()
+
+
+async def reopen_registrations(
+    session: AsyncSession, action: Action, today: date
+) -> None:
+    """The coordinator reopens the sign-ups, until the day of the event (RF-F1.13).
+
+    From that day they close by themselves (RF-F1.16), so the server refuses it
+    even for a request that skips the screen. The action goes back to the
+    suggestions through `registrations_open` (RN-16); the status stays (RN-37).
+    Idempotent while the event is ahead.
+    """
+    if today >= action.starts_on:
+        raise EventDayReachedError
+    if not action.registrations_open:
+        action.registrations_open = True
         await session.commit()
 
 
