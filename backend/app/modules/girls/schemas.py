@@ -6,11 +6,16 @@ from pydantic import (
     ConfigDict,
     Field,
     StrictBool,
-    StringConstraints,
     model_validator,
 )
 from pydantic.alias_generators import to_camel
 
+from app.modules.admissions.declaration import (
+    FreeText,
+    blank_is_none,
+    check_course_fields,
+    level_of,
+)
 from app.modules.admissions.models import CourseLevel
 from app.modules.followup.models import CourseCode, CourseStatus
 from app.modules.girls.models import StudyStage, Topic
@@ -80,15 +85,6 @@ class ProfileOut(BaseModel):
 # importado aqui.
 _CAMEL_CASE = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
-# Texto livre do curso: o mesmo limite do campo na tela. Nunca vai para logs,
-# LLM nem exportações (RN-11).
-_FreeText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
-
-
-def _blank_is_none(text: str | None) -> str | None:
-    # Só espaços vale como campo vazio.
-    return text or None
-
 
 class ProfileCourseOut(BaseModel):
     """O curso atual dela no perfil (A10, #298) e o nome para a A10b.
@@ -116,27 +112,18 @@ class ProfileCourseIn(BaseModel):
 
     course_status: CourseStatus
     course: CourseCode | None = None
-    other_course: Annotated[_FreeText | None, AfterValidator(_blank_is_none)] = None
-    institution: Annotated[_FreeText | None, AfterValidator(_blank_is_none)] = None
+    other_course: Annotated[FreeText | None, AfterValidator(blank_is_none)] = None
+    institution: Annotated[FreeText | None, AfterValidator(blank_is_none)] = None
 
     @property
     def level(self) -> CourseLevel | None:
         """O nível do curso, se ela entrou (técnico ou graduação)."""
-        if self.course_status in (CourseStatus.TECNICO, CourseStatus.GRADUACAO):
-            return CourseLevel(self.course_status.value)
-        return None
+        return level_of(self.course_status)
 
     @model_validator(mode="after")
     def course_rules(self) -> Self:
         # A tela confere antes; o servidor confere de novo (RNF-G.03).
-        if self.level is None:
-            if self.course or self.other_course or self.institution:
-                raise ValueError("Esta resposta não leva dados de curso")
-            return self
-        if self.course is None:
-            raise ValueError("Diga qual curso")
-        if (self.course is CourseCode.OUTRO) != (self.other_course is not None):
-            raise ValueError(
-                'O nome do curso vale só para "Outro curso", e é obrigatório'
-            )
+        check_course_fields(
+            self.level, self.course, self.other_course, self.institution
+        )
         return self

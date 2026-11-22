@@ -4,13 +4,12 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.db.engine import AsyncSessionDep
+from app.modules.admissions.declaration import course_name
 from app.modules.admissions.service import (
     add_self_declared_enrollment,
     current_enrollment,
 )
 from app.modules.consents.permissions import AcceptedGirlDep
-from app.modules.followup.models import CourseCode
-from app.modules.followup.utils import COURSE_LABELS
 from app.modules.girls.schemas import (
     InterestOptionsOut,
     InterestsIn,
@@ -208,14 +207,14 @@ async def register_course(
     if previous:
         previous.left_on = today_in_maceio()
 
-    # O que ela digitou em "Outro curso", ou o nome da lista. Texto livre: não
-    # vai para logs (RN-11).
     assert data.course is not None
-    if data.course is CourseCode.OUTRO and data.other_course:
-        course = data.other_course
-    else:
-        course = COURSE_LABELS[data.course]
-    add_self_declared_enrollment(session, girl.id, level, course, data.institution)
+    add_self_declared_enrollment(
+        session,
+        girl.id,
+        level,
+        course_name(data.course, data.other_course),
+        data.institution,
+    )
 
     # Um commit só: ou troca o curso, ou nada muda (RNF-F6.01).
     await session.commit()

@@ -5,12 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.admissions.declaration import course_name
 from app.modules.admissions.service import (
     add_self_declared_enrollment,
     current_enrollment,
 )
 from app.modules.followup.models import (
-    CourseCode,
     FollowupActivity,
     FollowupAnswer,
     FollowupHelp,
@@ -21,7 +21,7 @@ from app.modules.followup.schemas import (
     CurrentFollowupOut,
     FollowupIn,
 )
-from app.modules.followup.utils import COURSE_LABELS, OpenRound, open_round
+from app.modules.followup.utils import OpenRound, open_round
 from app.modules.girls.models import Girl
 from app.modules.girls.utils import today_in_maceio
 from app.users.models import User
@@ -105,16 +105,6 @@ async def get_current_followup(
     )
 
 
-def _course_name(data: FollowupIn) -> str:
-    # O que ela digitou em "Outro curso", ou o nome da lista. Texto livre: não
-    # vai para logs (RN-11).
-    if data.course is CourseCode.OUTRO and data.other_course:
-        return data.other_course
-
-    assert data.course is not None
-    return COURSE_LABELS[data.course]
-
-
 async def record_followup(
     session: AsyncSession,
     user_id: int,
@@ -158,11 +148,12 @@ async def record_followup(
     ):
         enrollment.left_on = today
     if data.level is not None:
+        assert data.course is not None
         add_self_declared_enrollment(
             session,
             girl_id,
             data.level,
-            _course_name(data),
+            course_name(data.course, data.other_course),
             data.institution,
             now,
         )

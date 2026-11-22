@@ -11,6 +11,12 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from app.modules.admissions.declaration import (
+    FreeText,
+    blank_is_none,
+    check_course_fields,
+    level_of,
+)
 from app.modules.admissions.models import CourseLevel
 from app.modules.followup.models import (
     Activity,
@@ -74,19 +80,6 @@ def _without_repeats[T](choices: list[T]) -> list[T]:
     return list(dict.fromkeys(choices))
 
 
-def _blank_is_none(text: str | None) -> str | None:
-    # Só espaços vale como campo vazio.
-    return text or None
-
-
-# Texto livre da pergunta 3: o mesmo limite do campo na tela. Nunca vai para
-# logs, LLM nem exportações (RN-11).
-FreeText = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, max_length=120),
-]
-
-
 class FollowupIn(BaseModel):
     """As respostas da A18 (RF-F4.13, RF-F4.08).
 
@@ -119,8 +112,8 @@ class FollowupIn(BaseModel):
     # `course_status` (o nível) e o curso novo.
     still_enrolled: StillEnrolled | None = None
     course: CourseCode | None = None
-    other_course: Annotated[FreeText | None, AfterValidator(_blank_is_none)] = None
-    institution: Annotated[FreeText | None, AfterValidator(_blank_is_none)] = None
+    other_course: Annotated[FreeText | None, AfterValidator(blank_is_none)] = None
+    institution: Annotated[FreeText | None, AfterValidator(blank_is_none)] = None
     # O mesmo limite do campo na tela. Só espaços conta como sem comentário.
     comment: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None
@@ -148,9 +141,7 @@ class FollowupIn(BaseModel):
     @property
     def level(self) -> CourseLevel | None:
         """O nível do curso novo, se ela informou um (técnico ou graduação)."""
-        if self.course_status in (CourseStatus.TECNICO, CourseStatus.GRADUACAO):
-            return CourseLevel(self.course_status.value)
-        return None
+        return level_of(self.course_status)
 
     def _check_course_question(self) -> None:
         course_fields = (self.course, self.other_course, self.institution)
@@ -163,16 +154,7 @@ class FollowupIn(BaseModel):
         if self.still_enrolled is StillEnrolled.CHANGED and self.level is None:
             raise ValueError("Mudar de curso pede o nível e o curso novo")
 
-        if self.level is None:
-            # "Tô tentando entrar" e "Ainda não" não registram curso.
-            if any(course_fields):
-                raise ValueError("Esta resposta não leva dados de curso")
-            return
-
-        if self.course is None:
-            raise ValueError("Diga qual curso")
-
-        if (self.course is CourseCode.OUTRO) != (self.other_course is not None):
-            raise ValueError(
-                'O nome do curso vale só para "Outro curso", e é obrigatório'
-            )
+        # "Tô tentando entrar" e "Ainda não" não registram curso.
+        check_course_fields(
+            self.level, self.course, self.other_course, self.institution
+        )
