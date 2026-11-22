@@ -82,6 +82,28 @@ class ListMatch(Base):
     official_list: Mapped[OfficialList] = relationship()
 
 
+class MatchEmail(Base):
+    """O e-mail que avisa a menina do indício (RF-F31.11, #275).
+
+    Uma linha por indício, garantida pela restrição única (RNF-F4.01): nem a
+    busca de novo nem a rotina de envio rodando duas vezes mandam outro. Só
+    entra na fila quem aceitou e-mails de oportunidades (RN-30, D-50). Não
+    guarda endereço nem texto; some junto com o indício.
+    """
+
+    __tablename__ = "match_emails"
+
+    list_match_id: Mapped[int] = mapped_column(
+        ForeignKey("list_matches.id", ondelete="CASCADE"), unique=True
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # Descartado sem enviar: o indício foi respondido, venceu ou sumiu, ou ela
+    # desligou os e-mails de oportunidades antes do envio.
+    dropped_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    list_match: Mapped[ListMatch] = relationship()
+
+
 class DismissedMatch(Base):
     """Marca de um indício apagado ("Não sou eu" ou 30 dias sem resposta).
 
