@@ -1,11 +1,12 @@
 import { CoordHeader } from "@/components/CoordHeader";
 import { getCoordinator } from "@/lib/coordinator";
+import { SearchCard } from "./SearchCard";
 import { WhoEntered } from "./WhoEntered";
 import styles from "./page.module.css";
 
 /**
- * K06 Ingressantes (C8, Figma 511:10957). Por enquanto só "Quem ingressou"
- * (#315); o resumo do topo é o #316 e o card da busca, o #317.
+ * K06 Ingressantes (C8, Figma 511:10957). Por enquanto "Quem ingressou"
+ * (#315) e o card da busca (#317); o resumo do topo é o #316.
  */
 export default async function CoordEnrollmentsPage() {
   const coordinator = await getCoordinator();
@@ -24,6 +25,7 @@ export default async function CoordEnrollmentsPage() {
           Acompanhe quem das ações do grupo <strong>{coordinator.groupName}</strong> entrou
           num curso de computação.
         </p>
+        <SearchCard />
         <WhoEntered />
       </main>
     </>

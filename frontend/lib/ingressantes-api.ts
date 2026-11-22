@@ -9,6 +9,7 @@ import type { components } from "./api/schema";
 export type EnrollmentRow = components["schemas"]["EnrollmentRowOut"];
 export type EnrollmentPage = components["schemas"]["EnrollmentPageOut"];
 export type AdmissionOrigin = components["schemas"]["AdmissionOrigin"];
+export type ListSearch = components["schemas"]["ListSearchOut"];
 
 export type EnrollmentPageResult =
   | { ok: true; page: EnrollmentPage }
@@ -59,4 +60,39 @@ export function registeredLabel(isoDateTime: string): string {
 /** Quantas páginas a lista tem; uma, quando está vazia. */
 export function pageCount(page: EnrollmentPage): number {
   return Math.max(1, Math.ceil(page.total / page.pageSize));
+}
+
+export type ListSearchResult =
+  | { ok: true; search: ListSearch }
+  | { ok: false; reason: "signed_out" | "forbidden" | "failed" };
+
+/** O card da busca (#317). As datas são iguais para toda coordenadora. */
+export async function getListSearch(signal?: AbortSignal): Promise<ListSearchResult> {
+  const response = await fetch("/api/coordinator/list-search", { signal });
+
+  if (response.ok) {
+    return { ok: true, search: (await response.json()) as ListSearch };
+  }
+  if (response.status === 401) return { ok: false, reason: "signed_out" };
+  if (response.status === 403) return { ok: false, reason: "forbidden" };
+
+  return { ok: false, reason: "failed" };
+}
+
+/** "10 de out": dia e mês de um instante, no horário de Maceió. Sem o ano. */
+export function dayMonthLabel(isoDateTime: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Maceio",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(new Date(isoDateTime));
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return `${day} de ${MONTHS[month - 1]}`;
+}
+
+/** "fev": só o mês de um dia "2027-02-10", como a "próxima busca" do card. */
+export function monthLabel(isoDate: string): string {
+  return MONTHS[Number(isoDate.slice(5, 7)) - 1];
 }

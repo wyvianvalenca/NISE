@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -77,3 +77,19 @@ class EnrollmentPageOut(BaseModel):
     total: int
     page: int
     page_size: int = Field(serialization_alias="pageSize")
+
+
+class ListSearchOut(BaseModel):
+    """O card "Busca nas listas de ingressantes" (#317, RF-F5.23).
+
+    Só fontes e datas, iguais para todas as coordenadoras: a busca não é por
+    grupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24).
+    """
+
+    # As fontes que a busca lê, como no chip: "UFAL" e, quando o #274 entrar,
+    # "IFAL".
+    sources: list[str]
+    # Quando a última rodada terminou bem. Null se nunca rodou.
+    last_search_at: datetime | None = Field(serialization_alias="lastSearchAt")
+    # Dia previsto da próxima (D-72). Null se nunca rodou.
+    next_search_on: date | None = Field(serialization_alias="nextSearchOn")

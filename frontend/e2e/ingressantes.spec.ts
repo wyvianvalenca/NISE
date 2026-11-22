@@ -1,9 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { manyRows, mockEnrollmentsApi } from "./ingressantes-api";
+import { manyRows, mockEnrollmentsApi, mockListSearchApi } from "./ingressantes-api";
 
 // K06 Ingressantes · "Quem ingressou" (#315). Dados fictícios.
 
 const URL = "/coordenacao/ingressantes";
+
+// O card da busca (#317) tem os testes dele em ingressantes-busca.spec.ts.
+test.beforeEach(async ({ page }) => {
+  await mockListSearchApi(page);
+});
 
 test("is the Ingressantes tab, with the title and the new subtitle", async ({ page }) => {
   await mockEnrollmentsApi(page);

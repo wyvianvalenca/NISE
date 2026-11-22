@@ -188,6 +188,11 @@ export function WhoEntered() {
           </Button>
         </nav>
       )}
+
+      {/* Nota do #317: a cidade não entra na busca (RF-F31.03), ao contrário do Figma. */}
+      <p className={styles.footnote}>
+        A busca usa só o nome completo, e nada é enviado pras instituições.
+      </p>
     </section>
   );
 }

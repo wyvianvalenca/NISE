@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
+from app.config import settings
 from app.modules.actions.models import Action, Participation
 from app.modules.admissions.exceptions import (
     MatchAlreadyAnsweredError,
@@ -19,9 +20,11 @@ from app.modules.admissions.models import (
     DismissedMatch,
     Enrollment,
     ListMatch,
+    ListSearchRun,
     OfficialList,
 )
-from app.modules.admissions.schemas import MatchAnswerIn, MatchResult
+from app.modules.admissions.schemas import ListSearchOut, MatchAnswerIn, MatchResult
+from app.modules.admissions.utils import add_months
 from app.modules.girls.models import Girl
 
 # Sem resposta nesse prazo, o indício é apagado (RF-F31.06).
@@ -308,3 +311,29 @@ async def list_group_enrollments(
     rows = (await session.execute(statement)).tuples().all()
 
     return rows, total or 0
+
+
+# ---------------------------------------------------------------------------
+# Card da busca na tela Ingressantes (C8, #317)
+# ---------------------------------------------------------------------------
+
+# As fontes que a busca lê (RN-25). "IFAL" entra aqui quando a #274 existir.
+SEARCH_SOURCES = ["UFAL"]
+
+
+async def get_list_search(session: AsyncSession) -> ListSearchOut:
+    """As fontes, a data da última busca e a da próxima (RF-F5.23, D-72).
+
+    A última é a da rodada mais recente que terminou bem: uma rodada que parou
+    por erro não grava nada (RNF-F31.04). Se a busca foi dividida por curso, é
+    a da última parte. A próxima é a última mais o intervalo configurado.
+    """
+    last = await session.scalar(select(func.max(ListSearchRun.created_at)))
+    next_on = None
+    if last is not None:
+        last_day = last.astimezone(LOCAL_TIMEZONE).date()
+        next_on = add_months(last_day, settings.list_search_every_months)
+
+    return ListSearchOut(
+        sources=SEARCH_SOURCES, last_search_at=last, next_search_on=next_on
+    )

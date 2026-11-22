@@ -2823,6 +2823,75 @@
         }
       }
     },
+    "/api/coordinator/list-search": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "List Search",
+        "operationId": "list_search_api_coordinator_list_search_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSearchOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -4219,6 +4288,49 @@
         ],
         "title": "LaterOut",
         "description": "A tela Ver depois (A06·2b, #110). O front lê em camelCase."
+      },
+      "ListSearchOut": {
+        "properties": {
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "lastSearchAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastsearchat"
+          },
+          "nextSearchOn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextsearchon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources",
+          "lastSearchAt",
+          "nextSearchOn"
+        ],
+        "title": "ListSearchOut",
+        "description": "O card \"Busca nas listas de ingressantes\" (#317, RF-F5.23).\n\nSó fontes e datas, iguais para todas as coordenadoras: a busca não é por\ngrupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24)."
       },
       "LoginIn": {
         "properties": {

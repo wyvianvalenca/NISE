@@ -663,6 +663,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/list-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Search */
+        get: operations["list_search_api_coordinator_list_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1288,6 +1305,21 @@ export interface components {
             firstName: string;
             /** Items */
             items: components["schemas"]["LaterItemOut"][];
+        };
+        /**
+         * ListSearchOut
+         * @description O card "Busca nas listas de ingressantes" (#317, RF-F5.23).
+         *
+         *     Só fontes e datas, iguais para todas as coordenadoras: a busca não é por
+         *     grupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24).
+         */
+        ListSearchOut: {
+            /** Sources */
+            sources: string[];
+            /** Lastsearchat */
+            lastSearchAt: string | null;
+            /** Nextsearchon */
+            nextSearchOn: string | null;
         };
         /** LoginIn */
         LoginIn: {
@@ -3315,6 +3347,45 @@ export interface operations {
             };
             /** @description Coordenadora em mais de um grupo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_search_api_coordinator_list_search_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSearchOut"];
+                };
+            };
+            /** @description Não é coordenadora */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

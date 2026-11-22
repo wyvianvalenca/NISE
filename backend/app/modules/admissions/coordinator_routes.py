@@ -2,11 +2,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
+from app.auth.permissions import CoordinatorDep
 from app.db.engine import AsyncSessionDep
 from app.modules.actions.dependencies import CoordinatorGroupIdDep
-from app.modules.admissions.schemas import EnrollmentPageOut, EnrollmentRowOut
+from app.modules.admissions.schemas import (
+    EnrollmentPageOut,
+    EnrollmentRowOut,
+    ListSearchOut,
+)
 from app.modules.admissions.service import (
     ENROLLMENTS_PAGE_SIZE,
+    get_list_search,
     list_group_enrollments,
 )
 from app.modules.admissions.utils import short_name
@@ -50,3 +56,17 @@ async def group_enrollments(
         page=page,
         page_size=ENROLLMENTS_PAGE_SIZE,
     )
+
+
+# K06 Ingressantes · card "Busca nas listas de ingressantes" (#317, RF-F5.23).
+# Mesmas datas para toda coordenadora, porque a busca não é por grupo; por isso
+# pede só o papel, não um grupo. Não devolve nada de quem foi achada (RN-24).
+@router.get(
+    "/list-search",
+    response_model=ListSearchOut,
+    responses={status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora"}},
+)
+async def list_search(
+    _coordinator: CoordinatorDep, session: AsyncSessionDep
+) -> ListSearchOut:
+    return await get_list_search(session)

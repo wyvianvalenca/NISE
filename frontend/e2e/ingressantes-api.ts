@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { EnrollmentPage, EnrollmentRow } from "../lib/ingressantes-api";
+import type { EnrollmentPage, EnrollmentRow, ListSearch } from "../lib/ingressantes-api";
 
 // Simula GET /api/coordinator/enrollments (#315) para os testes não dependerem
 // do FastAPI. Dados fictícios.
@@ -90,4 +90,28 @@ export async function mockEnrollmentsApi(page: Page, options: Options = {}): Pro
   });
 
   return asked;
+}
+
+type SearchOptions = {
+  /** O que a rota devolve. Padrão: UFAL, última em 10 de out, próxima em jan. */
+  search?: ListSearch;
+  /** Status de erro, no lugar do card. */
+  status?: 401 | 403 | 500;
+};
+
+/** Simula GET /api/coordinator/list-search (#317). Datas e fontes fictícias. */
+export async function mockListSearchApi(page: Page, options: SearchOptions = {}): Promise<void> {
+  const {
+    search = {
+      sources: ["UFAL"],
+      // Meio-dia em Maceió (UTC-3).
+      lastSearchAt: "2026-10-10T15:00:00Z",
+      nextSearchOn: "2027-01-10",
+    },
+    status,
+  } = options;
+
+  await page.route("**/api/coordinator/list-search", (route) =>
+    status ? route.fulfill({ status, json: { detail: "erro" } }) : route.fulfill({ json: search }),
+  );
 }
