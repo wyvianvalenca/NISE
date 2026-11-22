@@ -1,8 +1,8 @@
 "use client";
 
 // A06·0 · Por que filé?: the metaphor explained, before she starts.
-// Covers RF-F10.02 (issues #82 and #83). Uses the test data in lib/file-intro.ts
-// until #85.
+// Covers RF-F10.02 (issues #82 and #83). Whether she has seen it comes from
+// her profile on the back-end (#84, #85).
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,9 +14,27 @@ import {
   FILE_STEPS,
   introAlreadySeen,
   markIntroSeen,
+  type ProfileProblem,
   REVIEW_PARAM,
 } from "@/lib/file-intro";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { WITHOUT_SESSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
+
+/**
+ * Where she goes when a profile route says no. Without a session she goes to
+ * log in, and without the terms accepted she goes to accept them: the filé
+ * comes after both. `null` for a plain failure, which the screen handles.
+ */
+function pathWhenRefused(reason: ProfileProblem): string | null {
+  if (reason === "terms_not_accepted") {
+    return SIGNUP_PATHS.terms;
+  }
+  if (reason === "unauthenticated" || reason === "incomplete_signup") {
+    return WITHOUT_SESSION[reason];
+  }
+  return null;
+}
 
 /**
  * Without `?rever=1` the screen only shows the first time: whoever has seen
@@ -34,15 +52,31 @@ function FileIntro() {
   useEffect(() => {
     if (review) return;
 
-    let current = true;
-    introAlreadySeen().then((answer) => {
-      if (current) setSeen(answer);
-    });
+    const controller = new AbortController();
+    introAlreadySeen(controller.signal).then(
+      (result) => {
+        if (result.ok) {
+          setSeen(result.seen);
+          return;
+        }
 
-    return () => {
-      current = false;
-    };
-  }, [review]);
+        const elsewhere = pathWhenRefused(result.reason);
+        if (elsewhere) {
+          router.replace(elsewhere);
+        } else {
+          // The profile did not load: the explanation shows, which is the
+          // safe way to be wrong. "Começar meu filé" tries to mark it again.
+          setSeen(false);
+        }
+      },
+      () => {
+        // No network. If she just left the page, there is nothing to show.
+        if (!controller.signal.aborted) setSeen(false);
+      },
+    );
+
+    return () => controller.abort();
+  }, [review, router]);
 
   useEffect(() => {
     if (!review && seen === true) {
@@ -59,14 +93,22 @@ function FileIntro() {
   async function start() {
     setLeaving(true);
     setError(undefined);
-    try {
-      await markIntroSeen();
-    } catch {
-      setLeaving(false);
-      setError("Não deu pra continuar agora. Tente de novo.");
+
+    const result = await markIntroSeen().catch(() => null);
+
+    if (result?.ok) {
+      router.replace(FILE_PATHS.discover);
       return;
     }
-    router.replace(FILE_PATHS.discover);
+
+    const elsewhere = result ? pathWhenRefused(result.reason) : null;
+    if (elsewhere) {
+      router.replace(elsewhere);
+      return;
+    }
+
+    setLeaving(false);
+    setError("Não deu pra continuar agora. Tente de novo.");
   }
 
   const showing = review || seen === false;

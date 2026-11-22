@@ -71,6 +71,15 @@ def check_age(birth_date: date, reference: date | None = None) -> AgeCheck:
     return AgeCheck.OK
 
 
+def first_name(name: str) -> str:
+    """O primeiro nome, para o "Oi, <nome>!" e o avatar: "Alana Ficticia" vira "Alana".
+
+    Fica aqui porque o Descobrir (#88) e o filé (#116) usam o mesmo.
+    """
+    words = name.split()
+    return words[0] if words else ""
+
+
 # Como cada tema e cada etapa de estudo aparecem na A05 (RF-F10.01), na ordem
 # do Figma. O front mostra estas listas, e as sugestões usam os mesmos códigos.
 TOPIC_LABELS: dict[Topic, str] = {

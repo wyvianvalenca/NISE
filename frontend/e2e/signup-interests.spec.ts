@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { INTEREST_OPTIONS, mockInterestsApi } from "./interests-api";
+import { mockProfileApi } from "./profile-api";
 import { mockTermsApi } from "./terms-api";
 
 // #56 · A05 O que te interessa? As rotas dos interesses (#147) são simuladas.
@@ -7,6 +8,9 @@ import { mockTermsApi } from "./terms-api";
 /** Abre a A05 com as rotas simuladas. Devolve as escolhas enviadas. */
 async function openInterests(page: Page, settings: Parameters<typeof mockInterestsApi>[1] = {}) {
   const sentChoices = await mockInterestsApi(page, settings);
+  // "Começar meu filé" leva a /por-que-file, que lê o perfil. Sem simular essa rota, a
+  // tela consultaria um back local, se houver um rodando, e iria para o início.
+  await mockProfileApi(page);
   await page.goto("/cadastro/interesses");
   return sentChoices;
 }
