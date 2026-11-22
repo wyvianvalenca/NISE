@@ -8,6 +8,7 @@ import {
   mockActionPageApi,
   type ActionPageApi,
 } from "./action-page-api";
+import { mockActionsListApi } from "./actions-list-api";
 import { fileResponse, type MockFileItem } from "./file-api";
 
 /**
@@ -29,10 +30,9 @@ import { fileResponse, type MockFileItem } from "./file-api";
  *  - the 404 for another group's action, registrations and import:
  *    test_pagina_da_acao.py, test_importar.py and test_adicionar.py there.
  *
- * The list (coord-actions.ts) still runs on test data with text ids, which no
- * mocked action answers to. So "Importar inscritas" is clicked on the list to
- * check where it leads, and then the test goes to the mocked action by its
- * number, as the other action-*.spec.ts do.
+ * The list is mocked too (actions-list-api.ts), with the same id for the
+ * robotics workshop, so "Importar inscritas" on the list leads to the mocked
+ * action page.
  *
  * The girls' side of closing (suggestions and filé) is mocked here with two
  * small routes that follow the same state: the action is in the suggestions
@@ -78,16 +78,15 @@ async function importFigmaFile(page: Page) {
 test("the page: Importar inscritas on the list leads to the action, with the empty card", async ({
   page,
 }) => {
+  await mockActionsListApi(page);
+  await mockActionPageApi(page);
   await page.goto("/coordenacao/acoes");
   const link = page
     .getByRole("listitem")
     .filter({ hasText: ACTION_NAME })
     .getByRole("link", { name: "Importar inscritas" });
   await link.click();
-  await expect(page).toHaveURL(/\/coordenacao\/acoes\/introducao-a-robotica$/);
-
-  // The test data of the list has no number; go to the mocked action.
-  await openAction(page, EMPTY_ACTION_ID);
+  await expect(page).toHaveURL(new RegExp(`/coordenacao/acoes/${EMPTY_ACTION_ID}$`));
   await expect(page.getByRole("heading", { level: 1, name: ACTION_NAME })).toBeVisible();
   await expect(status(page)).toContainText("Aguardando inscrições");
   await expect(card(page)).toContainText("Nenhuma inscrita ainda");

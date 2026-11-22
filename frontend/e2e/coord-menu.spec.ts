@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { mockActionsListApi } from "./actions-list-api";
 
 const URL = "/coordenacao/acoes";
+
+test.beforeEach(async ({ page }) => {
+  await mockActionsListApi(page);
+});
 const TABS = ["Ações", "Funil", "Ingressantes", "Relatórios", "Exportar"];
 
 test("shows the five tabs in order with Ações as the current one", async ({ page }) => {

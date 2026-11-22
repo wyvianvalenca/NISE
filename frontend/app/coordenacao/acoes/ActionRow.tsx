@@ -27,7 +27,7 @@ const PROGRESS: Record<ActionStatus, number> = {
  * The button of each status (RN-37). The status itself comes ready from the
  * back-end; the screen only picks the label.
  */
-function StatusButtons({ status, id }: { status: ActionStatus; id: string }) {
+function StatusButtons({ status, id }: { status: ActionStatus; id: number }) {
   const href = `/coordenacao/acoes/${id}`;
   switch (status) {
     case "awaiting_registrations":
@@ -67,7 +67,7 @@ export function ActionRow({ action, onDelete }: ActionRowProps) {
   const date = dateTileParts(action.startsOn);
   const needsAttendance = action.status === "awaiting_attendance";
   const menuItems =
-    action.attendanceRegisteredAt === null
+    action.presentCount === null
       ? [{ label: "Excluir ação", onSelect: () => onDelete(action) }]
       : [];
 
