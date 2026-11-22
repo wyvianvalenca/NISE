@@ -3,7 +3,7 @@
 Projeto: NISE · Grupo 7 · PDS 26.2
 Versão: 0.2 (rascunho) · Data: 20/10/2026 · Status: em revisão
 
-> Rascunho completo para revisão da equipe. Itens marcados **A validar** dependem de telas em revisão ou de confirmação. Seções com ⚠️ estão em mudança no Figma: **C4 e C6 (mudança forte)**. Não comecem histórias dessas seções antes da revisão.
+> Rascunho completo para revisão da equipe. Itens marcados **A validar** dependem de telas em revisão ou de confirmação. Seções com ⚠️ estão em mudança no Figma: **C4**. Não comecem histórias dessa seção antes da revisão.
 
 ## Histórico de versões
 
@@ -13,7 +13,7 @@ Versão: 0.2 (rascunho) · Data: 20/10/2026 · Status: em revisão
 | 0.1.1 | 09/10/2026 | Felipe Lira | Introdução |
 | 0.2 | 20/10/2026 | Wyvian Valença | Revisão de RFs, RNFs e RNs pelo Figma e pelo doc vivo; nova numeração; rastreabilidade; registro de decisões |
 | 0.3 | 03/11/2026 | Wyvian Valença | Alinhamento com as histórias do épico 1: sem opt-out nos questionários, lembretes sempre enviados, E2E com Playwright, fim do login Microsoft, deduplicação, regra do convite e novas decisões D-15 a D-24 |
-| 0.4 | 16/11/2026 | Wyvian Valença | Validação das funcionalidades contra o Protótipo Enxuto do Figma (#154): perfil, cadastro, filé, inscrição em evento, C1, C2, M5, C8 (Ingressantes), C3 e C5 validados; M7 (F31) sem o Plano B, só com a busca na COPEVE (D-48); C4, C6 e C7 em andamento. O detalhe das mudanças está no PR |
+| 0.4 | 16/11/2026 | Wyvian Valença | Validação das funcionalidades contra o Protótipo Enxuto do Figma (#154): perfil, cadastro, filé, inscrição em evento, C1, C2, M5, C8 (Ingressantes), C3 e C5 validados; M7 (F31) sem o Plano B, só com a busca na COPEVE (D-48); C4 e C7 em andamento; C6 cancelada por enquanto (D-51). O detalhe das mudanças está no PR |
 
 ---
 
@@ -259,7 +259,7 @@ O que a coordenadora faz ou vê, incluindo as regras que acontecem durante a aç
 | RF-F3.02 | O sistema deve permitir importar a lista de presença por planilha, marcando como presente quem tem o e-mail igual ao de uma inscrita da ação. | F3, Figma drawer Importar lista de presença, Doc vivo §5, D-80 | Coordenadora | Should | Confirmado | Dado um CSV com 17 linhas, quando Kátia toca "Importar lista de presença", escolhe o arquivo, confere as colunas Nome e E-mail (obrigatórias) e toca "Marcar 17 presentes", então as 17 ficam marcadas na lista. Linha com e-mail que não é de nenhuma inscrita da ação não é marcada, não cria inscrita nem conta (RN-27), e Kátia vê só quantas linhas não foram achadas, sem a lista delas. O arquivo não fica guardado: é lido para marcar e descartado. A presença só é concluída quando Kátia toca "Concluir presença" (RF-F3.05). *O Figma ainda diz "formato do Google Forms" e "Reconhecemos as colunas do Google Forms" (D-47) e não mostra o aviso das linhas não achadas.* |
 | RF-F3.03 | O sistema deve permitir adicionar como presente uma menina que veio sem inscrição. | Figma K11 aguardando presença · marcando ("Veio sem inscrição? Adicionar participante"), drawer Adicionar inscrita (C2), RF-F1.09 | Coordenadora | Must | Confirmado | Dado que Lara veio sem se inscrever, quando Kátia a adiciona com nome e e-mail, então ela entra como inscrita e presente. O formulário é o mesmo de "Adicionar inscrita" (RF-F1.09). O link também fica disponível na ação concluída. *O Figma só o mostra na lista de marcar.* Se a presença já estiver concluída, ela recebe na hora o convite (se ainda não tem conta) e a avaliação (RF-F4.01). |
 | RF-F3.04 | O sistema deve permitir salvar a presença pela metade e continuar depois. | Figma K11 aguardando presença · marcando ("Salvar e continuar depois"), D-81 | Coordenadora | Should | Confirmado | Dado 14 de 23 marcadas, quando Kátia toca "Salvar e continuar depois" e volta, então as 14 continuam marcadas, a ação continua "Aguardando presença" (RN-37) e nenhum e-mail sai. Quem sai da página sem salvar nem concluir perde as marcações. |
-| RF-F3.05 | O sistema deve concluir a ação ao registrar a presença e mostrar presentes e faltantes. | F3, Figma K11 concluída, D-81 | Coordenadora | Must | Confirmado | Dado 17 presentes de 23, quando Kátia toca "Concluir presença", então vê "Presença registrada. 17 de 23 estiveram presentes.", a ação passa a "Concluída", a etapa Presença mostra "17 presentes, registrada em 24/10" e a aba "Presença" mostra "17 de 23 inscritas estiveram presentes." com "Presentes 17" e "Faltaram 6" (nome, e-mail e nível de escolaridade, "Ver todas as 17"). As inscritas sem marca ficam em "Faltaram" (RF-F16.01). |
+| RF-F3.05 | O sistema deve concluir a ação ao registrar a presença e mostrar presentes e faltantes. | F3, Figma K11 concluída, D-81 | Coordenadora | Must | Confirmado | Dado 17 presentes de 23, quando Kátia toca "Concluir presença", então vê "Presença registrada. 17 de 23 estiveram presentes.", a ação passa a "Concluída", a etapa Presença mostra "17 presentes, registrada em 24/10" e a aba "Presença" mostra "17 de 23 inscritas estiveram presentes." com "Presentes 17" e "Faltaram 6" (nome, e-mail e nível de escolaridade, "Ver todas as 17"). As inscritas sem marca ficam em "Faltaram". |
 | RF-F3.06 | O sistema deve ter um botão "Editar presença" na ação concluída. | Figma K11 concluída ("Editar presença"), D-80 | Coordenadora | Won't | Confirmado | — (o botão saiu: depois de concluída, só se acrescenta gente pela aba "Faltaram" (RF-F3.09) e pelo "Veio sem inscrição?" (RF-F3.03); antes de concluir, marcar e desmarcar é livre) |
 | RF-F3.07 | O sistema deve contar, para cada ação, quantas inscritas e quantas presentes, e guardar a etapa de cada menina (inscrita ou presente), para o funil e a comparação. | F3, Doc vivo §6, Figma K11 concluída, D-81 | Sistema | Must | Confirmado | Dado que Alana estava inscrita e foi marcada presente, quando a presença é concluída, então ela conta como inscrita e presente, e a ação mostra "17 de 23". *"Concluinte" saiu desta RF: o funil completo (conta, 3 e 6 meses, ingresso) é revisado na C5.* |
 | RF-F3.08 | O sistema deve mostrar, a partir do dia do evento e até a presença ser concluída, a página da ação como "Aguardando presença", com a próxima etapa e o botão para marcar a presença. | Figma K11 aguardando presença, RN-37, D-80 | Coordenadora | Must | Confirmado | Dado uma ação de 24/10, quando chega esse dia, então a página mostra o chip "Aguardando presença", a etapa Presença com "Marque depois do evento, em 24/10", o card "Próxima etapa: presença" ("No dia 24/10, marque quem esteve na oficina. Dá pra marcar na lista ou importar a lista de presença.") com "Marcar presença", e a nota "Desde o dia do evento, a ação aguarda a presença. As inscrições fecharam e ela saiu das sugestões das meninas." |
@@ -304,18 +304,6 @@ O que a coordenadora faz ou vê, incluindo as regras que acontecem durante a aç
 | RF-F5.36 | O sistema deve mostrar, no card "Que tipo de ação funciona melhor?", uma tabela com cada tipo de ação do período lado a lado: quantas ações, quantas meninas e, de cada tipo, quantas voltaram a outra ação, quantas subiram de interesse (cadastro × última resposta) e quantas responderam "Com certeza" no último marco, sempre com o "n de N", mesmo pequeno, e com o aviso de que a comparação não prova causa. | F5, F17, Figma C5 (card "Que tipo de ação funciona melhor?"), RN-50 | Coordenadora | Must | Confirmado | Dado 5 oficinas com 20 meninas, 6 delas em outra ação, quando Kátia abre Resultados, então a linha "Oficina" mostra "5 · 20 · 30% · 6 de 20". O card diz: "Tipos diferentes atraem meninas diferentes, então a comparação não prova causa: use como pista para planejar as próximas ações." |
 
 Ficam como Could ou Won't, por estarem fora da versão essencial: "Ideias de outros grupos", "Onde mais perdemos", os temas dos comentários (que pediriam LLM), "Quem alcançamos" e as metas.
-
-#### F16 · Comparações (C6)
-
-> ⚠️⚠️ **EM MUDANÇA FORTE.** C5 e C6 estão em revisão, com bastante mudança no Figma. Os RFs abaixo são só a versão essencial. **Não comecem histórias destes itens antes da revisão do Figma.**
-
-| ID | Requisito | Origem | Perfil | Prior. | Status | Critério de aceite |
-| --- | --- | --- | --- | --- | --- | --- |
-| RF-F16.03 (RF-03.3, RF-05.06) | O sistema deve mostrar, lado a lado, os mesmos indicadores para participantes, não compareceram e chegaram sozinhas (responderam o acompanhamento, interesse declarado, voltaram a outra ação, ingresso declarado). | F16, Figma K07 | Coordenadora | Must | **A validar** ⚠️ | Dado respostas nos três grupos, quando Kátia abre Comparações, então vê o ingresso declarado de cada grupo lado a lado. |
-| RF-F16.04 (RF-03.4) | O sistema deve mostrar o n de cada grupo e quantas não responderam. | F16, Figma K07 | Coordenadora | Must | **A validar** ⚠️ | Quando a comparação aparece, então cada valor mostra "19 de 32 que responderam · 10 sem resposta". |
-| RF-F16.06 | O sistema deve permitir alternar entre "Meu grupo" e "Rede NISE", que soma só os grupos que compartilham. | Figma K07 | Coordenadora | Should | **A validar** ⚠️ | Dado 4 grupos que compartilham, quando Kátia escolhe "Rede NISE", então vê os totais somados e "4 grupos compartilham". *Falta definir o que é "compartilhar" (ver D-03).* |
-
-As regras de quem entra em cada grupo de comparação estão em 3.3.
 
 #### F24 · Exportação anonimizada (C7)
 
@@ -405,17 +393,6 @@ A própria equipe monta a curadoria (D-13).
 | RF-F11.07 (RF-11.06) | O sistema deve esconder das sugestões os itens vencidos. | F11 | Sistema | Must | Confirmado | Dado um evento que aconteceu ontem, quando o filé é montado hoje, então ele não aparece. |
 | RF-F11.06 (RF-11.05) | O sistema deve permitir que a curadoria cadastre, edite e desative itens, com tipo, faixa de esforço, tags, cidade, link, idade mínima, custo e validade. | F11, Doc vivo §6 | Curadoria | Must | **A validar** | Dado que a curadoria cadastra um curso com a tag "Robótica", quando salva, então o curso pode ser sugerido. *A própria equipe monta a curadoria (D-13). A tela ainda não existe no Figma; a montagem inicial da base entra como task da história do filé.* |
 
-#### F16 · Regras de comparação
-
-> ⚠️⚠️ **EM MUDANÇA FORTE.** C5 e C6 estão em revisão, com bastante mudança no Figma. Os RFs abaixo são só a versão essencial. **Não comecem histórias destes itens antes da revisão do Figma.**
-
-| ID | Requisito | Origem | Perfil | Prior. | Status | Critério de aceite |
-| --- | --- | --- | --- | --- | --- | --- |
-| RF-F16.01 (RF-03.1) | O sistema deve classificar como "não compareceram" as inscritas sem presença registrada. | F16, F3 | Sistema | Must | **A validar** ⚠️ | Dado 40 inscritas e 28 presentes, quando a presença é registrada, então as outras 12 entram em "não compareceram". |
-| RF-F16.02 (RF-03.2) | O sistema deve incluir em "chegaram sozinhas" as meninas com conta que não foram a nenhuma ação, sempre de forma anonimizada e agregada. | F16, Doc vivo §6, §7 | Sistema | Must | **A validar** ⚠️ | Dado 4 meninas que chegaram sozinhas, quando a comparação é calculada, então elas aparecem só como totais. |
-| RF-F16.05 (RF-03.5) | O sistema deve esconder o valor quando um grupo tiver menos de 5 pessoas. | F16, Figma K07 | Sistema | Must | **A validar** ⚠️ | Dado 4 meninas em "chegaram sozinhas", quando a comparação aparece, então o valor mostra "Dados insuficientes". |
-| RF-F16.07 (RF-03.6) | O sistema deve passar uma menina de "chegaram sozinhas" para participante a partir da primeira presença, mantendo o histórico. | F16, F2 | Sistema | Must | **A validar** ⚠️ | Dado Belana em "chegaram sozinhas", quando é marcada presente numa oficina, então passa a contar como participante dali em diante. |
-
 #### F31 · Ingresso por listas oficiais
 
 Pedido de um dos professores e principal argumento de inovação da NISE (D-02): a autodeclaração sozinha os grupos já conseguem fazer com um Google Forms. A F31 tem dois caminhos (D-48):
@@ -454,8 +431,8 @@ Políticas que valem para várias telas. Os RFs apontam para elas pelo ID.
 | RN-01 | A liderança do grupo que convidou a menina vê os dados individuais dela (filé, respostas e avaliações) ligados às ações desse grupo. Outros grupos veem só números agregados. | Doc vivo §7, Figma A04·1, D-01 | RF-F2.04, RF-F7.04, RF-F7.11, RF-F5.05 |
 | RN-02 | Os questionários de acompanhamento saem 3, 6, 12 e 18 meses depois que a menina criou a conta. São os mesmos para todas e não dependem da coordenadora. | F4, D-43, D-60 | RF-F4.06, RF-F4.13 |
 | RN-03 | Menores de 13 anos não criam conta, e os dados preenchidos não são guardados. O aparelho fica bloqueado por 24 horas, com a marca guardada só no aparelho, sem dado pessoal e sem nada no banco. A partir dos 13, a menina aceita os termos sozinha. A idade é calculada na data de hoje, no fuso de Maceió: quem faz 13 anos hoje já pode criar a conta. | D-01, D-23, D-25, Doc vivo §7, Figma A02c | RF-F7.01, RF-F7.02 |
-| RN-04 | Quem chegou sozinha aparece para os grupos sempre de forma anonimizada e agregada. Os grupos não sabem o nome dela nem o que ela tem no filé. | Doc vivo §7, Figma A04·1 (NISE) | RF-F7.04, RF-F7.11, RF-F16.02 |
-| RN-06 | Um valor agregado com menos de 5 meninas não é mostrado. Aparece como "dados insuficientes". Não vale na tela Ingressantes, em que a coordenadora já vê cada menina do próprio grupo (D-75). | Figma K07, K09, D-75 | RF-F16.05, RF-F24.14, RF-F5.21 |
+| RN-04 | Quem chegou sozinha aparece para os grupos sempre de forma anonimizada e agregada. Os grupos não sabem o nome dela nem o que ela tem no filé. | Doc vivo §7, Figma A04·1 (NISE) | RF-F7.04, RF-F7.11 |
+| RN-06 | Um valor agregado com menos de 5 meninas não é mostrado. Aparece como "dados insuficientes". Não vale na tela Ingressantes, em que a coordenadora já vê cada menina do próprio grupo (D-75). | Figma K07, K09, D-75 | RF-F24.14, RF-F5.21 |
 | RN-07 | Só a coordenadora do grupo exporta dados. A exportação é sempre anonimizada, e cada uma fica registrada. Por padrão, inclui só o próprio grupo; toda a rede é a validar (D-03). | F24, LGPD, D-03 | RF-F24.06, RF-F24.07, RF-F24.13 |
 | RN-08 | Não existe exportação com dados identificáveis. | F24, LGPD art. 14 | RF-F24.01 a RF-F24.05 |
 | RN-09 | O código da menina no arquivo é aleatório e não pode vir de dado pessoal (hash de e-mail é proibido). | F24 | RF-F24.03 |
@@ -564,8 +541,10 @@ Lista completa (Doc vivo §10), mais os itens rebaixados nesta revisão.
 | Leitura de PDF das listas de outras instituições, como a UNCISAL (antigo RF-31.13) | Won't | F31 só com a COPEVE e o IFAL | D-02, D-48 |
 | Avisos de prazo de matrícula e histórico da curadoria (antigos RF-31.10, 31.12) | Won't | F31 simplificada | D-02 |
 | Importação manual de listas em CSV pela curadoria (antigo Plano B, RF-F31.01) | Won't | Sem tela de curadoria e sem conversa com a equipe | D-48 |
+| Comparações entre participantes, não compareceram e chegaram sozinhas, e a escolha entre "Meu grupo" e "Rede NISE" (C6, RF-F16.01 a RF-F16.07) | Won't | C6 cancelada por enquanto, despriorizada pela equipe | D-51 |
 | D-49 | 18/11/2026 | Wyvian *(a ratificar no PR)* | Por falta de tempo, a F31 não espera o Comitê de Ética: a busca entra em uso sem essa consulta, e o Comitê de Ética (ou instância semelhante) é consultado depois da disciplina. A RN-20 continua valendo: o nome só é comparado se isso estiver nos Termos de uso ou num consentimento próprio. | RN-20, RF-F31.07, RF-F5.24, D-01 |
 | D-50 | 18/11/2026 | Wyvian *(a ratificar no PR)* | O e-mail que avisa do indício na lista oficial só é enviado a quem aceitou receber e-mails de oportunidades (RN-30), e não entra nos e-mails sempre enviados. Quem não aceitou vê o aviso só na agenda e na faixa do filé. | RN-30, RF-F31.11 |
+| D-51 | 18/11/2026 | Wyvian *(a ratificar no PR)* | O fluxo C6 (Comparações) foi cancelado por enquanto, despriorizado pela equipe no quadro do GitHub. Os requisitos RF-F16.01 a RF-F16.07 saem das tabelas e ficam como Won't. A RN-04 (quem chegou sozinha aparece só anonimizada e agregada) e a RN-06 (menos de 5 meninas não aparece) continuam, porque valem também fora da C6. Itens que dependiam da comparação (RF-F5.07, RF-F24.08, RF-F24.09, RNF-F5.01) serão revistos com os fluxos deles (C5 e C7). | RF-F16.01 a RF-F16.07, RN-04, RN-06, RF-F5.07, RF-F24.08, RF-F24.09, RNF-F5.01 |
 | Raça/cor, renda e metas de "Quem alcançamos" no painel | Removido | Dado não coletado | D-04 |
 | "Ideias de outros grupos", "Onde mais perdemos" e temas de comentários por LLM | Won't | Fora da versão essencial do painel | Esta revisão |
 | Tarefas "O que precisa de você" (RF-F5.01), funil do grupo (RF-F5.02), avaliação média e por ação no painel (RF-F5.03) e posição do grupo na Rede NISE (RF-F5.07) | Won't | A aba Resultados do Figma não tem esses blocos: a avaliação vive na aba Avaliação da ação (C4) e a Rede saiu com a C6 | Figma C5, D-90 |
