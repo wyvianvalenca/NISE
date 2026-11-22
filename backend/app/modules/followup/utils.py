@@ -5,6 +5,8 @@ from datetime import date, timedelta
 from app.modules.followup.models import (
     Activity,
     ComputingView,
+    CourseCode,
+    CourseStatus,
     FollowupRound,
     FutureSelf,
     HelpWanted,
@@ -94,4 +96,19 @@ HELP_WANTED_LABELS: dict[HelpWanted, str] = {
     HelpWanted.INTERNSHIP: "Estágio",
     HelpWanted.EVENTS: "Eventos e oficinas",
     HelpWanted.OTHER: "Outra coisa",
+}
+
+COURSE_STATUS_LABELS: dict[CourseStatus, str] = {
+    CourseStatus.TECNICO: "Curso técnico",
+    CourseStatus.GRADUACAO: "Graduação",
+    CourseStatus.TRYING: "Tô tentando entrar",
+    CourseStatus.NOT_YET: "Ainda não",
+}
+
+COURSE_LABELS: dict[CourseCode, str] = {
+    CourseCode.SISTEMAS_INFORMACAO: "Sistemas de Informação",
+    CourseCode.CIENCIA_COMPUTACAO: "Ciência da Computação",
+    CourseCode.ENGENHARIA_COMPUTACAO: "Engenharia de Computação",
+    CourseCode.REDES: "Redes de computadores",
+    CourseCode.OUTRO: "Outro curso",
 }

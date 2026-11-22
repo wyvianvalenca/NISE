@@ -146,6 +146,19 @@ async def test_opcoes_vem_na_ordem_do_figma() -> None:
         "Eventos e oficinas",
         "Outra coisa",
     ]
+    assert [(o["code"], o["label"]) for o in opcoes["courseStatuses"]] == [
+        ("tecnico", "Curso técnico"),
+        ("graduacao", "Graduação"),
+        ("trying", "Tô tentando entrar"),
+        ("not_yet", "Ainda não"),
+    ]
+    assert [(o["code"], o["label"]) for o in opcoes["courses"]] == [
+        ("sistemas_informacao", "Sistemas de Informação"),
+        ("ciencia_computacao", "Ciência da Computação"),
+        ("engenharia_computacao", "Engenharia de Computação"),
+        ("redes", "Redes de computadores"),
+        ("outro", "Outro curso"),
+    ]
 
 
 # --- POST /api/followup/answers -------------------------------------------------
@@ -210,6 +223,40 @@ async def test_segunda_resposta_responde_409(servico: dict[str, AsyncMock]) -> N
         {"round": "dois_meses", "futureSelf": "maybe"},
         # Comentário maior que o campo da tela.
         {"round": "three_months", "comment": "a" * 501},
+        # Pergunta 3: o nível pede o curso; "Outro curso" pede o nome.
+        {"round": "three_months", "courseStatus": "graduacao"},
+        {"round": "three_months", "courseStatus": "tecnico", "course": "outro"},
+        {
+            "round": "three_months",
+            "courseStatus": "tecnico",
+            "course": "outro",
+            "otherCourse": "   ",
+        },
+        # O nome digitado só vale para "Outro curso".
+        {
+            "round": "three_months",
+            "courseStatus": "tecnico",
+            "course": "redes",
+            "otherCourse": "Eletrônica",
+        },
+        {"round": "three_months", "courseStatus": "tecnico", "course": "matematica"},
+        # "Tô tentando entrar" e "Ainda não" não levam dados de curso.
+        {"round": "three_months", "courseStatus": "trying", "course": "redes"},
+        {"round": "three_months", "courseStatus": "not_yet", "institution": "UFAL"},
+        {"round": "three_months", "course": "redes"},
+        # Textos maiores que os campos da tela.
+        {
+            "round": "three_months",
+            "courseStatus": "tecnico",
+            "course": "outro",
+            "otherCourse": "a" * 121,
+        },
+        {
+            "round": "three_months",
+            "courseStatus": "tecnico",
+            "course": "redes",
+            "institution": "a" * 121,
+        },
         # Campo desconhecido: a menina vem sempre da sessão, nunca do corpo.
         {"round": "three_months", "futureSelf": "maybe", "girlId": 1},
     ],

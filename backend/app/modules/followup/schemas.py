@@ -11,9 +11,12 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from app.modules.admissions.models import CourseLevel
 from app.modules.followup.models import (
     Activity,
     ComputingView,
+    CourseCode,
+    CourseStatus,
     FollowupRound,
     FutureSelf,
     HelpWanted,
@@ -47,11 +50,26 @@ class FollowupOptionsOut(BaseModel):
     future_selves: list[OptionOut]
     activities: list[OptionOut]
     helps: list[OptionOut]
+    course_statuses: list[OptionOut]
+    courses: list[OptionOut]
 
 
 def _without_repeats[T](choices: list[T]) -> list[T]:
     # A mesma escolha duas vezes vale como uma, na ordem em que ela escolheu.
     return list(dict.fromkeys(choices))
+
+
+def _blank_is_none(text: str | None) -> str | None:
+    # Só espaços vale como campo vazio.
+    return text or None
+
+
+# Texto livre da pergunta 3: o mesmo limite do campo na tela. Nunca vai para
+# logs, LLM nem exportações (RN-11).
+FreeText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=120),
+]
 
 
 class FollowupIn(BaseModel):
@@ -80,6 +98,11 @@ class FollowupIn(BaseModel):
         Field(max_length=len(HelpWanted)),
         AfterValidator(_without_repeats),
     ] = []
+    # Pergunta 3 para quem ainda não tem curso registrado (#294).
+    course_status: CourseStatus | None = None
+    course: CourseCode | None = None
+    other_course: Annotated[FreeText | None, AfterValidator(_blank_is_none)] = None
+    institution: Annotated[FreeText | None, AfterValidator(_blank_is_none)] = None
     # O mesmo limite do campo na tela. Só espaços conta como sem comentário.
     comment: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None
@@ -90,8 +113,10 @@ class FollowupIn(BaseModel):
         # A tela confere antes; o servidor confere de novo (RNF-G.03).
         if Activity.NONE_YET in self.activities and len(self.activities) > 1:
             raise ValueError('"Nada disso ainda" não vem junto com outras escolhas')
+        self._check_course_question()
         answered = (
             self.computing_view is not None
+            or self.course_status is not None
             or self.future_self is not None
             or self.activities
             or self.helps
@@ -100,3 +125,27 @@ class FollowupIn(BaseModel):
         if not answered:
             raise ValueError("Responda pelo menos uma pergunta")
         return self
+
+    @property
+    def level(self) -> CourseLevel | None:
+        """O nível do curso novo, se ela informou um (técnico ou graduação)."""
+        if self.course_status in (CourseStatus.TECNICO, CourseStatus.GRADUACAO):
+            return CourseLevel(self.course_status.value)
+        return None
+
+    def _check_course_question(self) -> None:
+        course_fields = (self.course, self.other_course, self.institution)
+
+        if self.level is None:
+            # "Tô tentando entrar" e "Ainda não" não registram curso.
+            if any(course_fields):
+                raise ValueError("Esta resposta não leva dados de curso")
+            return
+
+        if self.course is None:
+            raise ValueError("Diga qual curso")
+
+        if (self.course is CourseCode.OUTRO) != (self.other_course is not None):
+            raise ValueError(
+                'O nome do curso vale só para "Outro curso", e é obrigatório'
+            )

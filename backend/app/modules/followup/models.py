@@ -61,6 +61,30 @@ class HelpWanted(enum.Enum):
     OTHER = "other"
 
 
+class CourseStatus(enum.Enum):
+    """Pergunta 3: "Você entrou num curso da área?" (RF-F6.02).
+
+    Os dois primeiros valores são os mesmos de `CourseLevel` (ingresso).
+    "Tô tentando entrar" não conta como ingresso (RN-22).
+    """
+
+    TECNICO = "tecnico"
+    GRADUACAO = "graduacao"
+    TRYING = "trying"
+    NOT_YET = "not_yet"
+
+
+class CourseCode(enum.Enum):
+    """O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis."""
+
+    SISTEMAS_INFORMACAO = "sistemas_informacao"
+    CIENCIA_COMPUTACAO = "ciencia_computacao"
+    ENGENHARIA_COMPUTACAO = "engenharia_computacao"
+    REDES = "redes"
+    # Ela digita o nome do curso (RN-11: o texto nunca sai do banco).
+    OUTRO = "outro"
+
+
 class FollowupAnswer(Base):
     """As respostas de uma menina a uma rodada do questionário (RF-F4.07).
 
@@ -82,6 +106,9 @@ class FollowupAnswer(Base):
     round: Mapped[FollowupRound] = mapped_column()
     computing_view: Mapped[ComputingView | None] = mapped_column()
     future_self: Mapped[FutureSelf | None] = mapped_column()
+    # Pergunta 3, para quem não tem curso registrado. O curso em si fica em
+    # `Enrollment` (admissions), gravado junto com esta resposta (RNF-F6.01).
+    course_status: Mapped[CourseStatus | None] = mapped_column()
     # Pergunta 6, "Quer contar mais?". Texto livre: nunca vai para logs, LLM
     # nem exportações (RN-11).
     comment: Mapped[str | None] = mapped_column()

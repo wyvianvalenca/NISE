@@ -18,6 +18,8 @@ from app.modules.followup.service import (
 from app.modules.followup.utils import (
     ACTIVITY_LABELS,
     COMPUTING_VIEW_LABELS,
+    COURSE_LABELS,
+    COURSE_STATUS_LABELS,
     FUTURE_SELF_LABELS,
     HELP_WANTED_LABELS,
 )
@@ -71,6 +73,14 @@ async def followup_options(user: AcceptedGirlDep) -> FollowupOptionsOut:
         helps=[
             OptionOut(code=option.value, label=label)
             for option, label in HELP_WANTED_LABELS.items()
+        ],
+        course_statuses=[
+            OptionOut(code=option.value, label=label)
+            for option, label in COURSE_STATUS_LABELS.items()
+        ],
+        courses=[
+            OptionOut(code=option.value, label=label)
+            for option, label in COURSE_LABELS.items()
         ],
     )
 

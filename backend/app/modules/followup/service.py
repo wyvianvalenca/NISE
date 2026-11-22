@@ -5,9 +5,18 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.followup.models import FollowupActivity, FollowupAnswer, FollowupHelp
-from app.modules.followup.schemas import CurrentFollowupOut, FollowupIn
-from app.modules.followup.utils import OpenRound, open_round
+from app.modules.admissions.service import add_self_declared_enrollment
+from app.modules.followup.models import (
+    CourseCode,
+    FollowupActivity,
+    FollowupAnswer,
+    FollowupHelp,
+)
+from app.modules.followup.schemas import (
+    CurrentFollowupOut,
+    FollowupIn,
+)
+from app.modules.followup.utils import COURSE_LABELS, OpenRound, open_round
 from app.modules.girls.models import Girl
 from app.modules.girls.utils import today_in_maceio
 from app.users.models import User
@@ -82,6 +91,16 @@ async def get_current_followup(
     )
 
 
+def _course_name(data: FollowupIn) -> str:
+    # O que ela digitou em "Outro curso", ou o nome da lista. Texto livre: não
+    # vai para logs (RN-11).
+    if data.course is CourseCode.OUTRO and data.other_course:
+        return data.other_course
+
+    assert data.course is not None
+    return COURSE_LABELS[data.course]
+
+
 async def record_followup(
     session: AsyncSession,
     user_id: int,
@@ -90,7 +109,9 @@ async def record_followup(
 ) -> FollowupResult:
     """Grava as respostas da menina da sessão à rodada aberta (RF-F4.07).
 
-    Só a rodada aberta hoje aceita resposta, e só uma vez.
+    Só a rodada aberta hoje aceita resposta, e só uma vez. A resposta e o curso
+    que ela declarou (novo ingresso) vão no mesmo commit: ou grava tudo, ou nada
+    (RNF-F6.01).
     """
     found = await _open_round_for(session, user_id, now)
 
@@ -105,10 +126,21 @@ async def record_followup(
     if await _already_answered(session, girl_id, current):
         return FollowupResult.ALREADY_ANSWERED
 
+    if data.level is not None:
+        add_self_declared_enrollment(
+            session,
+            girl_id,
+            data.level,
+            _course_name(data),
+            data.institution,
+            now,
+        )
+
     session.add(
         FollowupAnswer(
             girl_id=girl_id,
             round=current.round,
+            course_status=data.course_status,
             computing_view=data.computing_view,
             future_self=data.future_self,
             # Comentário vazio é o mesmo que nenhum.
@@ -121,8 +153,11 @@ async def record_followup(
     try:
         await session.commit()
     except IntegrityError:
-        # Dois envios ao mesmo tempo: o outro já gravou as respostas.
+        # Dois envios ao mesmo tempo: o outro já gravou as respostas. Outro erro
+        # de integridade não é "já respondeu": sobe.
         await session.rollback()
-        return FollowupResult.ALREADY_ANSWERED
+        if await _already_answered(session, girl_id, current):
+            return FollowupResult.ALREADY_ANSWERED
+        raise
 
     return FollowupResult.SAVED
