@@ -29,6 +29,21 @@ class StudyStage(enum.Enum):
     FORMADA = "formada"
 
 
+# Usada pelo catálogo e por `Girl.last_band`. Fica aqui, e não no catálogo,
+# porque o catálogo já importa deste arquivo, e um import de volta seria circular.
+class EffortBand(enum.Enum):
+    """As 5 faixas de esforço, na ordem da tela Descobrir (RF-F10.03).
+
+    Os valores são os mesmos de `BAND_CODES` no front (frontend/lib/descobrir.ts).
+    """
+
+    PRIMEIROS_PASSOS = "primeiros-passos"  # até 15 min
+    UMA_TARDE = "uma-tarde"  # até 1 dia, sozinha
+    NO_MEU_RITMO = "no-meu-ritmo"  # vários dias, sozinha
+    ROLE_COM_A_GALERA = "role-com-a-galera"  # até 1 dia, em grupo
+    GRANDE_DESAFIO = "grande-desafio"  # em grupo, mais tempo
+
+
 class Girl(TimestampMixin, Base):
     """Registro da menina e o perfil dela.
 
@@ -67,6 +82,12 @@ class Girl(TimestampMixin, Base):
     # "Ainda não sei, me mostra de tudo". Nunca vem junto com temas; quem salva
     # o perfil confere isso.
     all_topics: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # Ela já viu "Por que filé?" (A06·0). Depois disso a tela não abre mais
+    # sozinha, só pelo "?" ao lado de "Seu filé" (RF-F10.02).
+    file_intro_seen: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # A faixa que ela abriu por último no Descobrir, para a tag "da última vez"
+    # (A06·1, #86). Vazia se ela nunca abriu nenhuma.
+    last_band: Mapped[EffortBand | None] = mapped_column()
 
     # Assíncrono: carregue com selectinload(Girl.topics).
     topics: Mapped[list["GirlTopic"]] = relationship(cascade="all, delete-orphan")

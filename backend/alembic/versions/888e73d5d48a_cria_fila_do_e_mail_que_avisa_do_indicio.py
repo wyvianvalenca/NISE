@@ -1,7 +1,7 @@
 """cria fila do e-mail que avisa do indicio
 
 Revision ID: 888e73d5d48a
-Revises: b4723f18123f
+Revises: ade65470c827
 Create Date: 2026-11-18 15:19:19.014825
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "888e73d5d48a"
-down_revision: str | Sequence[str] | None = "b4723f18123f"
+down_revision: str | Sequence[str] | None = "ade65470c827"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

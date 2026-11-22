@@ -13,6 +13,8 @@ type BandCardProps = {
   href: string;
   /** Faixa usada da última vez: ganha a tag "da última vez" e a borda teal, se tiver sugestões. */
   lastUsed?: boolean;
+  /** Chamado quando ela abre a faixa (clique, toque ou Enter). */
+  onOpen?: () => void;
 };
 
 function countLabel(count: number) {
@@ -20,7 +22,7 @@ function countLabel(count: number) {
 }
 
 /** Faixa de esforço do Descobrir (Figma: Nível, tela A06·1). */
-export function BandCard({ icon, title, description, count, href, lastUsed = false }: BandCardProps) {
+export function BandCard({ icon, title, description, count, href, lastUsed = false, onOpen }: BandCardProps) {
   const empty = count === 0;
   // Faixa vazia não abre, então a tag de atalho "da última vez" não aparece nela.
   const showLastUsed = lastUsed && !empty;
@@ -47,7 +49,7 @@ export function BandCard({ icon, title, description, count, href, lastUsed = fal
   }
 
   return (
-    <Link href={href} className={`${styles.card} ${showLastUsed ? styles.lastUsed : ""}`}>
+    <Link href={href} onClick={onOpen} className={`${styles.card} ${showLastUsed ? styles.lastUsed : ""}`}>
       {content}
     </Link>
   );

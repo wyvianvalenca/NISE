@@ -45,3 +45,27 @@ async def save_interests(
     await session.commit()
 
     return True
+
+
+async def get_girl_of_user(session: AsyncSession, user_id: int) -> Girl | None:
+    """O registro da menina da conta logada, ou None se a conta não tem um."""
+    girl = await session.scalar(select(Girl).where(Girl.user_id == user_id))
+
+    return girl
+
+
+async def mark_file_intro_seen(session: AsyncSession, user_id: int) -> bool:
+    """Guarda que ela já viu "Por que filé?" (RF-F10.02).
+
+    Marcar de novo não muda nada. Devolve False quando a conta não tem
+    registro de menina.
+    """
+    girl = await get_girl_of_user(session, user_id)
+    if girl is None:
+        return False
+
+    if not girl.file_intro_seen:
+        girl.file_intro_seen = True
+        await session.commit()
+
+    return True

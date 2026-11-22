@@ -1,18 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockDiscoverApi } from "./discover-api";
+import { mockSuggestionsApi } from "./suggestions-api";
+import { mockTermsApi } from "./terms-api";
 
-// #103 · A06·2 Sugestões e A06·2a Não é pra mim (motivo). Usa os dados de teste de lib/sugestoes.ts.
+// #103 e #105 · A06·2 Sugestões e A06·2a Não é pra mim (motivo), com as rotas da #104 simuladas
+// em suggestions-api.ts.
 
-type Mock = NonNullable<typeof globalThis.__NISE_MOCK_SUGESTOES__>;
+type Options = Parameters<typeof mockSuggestionsApi>[1];
 
-async function open(page: Page, band = "uma-tarde", mock: Mock = {}) {
-  await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = value as typeof globalThis.__NISE_MOCK_SUGESTOES__;
-  }, mock);
+async function open(page: Page, band = "uma-tarde", options: Options = {}) {
+  const api = await mockSuggestionsApi(page, options);
   await page.goto(`/descobrir/${band}`);
-}
-
-function choices(page: Page) {
-  return page.evaluate(() => globalThis.__NISE_ESCOLHAS__ ?? []);
+  return api;
 }
 
 const pill = (page: Page) => page.getByRole("link", { name: /^Meu filé/ });
@@ -56,28 +55,28 @@ test("sem \"por que pra você\", o card não mostra a caixa", async ({ page }) =
 });
 
 test("\"Quero fazer\" guarda a escolha, sobe o Meu filé e mostra a próxima", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Quero fazer").click();
 
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Um jogo da velha no navegador" })).toBeVisible();
   await expect(pill(page)).toContainText("6");
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "quero-fazer" }]);
+  expect(api.choices).toEqual([{ id: "curadoria-1", choice: "quero-fazer" }]);
 });
 
 test("\"Talvez depois\" guarda a escolha e não mexe no Meu filé", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Talvez depois").click();
 
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
   await expect(pill(page)).toContainText("5");
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "talvez-depois" }]);
+  expect(api.choices).toEqual([{ id: "curadoria-1", choice: "talvez-depois" }]);
 });
 
 test("\"Não é pra mim\" abre a folha com os seis motivos e envia o escolhido", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Não é pra mim").click();
   const sheet = page.getByRole("dialog", { name: "Tudo bem! Quer contar o motivo?" });
@@ -101,22 +100,22 @@ test("\"Não é pra mim\" abre a folha com os seis motivos e envia o escolhido",
   await expect(sheet).toBeHidden();
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
   await expect(pill(page)).toContainText("5");
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "nao-e-pra-mim", reason: "muito-dificil" }]);
+  expect(api.choices).toEqual([{ id: "curadoria-1", choice: "nao-e-pra-mim", reason: "muito-dificil" }]);
 });
 
 test("\"Pular\" fecha a folha e guarda sem motivo", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Não é pra mim").click();
   await page.getByRole("button", { name: "Pular" }).click();
 
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "nao-e-pra-mim" }]);
+  expect(api.choices).toEqual([{ id: "curadoria-1", choice: "nao-e-pra-mim" }]);
 });
 
 test("fechar a folha pelo X ou pelo Esc não guarda nada e volta o foco ao botão", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
 
   await button(page, "Não é pra mim").click();
   await page.getByRole("button", { name: "Fechar" }).click();
@@ -133,7 +132,7 @@ test("fechar a folha pelo X ou pelo Esc não guarda nada e volta o foco ao botã
   await expect(page.getByRole("button", { name: "Já conheço" })).toHaveAttribute("aria-pressed", "false");
 
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
-  expect(await choices(page)).toEqual([]);
+  expect(api.choices).toEqual([]);
 });
 
 test("depois da última sugestão mostra o fim da faixa com as duas saídas", async ({ page }) => {
@@ -150,6 +149,8 @@ test("depois da última sugestão mostra o fim da faixa com as duas saídas", as
   await expect(page.getByRole("button", { name: "Quero fazer" })).toHaveCount(0);
 
   await expect(page.getByRole("link", { name: "Ver o que salvei pra depois" })).toHaveAttribute("href", "/ver-depois");
+  // O Descobrir é o de verdade: sem simular a rota dele, consultaria um back local.
+  await mockDiscoverApi(page);
   await page.getByRole("link", { name: "Escolher outra categoria" }).click();
   await expect(page).toHaveURL("/descobrir");
 });
@@ -174,44 +175,123 @@ test("o link secundário do fim da faixa mantém o texto ink no hover", async ({
   await expect(secondary).toHaveCSS("color", "rgb(10, 59, 72)");
 });
 
-test("mostra o carregamento enquanto as sugestões chegam", async ({ page }) => {
-  await open(page, "uma-tarde", { delayMs: 800 });
+test("uma espera curta não mostra nada no lugar do card", async ({ page }) => {
+  await open(page, "uma-tarde", { delayMs: 500 });
 
-  await expect(page.getByText("Carregando…")).toBeVisible();
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
-  await expect(page.getByText("Carregando…")).toHaveCount(0);
+  await expect(page.getByText("Tecendo seu filé…")).toHaveCount(0);
+});
+
+test("uma espera longa mostra o Tecendo seu filé… (#81)", async ({ page }) => {
+  await open(page, "uma-tarde", { delayMs: 2500 });
+
+  await expect(page.getByRole("heading", { name: "Tecendo seu filé…" })).toBeVisible();
+  // A espera fica dentro da tela: com ela à vista, o cabeçalho com o voltar já está lá.
+  expect(await page.getByRole("link", { name: /voltar ao Descobrir/ }).count()).toBe(1);
+  await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
+  await expect(page.getByText("Tecendo seu filé…")).toHaveCount(0);
 });
 
 test("os botões ficam bloqueados enquanto a escolha é guardada", async ({ page }) => {
-  await open(page, "uma-tarde", { delayMs: 500 });
+  const api = await open(page, "uma-tarde", { delayMs: 500 });
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
 
   await button(page, "Quero fazer").click();
   await expect(button(page, "Talvez depois")).toBeDisabled();
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
   await expect(button(page, "Talvez depois")).toBeEnabled();
-  expect(await choices(page)).toHaveLength(1);
+  expect(api.choices).toHaveLength(1);
 });
 
-test("se a busca falha, avisa e \"Tentar de novo\" carrega as sugestões", async ({ page }) => {
-  await open(page, "uma-tarde", { failLoad: true });
+test("se a busca falha, mostra a E04 e \"Tentar novamente\" carrega as sugestões", async ({ page }) => {
+  const api = await open(page, "uma-tarde", { failure: 500 });
 
-  await expect(alert(page)).toContainText("Não foi possível carregar as sugestões.");
-  await expect(page.getByText("Carregando…")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Não foi possível carregar" })).toBeVisible();
   await expect(button(page, "Quero fazer")).toHaveCount(0);
 
   // A conexão volta.
-  await page.evaluate(() => {
-    globalThis.__NISE_MOCK_SUGESTOES__ = { ...globalThis.__NISE_MOCK_SUGESTOES__, failLoad: false };
-  });
-  await button(page, "Tentar de novo").click();
+  api.failure = undefined;
+  await button(page, "Tentar novamente").click();
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
-  await expect(alert(page)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Não foi possível carregar" })).toHaveCount(0);
   await expect(pill(page)).toContainText("5");
 });
 
+test("sem sessão, volta para o início", async ({ page }) => {
+  await open(page, "uma-tarde", { failure: 401 });
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("sem o aceite dos termos, vai para os termos", async ({ page }) => {
+  // A tela dos termos é a de verdade: sem simular a rota dela, ela consultaria um back
+  // local, se houver um rodando, e sairia dos termos (o teste falhava às vezes).
+  await mockTermsApi(page);
+  await open(page, "uma-tarde", { failure: "terms_not_accepted" });
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+});
+
+test("ação de grupo sem custo nem idade mínima não mostra esses chips", async ({ page }) => {
+  await open(page, "role-com-a-galera", {
+    items: [
+      {
+        id: "acao-7",
+        typeLabel: "Oficina",
+        title: "Oficina ficticia de robótica",
+        source: "Grupo de incentivo · exemplo",
+        format: "in_person",
+        duration: "1 dia",
+        costCents: null,
+        minAge: null,
+        why: null,
+      },
+    ],
+  });
+
+  const card = page.getByRole("article");
+  await expect(card.getByRole("heading", { name: "Oficina ficticia de robótica" })).toBeVisible();
+  await expect(card.getByText("Presencial", { exact: true })).toBeVisible();
+  await expect(card.getByText("1 dia", { exact: true })).toBeVisible();
+  await expect(card.getByText("Grátis")).toHaveCount(0);
+  await expect(card.getByText(/\+ anos/)).toHaveCount(0);
+  await expect(card.getByText("Por que pra você")).toHaveCount(0);
+});
+
+test("custo de mil reais ou mais tem ponto no milhar", async ({ page }) => {
+  await open(page, "role-com-a-galera", {
+    items: [
+      {
+        id: "curadoria-9",
+        typeLabel: "Curso com turma",
+        title: "Curso ficticio de férias",
+        source: "Escola ficticia · exemplo",
+        format: "in_person",
+        duration: "~1 mês",
+        costCents: 150050,
+        minAge: null,
+        why: null,
+      },
+    ],
+  });
+
+  // Antes, "R$ 1500,50".
+  await expect(page.getByRole("article").getByText("R$ 1.500,50", { exact: true })).toBeVisible();
+});
+
+test("o custo vem em centavos e aparece em reais", async ({ page }) => {
+  // No meu ritmo: o quinto item custa R$ 30.
+  await open(page, "no-meu-ritmo");
+  for (let i = 0; i < 4; i++) {
+    await button(page, "Talvez depois").click();
+    await expect(page.getByText(`Sugestão ${i + 2} de 6`)).toBeVisible();
+  }
+
+  await expect(page.getByRole("article").getByText("R$ 30", { exact: true })).toBeVisible();
+});
+
 test("se guardar a escolha falha, avisa, mantém a sugestão e deixa tentar de novo", async ({ page }) => {
-  await open(page, "uma-tarde", { choiceFailures: 1 });
+  const api = await open(page, "uma-tarde", { choiceFailures: 1 });
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
 
   await button(page, "Quero fazer").click();
@@ -219,18 +299,18 @@ test("se guardar a escolha falha, avisa, mantém a sugestão e deixa tentar de n
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
   await expect(button(page, "Quero fazer")).toBeEnabled();
   await expect(pill(page)).toContainText("5");
-  expect(await choices(page)).toEqual([]);
+  expect(api.choices).toEqual([]);
 
   // A segunda tentativa funciona, e o aviso some.
   await button(page, "Quero fazer").click();
   await expect(page.getByText("Sugestão 2 de 8")).toBeVisible();
   await expect(alert(page)).toHaveCount(0);
   await expect(pill(page)).toContainText("6");
-  expect(await choices(page)).toEqual([{ id: "uma-tarde-1", choice: "quero-fazer" }]);
+  expect(api.choices).toEqual([{ id: "curadoria-1", choice: "quero-fazer" }]);
 });
 
 test("se guardar o \"Não é pra mim\" falha, a folha fecha e o aviso aparece", async ({ page }) => {
-  await open(page, "uma-tarde", { choiceFailures: 1 });
+  const api = await open(page, "uma-tarde", { choiceFailures: 1 });
 
   await button(page, "Não é pra mim").click();
   await page.getByRole("button", { name: "Muito fácil" }).click();
@@ -239,10 +319,12 @@ test("se guardar o \"Não é pra mim\" falha, a folha fecha e o aviso aparece", 
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(alert(page)).toHaveText("Não deu pra guardar. Tente de novo.");
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
-  expect(await choices(page)).toEqual([]);
+  expect(api.choices).toEqual([]);
 });
 
 test("tocar numa faixa do Descobrir abre as sugestões dela", async ({ page }) => {
+  await mockDiscoverApi(page);
+  await mockSuggestionsApi(page);
   await page.goto("/descobrir");
   await page.getByRole("link", { name: /^No meu ritmo/ }).click();
 
@@ -258,7 +340,7 @@ test("faixa que não existe mostra a página 404", async ({ page }) => {
 });
 
 test("dá para escolher só com o teclado, com foco visível", async ({ page }) => {
-  await open(page);
+  const api = await open(page);
   await expect(page.getByText("Sugestão 1 de 8")).toBeVisible();
 
   // Voltar, Meu filé, Não é pra mim, Talvez depois, Quero fazer.
@@ -277,7 +359,7 @@ test("dá para escolher só com o teclado, com foco visível", async ({ page }) 
   await page.keyboard.press("Tab"); // do X para o primeiro motivo
   await page.keyboard.press("Space");
   await expect(sheet.getByRole("button", { name: "Já conheço" })).toHaveAttribute("aria-pressed", "true");
-  expect(await choices(page)).toHaveLength(1);
+  expect(api.choices).toHaveLength(1);
 });
 
 for (const width of [360, 1366]) {
