@@ -419,7 +419,7 @@ export async function setOpportunityEmails(
 }
 
 /** Reads the {"error": "<code>"} body the back-end answers with, if any. */
-async function errorCode(response: Response): Promise<string | undefined> {
+export async function errorCode(response: Response): Promise<string | undefined> {
   const body = (await response.json().catch(() => null)) as {
     error?: string;
   } | null;

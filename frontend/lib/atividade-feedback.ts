@@ -1,10 +1,13 @@
-// Avaliação opcional da atividade concluída (A06·5, issue #124).
+// Avaliação opcional da atividade concluída (A06·5, issues #124 e #126).
 //
-// TEMPORÁRIO: sendActivityFeedback() guarda no sessionStorage, com dados de teste.
-// Os tipos serão trocados pelos gerados do OpenAPI quando a rota do back existir.
-// Nada sai do navegador.
+// A rota é PUT /api/file/{id}/feedback (#125). Os tipos abaixo são escritos à mão,
+// iguais ao OpenAPI do back (/docs no FastAPI), como em lib/atividade.ts: a equipe
+// decidiu não ter um gerador de tipos por enquanto.
+//
+// "Pular" não chama a rota: só "Enviar" guarda alguma coisa (RN-28). As respostas
+// mudam a ordem das próximas sugestões (RF-F10.09, RF-F11.05).
 
-/** Pedido de sugestões parecidas. O código é o que vai para o back. */
+/** Pedido de sugestões parecidas. O código é o que vai para o back (SimilarChoice). */
 export const SIMILAR_OPTIONS = [
   { code: "mais-avancado", label: "Algo mais avançado" },
   { code: "mesmo-nivel", label: "Mais do mesmo nível" },
@@ -21,29 +24,19 @@ export type ActivityFeedback = {
   similar: SimilarChoice | null;
 };
 
-// Os testes e2e trocam o comportamento definindo __NISE_MOCK_FEEDBACK__ antes da página abrir.
-declare global {
-  var __NISE_MOCK_FEEDBACK__:
-    | {
-        /** Faz o envio falhar, para testar a mensagem de erro. */
-        fail?: boolean;
-        /** Atraso do envio, em ms, para testar o "Enviando…". */
-        delayMs?: number;
-      }
-    | undefined;
-}
+/** O corpo de PUT /api/file/{id}/feedback (FeedbackIn). */
+export type FeedbackRequest = {
+  /** De 1 a 5; null quando ela não deu nota. */
+  rating: number | null;
+  similar: SimilarChoice | null;
+};
 
-const STORAGE_KEY = "nise-mock-feedback";
-
-function readSaved(): Record<string, ActivityFeedback> {
-  try {
-    return JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-/** Envia a nota e o pedido de sugestões da atividade concluída. */
+/**
+ * Envia a nota e o pedido de sugestões da atividade concluída (#125). Enviar de novo
+ * troca a resposta anterior. O back responde 204; qualquer outra resposta vira erro, e
+ * a tela avisa: 409 quando a atividade não está concluída, 404 quando não é uma
+ * atividade do filé dela, 422 quando nada foi escolhido.
+ */
 export async function sendActivityFeedback(activityId: string, feedback: ActivityFeedback): Promise<void> {
   const { score, similar } = feedback;
   if (score !== null && (!Number.isInteger(score) || score < 1 || score > 5)) {
@@ -53,18 +46,13 @@ export async function sendActivityFeedback(activityId: string, feedback: Activit
     throw new Error("Escolha uma nota ou um tipo de sugestão.");
   }
 
-  const mock = globalThis.__NISE_MOCK_FEEDBACK__ ?? {};
-  if (mock.delayMs) {
-    await new Promise((resolve) => setTimeout(resolve, mock.delayMs));
-  }
-  if (mock.fail) {
-    // Como um erro de rede de verdade: texto técnico, que a tela não deve mostrar.
-    throw new TypeError("Failed to fetch");
-  }
-
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readSaved(), [activityId]: feedback }));
-  } catch {
-    // Sem sessionStorage (aba anônima bloqueada): os dados de teste só não ficam salvos.
+  const body: FeedbackRequest = { rating: score, similar };
+  const response = await fetch(`/api/file/${encodeURIComponent(activityId)}/feedback`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error("Não foi possível enviar a avaliação.");
   }
 }
