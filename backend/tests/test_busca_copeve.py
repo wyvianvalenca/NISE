@@ -396,6 +396,9 @@ async def test_mesma_menina_nos_cursos_6_e_7_gera_um_indicio_so() -> None:
         if "FROM official_lists" in sql:
             # A chamada já criada nesta rodada, se houver.
             return next((o for o in adicionados if isinstance(o, OfficialList)), None)
+        if "FROM users" in sql:
+            # A conta dela, para a fila do e-mail (#275): sem conta, sem e-mail.
+            return None
         # A checagem de create_match: sem autoflush, o indício pendente não
         # aparece aqui, como numa sessão com autoflush desligado.
         return False

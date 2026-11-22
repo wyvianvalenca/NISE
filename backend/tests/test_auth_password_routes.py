@@ -156,7 +156,10 @@ async def test_a_rota_nao_consulta_o_banco_antes_de_responder(
 async def test_falha_no_envio_nao_aparece_na_resposta_nem_no_log(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    # Sem trocar o send_email: até o #287 entrar, o envio não existe.
+    # Sem trocar o send_email: sem SMTP_USER e SMTP_PASSWORD, o envio de
+    # verdade (app/core/email.py) recusa sem conectar em nada.
+    monkeypatch.setattr(settings, "smtp_user", "")
+    monkeypatch.setattr(settings, "smtp_password", "")
     caplog.set_level(logging.WARNING)
     banco_da_tarefa(monkeypatch, sessao_para_busca(katia()))
 
