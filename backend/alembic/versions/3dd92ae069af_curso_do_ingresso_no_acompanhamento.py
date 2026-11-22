@@ -1,7 +1,7 @@
 """curso do ingresso no acompanhamento
 
 Revision ID: 3dd92ae069af
-Revises: 66dedafe4272
+Revises: 756a66e7ae0e
 Create Date: 2026-11-22 16:34:05.716007
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "3dd92ae069af"
-down_revision: str | Sequence[str] | None = "66dedafe4272"
+down_revision: str | Sequence[str] | None = "756a66e7ae0e"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
