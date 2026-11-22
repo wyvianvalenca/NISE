@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockFileApi } from "./file-api";
 
 // #191 · A06·4b depois da data de um evento de fora: "Você foi?" e "Concluído".
 // Usa os dados de teste de lib/evento.ts.
@@ -23,6 +24,8 @@ async function open(page: Page, path: string, value: Mock = {}) {
   await page.addInitScript((mockValue) => {
     globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
   }, { today: TODAY, ...value });
+  // Depois do "Não deu" ela volta para o Seu filé (GET /api/file, #116).
+  await mockFileApi(page);
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }

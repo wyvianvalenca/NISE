@@ -57,3 +57,8 @@
   color: var(--nise-pink);
   font-size: 14px;
 }
+
+.hint {
+  color: var(--nise-muted);
+  font-size: 13px;
+}

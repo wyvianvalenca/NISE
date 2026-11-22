@@ -26,6 +26,8 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value"> & {
   error?: string;
   /** Mostra "(opcional)" depois do rótulo. */
   optional?: boolean;
+  /** Explanation under the input, tied to it with `aria-describedby` (Figma: the line under "Link de inscrição"). */
+  hint?: string;
   /** Fires on every change, and on mount when she typed before hydration. */
   onValueChange?: (value: string) => void;
   /**
@@ -44,6 +46,7 @@ export function Field({
   label,
   error,
   optional,
+  hint,
   id,
   className,
   onChange,
@@ -54,6 +57,8 @@ export function Field({
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const errorId = `${inputId}-erro`;
+  const hintId = `${inputId}-dica`;
+  const describedBy = [hint && hintId, error && errorId].filter(Boolean).join(" ") || undefined;
   const ref = useRef<HTMLInputElement>(null);
   const avisar = useEffectEvent((value: string) => onValueChange?.(value));
 
@@ -77,7 +82,7 @@ export function Field({
           id={inputId}
           className={styles.input}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={describedBy}
           onChange={(evento) => {
             onChange?.(evento);
             onValueChange?.(evento.target.value);
@@ -85,6 +90,11 @@ export function Field({
         />
         {children}
       </div>
+      {hint && (
+        <p id={hintId} className={styles.hint}>
+          {hint}
+        </p>
+      )}
       {error && (
         <p id={errorId} className={styles.error}>
           {error}
