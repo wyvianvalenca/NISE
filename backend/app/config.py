@@ -63,5 +63,15 @@ class AppSettings(BaseSettings):
     # Segredo das rotas chamadas pelo agendador da hospedagem. Vazio recusa tudo.
     cron_secret: str = ""
 
+    # E-mails automáticos pela conta Gmail da equipe (#275). SMTP com STARTTLS
+    # e senha de app do Google. Sem SMTP_USER e SMTP_PASSWORD, o envio fica
+    # desligado: os e-mails esperam na fila até a conta ser configurada.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    # Remetente, ex.: "NISE <conta@gmail.com>". Vazio usa o SMTP_USER.
+    email_from: str = ""
+
 
 settings = AppSettings()
