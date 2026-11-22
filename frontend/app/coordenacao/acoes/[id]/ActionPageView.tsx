@@ -9,6 +9,7 @@ import { StepTracker, type Step } from "@/components/StepTracker";
 import { dayMonthLabel } from "@/lib/coord-action-labels";
 import { getActionPage, type ActionPage } from "@/lib/coord-action-page";
 import { ActionHeader } from "./ActionHeader";
+import { AddGirlDrawer } from "./AddGirlDrawer";
 import { ImportDrawer } from "./ImportDrawer";
 import { RegistrationsCard } from "./RegistrationsCard";
 import styles from "./ActionPageView.module.css";
@@ -64,6 +65,7 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
   const [attempt, setAttempt] = useState(0);
   const [listVersion, setListVersion] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (actionId === null) return;
@@ -112,7 +114,7 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                 action={action}
                 reloadToken={listVersion}
                 onImport={() => setImporting(true)}
-                onAdd={() => {}}
+                onAdd={() => setAdding(true)}
               />
               <aside className={styles.aside} aria-label="Próximos passos" />
             </div>
@@ -124,6 +126,14 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
                   setImporting(false);
                   reload();
                 }}
+              />
+            )}
+            {adding && (
+              <AddGirlDrawer
+                actionId={action.id}
+                actionName={action.name}
+                onAdded={reload}
+                onClose={() => setAdding(false)}
               />
             )}
           </>

@@ -231,3 +231,31 @@ async def registration_columns(session: AsyncSession, action: Action) -> list[st
     ).one()
 
     return [name for name, has in zip(OPTIONAL_COLUMNS, row, strict=True) if has]
+
+
+async def email_check(
+    session: AsyncSession, action: Action, group_ids: Sequence[int], email: str
+) -> tuple[bool, list[Action]]:
+    """Whether the e-mail has a record, and up to 3 other actions of the coordinator's
+    groups where she is registered, newest first (RF-F1.17).
+
+    Only actions of the coordinator's own groups are ever returned: that another
+    group's action exists, or that she went to it, stays hidden (RN-01, RN-04).
+    """
+    normalized = normalize_email(email)
+    girl_id = await session.scalar(select(Girl.id).where(Girl.email == normalized))
+    if girl_id is None:
+        return False, []
+
+    actions = await session.scalars(
+        select(Action)
+        .join(Participation, Participation.action_id == Action.id)
+        .where(
+            Participation.girl_id == girl_id,
+            Action.group_id.in_(group_ids),
+            Action.id != action.id,
+        )
+        .order_by(Action.starts_on.desc(), Action.id.desc())
+        .limit(3)
+    )
+    return True, list(actions.all())

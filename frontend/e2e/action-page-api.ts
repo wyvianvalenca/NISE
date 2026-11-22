@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 
 // Simulates GET /api/actions/{id}, GET /api/actions/{id}/registrations and
 // DELETE /api/actions/{id} of the back-end (#240), so the tests of the action page
@@ -166,7 +166,20 @@ type Options = {
   deleteConflict?: boolean;
 };
 
+/** What the e-mail check answers for an e-mail that is already in the NISE (#235). */
+export type KnownEmail = { name: string; starts_on: string }[];
+
 export type ActionPageApi = {
+  /** Bodies of the POST that adds a girl (#235), in order. */
+  added: Record<string, unknown>[];
+  /** E-mails asked to the e-mail check, in order (#235). */
+  checked: string[];
+  /** E-mails already in the NISE and the actions of the group she took part in (#235). */
+  knownEmails: Record<string, KnownEmail>;
+  /** While true the POST that adds a girl answers 500 (#235). */
+  failAdd: boolean;
+  /** While true the POST answers 422 pointing at the e-mail, as the server would (#235). */
+  rejectAdd: boolean;
   /** Every URL of the list route asked for, in order (path and query). */
   listRequests: string[];
   /** Ids received in DELETE. */
@@ -183,6 +196,7 @@ export type ActionPageApi = {
 
 const ACTION_URL = /\/api\/actions\/(\d+)$/;
 const LIST_URL = /\/api\/actions\/(\d+)\/registrations$/;
+const CHECK_URL = /\/api\/actions\/(\d+)\/registrations\/email-check$/;
 
 function wait(ms: number) {
   return ms
@@ -210,6 +224,11 @@ export async function mockActionPageApi(
   const data = stored();
   const api: ActionPageApi = {
     listRequests: [],
+    added: [],
+    checked: [],
+    knownEmails: {},
+    failAdd: false,
+    rejectAdd: false,
     deleted: [],
     failActions: options.failActions ?? false,
     importSteps: [],
@@ -252,6 +271,77 @@ export async function mockActionPageApi(
     },
   );
 
+  // POST .../registrations (#235): like the back-end, the same e-mail twice
+  // changes nothing, and it works with the registrations closed.
+  async function addGirl(route: Route, found: Stored) {
+    if (api.failAdd) return route.fulfill({ status: 500, body: "" });
+    const body = route.request().postDataJSON() as Record<
+      string,
+      string | null
+    >;
+    api.added.push(body);
+    if (api.rejectAdd) {
+      return route.fulfill({
+        status: 422,
+        json: {
+          detail: [
+            { loc: ["body", "email"], msg: "invalid", type: "value_error" },
+          ],
+        },
+      });
+    }
+    const email = String(body.email).trim().toLowerCase();
+    const existing = found.registrations.find((row) => row.email === email);
+    if (existing) {
+      return route.fulfill({
+        status: 201,
+        json: {
+          registration: existing,
+          already_registered: true,
+          record_existed: true,
+        },
+      });
+    }
+    const registration: MockRegistration = {
+      id: 100 + found.registrations.length,
+      name: String(body.name).trim(),
+      email,
+      whatsapp: body.whatsapp?.trim() || null,
+      study_stage: body.study_stage || null,
+      school_year: body.school_year?.trim() || null,
+    };
+    found.registrations.push(registration);
+    found.registrations.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return route.fulfill({
+      status: 201,
+      json: {
+        registration,
+        already_registered: false,
+        record_existed: email in api.knownEmails,
+      },
+    });
+  }
+
+  // GET .../registrations/email-check?email= (#235, RF-F1.17).
+  await page.route(
+    (url) => CHECK_URL.test(url.pathname),
+    async (route) => {
+      await wait(delayMs);
+      const url = new URL(route.request().url());
+      const email = (url.searchParams.get("email") ?? "").trim().toLowerCase();
+      api.checked.push(email);
+      if (!data[Number(CHECK_URL.exec(url.pathname)![1])])
+        return route.fulfill({
+          status: 404,
+          json: { detail: "Ação não encontrada" },
+        });
+      const actions = api.knownEmails[email];
+      return route.fulfill({
+        json: { exists: actions !== undefined, group_actions: actions ?? [] },
+      });
+    },
+  );
+
   await page.route(
     (url) => LIST_URL.test(url.pathname),
     async (route) => {
@@ -264,6 +354,9 @@ export async function mockActionPageApi(
           status: 404,
           json: { detail: "Ação não encontrada" },
         });
+      if (route.request().method() === "POST") {
+        return addGirl(route, found);
+      }
       const search = (url.searchParams.get("search") ?? "").toLowerCase();
       const offset = Number(url.searchParams.get("offset") ?? 0);
       const limit = Number(url.searchParams.get("limit") ?? 50);

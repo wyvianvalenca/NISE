@@ -369,3 +369,126 @@ export function runImport(
     registeredCount: json.registered_count,
   }));
 }
+
+// ---- Add a girl by hand (#235, RF-F1.09, RF-F1.17) ----
+
+export type NewRegistration = {
+  name: string;
+  email: string;
+  whatsapp: string;
+  /** A stage value of `AUDIENCES`, or "" for none. */
+  studyStage: string;
+  schoolYear: string;
+};
+
+/** The fields the server may point at in a 422. */
+export type RegistrationField = "name" | "email" | "whatsapp" | "schoolYear";
+
+export type AddRegistrationResult =
+  | {
+      kind: "added";
+      registration: Registration;
+      alreadyRegistered: boolean;
+      recordExisted: boolean;
+    }
+  /** Fields the server did not accept, each with its message. */
+  | { kind: "invalid"; errors: Partial<Record<RegistrationField, string>> };
+
+const FIELD_OF_LOC: Record<string, RegistrationField> = {
+  name: "name",
+  email: "email",
+  whatsapp: "whatsapp",
+  school_year: "schoolYear",
+};
+
+function invalidMessage(field: RegistrationField, value: string): string {
+  if (field === "name") return "Escreva o nome";
+  if (field === "email") return value.trim() ? "Confira o e-mail" : "Escreva o e-mail";
+  return "Use até 40 caracteres";
+}
+
+/**
+ * Puts a girl in the action. `null` when the action is not the group's (404).
+ * Works with the registrations closed (RF-F1.10). A 422 becomes messages per
+ * field; any other failure throws.
+ */
+export async function addRegistration(
+  id: number,
+  input: NewRegistration,
+): Promise<AddRegistrationResult | null> {
+  const response = await fetch(`/api/actions/${id}/registrations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: input.name,
+      email: input.email,
+      whatsapp: input.whatsapp,
+      study_stage: input.studyStage || null,
+      school_year: input.schoolYear,
+    }),
+  });
+  if (response.status === 404) return null;
+  if (response.status === 422) {
+    const body = (await response.json().catch(() => null)) as {
+      detail?: { loc?: (string | number)[] }[];
+    } | null;
+    const errors: Partial<Record<RegistrationField, string>> = {};
+    for (const item of body?.detail ?? []) {
+      const field = FIELD_OF_LOC[String(item.loc?.[item.loc.length - 1])];
+      if (field) {
+        errors[field] = invalidMessage(field, field === "email" ? input.email : input.name);
+      }
+    }
+    return { kind: "invalid", errors };
+  }
+  if (!response.ok) throw new Error(`add registration ${response.status}`);
+  const data = (await response.json()) as {
+    registration: RegistrationListResponse["items"][number];
+    already_registered: boolean;
+    record_existed: boolean;
+  };
+  const row = data.registration;
+  return {
+    kind: "added",
+    alreadyRegistered: data.already_registered,
+    recordExisted: data.record_existed,
+    registration: {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      whatsapp: row.whatsapp,
+      studyStage: row.study_stage === null ? null : studyStageLabel(row.study_stage),
+      schoolYear: row.school_year,
+    },
+  };
+}
+
+export type EmailCheck = {
+  /** The e-mail already has a record in the NISE. */
+  exists: boolean;
+  /** Other actions of the coordinator's groups she took part in, newest first, up to 3. */
+  groupActions: { name: string; startsOn: string }[];
+};
+
+/** "Já está na NISE" while she types the e-mail; `null` when the action is not the group's. */
+export async function checkEmail(
+  id: number,
+  email: string,
+  signal?: AbortSignal,
+): Promise<EmailCheck | null> {
+  const query = new URLSearchParams({ email });
+  const response = await fetch(`/api/actions/${id}/registrations/email-check?${query}`, { signal });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`email check ${response.status}`);
+  const data = (await response.json()) as {
+    exists: boolean;
+    group_actions: { name: string; starts_on: string }[];
+  };
+  return {
+    exists: data.exists,
+    groupActions: data.group_actions.map((item) => ({
+      name: item.name,
+      startsOn: item.starts_on,
+    })),
+  };
+}

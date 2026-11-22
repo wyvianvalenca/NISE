@@ -13,6 +13,8 @@ from app.modules.actions.models import Action, Participation
 from app.modules.girls.models import Girl
 from app.modules.registrations.schemas import (
     CorrectionBody,
+    EmailCheckOut,
+    GroupActionOut,
     ImportOut,
     ImportReadOut,
     ImportRepeatedOut,
@@ -20,11 +22,14 @@ from app.modules.registrations.schemas import (
     ImportReviewRowOut,
     ImportRowOut,
     MappingBody,
+    RegistrationAddedOut,
+    RegistrationIn,
     RegistrationListOut,
     RegistrationOut,
 )
 from app.modules.registrations.service import (
     RegistrationData,
+    email_check,
     list_registrations,
     register_girl,
     registration_columns,
@@ -251,4 +256,67 @@ async def import_route(
         imported=imported,
         already_in_action=already,
         registered_count=registered_count or 0,
+    )
+
+
+# "Adicionar inscrita" (K11 drawer, #235, RF-F1.09). Works with the registrations
+# closed (RF-F1.10). Never creates an account or sends anything (RN-27); nothing
+# about the girl goes to the logs. The same girl twice is not an error: the answer
+# says `already_registered` and nothing changes.
+@router.post(
+    "",
+    response_model=RegistrationAddedOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=NOT_FOUND,
+)
+async def add_registration_route(
+    body: RegistrationIn,
+    action: GroupActionDep,
+    group_ids: CoordinatorGroupIdsDep,
+    session: AsyncSessionDep,
+) -> RegistrationAddedOut:
+    result = await register_girl(
+        session,
+        action,
+        group_ids,
+        RegistrationData(
+            name=body.name,
+            email=body.email,
+            whatsapp=body.whatsapp,
+            study_stage=body.study_stage,
+            school_year=body.school_year,
+        ),
+    )
+    await session.commit()
+
+    participation = result.participation
+    return RegistrationAddedOut(
+        registration=RegistrationOut(
+            id=participation.id,
+            name=participation.name or result.girl.name,
+            email=result.girl.email,
+            whatsapp=participation.whatsapp,
+            study_stage=participation.study_stage,
+            school_year=participation.school_year,
+        ),
+        already_registered=result.already_registered,
+        record_existed=result.record_existed,
+    )
+
+
+# While she types the e-mail (RF-F1.17, Should). Only actions of the coordinator's
+# own groups are named, so another group's data never leaks (RN-01, RN-04).
+@router.get("/email-check", response_model=EmailCheckOut, responses=NOT_FOUND)
+async def email_check_route(
+    action: GroupActionDep,
+    group_ids: CoordinatorGroupIdsDep,
+    session: AsyncSessionDep,
+    email: Annotated[str, Query(min_length=1, max_length=320)],
+) -> EmailCheckOut:
+    exists, actions = await email_check(session, action, group_ids, email)
+    return EmailCheckOut(
+        exists=exists,
+        group_actions=[
+            GroupActionOut(name=a.name, starts_on=a.starts_on) for a in actions
+        ],
     )
