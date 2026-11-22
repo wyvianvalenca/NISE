@@ -66,10 +66,24 @@ IFAL_CAMPI = (
 
 # "curso" ou "campus" como palavra: "concurso", "recurso" e "percurso" não contam.
 _COURSE_WORD = re.compile(r"\b(curso|campus)\b")
-# Uma coluna que diz qual é o curso ou o campus começa pela palavra:
-# "Curso: Química", "CAMPUS SATUBA". Uma frase que só cita a palavra
-# ("Dúvidas sobre o curso: procure a coordenação") não diz.
-_COURSE_LABEL = re.compile(r"^(curso|campus)\b")
+# Uma coluna que diz qual é o curso ou o campus começa pela palavra, às vezes
+# depois do número do item: "Curso: Química", "CAMPUS SATUBA", "1.2 Curso:
+# Agronomia". Uma frase que só cita a palavra ("Dúvidas sobre o curso: procure
+# a coordenação") não diz.
+_COURSE_LABEL = re.compile(r"^(\d+(\.\d+)*\.?\s+)?(curso|campus)\b")
+# "Curso de Agronomia", "Curso em ...": a palavra seguida do nome do curso.
+_COURSE_OF = re.compile(r"\bcurso (de|do|da|em)\b")
+# Palavras que só aparecem no nome de um curso. Com uma delas, o texto diz um
+# curso mesmo sem a palavra "curso" ("TÉCNICO EM AGROPECUÁRIA - CAMPUS SATUBA").
+_COURSE_KIND = re.compile(
+    r"\b(curso|bacharelado|licenciatura|tecnico|tecnologo|tecnologia|engenharia"
+    r"|integrado|subsequente|proeja)\b"
+)
+# O penúltimo trecho de um título que não é nome de curso: "SiSU 2027 - 1ª
+# Chamada - Maceió" é a lista do campus inteiro, não de um curso.
+_NOT_A_COURSE_SEGMENT = re.compile(
+    r"\bchamada\b|classificad|convoca|resultado|\blista\b|aprovad"
+)
 
 # Duas colunas da página ficam separadas por dois ou mais espaços.
 _COLUMNS = re.compile(r"\s{2,}")
@@ -130,12 +144,18 @@ def is_other_course(title: str, targets: Sequence[TargetCourse]) -> bool:
     ser baixados. Só conta como curso no título quando o último trecho é um
     campus do IFAL: "SiSU 2027 - Convocados - 1ª Chamada" e "Resultado Final -
     2ª Chamada - Lista de Classificados" podem ter qualquer curso dentro, e são
-    baixados.
+    baixados. Um título de três trechos que termina num campus, mas cujo
+    penúltimo trecho é a chamada ("SiSU 2027 - 1ª Chamada - Maceió"), é a
+    lista do campus inteiro e também é baixado.
     """
     segments = [normalize_search(part) for part in title.split(" - ")]
     campi = {normalize_search(campus) for campus in IFAL_CAMPI}
     campi |= {normalize_search(target.campus) for target in targets}
-    names_a_course = len(segments) >= 3 and segments[-1] in campi
+    names_a_course = (
+        len(segments) >= 3
+        and segments[-1] in campi
+        and not _NOT_A_COURSE_SEGMENT.search(segments[-2])
+    )
     return names_a_course and not any(target.found_in(title) for target in targets)
 
 
@@ -224,29 +244,65 @@ def _is_header(cells: list[str]) -> bool:
     return any(normalize_search(cell).startswith("nome") for cell in cells)
 
 
+def _campi_in(text: str, targets: Sequence[TargetCourse]) -> set[str]:
+    """Os campi (normalizados) que o texto cita como palavra inteira."""
+    normalized = normalize_search(text)
+    campi = {normalize_search(campus) for campus in IFAL_CAMPI}
+    campi |= {normalize_search(target.campus) for target in targets}
+    return {
+        campus
+        for campus in campi
+        if re.search(rf"(?<!\w){re.escape(campus)}(?!\w)", normalized)
+    }
+
+
 def _section_course(
-    lines: list[str], targets: Sequence[TargetCourse]
+    lines: list[str],
+    targets: Sequence[TargetCourse],
+    current: TargetCourse | None,
 ) -> tuple[bool, TargetCourse | None]:
     """Se o texto antes de um cabeçalho ou candidato diz de qual curso é o trecho.
 
-    Devolve (diz, curso-alvo). Diz quando nomeia um curso-alvo ou tem uma linha
-    de curso ou campus ("Curso: Química"); aí o curso-alvo é None se o curso
-    não é alvo. Um texto que só cita a palavra ("Recurso: prazo de 2 dias",
-    "CONCURSO SISU 2027", "Dúvidas sobre o curso") não diz nada, e o trecho
-    continua no curso de antes.
+    Devolve (diz, curso-alvo). O texto diz o curso quando tem "curso" ou
+    "campus" como palavra e, além disso, uma linha de curso ou campus ("Curso:
+    Química", "1.2 Curso: Agronomia"), um "Curso de ..." ou o nome de um campus
+    ("TÉCNICO EM AGROPECUÁRIA - CAMPUS SATUBA"). Um texto que só cita a palavra
+    ("Recurso: prazo de 2 dias", "CONCURSO SISU 2027", "Dúvidas sobre o curso")
+    não diz nada, e o trecho continua no curso de antes.
+
+    Quando diz, o trecho é de outro curso por padrão (curso-alvo None). Só fica
+    num curso-alvo se o texto nomeia esse curso e esse campus, ou se concorda
+    com o curso de antes: um topo só com o campus ("Campus: Maceió") ou só com
+    o curso ("Curso: Bacharelado em Sistemas de Informação") do curso atual não
+    tira os nomes dele.
     """
     text = " ".join(lines)
-    if not _COURSE_WORD.search(normalize_search(text)):
+    normalized = normalize_search(text)
+    if not _COURSE_WORD.search(normalized):
         return False, None
+
     target = next((t for t in targets if t.found_in(text)), None)
     if target is not None:
         return True, target
+
+    campi = _campi_in(text, targets)
     labeled = any(
         _COURSE_LABEL.match(normalize_search(cell))
         for line in lines
         for cell in _cells(line)
     )
-    return labeled, None
+    if not (labeled or campi or _COURSE_OF.search(normalized)):
+        return False, None
+
+    if current is not None:
+        same_campus = campi <= {normalize_search(current.campus)}
+        names_current_course = normalize_search(current.course) in normalized
+        # Sem "curso", "técnico", "licenciatura"... o texto não diz curso nenhum.
+        names_no_course = not _COURSE_KIND.search(normalized)
+        if same_campus and (names_current_course or names_no_course):
+            return True, current
+
+    return True, None
 
 
 def parse_convocation(
@@ -292,7 +348,7 @@ def parse_convocation(
         # Um cabeçalho ou candidato depois de um texto que diz o curso ou o
         # campus: começou o trecho de outro curso, que pode não ser alvo.
         if context:
-            names_course, target = _section_course(context, targets)
+            names_course, target = _section_course(context, targets, current)
             if names_course:
                 current = target
         context = []

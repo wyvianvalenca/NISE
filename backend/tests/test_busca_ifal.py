@@ -116,6 +116,9 @@ def test_lista_de_outro_curso_pelo_titulo() -> None:
         "Resultado Final - 2ª Chamada - Lista de Classificados",
         "SiSU 2027 - Convocados - 1ª Chamada",
         "Resultado Final - Classificados - Chamada Regular",
+        # Termina num campus, mas o trecho antes é a chamada: lista do campus todo.
+        "SiSU 2027 - 1ª Chamada - Maceió",
+        "SiSU 2027 - Convocados - Arapiraca",
     ],
 )
 def test_titulo_com_tracos_sem_campus_no_fim_e_baixado(titulo: str) -> None:
@@ -252,6 +255,86 @@ def test_topo_com_outro_curso_sem_dois_pontos_tira_do_alvo() -> None:
         ),
         "Resultado Final - Classificados - Sistemas de Informação - Maceió",
         [ALVO],
+    )
+
+    assert lista.rows_read == 1
+    assert lista.convoked == []
+
+
+def _conteudo(pdf: bytes) -> str:
+    """Os operadores de texto da única página de um PDF de lista_pdf."""
+    texto = pdf.decode("latin-1")
+    return texto[texto.index("stream\n") + 7 : texto.index("endstream")]
+
+
+@pytest.mark.parametrize(
+    "abertura",
+    [
+        "Classificados do Curso de Agronomia - Campus Satuba",
+        "TÉCNICO EM AGROPECUÁRIA - CAMPUS SATUBA",
+        "1.2 Curso: Agronomia",
+    ],
+)
+def test_trecho_de_outro_curso_depois_do_alvo_nao_fica_com_o_alvo(
+    abertura: str,
+) -> None:
+    # 2 nomes de SI, depois um trecho aberto só com a frase: os 3 do outro curso
+    # não podem ir para SI (a menina receberia "É você na lista?" do curso errado).
+    alvo = lista_pdf([Linha(nome_ficticio(0)), Linha(nome_ficticio(1))])
+    outro = lista_pdf(
+        [Linha(nome_ficticio(i)) for i in range(2, 5)],
+        topo=["INSTITUTO FEDERAL DE ALAGOAS", abertura],
+    )
+
+    lista = parse_convocation(
+        montar_pdf([_conteudo(alvo), _conteudo(outro)]), CLASSIFICADOS, [ALVO]
+    )
+
+    assert lista.rows_read == 5
+    assert [item.name for item in lista.convoked] == [
+        "ana clara lima da ficticia",
+        "beatriz clara lima da ficticia",
+    ]
+
+
+@pytest.mark.parametrize(
+    "topo",
+    [
+        ["INSTITUTO FEDERAL DE ALAGOAS", "Campus: Maceió"],
+        ["INSTITUTO FEDERAL DE ALAGOAS", "CAMPUS MACEIO"],
+        [
+            "INSTITUTO FEDERAL DE ALAGOAS",
+            "Curso: Bacharelado em Sistemas de Informação",
+        ],
+    ],
+)
+def test_topo_so_com_o_campus_ou_so_com_o_curso_do_alvo_mantem_os_nomes(
+    topo: list[str],
+) -> None:
+    titulo = "Resultado Final - Classificados - Sistemas de Informação - Maceió"
+
+    lista = parse_convocation(
+        lista_pdf([Linha(nome_ficticio(0))], topo=topo), titulo, [ALVO]
+    )
+
+    assert [item.name for item in lista.convoked] == ["ana clara lima da ficticia"]
+
+
+@pytest.mark.parametrize(
+    "topo",
+    [
+        ["INSTITUTO FEDERAL DE ALAGOAS", "Campus: Arapiraca"],
+        ["INSTITUTO FEDERAL DE ALAGOAS", "Curso: Licenciatura em Química"],
+        ["INSTITUTO FEDERAL DE ALAGOAS", "TÉCNICO EM AGROPECUÁRIA - CAMPUS MACEIÓ"],
+    ],
+)
+def test_topo_so_com_outro_campus_ou_outro_curso_tira_do_alvo(
+    topo: list[str],
+) -> None:
+    titulo = "Resultado Final - Classificados - Sistemas de Informação - Maceió"
+
+    lista = parse_convocation(
+        lista_pdf([Linha(nome_ficticio(0))], topo=topo), titulo, [ALVO]
     )
 
     assert lista.rows_read == 1
