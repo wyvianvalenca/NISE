@@ -35,6 +35,7 @@ from app.modules.attendance.schemas import (
     WalkInOut,
 )
 from app.modules.cities.models import City
+from app.modules.events.service import apply_attendance
 from app.modules.girls.models import Girl
 from app.modules.registrations.service import (
     OPTIONAL_COLUMNS,
@@ -273,7 +274,7 @@ async def add_walk_in(
     participation = registered.participation
     if action.attendance_registered_at is not None:
         await _mark_present_after_conclusion(
-            session, action, participation, now, invite=True
+            session, action, participation, today, now, invite=True
         )
     await session.commit()
     return WalkInOut(
@@ -286,17 +287,28 @@ async def _mark_present_after_conclusion(
     session: AsyncSession,
     action: Action,
     participation: Participation,
+    today: date,
     now: datetime,
     invite: bool,
 ) -> None:
     """Marks one girl as present on a concluded action and queues her e-mails.
 
     Does nothing if she is already present: a second tap sends nothing again.
-    The date the attendance was registered does not change. Does not commit.
+    The date the attendance was registered does not change. The event comes
+    back to her filé as concluded, in the same transaction (#337, D-81). Does
+    not commit.
     """
     if participation.attended_at is not None:
         return
     participation.attended_at = now
+    await apply_attendance(
+        session,
+        action.group_id,
+        action.id,
+        [participation.girl_id],
+        today,
+        concluding=False,
+    )
     await queue_attendance_emails(
         session,
         action,
@@ -336,7 +348,7 @@ async def mark_present_later(
     if participation is None:
         raise UnknownRegistrationError
     await _mark_present_after_conclusion(
-        session, action, participation, now, invite=False
+        session, action, participation, today, now, invite=False
     )
     await session.commit()
 
@@ -384,6 +396,17 @@ async def conclude_attendance(
     action.attendance_registered_at = now
 
     registrations = await registrations_of(session, action.id)
+    # The filé of the girls changes now, and only now: whoever came gets the
+    # event as concluded and whoever did not leaves it (#337, D-81). In the
+    # same commit as the attendance.
+    await apply_attendance(
+        session,
+        action.group_id,
+        action.id,
+        [girl.id for participation, girl in registrations if participation.id in ids],
+        today,
+        concluding=True,
+    )
     await queue_attendance_emails(
         session,
         action,
