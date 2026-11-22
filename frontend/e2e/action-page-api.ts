@@ -71,6 +71,8 @@ export const CONCLUDED_ACTION_ID = 4;
 export const ONLINE_ACTION_ID = 5;
 /** 23 girls, closed by the coordinator, and today is the day of the event (#237). */
 export const EVENT_DAY_ACTION_ID = 6;
+/** An action of another group, with 2 girls: only that group's coordinator reaches it (#238). */
+export const OTHER_GROUP_ACTION_ID = 7;
 /** An id that does not exist or belongs to another group: both answer 404. */
 export const MISSING_ACTION_ID = 99;
 
@@ -163,6 +165,15 @@ function stored(): Record<number, Stored> {
       },
       registrations: girls(true),
     },
+    [OTHER_GROUP_ACTION_ID]: {
+      action: {
+        ...BASE,
+        id: OTHER_GROUP_ACTION_ID,
+        name: "Oficina de Git",
+        status: "awaiting_event",
+      },
+      registrations: girls(false).slice(0, 2),
+    },
     [CONCLUDED_ACTION_ID]: {
       action: {
         ...BASE,
@@ -191,12 +202,19 @@ type Options = {
   failActions?: boolean;
   /** The DELETE answers 409 (attendance saved in the meantime). */
   deleteConflict?: boolean;
+  /**
+   * Who is signed in. Each coordinator only reaches the actions of their own
+   * group; the other group's answer 404, as the back-end does (RN-01, #238).
+   */
+  viewer?: "group" | "other-group";
 };
 
 /** What the e-mail check answers for an e-mail that is already in the NISE (#235). */
 export type KnownEmail = { name: string; starts_on: string }[];
 
 export type ActionPageApi = {
+  /** Whether the action is in the girls' suggestions now: registrations open (RF-F1.10, RF-F1.16). */
+  isOpen: (id: number) => boolean;
   /** Bodies of the POST that adds a girl (#235), in order. */
   added: Record<string, unknown>[];
   /** E-mails asked to the e-mail check, in order (#235). */
@@ -261,7 +279,11 @@ export async function mockActionPageApi(
 ): Promise<ActionPageApi> {
   const { delayMs = 0 } = options;
   const data = stored();
+  for (const id of Object.keys(data).map(Number)) {
+    if ((id === OTHER_GROUP_ACTION_ID) !== (options.viewer === "other-group")) delete data[id];
+  }
   const api: ActionPageApi = {
+    isOpen: (id) => data[id]?.action.registrations_open ?? false,
     listRequests: [],
     added: [],
     checked: [],
