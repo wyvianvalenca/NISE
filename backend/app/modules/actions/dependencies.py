@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -7,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.permissions import CoordinatorDep
 from app.db.engine import AsyncSessionDep
 from app.modules.actions.models import Action
+from app.modules.actions.service import today_in_maceio
 from app.modules.groups.models import GroupCoordinator
 
 
@@ -82,3 +84,11 @@ async def get_group_action(
 
 
 GroupActionDep = Annotated[Action, Depends(get_group_action)]
+
+
+def get_today() -> date:
+    """Today in Maceió. A dependency so tests can set the date."""
+    return today_in_maceio()
+
+
+TodayDep = Annotated[date, Depends(get_today)]
