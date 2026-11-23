@@ -33,7 +33,7 @@ test("goes through the four steps with the buttons, not by clicking the steps", 
   // Passo 2: o cartão da Base, sem interruptor.
   await expect(page.getByRole("heading", { name: "Base · obrigatório" })).toBeVisible();
   await expect(page.getByText("Sempre vai: identifica a linha sem identificar a menina.")).toBeVisible();
-  await expect(page.getByRole("switch")).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "Base · obrigatório" })).toHaveCount(0);
   await page.getByRole("button", { name: "Voltar" }).click();
   await expect(page.getByRole("heading", { name: "Recorte" })).toBeVisible();
   await page.getByRole("button", { name: "Continuar" }).click();
@@ -77,4 +77,39 @@ test("stays on the review step when generating fails", async ({ page }) => {
 
   await expect(page.getByText("Não foi possível gerar o arquivo. Tente novamente.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Gerar arquivo" })).toBeEnabled();
+});
+
+test("turns packages on and off, and the summary and the review follow", async ({ page }) => {
+  const calls = await mockExportApi(page);
+  await page.goto(URL);
+  await page.getByRole("button", { name: "Continuar" }).click();
+
+  // The six cards, with their columns; only "Outros grupos" starts off.
+  for (const name of ["Grupos de comparação", "Funil", "Avaliações", "Interesse", "Ingresso"]) {
+    await expect(page.getByRole("switch", { name })).toBeChecked();
+  }
+  await expect(page.getByRole("switch", { name: "Outros grupos" })).not.toBeChecked();
+  await expect(page.getByRole("list", { name: "Colunas de Funil" }).getByRole("listitem")).toHaveText([
+    "inscrita",
+    "presente",
+    "concluinte",
+  ]);
+  await expect(page.getByText("21 colunas · 6 pacotes")).toBeVisible();
+
+  await page.getByRole("switch", { name: "Funil" }).click();
+  await page.getByRole("switch", { name: "Outros grupos" }).click();
+  await expect(page.getByText("19 colunas · 6 pacotes")).toBeVisible();
+  await page.getByRole("switch", { name: "Interesse" }).focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByText("14 colunas · 5 pacotes")).toBeVisible();
+
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByText("14 colunas · 5 pacotes")).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "outros grupos" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "presente" })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "interesse_3m" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Gerar arquivo" }).click();
+  await expect(page.getByText("Arquivo pronto")).toBeVisible();
+  expect(calls.packages).toEqual(["groups", "ratings", "admission", "other_groups"]);
 });

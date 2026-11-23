@@ -1576,6 +1576,14 @@ export interface components {
             kind: "code" | "generalized" | "action";
         };
         /**
+         * ExportIn
+         * @description Os pacotes ligados. A Base sempre sai; lista vazia é só a Base (RF-F24.08).
+         */
+        ExportIn: {
+            /** Packages */
+            packages: components["schemas"]["Package"][];
+        };
+        /**
          * ExportOut
          * @description O arquivo pronto (RF-F24.34). O CSV se baixa por `GET .../{id}/file`.
          */
@@ -2095,6 +2103,12 @@ export interface components {
             /** Label */
             label: string;
         };
+        /**
+         * Package
+         * @description Os pacotes que a coordenadora liga ou desliga (RF-F24.08).
+         * @enum {string}
+         */
+        Package: "groups" | "funnel" | "ratings" | "interest" | "admission" | "other_groups";
         /**
          * PendingRatingOut
          * @description A ação que a menina pode avaliar na A03 (#58).
@@ -4883,7 +4897,10 @@ export interface operations {
     };
     preview_route_api_coordinator_exports_preview_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Pacotes ligados, separados por vírgula */
+                packages?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: {
@@ -4930,7 +4947,11 @@ export interface operations {
                 nise_cadastro_pendente?: string | null;
             };
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExportIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {

@@ -118,7 +118,7 @@ export function ExportWizard() {
           />
         )}
 
-        {step === 3 && file && <Done file={file} onNewFile={setFile} />}
+        {step === 3 && file && <Done file={file} packages={packages} onNewFile={setFile} />}
       </section>
     </>
   );
@@ -141,13 +141,13 @@ function Review({
 
   useEffect(() => {
     let current = true;
-    getPreview()
+    getPreview(packages)
       .then((loaded) => current && setPreview(loaded))
       .catch(() => current && setFailed(true));
     return () => {
       current = false;
     };
-  }, [attempt]);
+  }, [attempt, packages]);
 
   function retry() {
     setFailed(false);
@@ -159,7 +159,7 @@ function Review({
     setGenerating(true);
     setGenerateFailed(false);
     try {
-      onDone(await generateExport());
+      onDone(await generateExport(packages));
     } catch {
       setGenerateFailed(true);
       setGenerating(false);
@@ -260,9 +260,11 @@ function Review({
 
 function Done({
   file,
+  packages,
   onNewFile,
 }: {
   file: ExportedFile;
+  packages: readonly PackageId[];
   onNewFile: (file: ExportedFile) => void;
 }) {
   const expiresAt = new Date(file.expiresAt).getTime();
@@ -278,7 +280,7 @@ function Done({
   async function generateAgain() {
     setAgain("loading");
     try {
-      onNewFile(await generateExport());
+      onNewFile(await generateExport(packages));
       setNow(Date.now());
       setAgain("idle");
     } catch {

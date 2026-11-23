@@ -28,7 +28,7 @@ export const BASE_COLUMNS = [
 ] as const;
 
 /** The packages she turns on or off; the ids are the ones of the API (RF-F24.08). */
-export type PackageId = "groups" | "funnel" | "ratings" | "interest" | "admission" | "other_groups";
+export type PackageId = components["schemas"]["Package"];
 
 export type ContentPackage = {
   id: PackageId;
@@ -118,16 +118,22 @@ export function countdownLabel(msLeft: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-/** The five lines of the "Revisão" step. The group comes from the session. */
-export async function getPreview(): Promise<Preview> {
-  const response = await fetch("/api/coordinator/exports/preview");
+/** The five lines of the "Revisão" step, for the packages she turned on. */
+export async function getPreview(packages: readonly PackageId[]): Promise<Preview> {
+  // An empty list is valid: only the Base.
+  const query = new URLSearchParams({ packages: packages.join(",") });
+  const response = await fetch(`/api/coordinator/exports/preview?${query}`);
   if (!response.ok) throw new Error(`preview ${response.status}`);
   return (await response.json()) as Preview;
 }
 
-/** "Gerar arquivo": makes the CSV and registers the export (RF-F24.34). */
-export async function generateExport(): Promise<ExportedFile> {
-  const response = await fetch("/api/coordinator/exports", { method: "POST" });
+/** "Gerar arquivo": makes the CSV with those packages and registers it (RF-F24.34). */
+export async function generateExport(packages: readonly PackageId[]): Promise<ExportedFile> {
+  const response = await fetch("/api/coordinator/exports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ packages }),
+  });
   if (!response.ok) throw new Error(`export ${response.status}`);
   return (await response.json()) as ExportedFile;
 }
