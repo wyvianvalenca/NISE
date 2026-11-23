@@ -4155,6 +4155,216 @@
         }
       }
     },
+    "/api/coordinator/exports/options": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Options Route",
+        "description": "O que a coordenadora escolhe nos seletores do \"Recorte\" (RF-F24.09).",
+        "operationId": "options_route_api_coordinator_exports_options_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportCutOptionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinator/exports/summary": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Summary Route",
+        "description": "Linhas, meninas, sozinhas e ações do arquivo desse recorte (RF-F24.33).",
+        "operationId": "summary_route_api_coordinator_exports_summary_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportSummaryOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "404": {
+            "description": "Ação de outro grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/coordinator/exports/preview": {
       "get": {
         "tags": [
@@ -4182,6 +4392,73 @@
               "title": "Packages"
             },
             "description": "Pacotes ligados, separados por vírgula"
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
           },
           {
             "name": "nise_session",
@@ -4230,6 +4507,9 @@
           "403": {
             "description": "Não é coordenadora ou sem grupo"
           },
+          "404": {
+            "description": "Ação de outro grupo"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -4250,7 +4530,7 @@
           "Coordinator"
         ],
         "summary": "Create Export Route",
-        "description": "Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07).",
+        "description": "Gera o CSV anônimo do recorte e registra a exportação (RF-F24.34, RN-07).",
         "operationId": "create_export_route_api_coordinator_exports_post",
         "parameters": [
           {
@@ -4316,6 +4596,9 @@
           },
           "403": {
             "description": "Não é coordenadora ou sem grupo"
+          },
+          "404": {
+            "description": "Ação de outro grupo"
           },
           "422": {
             "description": "Validation Error",
@@ -4754,6 +5037,30 @@
         ],
         "title": "ActionListOut",
         "description": "The actions of the group that pass the filters, and the chip counts."
+      },
+      "ActionOptionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "title": "Startson"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "startsOn"
+        ],
+        "title": "ActionOptionOut"
       },
       "ActionOut": {
         "properties": {
@@ -5926,6 +6233,47 @@
         ],
         "title": "ExportColumnOut"
       },
+      "ExportCutOptionsOut": {
+        "properties": {
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Years"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/ActionOptionOut"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/app__modules__exports__schemas__OptionOut"
+            },
+            "type": "array",
+            "title": "Types"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/app__modules__exports__schemas__OptionOut"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "years",
+          "actions",
+          "types",
+          "tags"
+        ],
+        "title": "ExportCutOptionsOut",
+        "description": "O que ela pode escolher no \"Recorte\": só dados do próprio grupo."
+      },
       "ExportHistoryItemOut": {
         "properties": {
           "id": {
@@ -5969,14 +6317,56 @@
             },
             "type": "array",
             "title": "Packages"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "actionId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actionid"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Topic"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
-        "required": [
-          "packages"
-        ],
         "title": "ExportIn",
-        "description": "Os pacotes ligados. A Base sempre sai; lista vazia é só a Base (RF-F24.08)."
+        "description": "O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).\n\nCampo vazio no recorte é \"todos\". A Base sempre sai; sem `packages` valem os\npacotes padrão e `packages` vazio é só a Base."
       },
       "ExportOut": {
         "properties": {
@@ -6045,6 +6435,35 @@
         ],
         "title": "ExportPreviewOut",
         "description": "As primeiras linhas do arquivo que vai sair (RF-F24.32).\n\nOs códigos são de mentira: o arquivo de verdade sorteia outros."
+      },
+      "ExportSummaryOut": {
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "girls": {
+            "type": "integer",
+            "title": "Girls"
+          },
+          "alone": {
+            "type": "integer",
+            "title": "Alone"
+          },
+          "actions": {
+            "type": "integer",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "girls",
+          "alone",
+          "actions"
+        ],
+        "title": "ExportSummaryOut",
+        "description": "O resumo da barra escura, em \"Recorte\" e \"Conteúdo\" (RF-F24.33)."
       },
       "FeedbackIn": {
         "properties": {
@@ -6361,49 +6780,49 @@
         "properties": {
           "computingViews": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Computingviews"
           },
           "futureSelves": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Futureselves"
           },
           "activities": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Activities"
           },
           "helps": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Helps"
           },
           "courseStatuses": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Coursestatuses"
           },
           "courses": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Courses"
           },
           "stillEnrolled": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Stillenrolled"
@@ -6792,14 +7211,14 @@
         "properties": {
           "topics": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Topics"
           },
           "stages": {
             "items": {
-              "$ref": "#/components/schemas/OptionOut"
+              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
             },
             "type": "array",
             "title": "Stages"
@@ -7170,25 +7589,6 @@
         ],
         "title": "OpportunityEmailsIn",
         "description": "A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).\n\nStrictBool: só aceita true ou false. Um texto como \"false\" é recusado em\nvez de virar True."
-      },
-      "OptionOut": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "label": {
-            "type": "string",
-            "title": "Label"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code",
-          "label"
-        ],
-        "title": "OptionOut",
-        "description": "Uma opção de lista fechada: o código vai para o back, o nome vai para a tela."
       },
       "Package": {
         "type": "string",
@@ -8067,6 +8467,43 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "app__modules__exports__schemas__OptionOut": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "OptionOut"
+      },
+      "app__modules__girls__schemas__OptionOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "OptionOut",
+        "description": "Uma opção de lista fechada: o código vai para o back, o nome vai para a tela."
       }
     }
   }

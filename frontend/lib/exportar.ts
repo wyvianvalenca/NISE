@@ -11,6 +11,16 @@ export type Preview = components["schemas"]["ExportPreviewOut"];
 export type ExportedFile = components["schemas"]["ExportOut"];
 export type ColumnKind = components["schemas"]["ExportColumnOut"]["kind"];
 
+/** What she chose in "Recorte". Empty text means "todos" (RF-F24.09). */
+export type Cut = { year: string; actionId: string; type: string; tag: string };
+
+export const NO_CUT: Cut = { year: "", actionId: "", type: "", tag: "" };
+
+export type CutOptions = components["schemas"]["ExportCutOptionsOut"];
+
+/** The numbers of the dark bar (RF-F24.33). */
+export type Summary = components["schemas"]["ExportSummaryOut"];
+
 export const STEPS = ["Recorte", "Conteúdo", "Revisão", "Pronto"] as const;
 
 /** The file has 8 columns of the Base: the card shows "mês e nome da ação" as one chip. */
@@ -118,21 +128,63 @@ export function countdownLabel(msLeft: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-/** The five lines of the "Revisão" step, for the packages she turned on. */
-export async function getPreview(packages: readonly PackageId[]): Promise<Preview> {
+const BASE = "/api/coordinator/exports";
+
+/** The cut as a query string: only what she chose, since empty means "todos". */
+function cutParams(cut: Cut): URLSearchParams {
+  const params = new URLSearchParams();
+  if (cut.year) params.set("year", cut.year);
+  if (cut.actionId) params.set("action_id", cut.actionId);
+  if (cut.type) params.set("type", cut.type);
+  if (cut.tag) params.set("tag", cut.tag);
+  return params;
+}
+
+function withQuery(params: URLSearchParams): string {
+  const text = params.toString();
+  return text ? `?${text}` : "";
+}
+
+/** What she can choose in "Recorte": only data of her own group. */
+export async function getCutOptions(): Promise<CutOptions> {
+  const response = await fetch(`${BASE}/options`);
+  if (!response.ok) throw new Error(`options ${response.status}`);
+  return (await response.json()) as CutOptions;
+}
+
+/** The numbers of the dark bar for this cut (RF-F24.33). */
+export async function getSummary(cut: Cut): Promise<Summary> {
+  const response = await fetch(`${BASE}/summary${withQuery(cutParams(cut))}`);
+  if (!response.ok) throw new Error(`summary ${response.status}`);
+  return (await response.json()) as Summary;
+}
+
+/** The five lines of the "Revisão" step, for the cut and the packages she turned on. */
+export async function getPreview(packages: readonly PackageId[], cut: Cut): Promise<Preview> {
+  const params = cutParams(cut);
   // An empty list is valid: only the Base.
-  const query = new URLSearchParams({ packages: packages.join(",") });
-  const response = await fetch(`/api/coordinator/exports/preview?${query}`);
+  params.set("packages", packages.join(","));
+  const response = await fetch(`${BASE}/preview${withQuery(params)}`);
   if (!response.ok) throw new Error(`preview ${response.status}`);
   return (await response.json()) as Preview;
 }
 
-/** "Gerar arquivo": makes the CSV with those packages and registers it (RF-F24.34). */
-export async function generateExport(packages: readonly PackageId[]): Promise<ExportedFile> {
-  const response = await fetch("/api/coordinator/exports", {
+/** "Gerar arquivo": makes the CSV of the cut with those packages and registers it (RF-F24.34). */
+export async function generateExport(
+  packages: readonly PackageId[],
+  cut: Cut,
+): Promise<ExportedFile> {
+  const body = {
+    packages,
+    year: cut.year ? Number(cut.year) : null,
+    actionId: cut.actionId ? Number(cut.actionId) : null,
+    type: cut.type || null,
+    tag: cut.tag || null,
+  };
+  const response = await fetch(BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ packages }),
+    body: JSON.stringify(body),
   });
   if (!response.ok) throw new Error(`export ${response.status}`);
   return (await response.json()) as ExportedFile;

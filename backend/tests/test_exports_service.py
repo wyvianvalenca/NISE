@@ -21,13 +21,19 @@ from app.modules.cities.models import City
 from app.modules.exports.models import DataExport
 from app.modules.exports.service import (
     BOM,
+    NO_CUT,
+    ExportCut,
+    ExportSummary,
+    action_is_of_group,
     age_band,
     build_table,
     create_export,
+    cut_options,
     file_name,
     new_code,
     purge_old_files,
     safe_cell,
+    summarize,
     to_csv,
 )
 from app.modules.girls.models import Girl, StudyStage, Topic
@@ -45,17 +51,22 @@ async def grupo(sessao: AsyncSession, nome: str = "Rendeiras do Código") -> Gro
 
 
 async def acao(
-    sessao: AsyncSession, do_grupo: Group, nome: str = "Oficina de Python"
+    sessao: AsyncSession,
+    do_grupo: Group,
+    nome: str = "Oficina de Python",
+    tipo: ActionType = ActionType.OFICINA,
+    dia: date = date(2026, 9, 20),
+    tags: tuple[Topic, ...] = (Topic.PROGRAMACAO, Topic.IA),
 ) -> Action:
     nova = Action(
         group_id=do_grupo.id,
         name=nome,
-        type=ActionType.OFICINA,
-        starts_on=date(2026, 9, 20),
-        ends_on=date(2026, 9, 20),
+        type=tipo,
+        starts_on=dia,
+        ends_on=dia,
         format=ActionFormat.ONLINE,
         visibility=ActionVisibility.CLOSED,
-        topics=[ActionTopic(topic=Topic.PROGRAMACAO), ActionTopic(topic=Topic.IA)],
+        topics=[ActionTopic(topic=t) for t in tags],
     )
     sessao.add(nova)
     await sessao.flush()
@@ -253,3 +264,100 @@ async def test_arquivo_some_em_24_horas_e_o_registro_fica(
     restante = await db_session.scalar(select(DataExport))
     assert restante is not None
     assert restante.content is None
+
+
+# --- Recorte (#378: período, ação, tipo e tag) -------------------------------
+
+
+async def cenario_recorte(sessao: AsyncSession) -> tuple[Group, dict[str, Action]]:
+    g = await grupo(sessao)
+    acoes = {
+        "oficina26": await acao(
+            sessao, g, "Oficina 26", ActionType.OFICINA, date(2026, 3, 1), (Topic.IA,)
+        ),
+        "oficina25": await acao(
+            sessao, g, "Oficina 25", ActionType.OFICINA, date(2025, 3, 1), (Topic.IA,)
+        ),
+        "palestra26": await acao(
+            sessao,
+            g,
+            "Palestra 26",
+            ActionType.PALESTRA,
+            date(2026, 5, 1),
+            (Topic.DADOS,),
+        ),
+    }
+    ana, bia = await menina(sessao, 1), await menina(sessao, 2)
+    for quem, em in (
+        (ana, "oficina26"),
+        (bia, "oficina26"),
+        (ana, "oficina25"),
+        (ana, "palestra26"),
+    ):
+        await inscrever(sessao, quem, acoes[em])
+    return g, acoes
+
+
+async def test_recorte_oficina_de_2026_so_tem_oficinas_de_2026(
+    db_session: AsyncSession,
+) -> None:
+    g, _ = await cenario_recorte(db_session)
+
+    corte = ExportCut(year=2026, type=ActionType.OFICINA)
+    table = await build_table(db_session, g.id, HOJE, cut=corte)
+
+    assert [linha[7] for linha in table.rows] == ["Oficina 26", "Oficina 26"]
+
+
+async def test_recorte_por_acao_e_por_tag(db_session: AsyncSession) -> None:
+    g, acoes = await cenario_recorte(db_session)
+
+    uma = await build_table(
+        db_session, g.id, HOJE, cut=ExportCut(action_id=acoes["oficina25"].id)
+    )
+    com_tag = await build_table(db_session, g.id, HOJE, cut=ExportCut(tag=Topic.DADOS))
+
+    assert [linha[7] for linha in uma.rows] == ["Oficina 25"]
+    assert [linha[7] for linha in com_tag.rows] == ["Palestra 26"]
+
+
+async def test_resumo_acompanha_o_recorte(db_session: AsyncSession) -> None:
+    g, _ = await cenario_recorte(db_session)
+
+    tudo = await summarize(db_session, g.id, NO_CUT)
+    oficinas_2026 = await summarize(
+        db_session, g.id, ExportCut(year=2026, type=ActionType.OFICINA)
+    )
+
+    assert tudo == ExportSummary(rows=4, girls=2, alone=0, actions=3)
+    assert oficinas_2026 == ExportSummary(rows=2, girls=2, alone=0, actions=1)
+
+
+async def test_resumo_so_conta_o_proprio_grupo(db_session: AsyncSession) -> None:
+    g, _ = await cenario_recorte(db_session)
+    outro = await grupo(db_session, "Outro Grupo Fictício")
+    a = await acao(db_session, outro)
+    await inscrever(db_session, await menina(db_session, 9), a)
+
+    assert (await summarize(db_session, g.id, NO_CUT)).rows == 4
+    assert not await action_is_of_group(db_session, g.id, a.id)
+    assert (await cut_options(db_session, g.id)).years == [2026, 2025]
+
+
+async def test_exportacao_guarda_o_recorte_usado(db_session: AsyncSession) -> None:
+    g, _ = await cenario_recorte(db_session)
+    usuaria = User(email="coord@exemplo.com", name="Coord Ficticia")
+    db_session.add(usuaria)
+    await db_session.flush()
+
+    feito = await create_export(
+        db_session, g.id, usuaria.id, HOJE, cut=ExportCut(year=2026)
+    )
+
+    assert feito.row_count == 3
+    assert feito.cut == {
+        "year": 2026,
+        "action_id": None,
+        "type": None,
+        "tag": None,
+    }

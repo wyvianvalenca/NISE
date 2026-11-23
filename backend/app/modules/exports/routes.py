@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Path, Query, Response, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import CoordinatorDep
 from app.db.engine import AsyncSessionDep
@@ -10,29 +10,70 @@ from app.modules.actions.dependencies import (
     CoordinatorGroupIdDep,
     CoordinatorGroupIdsDep,
 )
-from app.modules.actions.models import Action, Participation
+from app.modules.actions.models import ActionType
 from app.modules.actions.service import today_in_maceio
+from app.modules.catalog.utils import ACTION_TYPE_LABELS
 from app.modules.exports.models import DataExport
 from app.modules.exports.schemas import (
+    ActionOptionOut,
     ExportColumnOut,
+    ExportCutOptionsOut,
     ExportHistoryItemOut,
     ExportIn,
     ExportOut,
     ExportPreviewOut,
+    ExportSummaryOut,
+    OptionOut,
 )
 from app.modules.exports.service import (
     DEFAULT_PACKAGES,
     PREVIEW_ROWS,
+    ExportCut,
     Package,
+    action_is_of_group,
     build_table,
     create_export,
+    cut_options,
     list_history,
+    summarize,
 )
+from app.modules.girls.models import Topic
+from app.modules.girls.utils import TOPIC_LABELS
 
 router = APIRouter(prefix="/coordinator/exports", tags=["Coordinator"])
 
 _NOT_COORDINATOR: dict[int | str, dict[str, Any]] = {
     status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora ou sem grupo"},
+}
+
+
+async def checked_cut(
+    session: AsyncSession, group_id: int, cut: ExportCut
+) -> ExportCut:
+    """Só se escolhe ação do próprio grupo (RN-07)."""
+    if cut.action_id is not None and not await action_is_of_group(
+        session, group_id, cut.action_id
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ação não encontrada")
+    return cut
+
+
+async def cut_from_query(
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
+    action_id: Annotated[int | None, Query(ge=1)] = None,
+    type: ActionType | None = None,
+    tag: Topic | None = None,
+) -> ExportCut:
+    return await checked_cut(session, group_id, ExportCut(year, action_id, type, tag))
+
+
+CutDep = Annotated[ExportCut, Depends(cut_from_query)]
+
+_CUT_NOT_FOUND: dict[int | str, dict[str, Any]] = {
+    **_NOT_COORDINATOR,
+    status.HTTP_404_NOT_FOUND: {"description": "Ação de outro grupo"},
 }
 
 
@@ -49,10 +90,35 @@ def parse_packages(text: str | None) -> list[Package]:
 
 
 # O grupo vem sempre da sessão, nunca da requisição (RN-07, RNF-G.03).
-@router.get("/preview", response_model=ExportPreviewOut, responses=_NOT_COORDINATOR)
+@router.get("/options", response_model=ExportCutOptionsOut, responses=_NOT_COORDINATOR)
+async def options_route(
+    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep
+) -> ExportCutOptionsOut:
+    """O que a coordenadora escolhe nos seletores do "Recorte" (RF-F24.09)."""
+    options = await cut_options(session, group_id)
+    return ExportCutOptionsOut(
+        years=options.years,
+        actions=[ActionOptionOut(**vars(a)) for a in options.actions],
+        types=[
+            OptionOut(value=t.value, label=ACTION_TYPE_LABELS[t]) for t in ActionType
+        ],
+        tags=[OptionOut(value=t.value, label=TOPIC_LABELS[t]) for t in Topic],
+    )
+
+
+@router.get("/summary", response_model=ExportSummaryOut, responses=_CUT_NOT_FOUND)
+async def summary_route(
+    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep, cut: CutDep
+) -> ExportSummaryOut:
+    """Linhas, meninas, sozinhas e ações do arquivo desse recorte (RF-F24.33)."""
+    return ExportSummaryOut(**vars(await summarize(session, group_id, cut)))
+
+
+@router.get("/preview", response_model=ExportPreviewOut, responses=_CUT_NOT_FOUND)
 async def preview_route(
     group_id: CoordinatorGroupIdDep,
     session: AsyncSessionDep,
+    cut: CutDep,
     packages: Annotated[
         str | None, Query(description="Pacotes ligados, separados por vírgula")
     ] = None,
@@ -63,12 +129,8 @@ async def preview_route(
         group_id,
         today_in_maceio(),
         PREVIEW_ROWS,
-        parse_packages(packages),
-    )
-    total = await session.scalar(
-        select(func.count(Participation.id))
-        .join(Action, Action.id == Participation.action_id)
-        .where(Action.group_id == group_id)
+        packages=parse_packages(packages),
+        cut=cut,
     )
     return ExportPreviewOut(
         columns=[
@@ -76,7 +138,7 @@ async def preview_route(
             for c in table.columns
         ],
         rows=table.rows,
-        total_rows=total or 0,
+        total_rows=(await summarize(session, group_id, cut)).rows,
     )
 
 
@@ -84,7 +146,7 @@ async def preview_route(
     "",
     response_model=ExportOut,
     status_code=status.HTTP_201_CREATED,
-    responses=_NOT_COORDINATOR,
+    responses=_CUT_NOT_FOUND,
 )
 async def create_export_route(
     user: CoordinatorDep,
@@ -92,10 +154,20 @@ async def create_export_route(
     session: AsyncSessionDep,
     body: ExportIn | None = None,
 ) -> ExportOut:
-    """Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07)."""
-    packages = DEFAULT_PACKAGES if body is None else body.packages
+    """Gera o CSV anônimo do recorte e registra a exportação (RF-F24.34, RN-07)."""
+    wanted = body or ExportIn()
+    cut = await checked_cut(
+        session,
+        group_id,
+        ExportCut(wanted.year, wanted.action_id, wanted.type, wanted.tag),
+    )
     export = await create_export(
-        session, group_id, user.id, today_in_maceio(), packages=packages
+        session,
+        group_id,
+        user.id,
+        today_in_maceio(),
+        packages=wanted.packages,
+        cut=cut,
     )
     return ExportOut.model_validate(export, from_attributes=True)
 

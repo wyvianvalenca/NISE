@@ -3,14 +3,18 @@
 Rodam no Postgres de teste (`db_session`). Dados fictícios.
 """
 
-from datetime import UTC, datetime, timedelta
+from collections.abc import Mapping
+from datetime import UTC, date, datetime, timedelta
 
 from httpx2 import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.utils import create_access_token
 from app.main import app
+from app.modules.actions.models import ActionType
 from app.modules.exports.models import DataExport
+from app.modules.girls.models import Topic
 from app.modules.groups.models import Group, GroupCoordinator
 from app.users.models import Role, User
 from tests.helpers import chamar_rota
@@ -32,10 +36,14 @@ async def usuaria(
 
 
 async def chamar(
-    sessao: AsyncSession, quem: User | None, metodo: str, caminho: str
+    sessao: AsyncSession,
+    quem: User | None,
+    metodo: str,
+    caminho: str,
+    corpo: Mapping[str, object] | None = None,
 ) -> Response:
     token = create_access_token(quem.id) if quem else None
-    return await chamar_rota(app, metodo, f"{URL}{caminho}", sessao, token)
+    return await chamar_rota(app, metodo, f"{URL}{caminho}", sessao, token, corpo)
 
 
 async def cenario(sessao: AsyncSession) -> tuple[Group, User]:
@@ -51,7 +59,13 @@ async def cenario(sessao: AsyncSession) -> tuple[Group, User]:
 
 
 async def test_sem_login_responde_401(db_session: AsyncSession) -> None:
-    for metodo, caminho in (("GET", "/preview"), ("POST", ""), ("GET", "/1/file")):
+    for metodo, caminho in (
+        ("GET", "/preview"),
+        ("GET", "/summary"),
+        ("GET", "/options"),
+        ("POST", ""),
+        ("GET", "/1/file"),
+    ):
         assert (await chamar(db_session, None, metodo, caminho)).status_code == 401
 
 
@@ -177,3 +191,125 @@ async def test_revisao_traz_cinco_linhas_e_o_total(db_session: AsyncSession) -> 
     assert corpo["totalRows"] == 6
     assert [c["kind"] for c in corpo["columns"]][:2] == ["code", "generalized"]
     assert len(corpo["rows"][0]) == len(corpo["columns"]) == 21
+
+
+# --- Recorte (#378, RF-F24.09 e RF-F24.33) ------------------------------------
+
+
+async def cenario_recorte(sessao: AsyncSession) -> tuple[Group, User]:
+    g = await grupo(sessao)
+    katia = await usuaria(sessao, 1, g)
+    oficina26 = await acao(sessao, g, "Oficina 26")
+    oficina25 = await acao(
+        sessao, g, "Oficina 25", dia=date(2025, 3, 1), tags=(Topic.DADOS,)
+    )
+    palestra26 = await acao(sessao, g, "Palestra 26", tipo=ActionType.PALESTRA)
+    ana, bia = await menina(sessao, 1), await menina(sessao, 2)
+    for quem, em in (
+        (ana, oficina26),
+        (bia, oficina26),
+        (ana, oficina25),
+        (ana, palestra26),
+    ):
+        await inscrever(sessao, quem, em)
+    return g, katia
+
+
+async def test_opcoes_so_trazem_o_que_e_do_grupo(db_session: AsyncSession) -> None:
+    g, katia = await cenario_recorte(db_session)
+    outro = await grupo(db_session, "Outro Grupo Fictício")
+    await acao(db_session, outro, "Ação alheia", dia=date(2024, 1, 1))
+
+    response = await chamar(db_session, katia, "GET", "/options")
+
+    assert response.status_code == 200
+    corpo = response.json()
+    assert corpo["years"] == [2026, 2025]
+    assert sorted(a["name"] for a in corpo["actions"]) == [
+        "Oficina 25",
+        "Oficina 26",
+        "Palestra 26",
+    ]
+    assert {"value": "oficina", "label": "Oficina"} in corpo["types"]
+    assert len(corpo["tags"]) == 8
+    assert g.id
+
+
+async def test_resumo_segue_o_recorte(db_session: AsyncSession) -> None:
+    _, katia = await cenario_recorte(db_session)
+
+    tudo = await chamar(db_session, katia, "GET", "/summary")
+    oficinas = await chamar(db_session, katia, "GET", "/summary?year=2026&type=oficina")
+
+    assert tudo.json() == {"rows": 4, "girls": 2, "alone": 0, "actions": 3}
+    assert oficinas.json() == {"rows": 2, "girls": 2, "alone": 0, "actions": 1}
+
+
+async def test_recorte_por_tag_na_revisao_e_no_arquivo(
+    db_session: AsyncSession,
+) -> None:
+    _, katia = await cenario_recorte(db_session)
+
+    revisao = await chamar(db_session, katia, "GET", "/preview?tag=dados")
+    feito = await chamar(db_session, katia, "POST", "", {"tag": "dados"})
+
+    assert revisao.json()["totalRows"] == 1
+    assert feito.status_code == 201
+    assert feito.json()["rowCount"] == 1
+
+
+async def test_pronto_tem_as_mesmas_linhas_da_barra(db_session: AsyncSession) -> None:
+    _, katia = await cenario_recorte(db_session)
+    corte = {"year": 2026, "type": "oficina"}
+
+    barra = await chamar(db_session, katia, "GET", "/summary?year=2026&type=oficina")
+    feito = await chamar(db_session, katia, "POST", "", corte)
+
+    assert feito.json()["rowCount"] == barra.json()["rows"] == 2
+    gravado = await db_session.scalar(select(DataExport))
+    assert gravado is not None
+    assert gravado.cut == {
+        "year": 2026,
+        "action_id": None,
+        "type": "oficina",
+        "tag": None,
+    }
+
+
+async def test_nao_se_recorta_por_acao_de_outro_grupo(
+    db_session: AsyncSession,
+) -> None:
+    _, katia = await cenario_recorte(db_session)
+    outro = await grupo(db_session, "Outro Grupo Fictício")
+    alheia = await acao(db_session, outro, "Ação alheia")
+
+    for caminho in (
+        f"/summary?action_id={alheia.id}",
+        f"/preview?action_id={alheia.id}",
+    ):
+        assert (await chamar(db_session, katia, "GET", caminho)).status_code == 404
+    feito = await chamar(db_session, katia, "POST", "", {"actionId": alheia.id})
+    assert feito.status_code == 404
+    assert await db_session.scalar(select(DataExport)) is None
+
+
+async def test_recorte_invalido_responde_422(db_session: AsyncSession) -> None:
+    _, katia = await cenario_recorte(db_session)
+
+    response = await chamar(db_session, katia, "GET", "/summary?type=inexistente")
+
+    assert response.status_code == 422
+
+
+async def test_pacotes_e_recorte_juntos(db_session: AsyncSession) -> None:
+    _, katia = await cenario_recorte(db_session)
+
+    revisao = await chamar(db_session, katia, "GET", "/preview?type=oficina&packages=")
+    feito = await chamar(
+        db_session, katia, "POST", "", {"type": "oficina", "packages": []}
+    )
+
+    assert revisao.json()["totalRows"] == 3
+    assert len(revisao.json()["columns"]) == 8
+    assert feito.json()["rowCount"] == 3
+    assert feito.json()["columnCount"] == 8
