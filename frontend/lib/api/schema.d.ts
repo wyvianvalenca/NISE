@@ -1644,6 +1644,8 @@ export interface components {
             types: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
             /** Tags */
             tags: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
+            /** Models */
+            models: components["schemas"]["ExportModelOut"][];
         };
         /**
          * ExportHistoryItemOut
@@ -1666,20 +1668,36 @@ export interface components {
         };
         /**
          * ExportIn
-         * @description O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).
+         * @description O que a coordenadora escolheu: modelo, recorte e pacotes (RF-F24.08 a 10).
          *
-         *     Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os
-         *     pacotes padrão e `packages` vazio é só a Base.
+         *     Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os do
+         *     modelo (sem modelo, "Do meu jeito", D-104) e `packages` vazio é só a Base.
          */
         ExportIn: {
+            model?: components["schemas"]["ExportModel"] | null;
             /** Packages */
-            packages?: components["schemas"]["Package"][];
+            packages?: components["schemas"]["Package"][] | null;
             /** Year */
             year?: number | null;
             /** Actionid */
             actionId?: number | null;
             type?: components["schemas"]["ActionType"] | null;
             tag?: components["schemas"]["Topic"] | null;
+        };
+        /**
+         * ExportModel
+         * @description Os quatro modelos do primeiro passo (RF-F24.10). Cada um já marca pacotes.
+         * @enum {string}
+         */
+        ExportModel: "accountability" | "research" | "planning" | "my_way";
+        /**
+         * ExportModelOut
+         * @description Um modelo do primeiro passo e os pacotes que ele já liga (RF-F24.10).
+         */
+        ExportModelOut: {
+            value: components["schemas"]["ExportModel"];
+            /** Packages */
+            packages: components["schemas"]["Package"][];
         };
         /**
          * ExportOut

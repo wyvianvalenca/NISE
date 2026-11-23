@@ -60,6 +60,12 @@ export const OPTIONS: CutOptions = {
     { value: "palestra", label: "Palestra" },
   ],
   tags: [{ value: "programacao", label: "Programação" }],
+  models: [
+    { value: "accountability", packages: ["funnel", "ratings"] },
+    { value: "research", packages: ["groups", "funnel", "ratings", "interest", "admission"] },
+    { value: "planning", packages: ["ratings", "interest"] },
+    { value: "my_way", packages: ["groups", "funnel", "ratings", "interest", "admission"] },
+  ],
 };
 
 const WHOLE_SUMMARY: Summary = { rows: 42, girls: 30, alone: 9, actions: 5 };

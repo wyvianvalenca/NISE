@@ -13,6 +13,7 @@ import {
   countdownLabel,
   type Cut,
   type CutOptions,
+  DEFAULT_MODEL,
   DEFAULT_PACKAGES,
   type ExportedFile,
   generateExport,
@@ -22,6 +23,8 @@ import {
   getSummary,
   type HistoryItem,
   KIND_LABELS,
+  type ModelId,
+  modelName,
   NEVER_LEAVES,
   NO_CUT,
   PACKAGES,
@@ -31,6 +34,7 @@ import {
   type Summary,
   summaryLabel,
 } from "@/lib/exportar";
+import { ModelCards } from "./ModelCards";
 import { PackageCard } from "./PackageCard";
 import { ExportHistory } from "./ExportHistory";
 import styles from "./ExportWizard.module.css";
@@ -45,6 +49,8 @@ export function ExportWizard() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [summaryFailed, setSummaryFailed] = useState(false);
   const [packages, setPackages] = useState<readonly PackageId[]>(DEFAULT_PACKAGES);
+  // No card checked at first: with no model, "Do meu jeito" counts (D-104).
+  const [model, setModel] = useState<ModelId | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -76,6 +82,14 @@ export function ExportWizard() {
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+
+  // The model already turns its packages on; she changes them in the next step.
+  function chooseModel(id: ModelId) {
+    const chosen = options?.models.find((item) => item.value === id);
+    if (!chosen) return;
+    setModel(id);
+    setPackages(chosen.packages);
+  }
 
   function toggle(id: PackageId, on: boolean) {
     setPackages((current) => (on ? [...current, id] : current.filter((item) => item !== id)));
@@ -114,6 +128,11 @@ export function ExportWizard() {
                 Não foi possível carregar as opções do recorte.
               </p>
             )}
+            <h3 className={styles.baseTitle}>Pra que você vai usar?</h3>
+            <p className={styles.muted}>
+              O modelo já escolhe as colunas certas. Dá pra mudar no próximo passo.
+            </p>
+            <ModelCards value={model} onChange={chooseModel} disabled={options === null} />
             <div className={styles.selectors}>
               <Select
                 label="Período"
@@ -180,6 +199,12 @@ export function ExportWizard() {
 
         {step === 1 && (
           <>
+            <p className={styles.modelChip}>
+              Modelo: <strong>{modelName(model ?? DEFAULT_MODEL)}</strong>
+              <button type="button" className={styles.change} onClick={() => setStep(0)}>
+                trocar
+              </button>
+            </p>
             <div className={styles.baseCard}>
               <h3 className={styles.baseTitle}>Base · obrigatório</h3>
               <p className={styles.muted}>
@@ -218,6 +243,7 @@ export function ExportWizard() {
           <Review
             cut={cut}
             packages={packages}
+            model={model}
             onBack={back}
             onDone={(made) => {
               setFile(made);
@@ -227,7 +253,7 @@ export function ExportWizard() {
         )}
 
         {step === 3 && file && (
-          <Done file={file} packages={packages} cut={cut} onNewFile={setFile} />
+          <Done file={file} packages={packages} cut={cut} model={model} onNewFile={setFile} />
         )}
       </section>
     </>
@@ -248,11 +274,13 @@ function SummaryOrError({ summary, failed }: { summary: Summary | null; failed: 
 function Review({
   cut,
   packages,
+  model,
   onBack,
   onDone,
 }: {
   cut: Cut;
   packages: readonly PackageId[];
+  model: ModelId | null;
   onBack: () => void;
   onDone: (file: ExportedFile) => void;
 }) {
@@ -282,7 +310,7 @@ function Review({
     setGenerating(true);
     setGenerateFailed(false);
     try {
-      onDone(await generateExport(packages, cut));
+      onDone(await generateExport(packages, cut, model));
     } catch {
       setGenerateFailed(true);
       setGenerating(false);
@@ -385,11 +413,13 @@ function Done({
   file,
   cut,
   packages,
+  model,
   onNewFile,
 }: {
   file: ExportedFile;
   cut: Cut;
   packages: readonly PackageId[];
+  model: ModelId | null;
   onNewFile: (file: ExportedFile) => void;
 }) {
   const expiresAt = new Date(file.expiresAt).getTime();
@@ -405,7 +435,7 @@ function Done({
   async function generateAgain() {
     setAgain("loading");
     try {
-      onNewFile(await generateExport(packages, cut));
+      onNewFile(await generateExport(packages, cut, model));
       setNow(Date.now());
       setAgain("idle");
     } catch {

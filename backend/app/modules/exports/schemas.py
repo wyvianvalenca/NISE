@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.modules.actions.models import ActionType
-from app.modules.exports.service import DEFAULT_PACKAGES, Package
+from app.modules.exports.service import ExportModel, Package
 from app.modules.girls.models import Topic
 
 
@@ -16,13 +16,14 @@ class _CamelModel(BaseModel):
 
 
 class ExportIn(_CamelModel):
-    """O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).
+    """O que a coordenadora escolheu: modelo, recorte e pacotes (RF-F24.08 a 10).
 
-    Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os
-    pacotes padrão e `packages` vazio é só a Base.
+    Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os do
+    modelo (sem modelo, "Do meu jeito", D-104) e `packages` vazio é só a Base.
     """
 
-    packages: list[Package] = Field(default_factory=lambda: list(DEFAULT_PACKAGES))
+    model: ExportModel | None = None
+    packages: list[Package] | None = None
     year: int | None = Field(default=None, ge=2000, le=2100)
     action_id: int | None = Field(default=None, ge=1)
     type: ActionType | None = None
@@ -40,6 +41,13 @@ class ActionOptionOut(_CamelModel):
     starts_on: date
 
 
+class ExportModelOut(_CamelModel):
+    """Um modelo do primeiro passo e os pacotes que ele já liga (RF-F24.10)."""
+
+    value: ExportModel
+    packages: list[Package]
+
+
 class ExportCutOptionsOut(_CamelModel):
     """O que ela pode escolher no "Recorte": só dados do próprio grupo."""
 
@@ -47,6 +55,7 @@ class ExportCutOptionsOut(_CamelModel):
     actions: list[ActionOptionOut]
     types: list[OptionOut]
     tags: list[OptionOut]
+    models: list[ExportModelOut]
 
 
 class ExportSummaryOut(_CamelModel):

@@ -33,5 +33,8 @@ class DataExport(Base):
     # O recorte usado (período, ação, tipo e tag; RF-F24.09), para o histórico
     # (#376). Nulo nas exportações de antes do recorte.
     cut: Mapped[dict[str, int | str | None] | None] = mapped_column(JSONB)
+    # O modelo escolhido no primeiro passo (RF-F24.10), para o nome do arquivo e o
+    # histórico. Nulo nas exportações de antes dos modelos.
+    model: Mapped[str | None] = mapped_column()
     # Até quando o link de download vale (15 minutos depois de gerar).
     expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))

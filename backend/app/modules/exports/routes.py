@@ -20,6 +20,7 @@ from app.modules.exports.schemas import (
     ExportCutOptionsOut,
     ExportHistoryItemOut,
     ExportIn,
+    ExportModelOut,
     ExportOut,
     ExportPreviewOut,
     ExportSummaryOut,
@@ -29,12 +30,14 @@ from app.modules.exports.service import (
     DEFAULT_PACKAGES,
     PREVIEW_ROWS,
     ExportCut,
+    ExportModel,
     Package,
     action_is_of_group,
     build_table,
     create_export,
     cut_options,
     list_history,
+    packages_of,
     summarize,
 )
 from app.modules.girls.models import Topic
@@ -103,6 +106,9 @@ async def options_route(
             OptionOut(value=t.value, label=ACTION_TYPE_LABELS[t]) for t in ActionType
         ],
         tags=[OptionOut(value=t.value, label=TOPIC_LABELS[t]) for t in Topic],
+        models=[
+            ExportModelOut(value=m, packages=list(packages_of(m))) for m in ExportModel
+        ],
     )
 
 
@@ -168,6 +174,7 @@ async def create_export_route(
         today_in_maceio(),
         packages=wanted.packages,
         cut=cut,
+        model=wanted.model,
     )
     return ExportOut.model_validate(export, from_attributes=True)
 

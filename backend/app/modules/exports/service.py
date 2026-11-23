@@ -85,7 +85,7 @@ class Package(StrEnum):
     OTHER_GROUPS = "other_groups"
 
 
-# Enquanto não há modelos (#379), tudo liga, menos "Outros grupos" (RF-F24.15).
+# Sem modelo, tudo liga, menos "Outros grupos" (RF-F24.15).
 DEFAULT_PACKAGES: tuple[Package, ...] = (
     Package.GROUPS,
     Package.FUNNEL,
@@ -93,6 +93,47 @@ DEFAULT_PACKAGES: tuple[Package, ...] = (
     Package.INTEREST,
     Package.ADMISSION,
 )
+
+
+class ExportModel(StrEnum):
+    """Os quatro modelos do primeiro passo (RF-F24.10). Cada um já marca pacotes."""
+
+    ACCOUNTABILITY = "accountability"
+    RESEARCH = "research"
+    PLANNING = "planning"
+    MY_WAY = "my_way"
+
+
+MODEL_NAMES: dict[ExportModel, str] = {
+    ExportModel.ACCOUNTABILITY: "Prestação de contas",
+    ExportModel.RESEARCH: "Pesquisa",
+    ExportModel.PLANNING: "Planejar a próxima ação",
+    ExportModel.MY_WAY: "Do meu jeito",
+}
+
+# O pedaço do nome do arquivo (RF-F24.34: "rendeiras_prestacao-contas_2026-10-16.csv").
+MODEL_SLUGS: dict[ExportModel, str] = {
+    ExportModel.ACCOUNTABILITY: "prestacao-contas",
+    ExportModel.RESEARCH: "pesquisa",
+    ExportModel.PLANNING: "planejar-proxima-acao",
+    ExportModel.MY_WAY: "do-meu-jeito",
+}
+
+# Pacotes que cada modelo liga. O doc e o Figma não dizem todos (#379): o cartão
+# de cada modelo é a fonte. "Pesquisa" é "todos os pacotes" menos "Outros grupos",
+# que vem desligado (RF-F24.15, Figma A2). "Do meu jeito" começa como o padrão.
+MODEL_PACKAGES: dict[ExportModel, tuple[Package, ...]] = {
+    ExportModel.ACCOUNTABILITY: (Package.FUNNEL, Package.RATINGS),
+    ExportModel.RESEARCH: DEFAULT_PACKAGES,
+    ExportModel.PLANNING: (Package.RATINGS, Package.INTEREST),
+    ExportModel.MY_WAY: DEFAULT_PACKAGES,
+}
+
+
+def packages_of(model: ExportModel | None) -> tuple[Package, ...]:
+    """Sem modelo vale "Do meu jeito" (D-104)."""
+    return MODEL_PACKAGES[model or ExportModel.MY_WAY]
+
 
 # As colunas da Base, na ordem do arquivo (RF-F24.08).
 BASE_COLUMNS: tuple[Column, ...] = (
@@ -512,9 +553,10 @@ def slugify(text: str) -> str:
     return "-".join("".join(c if c.isalnum() else " " for c in plain.lower()).split())
 
 
-def file_name(group_name: str, day: date) -> str:
-    # Ainda não há modelos (#379): o meio do nome é fixo.
-    return f"{slugify(group_name)}_dados-anonimos_{day.isoformat()}.csv"
+def file_name(group_name: str, day: date, model: ExportModel | None = None) -> str:
+    """O modelo vai no meio do nome; sem modelo vale "Do meu jeito" (D-104)."""
+    name = MODEL_SLUGS[model or ExportModel.MY_WAY]
+    return f"{slugify(group_name)}_{name}_{day.isoformat()}.csv"
 
 
 async def purge_old_files(session: AsyncSession, now: datetime | None = None) -> int:
@@ -539,8 +581,9 @@ async def create_export(
     user_id: int,
     today: date,
     now: datetime | None = None,
-    packages: Iterable[Package] = DEFAULT_PACKAGES,
+    packages: Iterable[Package] | None = None,
     cut: ExportCut = NO_CUT,
+    model: ExportModel | None = None,
 ) -> DataExport:
     """Gera o CSV do grupo (no recorte) e registra a exportação (RN-07)."""
     if now is None:
@@ -550,11 +593,14 @@ async def create_export(
     group = await session.get(Group, group_id)
     assert group is not None  # a coordenadora vem de GroupCoordinator
 
-    table = await build_table(session, group_id, today, packages=packages, cut=cut)
+    # Sem `packages`, valem os do modelo; sem modelo, os de "Do meu jeito" (D-104).
+    chosen = packages if packages is not None else packages_of(model)
+    table = await build_table(session, group_id, today, packages=chosen, cut=cut)
     export = DataExport(
         group_id=group_id,
         user_id=user_id,
-        filename=file_name(group.name, today),
+        filename=file_name(group.name, today, model),
+        model=(model or ExportModel.MY_WAY).value,
         row_count=len(table.rows),
         column_count=len(table.columns),
         content=to_csv(table),
@@ -575,23 +621,27 @@ HISTORY_LIMIT = 20
 ALL_ACTIONS_LABEL = "todas as ações"
 
 
-def cut_label(cut: dict[str, int | str | None] | None, action_name: str | None) -> str:
-    """O recorte gravado em texto: "Oficina · 2026" (RF-F24.07).
+def cut_label(
+    cut: dict[str, int | str | None] | None,
+    action_name: str | None,
+    model: str | None = None,
+) -> str:
+    """O modelo e o recorte em texto: "Pesquisa · Oficina · 2026" (RF-F24.07).
 
-    Nulo ou sem nenhum filtro vira "todas as ações".
+    Sem nenhum filtro vira "todas as ações". Exportação de antes dos modelos
+    (`model` nulo) não leva o nome do modelo.
     """
-    if not cut:
-        return ALL_ACTIONS_LABEL
-    parts: list[str] = []
+    filters: list[str] = []
     if action_name:
-        parts.append(action_name)
-    if cut.get("type"):
-        parts.append(ACTION_TYPE_LABELS[ActionType(str(cut["type"]))])
-    if cut.get("tag"):
-        parts.append(TOPIC_LABELS[Topic(str(cut["tag"]))])
-    if cut.get("year"):
-        parts.append(str(cut["year"]))
-    return " · ".join(parts) if parts else ALL_ACTIONS_LABEL
+        filters.append(action_name)
+    if cut and cut.get("type"):
+        filters.append(ACTION_TYPE_LABELS[ActionType(str(cut["type"]))])
+    if cut and cut.get("tag"):
+        filters.append(TOPIC_LABELS[Topic(str(cut["tag"]))])
+    if cut and cut.get("year"):
+        filters.append(str(cut["year"]))
+    parts = [MODEL_NAMES[ExportModel(model)]] if model else []
+    return " · ".join([*parts, *filters] if filters else [*parts, ALL_ACTIONS_LABEL])
 
 
 @dataclass(frozen=True)
@@ -641,7 +691,9 @@ async def list_history(session: AsyncSession, group_id: int) -> list[HistoryItem
             who=name.split()[0] if name and name.split() else "Coordenadora",
             created_at=export.created_at,
             cut=cut_label(
-                export.cut, action_names.get(_cut_action_id(export.cut) or 0)
+                export.cut,
+                action_names.get(_cut_action_id(export.cut) or 0),
+                export.model,
             ),
             row_count=export.row_count,
         )

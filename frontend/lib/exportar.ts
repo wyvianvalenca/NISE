@@ -18,6 +18,9 @@ export const NO_CUT: Cut = { year: "", actionId: "", type: "", tag: "" };
 
 export type CutOptions = components["schemas"]["ExportCutOptionsOut"];
 
+/** A model and the packages it turns on, as the API says (RF-F24.10). */
+export type ExportModelOption = CutOptions["models"][number];
+
 /** The numbers of the dark bar (RF-F24.33). */
 export type Summary = components["schemas"]["ExportSummaryOut"];
 
@@ -87,7 +90,54 @@ export const PACKAGES: readonly ContentPackage[] = [
   },
 ];
 
-/** Before the models exist (#379): everything on, except "Outros grupos". */
+/** The models of the first step (RF-F24.10). `my_way` is the one that counts with no choice (D-104). */
+export type ModelId = components["schemas"]["ExportModel"];
+
+export type ExportModelCard = {
+  id: ModelId;
+  name: string;
+  description: string;
+  /** The short line of packages at the bottom of the card. */
+  packagesLabel: string;
+};
+
+export const MODELS: readonly ExportModelCard[] = [
+  {
+    id: "accountability",
+    name: "Prestação de contas",
+    description: "Pra edital, financiador ou relatório anual. Funil e números por ação.",
+    packagesLabel: "Funil · Avaliações",
+  },
+  {
+    id: "research",
+    name: "Pesquisa",
+    description:
+      "Pra TCC, artigo ou parceria com universidade. Inclui quem chegou sozinha, pra comparar interesse e ingresso.",
+    packagesLabel: "Todos os pacotes + sozinhas",
+  },
+  {
+    id: "planning",
+    name: "Planejar a próxima ação",
+    description: "Avaliações e interesses por tipo e tag, pra decidir o que repetir.",
+    packagesLabel: "Avaliações · Interesse",
+  },
+  {
+    id: "my_way",
+    name: "Do meu jeito",
+    description: "Escolha os pacotes de colunas um por um.",
+    packagesLabel: "Personalizado",
+  },
+];
+
+/** With no model chosen, "Do meu jeito" counts (D-104). */
+export const DEFAULT_MODEL: ModelId = "my_way";
+
+/** The name that goes in the chip "Modelo: Pesquisa". */
+export function modelName(id: ModelId): string {
+  return MODELS.find((model) => model.id === id)?.name ?? "";
+}
+
+/** Everything on, except "Outros grupos". */
 export const DEFAULT_PACKAGES: readonly PackageId[] = [
   "groups",
   "funnel",
@@ -173,8 +223,10 @@ export async function getPreview(packages: readonly PackageId[], cut: Cut): Prom
 export async function generateExport(
   packages: readonly PackageId[],
   cut: Cut,
+  model: ModelId | null,
 ): Promise<ExportedFile> {
   const body = {
+    model,
     packages,
     year: cut.year ? Number(cut.year) : null,
     actionId: cut.actionId ? Number(cut.actionId) : null,

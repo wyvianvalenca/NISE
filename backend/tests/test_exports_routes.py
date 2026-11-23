@@ -122,7 +122,7 @@ async def test_gerar_responde_o_arquivo_pronto_e_baixa_o_csv(
 
     assert feito.status_code == 201
     corpo = feito.json()
-    assert corpo["filename"].startswith("rendeiras-do-codigo_dados-anonimos_")
+    assert corpo["filename"].startswith("rendeiras-do-codigo_do-meu-jeito_")
     assert corpo["filename"].endswith(".csv")
     assert corpo["rowCount"] == 2
     assert corpo["columnCount"] == 21
@@ -313,3 +313,68 @@ async def test_pacotes_e_recorte_juntos(db_session: AsyncSession) -> None:
     assert len(revisao.json()["columns"]) == 8
     assert feito.json()["rowCount"] == 3
     assert feito.json()["columnCount"] == 8
+
+
+# --- Modelos (RF-F24.10) ------------------------------------------------------
+
+
+async def test_opcoes_trazem_os_quatro_modelos_com_os_pacotes(
+    db_session: AsyncSession,
+) -> None:
+    _, katia = await cenario(db_session)
+
+    response = await chamar(db_session, katia, "GET", "/options")
+
+    modelos = {m["value"]: m["packages"] for m in response.json()["models"]}
+    assert set(modelos) == {"accountability", "research", "planning", "my_way"}
+    assert modelos["accountability"] == ["funnel", "ratings"]
+    assert "other_groups" not in modelos["research"]
+
+
+async def test_gerar_com_modelo_usa_os_pacotes_dele_e_escreve_o_nome(
+    db_session: AsyncSession,
+) -> None:
+    _, katia = await cenario(db_session)
+
+    feito = await chamar(db_session, katia, "POST", "", {"model": "accountability"})
+
+    corpo = feito.json()
+    assert feito.status_code == 201
+    assert "_prestacao-contas_" in corpo["filename"]
+    # Base (8) + funil (3) + avaliações (1).
+    assert corpo["columnCount"] == 12
+
+    historico = await chamar(db_session, katia, "GET", "")
+    assert historico.json()[0]["cut"] == "Prestação de contas · todas as ações"
+
+
+async def test_pacotes_escolhidos_valem_mais_que_o_modelo(
+    db_session: AsyncSession,
+) -> None:
+    _, katia = await cenario(db_session)
+
+    feito = await chamar(
+        db_session, katia, "POST", "", {"model": "research", "packages": ["funnel"]}
+    )
+
+    # Base (8) + funil (3).
+    assert feito.json()["columnCount"] == 11
+
+
+async def test_sem_modelo_vale_do_meu_jeito(db_session: AsyncSession) -> None:
+    _, katia = await cenario(db_session)
+
+    feito = await chamar(db_session, katia, "POST", "")
+
+    assert "_do-meu-jeito_" in feito.json()["filename"]
+    assert feito.json()["columnCount"] == 21
+    historico = await chamar(db_session, katia, "GET", "")
+    assert historico.json()[0]["cut"].startswith("Do meu jeito")
+
+
+async def test_modelo_desconhecido_responde_422(db_session: AsyncSession) -> None:
+    _, katia = await cenario(db_session)
+
+    feito = await chamar(db_session, katia, "POST", "", {"model": "inventado"})
+
+    assert feito.status_code == 422
