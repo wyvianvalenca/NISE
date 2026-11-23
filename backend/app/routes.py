@@ -10,6 +10,7 @@ from app.modules.answers.routes import router as ratings_router
 from app.modules.cities.routes import router as cities_router
 from app.modules.consents.routes import preferences_router
 from app.modules.consents.routes import router as consents_router
+from app.modules.followup.routes import router as followup_router
 from app.modules.girl_file.routes import later_router
 from app.modules.girl_file.routes import router as file_router
 from app.modules.girls.routes import router as profile_router
@@ -32,6 +33,7 @@ router.include_router(later_router)
 router.include_router(admissions_router)
 router.include_router(agenda_router)
 router.include_router(cron_router)
+router.include_router(followup_router)
 router.include_router(coordinator_router)
 router.include_router(results_router)
 
