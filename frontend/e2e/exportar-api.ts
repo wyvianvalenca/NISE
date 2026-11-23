@@ -22,6 +22,7 @@ export const PREVIEW: Preview = {
     ["M-B9XN", "18+", "Arapiraca", "Graduação", "Palestra", "Dados", "2026-10", "Mulheres nos dados"],
     ["M-3FHR", "13", "Maceió", "Ensino fundamental", "Minicurso", "Robótica", "2026-10", "Robótica com Arduino"],
   ],
+  alone: [false, false, false, false, false],
   totalRows: 42,
 };
 
@@ -72,6 +73,8 @@ function summaryFor(url: URL): Summary {
 }
 
 type Options = {
+  /** How many girls arrived alone (#380). Default: the number of the whole file. */
+  alone?: number;
   historyStatus?: 403 | 500;
   /** Histórico que a rota devolve; o "Gerar arquivo" põe a nova no topo. */
   history?: HistoryItem[];
@@ -90,14 +93,19 @@ const EXTRA_COLUMNS: Record<string, string[]> = {
 };
 
 /** The preview the API would give for those packages: the Base and their columns. */
-export function previewFor(packages: string[]): Preview {
+export function previewFor(packages: string[], withAlone = false): Preview {
   const extra = packages.flatMap((name) => EXTRA_COLUMNS[name] ?? []);
   return {
     columns: [
       ...PREVIEW.columns,
       ...extra.map((label) => ({ key: label, label, kind: "action" as const })),
     ],
-    rows: PREVIEW.rows.map((row) => [...row, ...extra.map(() => "sim")]),
+    rows: PREVIEW.rows.map((row, index) =>
+      withAlone && index === PREVIEW.rows.length - 1
+        ? [row[0], ...row.slice(1).map(() => ""), ...extra.map(() => "")]
+        : [...row, ...extra.map(() => "sim")],
+    ),
+    alone: PREVIEW.alone.map((_, index) => withAlone && index === PREVIEW.rows.length - 1),
     totalRows: PREVIEW.totalRows,
   };
 }
@@ -116,12 +124,17 @@ export async function mockExportApi(
 
   await page.route("**/api/coordinator/exports/options", (route) => route.fulfill({ json: OPTIONS }));
   await page.route("**/api/coordinator/exports/summary*", (route) =>
-    route.fulfill({ json: summaryFor(new URL(route.request().url())) }),
+    route.fulfill({
+      json: {
+        ...summaryFor(new URL(route.request().url())),
+        ...(options.alone === undefined ? {} : { alone: options.alone }),
+      },
+    }),
   );
   await page.route("**/api/coordinator/exports/preview?**", (route) => {
     if (options.previewStatus) return route.fulfill({ status: options.previewStatus });
     const asked = new URL(route.request().url()).searchParams.get("packages") ?? "";
-    return route.fulfill({ json: previewFor(asked.split(",").filter(Boolean)) });
+    return route.fulfill({ json: previewFor(asked.split(",").filter(Boolean), (options.alone ?? 1) > 0) });
   });
   await page.route("**/api/coordinator/exports", (route) => {
     if (route.request().method() === "GET") {

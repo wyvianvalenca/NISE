@@ -339,7 +339,7 @@ function Review({
               </thead>
               <tbody>
                 {preview.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
+                  <tr key={rowIndex} className={preview.alone[rowIndex] ? styles.aloneRow : undefined}>
                     {row.map((cell, cellIndex) => (
                       <td key={cellIndex} className={styles[preview.columns[cellIndex].kind]}>
                         {cell}

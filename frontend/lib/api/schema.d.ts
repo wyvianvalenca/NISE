@@ -1711,6 +1711,8 @@ export interface components {
             columns: components["schemas"]["ExportColumnOut"][];
             /** Rows */
             rows: string[][];
+            /** Alone */
+            alone: boolean[];
             /** Totalrows */
             totalRows: number;
         };
