@@ -105,31 +105,6 @@
   min-width: 190px;
 }
 
-.more {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin: 0 -6px 0 -12px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-8);
-  background: none;
-  color: var(--nise-muted);
-  cursor: pointer;
-}
-
-.more:hover {
-  background: var(--nise-paper);
-}
-
-.more:focus-visible {
-  outline: 3px solid var(--nise-pink);
-  outline-offset: 0;
-}
-
 /*
  * On phones the row has no room for five columns side by side (RNF-G.01, 360 px):
  * the date and the name stay on top, and the line about the girls and the
@@ -170,8 +145,26 @@
     min-width: 0;
   }
 
-  .more {
+  /*
+   * The "..." button is built by RowMenu (its own CSS), and it is the only button
+   * that is a direct child of the row.
+   */
+  .row > button {
     grid-area: more;
     margin: -10px -10px 0 0;
   }
+}
+
+.nameLink {
+  color: inherit;
+}
+
+.nameLink:hover {
+  color: var(--nise-teal);
+  text-decoration: underline;
+}
+
+.nameLink:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
 }

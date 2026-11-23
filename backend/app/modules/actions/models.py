@@ -156,3 +156,11 @@ class Participation(Base):
     saved_present: Mapped[bool] = mapped_column(
         default=False, server_default=text("false")
     )
+    # What this registration gave (C2, #232). The lists show
+    # `participation.name or girl.name`: a record may have been typed by another
+    # group, and a coordinator never sees another group's data (RN-01).
+    name: Mapped[str | None] = mapped_column()
+    whatsapp: Mapped[str | None] = mapped_column()
+    # The level of this registration: the one given, or inferred from the year.
+    study_stage: Mapped[StudyStage | None] = mapped_column()
+    school_year: Mapped[str | None] = mapped_column()

@@ -1,48 +1,32 @@
 /**
- * The coordinator's actions: the list (K10) and, for the C2 epic, the action
- * page and its registrations.
- *
- * TEMPORARY: the routes that serve this are the actions list back-end (#217)
- * and the registrations back-end of the C2 epic, and neither exists yet. These
- * are test data shaped like the contract: names in camelCase, `status` computed
- * by the back-end (RN-37, #208) and never by the screen. When the real routes
- * land, only this file changes: the screens keep asking for the same things.
- *
- * `ActionStatus` and `CoordAction` keep the shape the action page (#239)
- * already uses, with the two counts the list needs added on top.
+ * The coordinator's actions list (K10, RF-F30.10): `GET /api/actions`. The
+ * back-end answers snake_case; the types below are the camelCase the screens
+ * use. The `status` comes ready from the back-end (RN-37, #208) and is never
+ * computed by the screen. The group is the signed-in coordinator's and never
+ * goes in the request.
  */
+import type { components } from "./api/schema";
 
-export type ActionStatus =
-  | "awaiting_registrations"
-  | "awaiting_event"
-  | "awaiting_attendance"
-  | "concluded";
+export type ActionStatus = components["schemas"]["ActionStatus"];
+
+type ActionListResponse = components["schemas"]["ActionListOut"];
 
 export type CoordAction = {
-  id: string;
+  id: number;
   name: string;
   /** One of the fixed type list, e.g. "oficina". */
   type: string;
   /** ISO dates, `YYYY-MM-DD`. */
   startsOn: string;
   endsOn: string;
-  /** 24-hour times, `HH:MM`. */
-  startsAtTime: string;
-  endsAtTime: string;
   format: "in_person" | "online";
-  cityName: string;
+  /** The city as the back-end labels it, e.g. "Maceió, AL"; the list calls it `city_label`. */
+  cityName: string | null;
   visibility: "open" | "closed";
-  /** The group's own sign-up form, where registrations happen. */
-  registrationUrl: string | null;
-  registrationsOpen: boolean;
   status: ActionStatus;
-  /** ISO timestamp of when the action was created. */
-  createdAt: string;
-  /** ISO timestamp, set once attendance is registered (RN-15 reads it). */
-  attendanceRegisteredAt: string | null;
   /** How many girls are registered in the action. */
   registeredCount: number;
-  /** How many were present; `null` until attendance exists (#135). */
+  /** How many were present; `null` until attendance exists (RN-37). */
   presentCount: number | null;
 };
 
@@ -55,149 +39,6 @@ export type CoordActionList = {
   counts: ActionStatusCounts;
 };
 
-const FORM_URL = "https://forms.rendeirasdocodigo.example/oficina-de-python";
-
-const BASE = {
-  startsAtTime: "14:00",
-  endsAtTime: "17:30",
-  format: "in_person",
-  cityName: "Maceió",
-  visibility: "open",
-  registrationUrl: FORM_URL,
-  createdAt: "2026-08-03T12:00:00Z",
-  attendanceRegisteredAt: null,
-  presentCount: null,
-} as const satisfies Partial<CoordAction>;
-
-const WAITING = { registrationsOpen: true, registeredCount: 0 } as const;
-
-function concluded(day: string): Pick<
-  CoordAction,
-  "status" | "registrationsOpen" | "attendanceRegisteredAt" | "startsOn" | "endsOn"
-> {
-  return {
-    status: "concluded",
-    registrationsOpen: false,
-    attendanceRegisteredAt: `${day}T21:00:00Z`,
-    startsOn: day,
-    endsOn: day,
-  };
-}
-
-/**
- * Deliberately out of order: the back-end orders each group (upcoming from the
- * nearest date, concluded from the most recent), and the function below does
- * the same, so a screen that trusts the order is testable.
- */
-const FIXTURES: CoordAction[] = [
-  {
-    ...BASE,
-    ...concluded("2026-08-14"),
-    id: "carreiras-em-dados",
-    name: "Palestra: carreiras em dados",
-    type: "palestra",
-    format: "online",
-    cityName: "Online",
-    registeredCount: 40,
-    presentCount: 33,
-  },
-  {
-    ...BASE,
-    ...WAITING,
-    id: "hackathon-meninas-no-codigo",
-    name: "Hackathon Meninas no Código",
-    type: "hackathon",
-    visibility: "closed",
-    startsOn: "2026-11-21",
-    endsOn: "2026-11-22",
-    status: "awaiting_registrations",
-  },
-  {
-    ...BASE,
-    ...concluded("2026-09-26"),
-    id: "arduino-na-escola",
-    name: "Arduino na escola",
-    type: "oficina",
-    registeredCount: 30,
-    presentCount: 22,
-  },
-  {
-    ...BASE,
-    ...WAITING,
-    id: "python-do-zero",
-    name: "Python do zero",
-    type: "minicurso",
-    format: "online",
-    cityName: "Online",
-    startsOn: "2026-11-07",
-    endsOn: "2026-11-07",
-    status: "awaiting_registrations",
-  },
-  {
-    ...BASE,
-    registrationsOpen: false,
-    id: "visita-ao-polo-de-ti",
-    name: "Visita ao Polo de TI",
-    type: "visita",
-    visibility: "closed",
-    startsOn: "2026-10-09",
-    endsOn: "2026-10-09",
-    status: "awaiting_attendance",
-    registeredCount: 18,
-  },
-  {
-    ...BASE,
-    ...concluded("2026-07-31"),
-    id: "minicurso-de-git",
-    name: "Minicurso de Git",
-    type: "minicurso",
-    registeredCount: 18,
-    presentCount: 12,
-  },
-  {
-    ...BASE,
-    registrationsOpen: true,
-    id: "scratch-primeiro-jogo",
-    name: "Scratch: crie seu primeiro jogo",
-    type: "oficina",
-    cityName: "Arapiraca",
-    startsOn: "2026-10-19",
-    endsOn: "2026-10-19",
-    status: "awaiting_event",
-    registeredCount: 26,
-  },
-  {
-    ...BASE,
-    ...concluded("2026-09-11"),
-    id: "mulheres-na-computacao",
-    name: "Mulheres na computação",
-    type: "palestra",
-    format: "online",
-    cityName: "Online",
-    registeredCount: 55,
-    presentCount: 41,
-  },
-  {
-    ...BASE,
-    ...WAITING,
-    id: "introducao-a-robotica",
-    name: "Introdução à robótica",
-    type: "oficina",
-    startsOn: "2026-10-24",
-    endsOn: "2026-10-24",
-    status: "awaiting_registrations",
-  },
-  {
-    ...BASE,
-    ...concluded("2026-08-28"),
-    id: "html-e-css-na-pratica",
-    name: "HTML e CSS na prática",
-    type: "oficina",
-    registeredCount: 20,
-    presentCount: 15,
-  },
-];
-
 const STATUS_ORDER: ActionStatus[] = [
   "awaiting_registrations",
   "awaiting_event",
@@ -205,24 +46,57 @@ const STATUS_ORDER: ActionStatus[] = [
   "concluded",
 ];
 
-function byDate(a: CoordAction, b: CoordAction): number {
-  const upcoming = a.startsOn.localeCompare(b.startsOn);
-  return a.status === "concluded" ? -upcoming : upcoming;
-}
-
-/**
- * Every action of the coordinator's group, ordered inside each status the way
- * the real route will (RN-37 note of #215: upcoming from the nearest date,
- * concluded from the most recent), with the count of each status for the chips.
- */
-export async function getCoordActionList(): Promise<CoordActionList> {
-  const actions = [...FIXTURES].sort(
-    (a, b) =>
-      STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || byDate(a, b),
-  );
+/** How many actions each status filter holds, counted from the actions given. */
+export function countActions(actions: CoordAction[]): ActionStatusCounts {
   const counts = { all: actions.length } as ActionStatusCounts;
   for (const status of STATUS_ORDER) {
     counts[status] = actions.filter((action) => action.status === status).length;
   }
-  return { actions, counts };
+  return counts;
+}
+
+/**
+ * The actions of the coordinator's group, already ordered by the back-end inside
+ * each status (upcoming from the nearest date, past ones from the most recent),
+ * with the count of each status for the chips. Any failure throws, so the screen
+ * can offer "Tentar novamente".
+ */
+export async function getCoordActionList(signal?: AbortSignal): Promise<CoordActionList> {
+  const response = await fetch("/api/actions", { signal });
+  if (!response.ok) throw new Error(`actions list ${response.status}`);
+  const data = (await response.json()) as ActionListResponse;
+  return {
+    actions: data.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      startsOn: item.starts_on,
+      endsOn: item.ends_on,
+      format: item.format,
+      cityName: item.city_label,
+      visibility: item.visibility,
+      status: item.status,
+      registeredCount: item.registered_count,
+      presentCount: item.attended_count,
+    })),
+    counts: data.counts,
+  };
+}
+
+/**
+ * Deletes one action of the group (RF-F30.12, RN-15). Resolves when it is
+ * gone and rejects when the server refuses or does not answer.
+ *
+ * TEMPORARY: the screen is not wired to `DELETE /api/actions/{id}` yet, so this only answers. It runs in the
+ * browser, so the test bench reads the address like the other dev benches do:
+ * `?fail` makes it reject and `?delay=<ms>` makes it slow, to see the waiting
+ * state. The real route also refuses an action with attendance, even by a
+ * direct request; the screen only offers the option when
+ * `presentCount` is empty.
+ */
+export async function deleteCoordAction(id: number): Promise<void> {
+  const params = new URLSearchParams(globalThis.location?.search);
+  const delay = Number(params.get("delay") ?? 0);
+  if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+  if (params.has("fail")) throw new Error(`Could not delete action ${id}`);
 }

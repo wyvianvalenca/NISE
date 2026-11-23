@@ -243,6 +243,51 @@ async def answer_match(
     return result
 
 
+async def current_enrollment(session: AsyncSession, girl_id: int) -> Enrollment | None:
+    """O curso em que ela está hoje: o ingresso mais recente que ela não deixou.
+
+    Ingresso com `left_on` (ela parou ou trocou de curso, RF-F6.06) não conta,
+    mas continua guardado. None se ela nunca registrou um curso ou se deixou
+    todos. Serve ao questionário (M5) e ao perfil.
+    """
+    return await session.scalar(
+        select(Enrollment)
+        .where(Enrollment.girl_id == girl_id, Enrollment.left_on.is_(None))
+        .order_by(Enrollment.created_at.desc(), Enrollment.id.desc())
+        .limit(1)
+    )
+
+
+def add_self_declared_enrollment(
+    session: AsyncSession,
+    girl_id: int,
+    level: CourseLevel,
+    course: str,
+    institution: str | None,
+    now: datetime | None = None,
+) -> Enrollment:
+    """Junta à sessão o ingresso que ela declarou, com a data de hoje (RF-F6.03).
+
+    Não faz commit: quem chama grava junto com as próprias linhas, para a
+    declaração ser atômica (RNF-F6.01). `course` e `institution` são texto
+    livre quando ela digita: nunca vão para logs (RN-11).
+    """
+    if now is None:
+        now = datetime.now(UTC)
+
+    enrollment = Enrollment(
+        girl_id=girl_id,
+        level=level,
+        course=course,
+        institution=institution,
+        enrolled_on=now.astimezone(LOCAL_TIMEZONE).date(),
+        origin=AdmissionOrigin.SELF_DECLARED,
+    )
+    session.add(enrollment)
+
+    return enrollment
+
+
 # ---------------------------------------------------------------------------
 # Ingressantes da coordenadora (C8, #315)
 # ---------------------------------------------------------------------------

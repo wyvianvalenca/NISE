@@ -26,5 +26,5 @@
     "openapi-typescript": "7.10.1",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@12.15.0"
+  "packageManager": "pnpm@12.21.0"
 }
