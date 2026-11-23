@@ -13,8 +13,18 @@ from app.modules.actions.dependencies import (
 from app.modules.actions.models import Action, Participation
 from app.modules.actions.service import today_in_maceio
 from app.modules.exports.models import DataExport
-from app.modules.exports.schemas import ExportColumnOut, ExportOut, ExportPreviewOut
-from app.modules.exports.service import PREVIEW_ROWS, build_table, create_export
+from app.modules.exports.schemas import (
+    ExportColumnOut,
+    ExportHistoryItemOut,
+    ExportOut,
+    ExportPreviewOut,
+)
+from app.modules.exports.service import (
+    PREVIEW_ROWS,
+    build_table,
+    create_export,
+    list_history,
+)
 
 router = APIRouter(prefix="/coordinator/exports", tags=["Coordinator"])
 
@@ -57,6 +67,15 @@ async def create_export_route(
     """Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07)."""
     export = await create_export(session, group_id, user.id, today_in_maceio())
     return ExportOut.model_validate(export, from_attributes=True)
+
+
+@router.get("", response_model=list[ExportHistoryItemOut], responses=_NOT_COORDINATOR)
+async def history_route(
+    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep
+) -> list[ExportHistoryItemOut]:
+    """O histórico do grupo, com as exportações de todas as coordenadoras (RF-F24.07)."""
+    items = await list_history(session, group_id)
+    return [ExportHistoryItemOut.model_validate(i, from_attributes=True) for i in items]
 
 
 @router.get(
