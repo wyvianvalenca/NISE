@@ -165,6 +165,7 @@ export function ExportWizard() {
               </Select>
             </div>
             <SummaryOrError summary={summary} failed={summaryFailed} />
+            {summary !== null && summary.alone > 0 && <AloneNotice count={summary.alone} />}
             {nothingMatches && (
               <p role="status" className={styles.muted}>
                 Nenhuma linha neste recorte. Mude as escolhas para continuar.
@@ -231,6 +232,22 @@ export function ExportWizard() {
         )}
       </section>
     </>
+  );
+}
+
+/** RF-F24.31: who arrived alone also goes in the file, and she is told how many. */
+function AloneNotice({ count }: { count: number }) {
+  return (
+    <Notice tone="pink" icon="info">
+      <strong>
+        {count === 1
+          ? "Entra também 1 menina que chegou sozinha"
+          : `Entram também as ${count} meninas que chegaram sozinhas`}
+      </strong>
+      <br />
+      Criaram conta direto na NISE, sem ir a nenhuma ação. Ficam na planilha com grupo_comparacao =
+      sozinha e as colunas da ação vazias, pra comparar interesse e ingresso entre os grupos.
+    </Notice>
   );
 }
 
