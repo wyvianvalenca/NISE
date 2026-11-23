@@ -1,5 +1,10 @@
 import type { Page } from "@playwright/test";
-import type { EnrollmentPage, EnrollmentRow } from "../lib/ingressantes-api";
+import type {
+  EnrollmentPage,
+  EnrollmentRow,
+  EnrollmentSummary,
+  ListSearch,
+} from "../lib/ingressantes-api";
 
 // Simula GET /api/coordinator/enrollments (#315) para os testes não dependerem
 // do FastAPI. Dados fictícios.
@@ -63,13 +68,18 @@ export function manyRows(count: number): EnrollmentRow[] {
 type Options = {
   /** Todas as linhas, já na ordem do back. Padrão: as cinco do Figma. */
   rows?: EnrollmentRow[];
+  /** Nomes curtos de quem tem indício sem resposta (#318): vêm depois de todas as linhas. */
+  waiting?: string[];
   /** Status de erro, no lugar da lista. */
   status?: 401 | 403 | 409 | 500;
 };
 
-/** Responde a rota paginando `rows` de 15 em 15, como o back. Devolve as páginas pedidas. */
+/**
+ * Responde a rota paginando `rows` e depois `waiting` de 15 em 15, como o back.
+ * Devolve as páginas pedidas.
+ */
 export async function mockEnrollmentsApi(page: Page, options: Options = {}): Promise<number[]> {
-  const { rows = FIRST_ROWS, status } = options;
+  const { rows = FIRST_ROWS, waiting = [], status } = options;
   const asked: number[] = [];
 
   await page.route("**/api/coordinator/enrollments?*", (route) => {
@@ -80,9 +90,15 @@ export async function mockEnrollmentsApi(page: Page, options: Options = {}): Pro
       return route.fulfill({ status, json: { detail: "erro" } });
     }
 
+    const start = (number - 1) * 15;
     const body: EnrollmentPage = {
-      items: rows.slice((number - 1) * 15, number * 15),
+      items: rows.slice(start, start + 15),
       total: rows.length,
+      // As que aguardam vêm depois de todas as que ingressaram.
+      waiting: waiting
+        .slice(Math.max(0, start - rows.length), Math.max(0, start + 15 - rows.length))
+        .map((girlName) => ({ girlName })),
+      waitingTotal: waiting.length,
       page: number,
       pageSize: 15,
     };
@@ -90,4 +106,60 @@ export async function mockEnrollmentsApi(page: Page, options: Options = {}): Pro
   });
 
   return asked;
+}
+
+type SearchOptions = {
+  /** O que a rota devolve. Padrão: UFAL, última em 10 de out, próxima em jan. */
+  search?: ListSearch;
+  /** Status de erro, no lugar do card. */
+  status?: 401 | 403 | 500;
+};
+
+/** Simula GET /api/coordinator/list-search (#317). Datas e fontes fictícias. */
+export async function mockListSearchApi(page: Page, options: SearchOptions = {}): Promise<void> {
+  const {
+    search = {
+      sources: ["UFAL"],
+      // Meio-dia em Maceió (UTC-3).
+      lastSearchAt: "2026-10-10T15:00:00Z",
+      nextSearchOn: "2027-01-10",
+    },
+    status,
+  } = options;
+
+  await page.route("**/api/coordinator/list-search", (route) =>
+    status ? route.fulfill({ status, json: { detail: "erro" } }) : route.fulfill({ json: search }),
+  );
+}
+
+/** O resumo do Figma: 5 meninas, 28% de quem criou conta, 3 na graduação e 2 no técnico. */
+export const FIGMA_SUMMARY: EnrollmentSummary = {
+  total: 5,
+  percent: 28,
+  graduacao: { count: 3, institutions: ["UFAL", "UNEAL"] },
+  tecnico: { count: 2, institutions: ["IFAL"] },
+  recent: {
+    // Meio-dia em Maceió.
+    searchedAt: "2026-10-10T15:00:00Z",
+    girls: [
+      { firstName: "Júlia", course: "Sistemas de Informação", institution: "UNEAL" },
+      { firstName: "Lara", course: "Técnico em Redes", institution: "IFAL" },
+    ],
+  },
+};
+
+type SummaryOptions = {
+  /** O que a rota devolve. Padrão: FIGMA_SUMMARY. */
+  summary?: EnrollmentSummary;
+  /** Status de erro, no lugar do resumo. */
+  status?: 401 | 403 | 409 | 500;
+};
+
+/** Simula GET /api/coordinator/enrollments/summary (#316). Dados fictícios. */
+export async function mockSummaryApi(page: Page, options: SummaryOptions = {}): Promise<void> {
+  const { summary = FIGMA_SUMMARY, status } = options;
+
+  await page.route("**/api/coordinator/enrollments/summary", (route) =>
+    status ? route.fulfill({ status, json: { detail: "erro" } }) : route.fulfill({ json: summary }),
+  );
 }

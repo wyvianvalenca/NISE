@@ -55,6 +55,12 @@
   font-weight: 500;
 }
 
+.footnote {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
 .girl {
   display: inline-flex;
   align-items: center;
@@ -96,4 +102,75 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Card / Busca nas listas de ingressantes do Figma. Só informa, sem botão. */
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 32px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.search + .card {
+  margin-top: 16px;
+}
+
+.searchTitle {
+  color: var(--nise-ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.searchText {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.searchDates {
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+/* Card do resumo no topo ("5 meninas do grupo ... entraram na área"). */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 32px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.summary + .search {
+  margin-top: 16px;
+}
+
+.summaryTitle {
+  color: var(--nise-ink);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.recent {
+  color: var(--nise-muted);
+  font-size: 14px;
 }
