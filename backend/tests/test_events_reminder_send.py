@@ -405,6 +405,130 @@ async def test_endereco_recusado_de_vez_nao_trava_as_outras(
     assert primeira.entry.reminder_sent_for == AMANHA
 
 
+@pytest.mark.parametrize(
+    "erro",
+    [
+        smtplib.SMTPDataError(550, b"5.4.5 Daily user sending quota exceeded"),
+        smtplib.SMTPDataError(550, b"5.7.1 Message blocked as spam"),
+        smtplib.SMTPDataError(552, b"5.7.0 Content blocked"),
+        smtplib.SMTPDataError(554, b"message rejected"),
+        smtplib.SMTPRecipientsRefused(
+            {"x@example.com": (550, b"5.4.5 Daily user sending quota exceeded")}
+        ),
+    ],
+    ids=[
+        "cota-diaria",
+        "bloqueio-5.7.1",
+        "conteudo-5.7.0",
+        "data-sem-codigo",
+        "rcpt-5.4.5",
+    ],
+)
+async def test_5xx_da_conta_ou_do_conteudo_para_e_desfaz_as_marcas(
+    monkeypatch: pytest.MonkeyPatch, erro: Exception
+) -> None:
+    linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    # A cota estoura a partir do segundo e-mail.
+    conectar, conexao = _conexao_falsa([None, erro])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=1, dropped=0, stopped=True)
+    assert len(enviados(conexao)) == 2
+    assert linhas[0].entry.reminder_sent_for == AMANHA
+    # O que não saiu (o que falhou e o que faltava) pode ser repetido hoje.
+    assert linhas[1].entry.reminder_sent_for is None
+    assert linhas[2].entry.reminder_sent_for is None
+    conexao.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [
+        smtplib.SMTPRecipientsRefused(
+            {"x@example.com": (550, b"5.1.1 The email account does not exist")}
+        ),
+        smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"no such user")}),
+        smtplib.SMTPRecipientsRefused({"x@example.com": (553, b"5.1.3 bad address")}),
+        smtplib.SMTPDataError(552, b"5.2.2 mailbox full"),
+    ],
+    ids=["5.1.1", "rcpt-sem-codigo", "5.1.3", "caixa-cheia-5.2.2"],
+)
+async def test_5xx_do_endereco_descarta_so_aquele_lembrete(
+    monkeypatch: pytest.MonkeyPatch, erro: Exception
+) -> None:
+    linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    conectar, conexao = _conexao_falsa([None, erro, None])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=2, dropped=1, stopped=False)
+    assert len(enviados(conexao)) == 3
+    # Repetir não adiantaria: a marca do descartado fica, e a dos outros também.
+    assert all(item.entry.reminder_sent_for == AMANHA for item in linhas)
+
+
+async def test_rota_responde_502_quando_a_cota_diaria_estoura(
+    segredo: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    conectar, _ = _conexao_falsa(
+        [None, smtplib.SMTPDataError(550, b"5.4.5 Daily user sending quota exceeded")]
+    )
+
+    async def rodar(session: object) -> SendResult:
+        return await send_event_reminders(tabela.session, HOJE, conectar)
+
+    monkeypatch.setattr(cron, "send_event_reminders", rodar)
+
+    resposta = await _cron(f"Bearer {segredo}")
+
+    assert resposta.status_code == 502
+    assert linhas[1].entry.reminder_sent_for is None
+    assert linhas[2].entry.reminder_sent_for is None
+
+
+# --- Limite do lote e do tempo ------------------------------------------------
+
+
+async def test_o_lote_marca_e_envia_so_ate_o_limite(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sending, "BATCH_SIZE", 2)
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 5)]
+    tabela, conectar, conexao = preparar(monkeypatch, *linhas)
+
+    primeira = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    # Sobraram duas: a rotina avisa (502) e elas não ficam marcadas sem sair.
+    assert primeira == SendResult(sent=2, dropped=0, stopped=True)
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, AMANHA, None, None]
+    segunda = await send_event_reminders(tabela.session, HOJE, conectar)
+    assert segunda == SendResult(sent=2, dropped=0, stopped=False)
+    assert len(enviados(conexao)) == 4
+
+
+async def test_acabou_o_tempo_para_e_desfaz_as_marcas_dos_que_faltam(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
+    tabela, conectar, conexao = preparar(monkeypatch, *linhas)
+    # O relógio anda 25 s a cada leitura: no 3º lembrete já passou de 40 s.
+    horas = iter([0.0, 0.0, 25.0, 50.0, 75.0])
+
+    resultado = await send_event_reminders(
+        tabela.session, HOJE, conectar, clock=lambda: next(horas)
+    )
+
+    assert resultado == SendResult(sent=2, dropped=0, stopped=True)
+    assert len(enviados(conexao)) == 2
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, AMANHA, None]
+    conexao.close.assert_called_once()
+
+
 async def test_desfazer_a_marca_e_um_update_so_da_linha(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
