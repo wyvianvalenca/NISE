@@ -1,14 +1,55 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+from app.modules.actions.models import ActionType
+from app.modules.girls.models import Topic
 
 
 class _CamelModel(BaseModel):
     """O front lê em camelCase."""
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class ExportCutIn(_CamelModel):
+    """O recorte do primeiro passo (RF-F24.09). Campo vazio é "todos"."""
+
+    year: int | None = Field(default=None, ge=2000, le=2100)
+    action_id: int | None = Field(default=None, ge=1)
+    type: ActionType | None = None
+    tag: Topic | None = None
+
+
+class OptionOut(_CamelModel):
+    value: str
+    label: str
+
+
+class ActionOptionOut(_CamelModel):
+    id: int
+    name: str
+    starts_on: date
+
+
+class ExportCutOptionsOut(_CamelModel):
+    """O que ela pode escolher no "Recorte": só dados do próprio grupo."""
+
+    years: list[int]
+    actions: list[ActionOptionOut]
+    types: list[OptionOut]
+    tags: list[OptionOut]
+
+
+class ExportSummaryOut(_CamelModel):
+    """O resumo da barra escura, em "Recorte" e "Conteúdo" (RF-F24.33)."""
+
+    rows: int
+    girls: int
+    alone: int
+    actions: int
 
 
 class ExportColumnOut(_CamelModel):
