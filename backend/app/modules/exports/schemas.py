@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from app.modules.exports.service import Package
+
 
 class _CamelModel(BaseModel):
     """O front lê em camelCase."""
@@ -36,6 +38,12 @@ class ExportOut(_CamelModel):
     row_count: int
     column_count: int
     expires_at: datetime
+
+
+class ExportIn(_CamelModel):
+    """Os pacotes ligados. A Base sempre sai; lista vazia é só a Base (RF-F24.08)."""
+
+    packages: list[Package]
 
 
 class ExportHistoryItemOut(_CamelModel):

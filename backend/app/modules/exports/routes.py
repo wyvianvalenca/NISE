@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Path, Response, status
+from fastapi import APIRouter, HTTPException, Path, Query, Response, status
 from sqlalchemy import func, select
 
 from app.auth.permissions import CoordinatorDep
@@ -16,11 +16,14 @@ from app.modules.exports.models import DataExport
 from app.modules.exports.schemas import (
     ExportColumnOut,
     ExportHistoryItemOut,
+    ExportIn,
     ExportOut,
     ExportPreviewOut,
 )
 from app.modules.exports.service import (
+    DEFAULT_PACKAGES,
     PREVIEW_ROWS,
+    Package,
     build_table,
     create_export,
     list_history,
@@ -33,13 +36,35 @@ _NOT_COORDINATOR: dict[int | str, dict[str, Any]] = {
 }
 
 
+def parse_packages(text: str | None) -> list[Package]:
+    """ "groups,funnel" vira a lista. Sem o parâmetro vale o padrão; "" é só a Base."""
+    if text is None:
+        return list(DEFAULT_PACKAGES)
+    try:
+        return [Package(name) for name in text.split(",") if name]
+    except ValueError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Pacote desconhecido"
+        ) from None
+
+
 # O grupo vem sempre da sessão, nunca da requisição (RN-07, RNF-G.03).
 @router.get("/preview", response_model=ExportPreviewOut, responses=_NOT_COORDINATOR)
 async def preview_route(
-    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    packages: Annotated[
+        str | None, Query(description="Pacotes ligados, separados por vírgula")
+    ] = None,
 ) -> ExportPreviewOut:
     """Cinco linhas do arquivo que vai sair, para o passo "Revisão" (RF-F24.32)."""
-    table = await build_table(session, group_id, today_in_maceio(), PREVIEW_ROWS)
+    table = await build_table(
+        session,
+        group_id,
+        today_in_maceio(),
+        PREVIEW_ROWS,
+        parse_packages(packages),
+    )
     total = await session.scalar(
         select(func.count(Participation.id))
         .join(Action, Action.id == Participation.action_id)
@@ -62,10 +87,16 @@ async def preview_route(
     responses=_NOT_COORDINATOR,
 )
 async def create_export_route(
-    user: CoordinatorDep, group_id: CoordinatorGroupIdDep, session: AsyncSessionDep
+    user: CoordinatorDep,
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    body: ExportIn | None = None,
 ) -> ExportOut:
     """Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07)."""
-    export = await create_export(session, group_id, user.id, today_in_maceio())
+    packages = DEFAULT_PACKAGES if body is None else body.packages
+    export = await create_export(
+        session, group_id, user.id, today_in_maceio(), packages=packages
+    )
     return ExportOut.model_validate(export, from_attributes=True)
 
 

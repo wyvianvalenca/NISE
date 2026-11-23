@@ -10,6 +10,7 @@ import { Notice } from "@/components/Notice";
 import {
   BASE_COLUMNS,
   countdownLabel,
+  DEFAULT_PACKAGES,
   type ExportedFile,
   generateExport,
   getHistory,
@@ -17,21 +18,30 @@ import {
   type HistoryItem,
   KIND_LABELS,
   NEVER_LEAVES,
+  PACKAGES,
+  type PackageId,
   type Preview,
   STEPS,
+  summaryLabel,
 } from "@/lib/exportar";
+import { PackageCard } from "./PackageCard";
 import { ExportHistory } from "./ExportHistory";
 import styles from "./ExportWizard.module.css";
 
 export function ExportWizard() {
   const [step, setStep] = useState(0);
   const [file, setFile] = useState<ExportedFile | null>(null);
+  const [packages, setPackages] = useState<readonly PackageId[]>(DEFAULT_PACKAGES);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Ao trocar de passo, o foco vai para o título dele (teclado e leitor de tela).
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+
+  function toggle(id: PackageId, on: boolean) {
+    setPackages((current) => (on ? [...current, id] : current.filter((item) => item !== id)));
+  }
 
   function back() {
     setStep((current) => current - 1);
@@ -80,6 +90,17 @@ export function ExportWizard() {
                 ))}
               </ul>
             </div>
+            {PACKAGES.map((item) => (
+              <PackageCard
+                key={item.id}
+                item={item}
+                on={packages.includes(item.id)}
+                onChange={(on) => toggle(item.id, on)}
+              />
+            ))}
+            <p className={styles.summary} aria-live="polite">
+              {summaryLabel(packages)}
+            </p>
             <div className={styles.actions}>
               <Button variant="secondary" onClick={back}>
                 Voltar
@@ -91,6 +112,7 @@ export function ExportWizard() {
 
         {step === 2 && (
           <Review
+            packages={packages}
             onBack={back}
             onDone={(made) => {
               setFile(made);
@@ -99,16 +121,18 @@ export function ExportWizard() {
           />
         )}
 
-        {step === 3 && file && <Done file={file} onNewFile={setFile} />}
+        {step === 3 && file && <Done file={file} packages={packages} onNewFile={setFile} />}
       </section>
     </>
   );
 }
 
 function Review({
+  packages,
   onBack,
   onDone,
 }: {
+  packages: readonly PackageId[];
   onBack: () => void;
   onDone: (file: ExportedFile) => void;
 }) {
@@ -120,13 +144,13 @@ function Review({
 
   useEffect(() => {
     let current = true;
-    getPreview()
+    getPreview(packages)
       .then((loaded) => current && setPreview(loaded))
       .catch(() => current && setFailed(true));
     return () => {
       current = false;
     };
-  }, [attempt]);
+  }, [attempt, packages]);
 
   function retry() {
     setFailed(false);
@@ -138,7 +162,7 @@ function Review({
     setGenerating(true);
     setGenerateFailed(false);
     try {
-      onDone(await generateExport());
+      onDone(await generateExport(packages));
     } catch {
       setGenerateFailed(true);
       setGenerating(false);
@@ -148,6 +172,7 @@ function Review({
   return (
     <>
       <h3 className={styles.baseTitle}>Raio-X do arquivo</h3>
+      <p className={styles.summary}>{summaryLabel(packages)}</p>
       {failed && (
         <div role="alert" className={styles.problem}>
           <p>Não foi possível montar a prévia do arquivo.</p>
@@ -238,9 +263,11 @@ function Review({
 
 function Done({
   file,
+  packages,
   onNewFile,
 }: {
   file: ExportedFile;
+  packages: readonly PackageId[];
   onNewFile: (file: ExportedFile) => void;
 }) {
   const expiresAt = new Date(file.expiresAt).getTime();
@@ -256,7 +283,7 @@ function Done({
   async function generateAgain() {
     setAgain("loading");
     try {
-      onNewFile(await generateExport());
+      onNewFile(await generateExport(packages));
       setNow(Date.now());
       setAgain("idle");
     } catch {

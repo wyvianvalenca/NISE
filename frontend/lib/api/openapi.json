@@ -4166,6 +4166,24 @@
         "operationId": "preview_route_api_coordinator_exports_preview_get",
         "parameters": [
           {
+            "name": "packages",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Pacotes ligados, separados por vírgula",
+              "title": "Packages"
+            },
+            "description": "Pacotes ligados, separados por vírgula"
+          },
+          {
             "name": "nise_session",
             "in": "cookie",
             "required": false,
@@ -4268,6 +4286,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ExportIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -5926,6 +5961,23 @@
         "title": "ExportHistoryItemOut",
         "description": "Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07)."
       },
+      "ExportIn": {
+        "properties": {
+          "packages": {
+            "items": {
+              "$ref": "#/components/schemas/Package"
+            },
+            "type": "array",
+            "title": "Packages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "packages"
+        ],
+        "title": "ExportIn",
+        "description": "Os pacotes ligados. A Base sempre sai; lista vazia é só a Base (RF-F24.08)."
+      },
       "ExportOut": {
         "properties": {
           "id": {
@@ -7137,6 +7189,19 @@
         ],
         "title": "OptionOut",
         "description": "Uma opção de lista fechada: o código vai para o back, o nome vai para a tela."
+      },
+      "Package": {
+        "type": "string",
+        "enum": [
+          "groups",
+          "funnel",
+          "ratings",
+          "interest",
+          "admission",
+          "other_groups"
+        ],
+        "title": "Package",
+        "description": "Os pacotes que a coordenadora liga ou desliga (RF-F24.08)."
       },
       "PendingRatingOut": {
         "properties": {

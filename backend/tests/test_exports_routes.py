@@ -111,7 +111,7 @@ async def test_gerar_responde_o_arquivo_pronto_e_baixa_o_csv(
     assert corpo["filename"].startswith("rendeiras-do-codigo_dados-anonimos_")
     assert corpo["filename"].endswith(".csv")
     assert corpo["rowCount"] == 2
-    assert corpo["columnCount"] == 8
+    assert corpo["columnCount"] == 21
 
     baixado = await chamar(db_session, katia, "GET", f"/{corpo['id']}/file")
 
@@ -176,4 +176,4 @@ async def test_revisao_traz_cinco_linhas_e_o_total(db_session: AsyncSession) -> 
     assert len(corpo["rows"]) == 5
     assert corpo["totalRows"] == 6
     assert [c["kind"] for c in corpo["columns"]][:2] == ["code", "generalized"]
-    assert len(corpo["rows"][0]) == len(corpo["columns"]) == 8
+    assert len(corpo["rows"][0]) == len(corpo["columns"]) == 21

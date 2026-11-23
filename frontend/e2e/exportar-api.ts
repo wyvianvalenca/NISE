@@ -61,16 +61,41 @@ type Options = {
   generateStatus?: 403 | 500;
 };
 
+const EXTRA_COLUMNS: Record<string, string[]> = {
+  groups: ["grupo de comparação"],
+  funnel: ["inscrita", "presente", "concluinte"],
+  ratings: ["nota da avaliação"],
+  interest: ["interesse_cadastro", "interesse_3m", "interesse_6m", "interesse_12m", "interesse_18m"],
+  admission: ["ingressou", "nível de ingresso", "área de ingresso"],
+  other_groups: ["outros grupos"],
+};
+
+/** The preview the API would give for those packages: the Base and their columns. */
+export function previewFor(packages: string[]): Preview {
+  const extra = packages.flatMap((name) => EXTRA_COLUMNS[name] ?? []);
+  return {
+    columns: [
+      ...PREVIEW.columns,
+      ...extra.map((label) => ({ key: label, label, kind: "action" as const })),
+    ],
+    rows: PREVIEW.rows.map((row) => [...row, ...extra.map(() => "sim")]),
+    totalRows: PREVIEW.totalRows,
+  };
+}
+
 /** Responde a prévia e o "Gerar arquivo", e devolve quantas vezes o arquivo foi gerado. */
-export async function mockExportApi(page: Page, options: Options = {}): Promise<{ generated: number }> {
-  const calls = { generated: 0 };
+export async function mockExportApi(
+  page: Page,
+  options: Options = {},
+): Promise<{ generated: number; packages: string[] | null }> {
+  const calls = { generated: 0, packages: null as string[] | null };
   const history = [...(options.history ?? OLD_HISTORY)];
 
-  await page.route("**/api/coordinator/exports/preview", (route) =>
-    options.previewStatus
-      ? route.fulfill({ status: options.previewStatus })
-      : route.fulfill({ json: PREVIEW }),
-  );
+  await page.route("**/api/coordinator/exports/preview?**", (route) => {
+    if (options.previewStatus) return route.fulfill({ status: options.previewStatus });
+    const asked = new URL(route.request().url()).searchParams.get("packages") ?? "";
+    return route.fulfill({ json: previewFor(asked.split(",").filter(Boolean)) });
+  });
   await page.route("**/api/coordinator/exports", (route) => {
     if (route.request().method() === "GET") {
       return options.historyStatus
@@ -80,6 +105,7 @@ export async function mockExportApi(page: Page, options: Options = {}): Promise<
     if (route.request().method() !== "POST") return route.fallback();
     if (options.generateStatus) return route.fulfill({ status: options.generateStatus });
     calls.generated += 1;
+    calls.packages = (route.request().postDataJSON() as { packages: string[] }).packages;
     history.unshift({
       id: FILE.id,
       who: "Kátia",
