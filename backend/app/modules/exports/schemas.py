@@ -36,3 +36,13 @@ class ExportOut(_CamelModel):
     row_count: int
     column_count: int
     expires_at: datetime
+
+
+class ExportHistoryItemOut(_CamelModel):
+    """Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07)."""
+
+    id: int
+    who: str
+    created_at: datetime
+    cut: str
+    row_count: int

@@ -78,3 +78,48 @@ test("stays on the review step when generating fails", async ({ page }) => {
   await expect(page.getByText("Não foi possível gerar o arquivo. Tente novamente.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Gerar arquivo" })).toBeEnabled();
 });
+
+test.describe("history of exports (#376)", () => {
+  async function goToDone(page: import("@playwright/test").Page) {
+    await goToReview(page);
+    await page.getByRole("button", { name: "Gerar arquivo" }).click();
+  }
+
+  test("shows who, when, the cut and the lines, with the new export on top", async ({ page }) => {
+    await mockExportApi(page);
+    await goToDone(page);
+
+    const panel = page.getByRole("region", { name: "Histórico de exportações" });
+    await expect(
+      panel.getByText("Quem exportou, quando, com quais filtros e quantas linhas."),
+    ).toBeVisible();
+    const items = panel.getByRole("listitem");
+    await expect(items).toHaveCount(3);
+    await expect(items.nth(0)).toContainText(/Kátia · hoje, \d{2}:\d{2}/);
+    await expect(items.nth(0)).toContainText("Dados anônimos · todas as ações");
+    await expect(items.nth(0)).toContainText("42 linhas");
+    await expect(items.nth(1)).toContainText("Joana · 02/10, 09:40");
+    await expect(items.nth(1)).toContainText("66 linhas");
+    await expect(items.nth(2)).toContainText("Kátia · 18/09, 12:00");
+    await expect(items.nth(2)).toContainText("1 linha");
+  });
+
+  test("has no way to download again, hide or delete an item", async ({ page }) => {
+    await mockExportApi(page);
+    await goToDone(page);
+
+    const panel = page.getByRole("region", { name: "Histórico de exportações" });
+    await expect(panel.getByRole("link")).toHaveCount(0);
+    await expect(panel.getByRole("button")).toHaveCount(0);
+  });
+
+  test("tells her when the history cannot be loaded", async ({ page }) => {
+    await mockExportApi(page, { historyStatus: 500 });
+    await goToDone(page);
+
+    await expect(page.getByRole("alert")).toContainText(
+      "Não foi possível carregar o histórico de exportações.",
+    );
+    await expect(page.getByText("Arquivo pronto")).toBeVisible();
+  });
+});

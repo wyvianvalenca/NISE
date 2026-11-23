@@ -4293,6 +4293,78 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "History Route",
+        "description": "O histórico do grupo, com as exportações de todas as coordenadoras (RF-F24.07).",
+        "operationId": "history_route_api_coordinator_exports_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExportHistoryItemOut"
+                  },
+                  "title": "Response History Route Api Coordinator Exports Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/coordinator/exports/{export_id}/file": {
@@ -5818,6 +5890,41 @@
           "kind"
         ],
         "title": "ExportColumnOut"
+      },
+      "ExportHistoryItemOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "who": {
+            "type": "string",
+            "title": "Who"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "cut": {
+            "type": "string",
+            "title": "Cut"
+          },
+          "rowCount": {
+            "type": "integer",
+            "title": "Rowcount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "who",
+          "createdAt",
+          "cut",
+          "rowCount"
+        ],
+        "title": "ExportHistoryItemOut",
+        "description": "Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07)."
       },
       "ExportOut": {
         "properties": {
