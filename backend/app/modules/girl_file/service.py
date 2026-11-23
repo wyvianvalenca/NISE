@@ -54,13 +54,25 @@ CHOICE_STATUS: dict[Choice, FileStatus] = {
 # depois" (o "+ Quero fazer" do Ver depois, #110). No filé, no "Não é pra mim"
 # ou concluído, o item não aparece mais nas sugestões, e trocar a escolha
 # apagaria o que ela fez (a nota, o dia da conclusão, a inscrição).
-CHOOSABLE: frozenset[FileStatus] = frozenset({FileStatus.LATER})
+#
+# O "Não deu" (#190) também: o evento já passou e não é sugerido, mas se a
+# curadoria o adiar ele volta às sugestões (é futuro de novo), e escolher
+# troca a linha antiga.
+CHOOSABLE: frozenset[FileStatus] = frozenset({FileStatus.LATER, FileStatus.DID_NOT_GO})
 
 # O que o "Desfazer", o "Remover" e o "Tirar do filé" podem apagar. A atividade
-# concluída não sai do filé, e o evento em que ela se inscreveu também não: o
-# "Tirar do filé" de eventos (M6) decide isso quando chegar.
+# concluída e o evento concluído não saem do filé. O evento em que ela se
+# inscreveu sai pelo "Tirar do filé" da A06·4b (#184, D-39). O "Não deu" (#190)
+# já está fora do filé; apagar a linha só limpa o que ficou guardado.
 REMOVABLE: frozenset[FileStatus] = frozenset(
-    {FileStatus.NEXT, FileStatus.IN_PROGRESS, FileStatus.LATER, FileStatus.DISMISSED}
+    {
+        FileStatus.NEXT,
+        FileStatus.IN_PROGRESS,
+        FileStatus.SIGNED_UP,
+        FileStatus.LATER,
+        FileStatus.DISMISSED,
+        FileStatus.DID_NOT_GO,
+    }
 )
 
 # O que conta na pílula "Meu filé": tudo o que entrou no filé. O "Ver depois"
@@ -196,12 +208,13 @@ async def remove_choice(
     """Apaga a escolha dela sobre um item, e o item volta a poder ser sugerido.
 
     É o "Desfazer" da A06·2 (RF-F10.05), o "Remover" do Ver depois e o "Tirar
-    do filé" da atividade (#119). Apagar a linha leva junto o motivo do "Não é
-    pra mim". Se ela não tem escolha nesse item (ou já desfez), não faz nada.
+    do filé" da atividade (#119) e do evento, próximo ou inscrita (#184).
+    Apagar a linha leva junto o motivo do "Não é pra mim". Se ela não tem
+    escolha nesse item (ou já desfez), não faz nada.
 
-    Devolve None quando deu certo. A atividade concluída e o evento em que ela
-    se inscreveu não saem do filé (REMOVABLE): devolve o status que impediu, sem
-    apagar nada (tabela de status da #78). A linha é travada antes de decidir,
+    Devolve None quando deu certo. O que foi concluído não sai do filé
+    (REMOVABLE): devolve o status que impediu, sem apagar nada (tabela de
+    status da #78). A linha é travada antes de decidir,
     então um "Marcar como concluída" ao mesmo tempo nunca é apagado.
     """
     entry = await find_entry(session, girl_id, origin, number, for_update=True)
