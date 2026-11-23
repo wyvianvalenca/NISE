@@ -65,8 +65,15 @@ const ICON_SIZES = {
   rocket: 22,
   play: 22,
   trash: 16,
+  lock: 15,
   "calendar-sm": 14,
+  upload: 14,
+  more: 18,
+  alert: 14,
   clock: 18,
+  edit: 16,
+  "user-plus": 16,
+  link: 16,
 } as const;
 
 export type IconName = keyof typeof ICON_SIZES;

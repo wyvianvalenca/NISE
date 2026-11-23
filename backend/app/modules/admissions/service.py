@@ -2,10 +2,12 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import ColumnElement, exists, or_, select
+from sqlalchemy import ColumnElement, Select, exists, func, or_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
+from app.modules.actions.models import Action, Participation
 from app.modules.admissions.exceptions import (
     MatchAlreadyAnsweredError,
     MatchNotFoundError,
@@ -21,6 +23,7 @@ from app.modules.admissions.models import (
     OfficialList,
 )
 from app.modules.admissions.schemas import MatchAnswerIn, MatchResult
+from app.modules.girls.models import Girl
 
 # Sem resposta nesse prazo, o indício é apagado (RF-F31.06).
 MATCH_DAYS = 30
@@ -238,3 +241,118 @@ async def answer_match(
     await session.commit()
 
     return result
+
+
+async def current_enrollment(session: AsyncSession, girl_id: int) -> Enrollment | None:
+    """O curso em que ela está hoje: o ingresso mais recente que ela não deixou.
+
+    Ingresso com `left_on` (ela parou ou trocou de curso, RF-F6.06) não conta,
+    mas continua guardado. None se ela nunca registrou um curso ou se deixou
+    todos. Serve ao questionário (M5) e ao perfil.
+    """
+    return await session.scalar(
+        select(Enrollment)
+        .where(Enrollment.girl_id == girl_id, Enrollment.left_on.is_(None))
+        .order_by(Enrollment.created_at.desc(), Enrollment.id.desc())
+        .limit(1)
+    )
+
+
+def add_self_declared_enrollment(
+    session: AsyncSession,
+    girl_id: int,
+    level: CourseLevel,
+    course: str,
+    institution: str | None,
+    now: datetime | None = None,
+) -> Enrollment:
+    """Junta à sessão o ingresso que ela declarou, com a data de hoje (RF-F6.03).
+
+    Não faz commit: quem chama grava junto com as próprias linhas, para a
+    declaração ser atômica (RNF-F6.01). `course` e `institution` são texto
+    livre quando ela digita: nunca vão para logs (RN-11).
+    """
+    if now is None:
+        now = datetime.now(UTC)
+
+    enrollment = Enrollment(
+        girl_id=girl_id,
+        level=level,
+        course=course,
+        institution=institution,
+        enrolled_on=now.astimezone(LOCAL_TIMEZONE).date(),
+        origin=AdmissionOrigin.SELF_DECLARED,
+    )
+    session.add(enrollment)
+
+    return enrollment
+
+
+# ---------------------------------------------------------------------------
+# Ingressantes da coordenadora (C8, #315)
+# ---------------------------------------------------------------------------
+
+# 15 meninas por página na lista "Quem ingressou" (D-77).
+ENROLLMENTS_PAGE_SIZE = 15
+
+
+def girls_of_group(group_id: int) -> Select[int]:
+    """Os ids das meninas que aparecem com nome para o grupo (RN-01, RN-04).
+
+    Ela precisa ter conta, ter vindo pelo convite de algum grupo e ter
+    presença registrada numa ação deste grupo. Quem chegou sozinha nunca
+    aparece com nome (RN-04). Quem foi a ações de dois grupos aparece nos
+    dois (D-61).
+    """
+    went_to_an_action_of_the_group = exists(
+        select(Participation.id)
+        .join(Action, Action.id == Participation.action_id)
+        .where(
+            Participation.girl_id == Girl.id,
+            Participation.attended_at.is_not(None),
+            Action.group_id == group_id,
+        )
+    )
+
+    return select(Girl.id).where(
+        Girl.user_id.is_not(None),
+        Girl.origin_group_id.is_not(None),
+        went_to_an_action_of_the_group,
+    )
+
+
+async def list_group_enrollments(
+    session: AsyncSession, group_id: int, page: int
+) -> tuple[Sequence[tuple[Enrollment, str]], int]:
+    """Uma página de "Quem ingressou" e o total de meninas da lista (#315).
+
+    Uma linha por menina, com o ingresso registrado mais recente dela: se ela
+    corrigiu a declaração (RF-F6.05), aparece o curso novo. Só ingresso entra;
+    aprovação, indício sem resposta e "Não sou eu" não (RN-21, RN-22).
+
+    A ordem é a do registro, das mais recentes para as mais antigas (D-77). O
+    id desempata, para a mesma menina não pular de página.
+    """
+    latest = aliased(
+        Enrollment,
+        select(Enrollment)
+        .where(Enrollment.girl_id.in_(girls_of_group(group_id)))
+        .ext(distinct_on(Enrollment.girl_id))
+        .order_by(
+            Enrollment.girl_id, Enrollment.created_at.desc(), Enrollment.id.desc()
+        )
+        .subquery(),
+    )
+
+    total = await session.scalar(select(func.count()).select_from(latest))
+
+    statement = (
+        select(latest, Girl.name)
+        .join(Girl, Girl.id == latest.girl_id)
+        .order_by(latest.created_at.desc(), latest.id.desc())
+        .limit(ENROLLMENTS_PAGE_SIZE)
+        .offset((page - 1) * ENROLLMENTS_PAGE_SIZE)
+    )
+    rows = (await session.execute(statement)).tuples().all()
+
+    return rows, total or 0

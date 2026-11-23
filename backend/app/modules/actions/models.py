@@ -150,3 +150,17 @@ class Participation(Base):
     # Quando a presença dela foi registrada (F3, #135). Vazio enquanto não foi,
     # ou se ela faltou. Só quem tem presença avalia a ação (#58).
     attended_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # The coordinator's mark saved with "Salvar e continuar depois" (#340,
+    # RF-F3.04). It is only the state of her page: it is not attendance, sends
+    # nothing and counts for nothing until "Concluir presença" (D-81, RN-37).
+    saved_present: Mapped[bool] = mapped_column(
+        default=False, server_default=text("false")
+    )
+    # What this registration gave (C2, #232). The lists show
+    # `participation.name or girl.name`: a record may have been typed by another
+    # group, and a coordinator never sees another group's data (RN-01).
+    name: Mapped[str | None] = mapped_column()
+    whatsapp: Mapped[str | None] = mapped_column()
+    # The level of this registration: the one given, or inferred from the year.
+    study_stage: Mapped[StudyStage | None] = mapped_column()
+    school_year: Mapped[str | None] = mapped_column()

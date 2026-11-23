@@ -27,9 +27,9 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.email import EmailNotConfiguredError, SmtpConnection
+from app.core.email import EmailNotConfiguredError, SmtpConnection, send_outcome
 from app.modules.actions.service import today_in_maceio
-from app.modules.admissions.match_email import Sender, send_outcome
+from app.modules.admissions.match_email import Sender
 from app.modules.consents.service import EmailKind, can_send_email
 from app.modules.events.service import (
     DueReminder,

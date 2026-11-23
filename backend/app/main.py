@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 
 from app.auth.exceptions import SignupError, signup_error_handler
+from app.modules.actions.exceptions import (
+    ActionValidationError,
+    action_validation_handler,
+)
 from app.modules.cities.exceptions import InvalidCityError, invalid_city_handler
 from app.modules.consents.exceptions import (
     TermsNotAcceptedError,
@@ -10,6 +14,7 @@ from app.routes import router
 
 app = FastAPI()
 
+app.add_exception_handler(ActionValidationError, action_validation_handler)
 app.add_exception_handler(InvalidCityError, invalid_city_handler)
 app.add_exception_handler(SignupError, signup_error_handler)
 app.add_exception_handler(TermsNotAcceptedError, terms_not_accepted_handler)

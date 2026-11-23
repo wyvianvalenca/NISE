@@ -1,10 +1,11 @@
 import { CoordHeader } from "@/components/CoordHeader";
 import { getCoordinator } from "@/lib/coordinator";
+import { ActionsView } from "./ActionsView";
 import styles from "./page.module.css";
 
 /**
- * K10 "Ações", coordinator side. For now it holds only the top menu (#210);
- * the action list comes with #216.
+ * K10 "Ações", coordinator side (RF-F30.10): the group's actions by status.
+ * The list is loaded in the browser by `ActionsView`.
  */
 export default async function CoordActionsPage() {
   const coordinator = await getCoordinator();
@@ -17,7 +18,7 @@ export default async function CoordActionsPage() {
         accountInitial={coordinator.initial}
       />
       <main className={styles.main}>
-        <h1 className={styles.title}>Ações</h1>
+        <ActionsView />
       </main>
     </>
   );
