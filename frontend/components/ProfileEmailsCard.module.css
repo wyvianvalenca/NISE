@@ -1,0 +1,7 @@
+/* Enquanto o interruptor não existe (#393), o estado aparece em texto, no lugar do Toggle. */
+.state {
+  flex-shrink: 0;
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
