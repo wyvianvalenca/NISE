@@ -152,6 +152,12 @@
   background: var(--nise-pinkSoft);
 }
 
+/* RF-F24.31: the line of a girl who arrived alone stands out in pink. */
+.table tr.aloneRow td {
+  background: var(--nise-pinkTint);
+  font-weight: 700;
+}
+
 .generalized {
   background: var(--nise-tealSoft);
 }

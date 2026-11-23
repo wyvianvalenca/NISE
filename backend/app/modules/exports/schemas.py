@@ -81,6 +81,8 @@ class ExportPreviewOut(_CamelModel):
 
     columns: list[ExportColumnOut]
     rows: list[list[str]]
+    # Uma marca por linha: é de quem chegou sozinha (a Revisão a pinta de rosa).
+    alone: list[bool]
     total_rows: int
 
 

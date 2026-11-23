@@ -15,9 +15,18 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
-from sqlalchemy import ColumnElement, distinct, extract, func, select, update
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    distinct,
+    exists,
+    extract,
+    func,
+    select,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -262,6 +271,8 @@ class CutOptions:
 class ExportTable:
     columns: tuple[Column, ...]
     rows: list[list[str]]
+    # Uma marca por linha: a linha é de quem chegou sozinha (a Revisão a pinta).
+    alone: list[bool]
 
 
 def age_band(birth_date: date | None, reference: date) -> str:
@@ -314,6 +325,24 @@ def cut_filters(group_id: int, cut: ExportCut) -> list[ColumnElement[bool]]:
     return filters
 
 
+def alone_girls_query() -> Select[Girl, Any]:
+    """Quem chegou sozinha: tem conta e nunca foi inscrita em nenhuma ação (RN-60).
+
+    Não depende do grupo nem do recorte: ela não tem ação (suposição da #380).
+    Quem foi a uma ação deixa de ser "sozinha" (RF-F24.31). Quem apagou a conta
+    perde o vínculo com `users` e não entra (RN-12).
+    """
+    return (
+        select(Girl, City.name)
+        .outerjoin(City, City.id == Girl.city_ibge_code)
+        .where(
+            Girl.user_id.is_not(None),
+            ~exists().where(Participation.girl_id == Girl.id),
+        )
+        .order_by(Girl.id)
+    )
+
+
 async def cut_options(session: AsyncSession, group_id: int) -> CutOptions:
     """O que ela pode escolher em "Período" e "Ação": só o que é do grupo."""
     actions = (
@@ -354,8 +383,14 @@ async def summarize(
         )
     ).one()
     actions = await session.scalar(select(func.count(Action.id)).where(*filters))
-    # Quem chegou sozinha entra com a #380; até lá são zero.
-    return ExportSummary(rows=rows, girls=girls, alone=0, actions=actions or 0)
+    # Quem chegou sozinha tem uma linha e um código, como as outras (RF-F24.31).
+    alone = await session.scalar(
+        select(func.count()).select_from(alone_girls_query().subquery())
+    )
+    alone = alone or 0
+    return ExportSummary(
+        rows=rows + alone, girls=girls + alone, alone=alone, actions=actions or 0
+    )
 
 
 def attendance_cell(action: Action, participation: Participation) -> str:
@@ -366,7 +401,7 @@ def attendance_cell(action: Action, participation: Participation) -> str:
 
 
 def comparison_cell(action: Action, participation: Participation) -> str:
-    """ "participante" ou "não compareceu". "Chegou sozinha" vem na #380."""
+    """ "participante" ou "não compareceu". Quem chegou sozinha não passa por aqui."""
     return {"sim": "participante", "não": "não compareceu"}.get(
         attendance_cell(action, participation), ""
     )
@@ -407,14 +442,16 @@ async def entry_by_girl(
     Área com menos de 5 meninas no arquivo vira "TI (agrupado)" (RF-F24.35). A
     contagem usa todas as meninas do grupo, não só as linhas da Revisão.
     """
-    everyone = (
+    in_group = (
         select(Participation.girl_id)
         .join(Action, Action.id == Participation.action_id)
         .where(Action.group_id == group_id)
     )
+    # Quem chegou sozinha também tem linha no arquivo, então conta na área.
+    alone = alone_girls_query().with_only_columns(Girl.id).order_by(None)
     enrollments = await session.scalars(
         select(Enrollment)
-        .where(Enrollment.girl_id.in_(everyone))
+        .where(Enrollment.girl_id.in_(in_group) | Enrollment.girl_id.in_(alone))
         .order_by(Enrollment.enrolled_on.desc(), Enrollment.id.desc())
     )
     latest: dict[int, Enrollment] = {}
@@ -473,10 +510,18 @@ async def build_table(
         .options(selectinload(Action.topics))
         .order_by(Action.starts_on, Action.id, Participation.id)
     )
-    if limit is not None:
+    alone_total = (await summarize(session, group_id, cut)).alone
+    if limit is not None and alone_total:
+        # A Revisão mostra ao menos uma de quem chegou sozinha entre as linhas.
+        query = query.limit(max(limit - 1, 0))
+    elif limit is not None:
         query = query.limit(limit)
     found = list((await session.execute(query)).all())
-    girl_ids = {girl.id for _, _, girl, _ in found}
+    alone_query = alone_girls_query()
+    if limit is not None:
+        alone_query = alone_query.limit(limit - len(found))
+    alone_found = list((await session.execute(alone_query)).all())
+    girl_ids = {girl.id for _, _, girl, _ in found} | {g.id for g, _ in alone_found}
 
     ratings: dict[tuple[int, int], int | None] = {}
     if Package.RATINGS in chosen and found:
@@ -503,6 +548,7 @@ async def build_table(
     codes: dict[int, str] = {}
     taken: set[str] = set()
     rows: list[list[str]] = []
+    is_alone: list[bool] = []
     for participation, action, girl, city_name in found:
         if girl.id not in codes:
             codes[girl.id] = new_code(taken)
@@ -533,8 +579,31 @@ async def build_table(
             },
         }
         rows.append([values[column.key] for column in columns])
+        is_alone.append(False)
 
-    return ExportTable(columns, rows)
+    # Quem chegou sozinha: grupo "sozinha" e as colunas da ação vazias (RN-60).
+    for girl, city_name in alone_found:
+        entry = entries.get(girl.id)
+        values = {
+            "code": new_code(taken),
+            "age_band": age_band(girl.birth_date, today),
+            "city": city_name or "",
+            "study_stage": STUDY_STAGE_LABELS[girl.study_stage]
+            if girl.study_stage
+            else "",
+            "comparison": "sozinha",
+            "entered": "sim" if entry else "não",
+            "entry_level": entry[0] if entry else "",
+            "entry_area": entry[1] if entry else "",
+            **{
+                key: interest.get(girl.id, {}).get(key, "")
+                for key in ("interest_signup", *INTEREST_KEYS.values())
+            },
+        }
+        rows.append([values.get(column.key, "") for column in columns])
+        is_alone.append(True)
+
+    return ExportTable(columns, rows, is_alone)
 
 
 def to_csv(table: ExportTable) -> str:

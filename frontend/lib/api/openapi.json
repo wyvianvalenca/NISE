@@ -6479,6 +6479,13 @@
             "type": "array",
             "title": "Rows"
           },
+          "alone": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Alone"
+          },
           "totalRows": {
             "type": "integer",
             "title": "Totalrows"
@@ -6488,6 +6495,7 @@
         "required": [
           "columns",
           "rows",
+          "alone",
           "totalRows"
         ],
         "title": "ExportPreviewOut",
