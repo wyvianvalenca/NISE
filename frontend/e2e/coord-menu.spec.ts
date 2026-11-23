@@ -16,13 +16,13 @@ test("shows the five tabs in order with Ações as the current one", async ({ pa
   await expect(nav.getByRole("link", { name: "Ações" })).toHaveAttribute("aria-current", "page");
 });
 
-test("only Ações, Resultados and Ingressantes are links, the other tabs go nowhere", async ({
+test("only Relatórios goes nowhere, the other tabs are links", async ({
   page,
 }) => {
   await page.goto(URL);
 
   const nav = page.getByRole("navigation", { name: "Seções" });
-  await expect(nav.locator("a[href]")).toHaveCount(3);
+  await expect(nav.locator("a[href]")).toHaveCount(4);
   await expect(nav.getByRole("link", { name: "Resultados" })).toHaveAttribute(
     "href",
     "/coordenacao/resultados",
@@ -32,7 +32,12 @@ test("only Ações, Resultados and Ingressantes are links, the other tabs go now
     "/coordenacao/ingressantes",
   );
 
-  for (const name of ["Relatórios", "Exportar"]) {
+  await expect(nav.getByRole("link", { name: "Exportar" })).toHaveAttribute(
+    "href",
+    "/coordenacao/exportar",
+  );
+
+  for (const name of ["Relatórios"]) {
     const tab = nav.getByRole("link", { name, exact: true, disabled: true });
     await expect(tab).not.toHaveAttribute("href", /.*/);
     await expect(tab).toHaveAttribute("aria-disabled", "true");
