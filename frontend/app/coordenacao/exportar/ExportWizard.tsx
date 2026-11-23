@@ -13,11 +13,13 @@ import {
   type ExportedFile,
   generateExport,
   getPreview,
+  type HistoryItem,
   KIND_LABELS,
   NEVER_LEAVES,
   type Preview,
   STEPS,
 } from "@/lib/exportar";
+import { ExportHistory } from "./ExportHistory";
 import styles from "./ExportWizard.module.css";
 
 export function ExportWizard() {
@@ -295,6 +297,26 @@ function Done({
           )}
         </>
       )}
+
+      <ExportHistory items={SAMPLE_HISTORY} />
     </div>
   );
 }
+
+// Dados de exemplo até o painel ler a rota (#376). Fictícios.
+const SAMPLE_HISTORY: HistoryItem[] = [
+  {
+    id: 2,
+    who: "Kátia",
+    createdAt: new Date().toISOString(),
+    cut: "Dados anônimos · todas as ações",
+    rowCount: 66,
+  },
+  {
+    id: 1,
+    who: "Joana",
+    createdAt: "2026-10-02T12:40:00.000Z",
+    cut: "Dados anônimos · todas as ações",
+    rowCount: 1,
+  },
+];
