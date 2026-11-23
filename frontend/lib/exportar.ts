@@ -16,15 +16,10 @@ export type Cut = { year: string; actionId: string; type: string; tag: string };
 
 export const NO_CUT: Cut = { year: "", actionId: "", type: "", tag: "" };
 
-export type CutOptions = {
-  years: number[];
-  actions: { id: number; name: string; startsOn: string }[];
-  types: { value: string; label: string }[];
-  tags: { value: string; label: string }[];
-};
+export type CutOptions = components["schemas"]["ExportCutOptionsOut"];
 
 /** The numbers of the dark bar (RF-F24.33). */
-export type Summary = { rows: number; girls: number; alone: number; actions: number };
+export type Summary = components["schemas"]["ExportSummaryOut"];
 
 export const STEPS = ["Recorte", "Conteúdo", "Revisão", "Pronto"] as const;
 
@@ -63,35 +58,53 @@ export function countdownLabel(msLeft: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+const BASE = "/api/coordinator/exports";
+
+/** The cut as a query string: only what she chose, since empty means "todos". */
+function cutQuery(cut: Cut): string {
+  const params = new URLSearchParams();
+  if (cut.year) params.set("year", cut.year);
+  if (cut.actionId) params.set("action_id", cut.actionId);
+  if (cut.type) params.set("type", cut.type);
+  if (cut.tag) params.set("tag", cut.tag);
+  const text = params.toString();
+  return text ? `?${text}` : "";
+}
+
+/** What she can choose in "Recorte": only data of her own group. */
+export async function getCutOptions(): Promise<CutOptions> {
+  const response = await fetch(`${BASE}/options`);
+  if (!response.ok) throw new Error(`options ${response.status}`);
+  return (await response.json()) as CutOptions;
+}
+
+/** The numbers of the dark bar for this cut (RF-F24.33). */
+export async function getSummary(cut: Cut): Promise<Summary> {
+  const response = await fetch(`${BASE}/summary${cutQuery(cut)}`);
+  if (!response.ok) throw new Error(`summary ${response.status}`);
+  return (await response.json()) as Summary;
+}
+
 /** The five lines of the "Revisão" step. The group comes from the session. */
-export async function getPreview(): Promise<Preview> {
-  const response = await fetch("/api/coordinator/exports/preview");
+export async function getPreview(cut: Cut): Promise<Preview> {
+  const response = await fetch(`${BASE}/preview${cutQuery(cut)}`);
   if (!response.ok) throw new Error(`preview ${response.status}`);
   return (await response.json()) as Preview;
 }
 
-/** "Gerar arquivo": makes the CSV and registers the export (RF-F24.34). */
-export async function generateExport(): Promise<ExportedFile> {
-  const response = await fetch("/api/coordinator/exports", { method: "POST" });
+/** "Gerar arquivo": makes the CSV of the cut and registers it (RF-F24.34). */
+export async function generateExport(cut: Cut): Promise<ExportedFile> {
+  const body = {
+    year: cut.year ? Number(cut.year) : null,
+    actionId: cut.actionId ? Number(cut.actionId) : null,
+    type: cut.type || null,
+    tag: cut.tag || null,
+  };
+  const response = await fetch(BASE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
   if (!response.ok) throw new Error(`export ${response.status}`);
   return (await response.json()) as ExportedFile;
-}
-
-/** Sample data while the screen is not on the routes yet. */
-export async function getCutOptions(): Promise<CutOptions> {
-  return {
-    years: [2026, 2025],
-    actions: [{ id: 1, name: "Oficina de Python", startsOn: "2026-09-20" }],
-    types: [
-      { value: "oficina", label: "Oficina" },
-      { value: "palestra", label: "Palestra" },
-    ],
-    tags: [{ value: "programacao", label: "Programação" }],
-  };
-}
-
-/** Sample data while the screen is not on the routes yet. */
-export async function getSummary(cut: Cut): Promise<Summary> {
-  void cut;
-  return { rows: 72, girls: 62, alone: 4, actions: 3 };
 }

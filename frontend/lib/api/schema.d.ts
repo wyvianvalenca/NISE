@@ -899,6 +899,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/exports/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Options Route
+         * @description O que a coordenadora escolhe nos seletores do "Recorte" (RF-F24.09).
+         */
+        get: operations["options_route_api_coordinator_exports_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Summary Route
+         * @description Linhas, meninas, sozinhas e ações do arquivo desse recorte (RF-F24.33).
+         */
+        get: operations["summary_route_api_coordinator_exports_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/exports/preview": {
         parameters: {
             query?: never;
@@ -930,7 +970,7 @@ export interface paths {
         put?: never;
         /**
          * Create Export Route
-         * @description Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07).
+         * @description Gera o CSV anônimo do recorte e registra a exportação (RF-F24.34, RN-07).
          */
         post: operations["create_export_route_api_coordinator_exports_post"];
         delete?: never;
@@ -1073,6 +1113,18 @@ export interface components {
             /** Items */
             items: components["schemas"]["ActionListItemOut"][];
             counts: components["schemas"]["ActionStatusCountsOut"];
+        };
+        /** ActionOptionOut */
+        ActionOptionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Startson
+             * Format: date
+             */
+            startsOn: string;
         };
         /**
          * ActionOut
@@ -1576,6 +1628,32 @@ export interface components {
             kind: "code" | "generalized" | "action";
         };
         /**
+         * ExportCutIn
+         * @description O recorte do primeiro passo (RF-F24.09). Campo vazio é "todos".
+         */
+        ExportCutIn: {
+            /** Year */
+            year?: number | null;
+            /** Actionid */
+            actionId?: number | null;
+            type?: components["schemas"]["ActionType"] | null;
+            tag?: components["schemas"]["Topic"] | null;
+        };
+        /**
+         * ExportCutOptionsOut
+         * @description O que ela pode escolher no "Recorte": só dados do próprio grupo.
+         */
+        ExportCutOptionsOut: {
+            /** Years */
+            years: number[];
+            /** Actions */
+            actions: components["schemas"]["ActionOptionOut"][];
+            /** Types */
+            types: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
+            /** Tags */
+            tags: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
+        };
+        /**
          * ExportOut
          * @description O arquivo pronto (RF-F24.34). O CSV se baixa por `GET .../{id}/file`.
          */
@@ -1607,6 +1685,20 @@ export interface components {
             rows: string[][];
             /** Totalrows */
             totalRows: number;
+        };
+        /**
+         * ExportSummaryOut
+         * @description O resumo da barra escura, em "Recorte" e "Conteúdo" (RF-F24.33).
+         */
+        ExportSummaryOut: {
+            /** Rows */
+            rows: number;
+            /** Girls */
+            girls: number;
+            /** Alone */
+            alone: number;
+            /** Actions */
+            actions: number;
         };
         /**
          * FeedbackIn
@@ -1734,19 +1826,19 @@ export interface components {
          */
         FollowupOptionsOut: {
             /** Computingviews */
-            computingViews: components["schemas"]["OptionOut"][];
+            computingViews: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Futureselves */
-            futureSelves: components["schemas"]["OptionOut"][];
+            futureSelves: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Activities */
-            activities: components["schemas"]["OptionOut"][];
+            activities: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Helps */
-            helps: components["schemas"]["OptionOut"][];
+            helps: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Coursestatuses */
-            courseStatuses: components["schemas"]["OptionOut"][];
+            courseStatuses: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Courses */
-            courses: components["schemas"]["OptionOut"][];
+            courses: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Stillenrolled */
-            stillEnrolled: components["schemas"]["OptionOut"][];
+            stillEnrolled: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
         };
         /**
          * FollowupRound
@@ -1913,9 +2005,9 @@ export interface components {
          */
         InterestOptionsOut: {
             /** Topics */
-            topics: components["schemas"]["OptionOut"][];
+            topics: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
             /** Stages */
-            stages: components["schemas"]["OptionOut"][];
+            stages: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
         };
         /**
          * InterestsIn
@@ -2084,16 +2176,6 @@ export interface components {
         OpportunityEmailsIn: {
             /** Enabled */
             enabled: boolean;
-        };
-        /**
-         * OptionOut
-         * @description Uma opção de lista fechada: o código vai para o back, o nome vai para a tela.
-         */
-        OptionOut: {
-            /** Code */
-            code: string;
-            /** Label */
-            label: string;
         };
         /**
          * PendingRatingOut
@@ -2463,6 +2545,23 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** OptionOut */
+        app__modules__exports__schemas__OptionOut: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * OptionOut
+         * @description Uma opção de lista fechada: o código vai para o back, o nome vai para a tela.
+         */
+        app__modules__girls__schemas__OptionOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
         };
     };
     responses: never;
@@ -4881,9 +4980,104 @@ export interface operations {
             };
         };
     };
-    preview_route_api_coordinator_exports_preview_get: {
+    options_route_api_coordinator_exports_options_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportCutOptionsOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_route_api_coordinator_exports_summary_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                tag?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportSummaryOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ação de outro grupo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_route_api_coordinator_exports_preview_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                tag?: components["schemas"]["Topic"] | null;
+            };
             header?: never;
             path?: never;
             cookie?: {
@@ -4904,6 +5098,13 @@ export interface operations {
             };
             /** @description Não é coordenadora ou sem grupo */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ação de outro grupo */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4930,7 +5131,11 @@ export interface operations {
                 nise_cadastro_pendente?: string | null;
             };
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExportCutIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {
@@ -4943,6 +5148,13 @@ export interface operations {
             };
             /** @description Não é coordenadora ou sem grupo */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ação de outro grupo */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

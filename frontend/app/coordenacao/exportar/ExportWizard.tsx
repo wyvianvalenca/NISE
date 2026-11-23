@@ -192,6 +192,7 @@ export function ExportWizard() {
 
         {step === 2 && (
           <Review
+            cut={cut}
             onBack={back}
             onDone={(made) => {
               setFile(made);
@@ -200,7 +201,7 @@ export function ExportWizard() {
           />
         )}
 
-        {step === 3 && file && <Done file={file} onNewFile={setFile} />}
+        {step === 3 && file && <Done file={file} cut={cut} onNewFile={setFile} />}
       </section>
     </>
   );
@@ -218,9 +219,11 @@ function SummaryOrError({ summary, failed }: { summary: Summary | null; failed: 
 }
 
 function Review({
+  cut,
   onBack,
   onDone,
 }: {
+  cut: Cut;
   onBack: () => void;
   onDone: (file: ExportedFile) => void;
 }) {
@@ -232,13 +235,13 @@ function Review({
 
   useEffect(() => {
     let current = true;
-    getPreview()
+    getPreview(cut)
       .then((loaded) => current && setPreview(loaded))
       .catch(() => current && setFailed(true));
     return () => {
       current = false;
     };
-  }, [attempt]);
+  }, [cut, attempt]);
 
   function retry() {
     setFailed(false);
@@ -250,7 +253,7 @@ function Review({
     setGenerating(true);
     setGenerateFailed(false);
     try {
-      onDone(await generateExport());
+      onDone(await generateExport(cut));
     } catch {
       setGenerateFailed(true);
       setGenerating(false);
@@ -350,9 +353,11 @@ function Review({
 
 function Done({
   file,
+  cut,
   onNewFile,
 }: {
   file: ExportedFile;
+  cut: Cut;
   onNewFile: (file: ExportedFile) => void;
 }) {
   const expiresAt = new Date(file.expiresAt).getTime();
@@ -368,7 +373,7 @@ function Done({
   async function generateAgain() {
     setAgain("loading");
     try {
-      onNewFile(await generateExport());
+      onNewFile(await generateExport(cut));
       setNow(Date.now());
       setAgain("idle");
     } catch {
