@@ -138,6 +138,7 @@ async def preview_route(
             for c in table.columns
         ],
         rows=table.rows,
+        alone=table.alone,
         total_rows=(await summarize(session, group_id, cut)).rows,
     )
 
