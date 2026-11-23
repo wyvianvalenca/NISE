@@ -795,6 +795,82 @@
       }
     },
     "/api/actions/{action_id}": {
+      "get": {
+        "tags": [
+          "API",
+          "Actions"
+        ],
+        "summary": "Get Action Page Route",
+        "operationId": "get_action_page_route_api_actions__action_id__get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionPageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": [
           "API",
@@ -933,6 +1009,703 @@
           },
           "409": {
             "description": "A presença já foi registrada, a ação não pode ser excluída"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations": {
+      "get": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "List Registrations Route",
+        "operationId": "list_registrations_route_api_actions__action_id__registrations_get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationListOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Add Registration Route",
+        "operationId": "add_registration_route_api_actions__action_id__registrations_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationAddedOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations/import/read": {
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Import Read Route",
+        "description": "Step 1: the columns of the file, its first line and a suggested mapping.",
+        "operationId": "import_read_route_api_actions__action_id__registrations_import_read_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_read_route_api_actions__action_id__registrations_import_read_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReadOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "{\"error\": \"unsupported_type\" | \"unreadable_file\" | \"empty_file\" | \"too_large\" | \"missing_columns\" | \"invalid_request\"}, or {\"error\": \"invalid_corrections\", \"lines\": [...]} on the import"
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations/import/review": {
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Import Review Route",
+        "description": "Step 2: ready, to review and repeated lines. Saves nothing.",
+        "operationId": "import_review_route_api_actions__action_id__registrations_import_review_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_review_route_api_actions__action_id__registrations_import_review_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReviewOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "{\"error\": \"unsupported_type\" | \"unreadable_file\" | \"empty_file\" | \"too_large\" | \"missing_columns\" | \"invalid_request\"}, or {\"error\": \"invalid_corrections\", \"lines\": [...]} on the import"
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations/import": {
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Import Route",
+        "description": "Registers the new girls, all or nothing: one commit at the end (RF-F1.08).",
+        "operationId": "import_route_api_actions__action_id__registrations_import_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_route_api_actions__action_id__registrations_import_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "{\"error\": \"unsupported_type\" | \"unreadable_file\" | \"empty_file\" | \"too_large\" | \"missing_columns\" | \"invalid_request\"}, or {\"error\": \"invalid_corrections\", \"lines\": [...]} on the import"
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations/email-check": {
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Email Check Route",
+        "operationId": "email_check_route_api_actions__action_id__registrations_email_check_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailCheckIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailCheckOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations/close": {
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Close Registrations Route",
+        "operationId": "close_registrations_route_api_actions__action_id__registrations_close_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionPageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/registrations/reopen": {
+      "post": {
+        "tags": [
+          "API",
+          "Registrations"
+        ],
+        "summary": "Reopen Registrations Route",
+        "operationId": "reopen_registrations_route_api_actions__action_id__registrations_reopen_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionPageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "O dia do evento chegou: {\"error\": \"event_day_reached\"}"
           },
           "422": {
             "description": "Validation Error",
@@ -1669,6 +2442,151 @@
             }
           }
         ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/course": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile Course",
+        "operationId": "profile_course_api_profile_course_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileCourseOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Register Course",
+        "operationId": "register_course_api_profile_course_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileCourseIn"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -2679,7 +3597,7 @@
           "Agenda"
         ],
         "summary": "To Answer",
-        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10).",
+        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).",
         "operationId": "to_answer_api_agenda_to_answer_get",
         "parameters": [
           {
@@ -2735,6 +3653,290 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/agenda/dates": {
+      "get": {
+        "tags": [
+          "API",
+          "Agenda"
+        ],
+        "summary": "Dates",
+        "description": "As datas e os questionários que ainda vão chegar (RF-F4.11b).",
+        "operationId": "dates_api_agenda_dates_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaDatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/current": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Current Followup",
+        "operationId": "current_followup_api_followup_current_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CurrentFollowupOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Current Followup Api Followup Current Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/options": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Followup Options",
+        "operationId": "followup_options_api_followup_options_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupOptionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/answers": {
+      "post": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Answer Followup",
+        "operationId": "answer_followup_api_followup_answers_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "Nenhuma rodada aberta, ou a rodada já fechou: {\"error\": \"no_open_round\"}"
+          },
+          "409": {
+            "description": "Ela já respondeu essa rodada: {\"error\": \"already_answered\"}"
+          },
+          "422": {
+            "description": "Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {\"error\": \"invalid_course_answer\"}"
           }
         }
       }
@@ -2823,15 +4025,73 @@
         }
       }
     },
-    "/api/coordinator/enrollments/summary": {
+    "/api/coordinator/results/after-action": {
       "get": {
         "tags": [
           "API",
           "Coordinator"
         ],
-        "summary": "Group Enrollment Summary",
-        "operationId": "group_enrollment_summary_api_coordinator_enrollments_summary_get",
+        "summary": "After Action Route",
+        "operationId": "after_action_route_api_coordinator_results_after_action_get",
         "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "12m"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
           {
             "name": "nise_session",
             "in": "cookie",
@@ -2871,7 +4131,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentSummaryOut"
+                  "$ref": "#/components/schemas/AfterActionOut"
                 }
               }
             }
@@ -2881,75 +4141,6 @@
           },
           "409": {
             "description": "Coordenadora em mais de um grupo"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/coordinator/list-search": {
-      "get": {
-        "tags": [
-          "API",
-          "Coordinator"
-        ],
-        "summary": "List Search",
-        "operationId": "list_search_api_coordinator_list_search_get",
-        "parameters": [
-          {
-            "name": "nise_session",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Nise Session"
-            }
-          },
-          {
-            "name": "nise_cadastro_pendente",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Nise Cadastro Pendente"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListSearchOut"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Não é coordenadora"
           },
           "422": {
             "description": "Validation Error",
@@ -3392,6 +4583,204 @@
         "title": "ActionOut",
         "description": "A saved action, as the form and the list read it.\n\n`city_label` is \"Maceió, AL\", the text of the notice \"Já aparece nas\nsugestões das meninas de <cidade>\"; it is null for an online action (D-45)."
       },
+      "ActionPageOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ActionType"
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Ends On"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "city_ibge_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Ibge Code"
+          },
+          "city_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Label"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ActionVisibility"
+          },
+          "registration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Url"
+          },
+          "starts_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At Time"
+          },
+          "ends_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At Time"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "registrations_open": {
+            "type": "boolean",
+            "title": "Registrations Open"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/Topic"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/StudyStage"
+            },
+            "type": "array",
+            "title": "Audiences"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ActionStatus"
+          },
+          "city_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Name"
+          },
+          "created_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Created On"
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "registered_count": {
+            "type": "integer",
+            "title": "Registered Count"
+          },
+          "registrations_closed_by_coordinator": {
+            "type": "boolean",
+            "title": "Registrations Closed By Coordinator"
+          },
+          "can_reopen": {
+            "type": "boolean",
+            "title": "Can Reopen"
+          },
+          "can_delete": {
+            "type": "boolean",
+            "title": "Can Delete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "starts_on",
+          "ends_on",
+          "format",
+          "city_ibge_code",
+          "city_label",
+          "visibility",
+          "registration_url",
+          "starts_at_time",
+          "ends_at_time",
+          "address",
+          "description",
+          "registrations_open",
+          "topics",
+          "audiences",
+          "status",
+          "city_name",
+          "created_on",
+          "today",
+          "registered_count",
+          "registrations_closed_by_coordinator",
+          "can_reopen",
+          "can_delete"
+        ],
+        "title": "ActionPageOut",
+        "description": "The action page (K11, #233): the action plus what the page needs to decide.\n\n`registrations_open` here is the effective value (RF-F1.16): closed by the\ncoordinator or by the day of the event arriving. `today` comes from the server\nso the screen and the rules agree on the date (Maceió)."
+      },
       "ActionStatus": {
         "type": "string",
         "enum": [
@@ -3458,6 +4847,18 @@
           "closed"
         ],
         "title": "ActionVisibility"
+      },
+      "Activity": {
+        "type": "string",
+        "enum": [
+          "online_course",
+          "event",
+          "self_study",
+          "project",
+          "none_yet"
+        ],
+        "title": "Activity",
+        "description": "Pergunta 4: \"Desde a última vez, você…\" (várias escolhas)."
       },
       "ActivityOut": {
         "properties": {
@@ -3593,6 +4994,46 @@
         "title": "AdmissionOrigin",
         "description": "De onde veio o registro (RF-F6.03)."
       },
+      "AfterActionOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          },
+          "returned": {
+            "$ref": "#/components/schemas/ComparedOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows",
+          "returned"
+        ],
+        "title": "AfterActionOut",
+        "description": "O card \"Logo depois da ação\" (RF-F5.09). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado, e `returned` é quantas de cada lado voltaram a\noutra ação. O front calcula a porcentagem."
+      },
+      "AgendaDatesOut": {
+        "properties": {
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingItemOut"
+            },
+            "type": "array",
+            "title": "Upcoming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upcoming"
+        ],
+        "title": "AgendaDatesOut",
+        "description": "As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b)."
+      },
       "BandCountOut": {
         "properties": {
           "code": {
@@ -3636,6 +5077,68 @@
         ],
         "title": "BandSuggestionsOut",
         "description": "As sugestões de uma faixa, na ordem da #80, e o total do filé (A06·2)."
+      },
+      "Body_import_read_route_api_actions__action_id__registrations_import_read_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_read_route_api_actions__action_id__registrations_import_read_post"
+      },
+      "Body_import_review_route_api_actions__action_id__registrations_import_review_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "mapping": {
+            "type": "string",
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "mapping"
+        ],
+        "title": "Body_import_review_route_api_actions__action_id__registrations_import_review_post"
+      },
+      "Body_import_route_api_actions__action_id__registrations_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "mapping": {
+            "type": "string",
+            "title": "Mapping"
+          },
+          "corrections": {
+            "type": "string",
+            "title": "Corrections",
+            "default": "[]"
+          },
+          "skip": {
+            "type": "string",
+            "title": "Skip",
+            "default": "[]"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "mapping"
+        ],
+        "title": "Body_import_route_api_actions__action_id__registrations_import_post"
       },
       "Choice": {
         "type": "string",
@@ -3702,6 +5205,48 @@
         ],
         "title": "CityOut"
       },
+      "ComparedOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows"
+        ],
+        "title": "ComparedOut",
+        "description": "Quantas fizeram algo, entre as participantes e entre as que não compareceram."
+      },
+      "ComputingView": {
+        "type": "string",
+        "enum": [
+          "want_to_follow",
+          "like_but_unsure",
+          "less_interested",
+          "not_for_me"
+        ],
+        "title": "ComputingView",
+        "description": "Pergunta 1: \"Hoje, computação pra você é…\"."
+      },
+      "CourseCode": {
+        "type": "string",
+        "enum": [
+          "sistemas_informacao",
+          "ciencia_computacao",
+          "engenharia_computacao",
+          "redes",
+          "outro"
+        ],
+        "title": "CourseCode",
+        "description": "O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis."
+      },
       "CourseLevel": {
         "type": "string",
         "enum": [
@@ -3710,6 +5255,17 @@
         ],
         "title": "CourseLevel",
         "description": "Nível do curso em que ela entrou ou foi aprovada (RF-F6.02)."
+      },
+      "CourseStatus": {
+        "type": "string",
+        "enum": [
+          "tecnico",
+          "graduacao",
+          "trying",
+          "not_yet"
+        ],
+        "title": "CourseStatus",
+        "description": "Pergunta 3: \"Você entrou num curso da área?\" (RF-F6.02).\n\nOs dois primeiros valores são os mesmos de `CourseLevel` (ingresso).\n\"Tô tentando entrar\" não conta como ingresso (RN-22)."
       },
       "CuratedType": {
         "type": "string",
@@ -3733,6 +5289,63 @@
         ],
         "title": "CuratedType",
         "description": "Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.\n\nOs nomes que aparecem na tela ficam em `CURATED_TYPE_LABELS` (utils.py)."
+      },
+      "CurrentCourseOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/CourseLevel"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "course"
+        ],
+        "title": "CurrentCourseOut",
+        "description": "O curso em que ela está hoje, para a pergunta \"Continua nesse curso?\"."
+      },
+      "CurrentFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "answered": {
+            "type": "boolean",
+            "title": "Answered"
+          },
+          "currentCourse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCourseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay",
+          "firstName",
+          "answered"
+        ],
+        "title": "CurrentFollowupOut",
+        "description": "A rodada aberta hoje para a menina da sessão (A18, #293)."
       },
       "DiscoverOut": {
         "properties": {
@@ -3791,6 +5404,44 @@
         ],
         "title": "EffortBand",
         "description": "As 5 faixas de esforço, na ordem da tela Descobrir (RF-F10.03).\n\nOs valores são os mesmos de `BAND_CODES` no front (frontend/lib/descobrir.ts)."
+      },
+      "EmailCheckIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "EmailCheckIn",
+        "description": "The e-mail goes in the body, never in the URL, so it stays out of access logs."
+      },
+      "EmailCheckOut": {
+        "properties": {
+          "exists": {
+            "type": "boolean",
+            "title": "Exists"
+          },
+          "group_actions": {
+            "items": {
+              "$ref": "#/components/schemas/GroupActionOut"
+            },
+            "type": "array",
+            "title": "Group Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exists",
+          "group_actions"
+        ],
+        "title": "EmailCheckOut",
+        "description": "Whether the e-mail is in the NISE, and which actions of the group she took part in."
       },
       "EmailSignupIn": {
         "properties": {
@@ -3856,17 +5507,6 @@
             "type": "integer",
             "title": "Total"
           },
-          "waiting": {
-            "items": {
-              "$ref": "#/components/schemas/WaitingGirlOut"
-            },
-            "type": "array",
-            "title": "Waiting"
-          },
-          "waitingTotal": {
-            "type": "integer",
-            "title": "Waitingtotal"
-          },
           "page": {
             "type": "integer",
             "title": "Page"
@@ -3880,8 +5520,6 @@
         "required": [
           "items",
           "total",
-          "waiting",
-          "waitingTotal",
           "page",
           "pageSize"
         ],
@@ -3933,44 +5571,6 @@
         ],
         "title": "EnrollmentRowOut",
         "description": "Uma linha de \"Quem ingressou\" (#315). O front lê em camelCase.\n\nSó o que a tela mostra: o nome vem curto (\"Ana L.\"), e não vão e-mail,\nnascimento nem a chamada da lista oficial."
-      },
-      "EnrollmentSummaryOut": {
-        "properties": {
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "percent": {
-            "type": "integer",
-            "title": "Percent"
-          },
-          "graduacao": {
-            "$ref": "#/components/schemas/LevelSummaryOut"
-          },
-          "tecnico": {
-            "$ref": "#/components/schemas/LevelSummaryOut"
-          },
-          "recent": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RecentFoundOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "total",
-          "percent",
-          "graduacao",
-          "tecnico",
-          "recent"
-        ],
-        "title": "EnrollmentSummaryOut",
-        "description": "O resumo do topo da tela Ingressantes (#316, RF-F5.21).\n\nMostra os números mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75)."
       },
       "FeedbackIn": {
         "properties": {
@@ -4165,6 +5765,200 @@
         "title": "FileSquareOut",
         "description": "Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma.\n\nO id e o título são os do item: o título aparece no balãozinho do quadradinho, e o\nid deixa o front reconhecer os quadradinhos novos para animá-los."
       },
+      "FollowupIn": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "computingView": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComputingView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "futureSelf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FutureSelf"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/Activity"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Activities",
+            "default": []
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/HelpWanted"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Helps",
+            "default": []
+          },
+          "courseStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stillEnrolled": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StillEnrolled"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "round"
+        ],
+        "title": "FollowupIn",
+        "description": "As respostas da A18 (RF-F4.13, RF-F4.08).\n\nToda pergunta é opcional, mas pelo menos uma precisa de resposta: sem\nnenhuma, a tela não deixa enviar, e \"Agora não\" não chama o back.\nCódigos fora das listas são recusados, e campos desconhecidos também."
+      },
+      "FollowupOptionsOut": {
+        "properties": {
+          "computingViews": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Computingviews"
+          },
+          "futureSelves": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Futureselves"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Activities"
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Helps"
+          },
+          "courseStatuses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Coursestatuses"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "stillEnrolled": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Stillenrolled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computingViews",
+          "futureSelves",
+          "activities",
+          "helps",
+          "courseStatuses",
+          "courses",
+          "stillEnrolled"
+        ],
+        "title": "FollowupOptionsOut",
+        "description": "As opções das perguntas fechadas da A18, na ordem do Figma."
+      },
+      "FollowupRound": {
+        "type": "string",
+        "enum": [
+          "three_months",
+          "six_months",
+          "twelve_months",
+          "eighteen_months"
+        ],
+        "title": "FollowupRound",
+        "description": "A rodada do questionário: quantos meses depois de criar a conta."
+      },
       "ForgotPasswordIn": {
         "properties": {
           "email": {
@@ -4179,6 +5973,16 @@
         ],
         "title": "ForgotPasswordIn",
         "description": "O e-mail da conta que esqueceu a senha (A16, #331)."
+      },
+      "FutureSelf": {
+        "type": "string",
+        "enum": [
+          "sure",
+          "maybe",
+          "probably_not"
+        ],
+        "title": "FutureSelf",
+        "description": "Pergunta 2: \"Daqui a uns anos, você se vê estudando ou trabalhando…\"."
       },
       "GoogleSignupCompleteIn": {
         "properties": {
@@ -4204,6 +6008,25 @@
         ],
         "title": "GoogleSignupCompleteIn",
         "description": "O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).\n\nNome e e-mail vêm do Google, pelo cookie do cadastro pendente, e não daqui."
+      },
+      "GroupActionOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "starts_on"
+        ],
+        "title": "GroupActionOut"
       },
       "GroupOrigin": {
         "properties": {
@@ -4238,6 +6061,18 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HelpWanted": {
+        "type": "string",
+        "enum": [
+          "mentoring",
+          "online_courses",
+          "internship",
+          "events",
+          "other"
+        ],
+        "title": "HelpWanted",
+        "description": "Pergunta 5: \"O que te ajudaria agora?\" (várias escolhas)."
+      },
       "HomeOut": {
         "properties": {
           "nextPath": {
@@ -4251,6 +6086,233 @@
         ],
         "title": "HomeOut",
         "description": "A primeira tela de quem já entrou, para a A01 mandá-la adiante."
+      },
+      "ImportOut": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "already_in_action": {
+            "type": "integer",
+            "title": "Already In Action"
+          },
+          "registered_count": {
+            "type": "integer",
+            "title": "Registered Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "already_in_action",
+          "registered_count"
+        ],
+        "title": "ImportOut"
+      },
+      "ImportReadOut": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "first_line": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "First Line"
+          },
+          "suggested": {
+            "$ref": "#/components/schemas/MappingBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_name",
+          "line_count",
+          "columns",
+          "first_line",
+          "suggested"
+        ],
+        "title": "ImportReadOut"
+      },
+      "ImportRepeatedOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "count"
+        ],
+        "title": "ImportRepeatedOut"
+      },
+      "ImportReviewOut": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "ready": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowOut"
+            },
+            "type": "array",
+            "title": "Ready"
+          },
+          "to_review": {
+            "items": {
+              "$ref": "#/components/schemas/ImportReviewRowOut"
+            },
+            "type": "array",
+            "title": "To Review"
+          },
+          "repeated": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRepeatedOut"
+            },
+            "type": "array",
+            "title": "Repeated"
+          },
+          "already_in_action": {
+            "type": "integer",
+            "title": "Already In Action"
+          },
+          "new_count": {
+            "type": "integer",
+            "title": "New Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_name",
+          "line_count",
+          "ready",
+          "to_review",
+          "repeated",
+          "already_in_action",
+          "new_count"
+        ],
+        "title": "ImportReviewOut"
+      },
+      "ImportReviewRowOut": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "title": "Line"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "incomplete_email",
+              "missing_email",
+              "missing_name"
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line",
+          "name",
+          "email",
+          "reason"
+        ],
+        "title": "ImportReviewRowOut"
+      },
+      "ImportRowOut": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "title": "Line"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          },
+          "study_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "school_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line",
+          "name",
+          "email",
+          "whatsapp",
+          "study_stage",
+          "school_year"
+        ],
+        "title": "ImportRowOut"
       },
       "InterestOptionsOut": {
         "properties": {
@@ -4412,71 +6474,6 @@
         "title": "LaterOut",
         "description": "A tela Ver depois (A06·2b, #110). O front lê em camelCase."
       },
-      "LevelSummaryOut": {
-        "properties": {
-          "count": {
-            "type": "integer",
-            "title": "Count"
-          },
-          "institutions": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Institutions"
-          }
-        },
-        "type": "object",
-        "required": [
-          "count",
-          "institutions"
-        ],
-        "title": "LevelSummaryOut",
-        "description": "Quantas ingressaram num nível e em quais instituições."
-      },
-      "ListSearchOut": {
-        "properties": {
-          "sources": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sources"
-          },
-          "lastSearchAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lastsearchat"
-          },
-          "nextSearchOn": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nextsearchon"
-          }
-        },
-        "type": "object",
-        "required": [
-          "sources",
-          "lastSearchAt",
-          "nextSearchOn"
-        ],
-        "title": "ListSearchOut",
-        "description": "O card \"Busca nas listas de ingressantes\" (#317, RF-F5.23).\n\nSó fontes e datas, iguais para todas as coordenadoras: a busca não é por\ngrupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24)."
-      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -4497,6 +6494,68 @@
           "password"
         ],
         "title": "LoginIn"
+      },
+      "MappingBody": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          },
+          "study_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Stage"
+          },
+          "school_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Year"
+          }
+        },
+        "type": "object",
+        "title": "MappingBody",
+        "description": "Column of the file for each field of the NISE; null = \"Não usar\"."
       },
       "MatchAnswerIn": {
         "properties": {
@@ -4605,6 +6664,25 @@
         ],
         "title": "MatchResult"
       },
+      "OpenFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay"
+        ],
+        "title": "OpenFollowupOut",
+        "description": "O questionário \"Como está seu caminho?\" aberto e sem resposta (A18)."
+      },
       "OpportunityEmailsIn": {
         "properties": {
           "enabled": {
@@ -4711,6 +6789,99 @@
         "title": "PendingSignupOut",
         "description": "O que veio do Google, para a A02b mostrar (#52). Só leitura."
       },
+      "Period": {
+        "type": "string",
+        "enum": [
+          "6m",
+          "12m",
+          "all"
+        ],
+        "title": "Period",
+        "description": "Opções do filtro \"Período\" da aba Resultados (RF-F5.06, D-94)."
+      },
+      "ProfileCourseIn": {
+        "properties": {
+          "courseStatus": {
+            "$ref": "#/components/schemas/CourseStatus"
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "courseStatus"
+        ],
+        "title": "ProfileCourseIn",
+        "description": "O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).\n\nAs mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso\n(\"Outro curso\" pede o nome); \"Tô tentando entrar\" e \"Ainda não\" não levam\ndados de curso. Campos desconhecidos são recusados."
+      },
+      "ProfileCourseOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName"
+        ],
+        "title": "ProfileCourseOut",
+        "description": "O curso atual dela no perfil (A10, #298) e o nome para a A10b.\n\n`level` e `course` vêm vazios quando ela não tem curso registrado. O nome\ndo curso é o da lista ou o que ela digitou: vai só para ela."
+      },
       "ProfileOut": {
         "properties": {
           "fileIntroSeen": {
@@ -4758,40 +6929,134 @@
         "title": "RatingIn",
         "description": "A nota de 1 a 5 e o comentário opcional da A03 (RF-F4.03a).\n\nO front manda em camelCase (actionId). Quem confere se ela pode avaliar a\nação é o serviço."
       },
-      "RecentFoundOut": {
+      "RegistrationAddedOut": {
         "properties": {
-          "searchedAt": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Searchedat"
+          "registration": {
+            "$ref": "#/components/schemas/RegistrationOut"
           },
-          "girls": {
-            "items": {
-              "$ref": "#/components/schemas/RecentGirlOut"
-            },
-            "type": "array",
-            "title": "Girls"
+          "already_registered": {
+            "type": "boolean",
+            "title": "Already Registered"
+          },
+          "record_existed": {
+            "type": "boolean",
+            "title": "Record Existed"
           }
         },
         "type": "object",
         "required": [
-          "searchedAt",
-          "girls"
+          "registration",
+          "already_registered",
+          "record_existed"
         ],
-        "title": "RecentFoundOut",
-        "description": "As ingressantes que a última busca achou e que confirmaram (RF-F5.22)."
+        "title": "RegistrationAddedOut"
       },
-      "RecentGirlOut": {
+      "RegistrationIn": {
         "properties": {
-          "firstName": {
+          "name": {
             "type": "string",
-            "title": "Firstname"
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
           },
-          "course": {
+          "email": {
             "type": "string",
-            "title": "Course"
+            "format": "email",
+            "title": "Email"
           },
-          "institution": {
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          },
+          "study_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "school_year": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "RegistrationIn",
+        "description": "Add a girl by hand (RF-F1.09): name and e-mail required, the rest optional."
+      },
+      "RegistrationListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RegistrationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "columns": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "whatsapp",
+                "study_stage",
+                "school_year"
+              ]
+            },
+            "type": "array",
+            "title": "Columns"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "columns"
+        ],
+        "title": "RegistrationListOut",
+        "description": "A page of the girls, the matches in `total`, and the columns with data."
+      },
+      "RegistrationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "whatsapp": {
             "anyOf": [
               {
                 "type": "string"
@@ -4800,17 +7065,41 @@
                 "type": "null"
               }
             ],
-            "title": "Institution"
+            "title": "Whatsapp"
+          },
+          "study_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "school_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Year"
           }
         },
         "type": "object",
         "required": [
-          "firstName",
-          "course",
-          "institution"
+          "id",
+          "name",
+          "email",
+          "whatsapp",
+          "study_stage",
+          "school_year"
         ],
-        "title": "RecentGirlOut",
-        "description": "Uma menina de \"Mais recentes\": o primeiro nome, o curso e a instituição."
+        "title": "RegistrationOut",
+        "description": "One girl in an action. `id` is the registration's, not the record's."
       },
       "ResetPasswordIn": {
         "properties": {
@@ -4976,6 +7265,16 @@
         "title": "StatusIn",
         "description": "A seção para onde ela quer levar a atividade.\n\nSó o próximo passo é aceito: \"in_progress\" a partir de \"next\" e\n\"concluded\" a partir de \"in_progress\". Outro salto responde 409."
       },
+      "StillEnrolled": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "changed",
+          "stopped"
+        ],
+        "title": "StillEnrolled",
+        "description": "Pergunta 3 para quem já registrou um curso: \"Continua nesse curso?\" (#299)."
+      },
       "StudyStage": {
         "type": "string",
         "enum": [
@@ -5114,14 +7413,33 @@
           "list_match": {
             "type": "boolean",
             "title": "List Match"
+          },
+          "ratings": {
+            "items": {
+              "$ref": "#/components/schemas/PendingRatingOut"
+            },
+            "type": "array",
+            "title": "Ratings"
+          },
+          "followup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenFollowupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
-          "list_match"
+          "list_match",
+          "ratings",
+          "followup"
         ],
         "title": "ToAnswerOut",
-        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nPor enquanto só o indício de lista oficial (RF-F31.10). As avaliações e os\nquestionários da M5 (#129) entram aqui quando existirem."
+        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nNada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o\nsim ou não do indício, as ações que ela mesma foi e a rodada aberta."
       },
       "Topic": {
         "type": "string",
@@ -5136,6 +7454,65 @@
           "design"
         ],
         "title": "Topic"
+      },
+      "UpcomingItemOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "date",
+              "followup"
+            ],
+            "title": "Kind"
+          },
+          "on": {
+            "type": "string",
+            "format": "date",
+            "title": "On"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowupRound"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "on",
+          "title",
+          "details",
+          "round"
+        ],
+        "title": "UpcomingItemOut",
+        "description": "Uma data da agenda: lembrete da equipe ou rodada de questionário."
       },
       "UserOut": {
         "properties": {
@@ -5203,20 +7580,6 @@
           "type"
         ],
         "title": "ValidationError"
-      },
-      "WaitingGirlOut": {
-        "properties": {
-          "girlName": {
-            "type": "string",
-            "title": "Girlname"
-          }
-        },
-        "type": "object",
-        "required": [
-          "girlName"
-        ],
-        "title": "WaitingGirlOut",
-        "description": "Uma menina com indício sem resposta, na última linha da lista (#318).\n\nSó o nome curto. Nem lista, curso, instituição ou id do indício vão: só a\nmenina vê os detalhes (RN-21, RNF-F31.02)."
       }
     }
   }

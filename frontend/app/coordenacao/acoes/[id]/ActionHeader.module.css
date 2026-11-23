@@ -1,0 +1,90 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  color: var(--nise-teal);
+  font-size: 14px;
+}
+
+.back:focus-visible,
+.edit:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.status {
+  align-self: flex-start;
+}
+
+.name {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.buttons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.buttons button {
+  gap: 8px;
+}
+
+/* The link wears the secondary button (Figma: Editar ação). */
+.edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--nise-ink);
+  border-radius: var(--radius-8);
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.edit:hover {
+  background: var(--nise-tealSoft);
+}
+
+.error {
+  color: var(--nise-pink);
+  font-weight: 500;
+}

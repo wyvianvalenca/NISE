@@ -3,10 +3,19 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.db.engine import AsyncSessionDep
-from app.modules.actions.dependencies import CoordinatorGroupIdDep, GroupActionDep
+from app.modules.actions.dependencies import (
+    CoordinatorGroupIdDep,
+    GroupActionDep,
+    TodayDep,
+)
 from app.modules.actions.exceptions import AttendanceAlreadyRegisteredError
 from app.modules.actions.models import ActionStatus
-from app.modules.actions.schemas import ActionIn, ActionListOut, ActionOut
+from app.modules.actions.schemas import (
+    ActionIn,
+    ActionListOut,
+    ActionOut,
+    ActionPageOut,
+)
 from app.modules.actions.service import (
     action_to_out,
     build_action_list,
@@ -14,6 +23,7 @@ from app.modules.actions.service import (
     create_action,
     delete_action,
     fetch_action_rows,
+    load_action_page,
     today_in_maceio,
     update_action,
 )
@@ -45,6 +55,19 @@ async def list_actions_route(
     rows = await fetch_action_rows(session, group_id)
 
     return build_action_list(rows, today_in_maceio(), action_status, search)
+
+
+# The action page (K11, #233, RF-F1.14). An action of another group is a 404, the
+# same as a missing one (RNF-G.03).
+@router.get(
+    "/{action_id}",
+    response_model=ActionPageOut,
+    responses={status.HTTP_404_NOT_FOUND: {"description": "Ação não encontrada"}},
+)
+async def get_action_page_route(
+    action: GroupActionDep, session: AsyncSessionDep, today: TodayDep
+) -> ActionPageOut:
+    return await load_action_page(session, action, today)
 
 
 # "Salvar" in the K02 form (#211, RF-F30.01). The group is the signed-in

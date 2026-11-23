@@ -82,6 +82,28 @@ class ListMatch(Base):
     official_list: Mapped[OfficialList] = relationship()
 
 
+class MatchEmail(Base):
+    """O e-mail que avisa a menina do indício (RF-F31.11, #275).
+
+    Uma linha por indício, garantida pela restrição única (RNF-F4.01): nem a
+    busca de novo nem a rotina de envio rodando duas vezes mandam outro. Só
+    entra na fila quem aceitou e-mails de oportunidades (RN-30, D-50). Não
+    guarda endereço nem texto; some junto com o indício.
+    """
+
+    __tablename__ = "match_emails"
+
+    list_match_id: Mapped[int] = mapped_column(
+        ForeignKey("list_matches.id", ondelete="CASCADE"), unique=True
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # Descartado sem enviar: o indício foi respondido, venceu ou sumiu, ou ela
+    # desligou os e-mails de oportunidades antes do envio.
+    dropped_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    list_match: Mapped[ListMatch] = relationship()
+
+
 class DismissedMatch(Base):
     """Marca de um indício apagado ("Não sou eu" ou 30 dias sem resposta).
 
@@ -139,9 +161,14 @@ class Enrollment(Base):
     )
     level: Mapped[CourseLevel] = mapped_column()
     course: Mapped[str] = mapped_column()
-    institution: Mapped[str] = mapped_column()
+    # Vazio quando ela não diz onde (RF-F6.02, "Onde?" é opcional). Texto livre:
+    # nunca vai para exportações, logs nem LLM (RN-11).
+    institution: Mapped[str | None] = mapped_column()
     enrolled_on: Mapped[date] = mapped_column()
     origin: Mapped[AdmissionOrigin] = mapped_column()
+    # O dia em que ela disse que parou ou trocou de curso (RF-F6.06). O ingresso
+    # não é apagado: só ganha esta data.
+    left_on: Mapped[date | None] = mapped_column()
     # A chamada confirmada por ela, quando a origem é OFFICIAL_LIST.
     official_list_id: Mapped[int | None] = mapped_column(
         ForeignKey("official_lists.id", ondelete="SET NULL")

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI
 from httpx2 import ASGITransport, AsyncClient, Response
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ClauseElement
 
 from app.auth.permissions import SESSION_COOKIE
@@ -47,12 +48,13 @@ async def chamar_rota(
     app: FastAPI,
     metodo: str,
     url: str,
-    sessao_falsa: AsyncMock,
+    sessao_falsa: AsyncMock | AsyncSession,
     token: str | None = None,
     corpo: Mapping[str, object] | None = None,
 ) -> Response:
-    # Troca a sessão real por uma falsa, para o teste não depender do Postgres.
-    async def sessao() -> AsyncGenerator[AsyncMock, None]:
+    # Troca a sessão do app pela do teste: uma falsa, ou a `db_session` do
+    # Postgres de teste.
+    async def sessao() -> AsyncGenerator[AsyncMock | AsyncSession, None]:
         yield sessao_falsa
 
     app.dependency_overrides[get_session] = sessao

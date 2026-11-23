@@ -57,7 +57,7 @@ async def group_enrollments(
                 id=enrollment.id,
                 girl_name=short_name(name),
                 course=enrollment.course,
-                institution=enrollment.institution.strip() or None,
+                institution=(enrollment.institution or "").strip() or None,
                 registered_at=enrollment.created_at,
                 origin=enrollment.origin,
             )

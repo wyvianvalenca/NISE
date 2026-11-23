@@ -20,6 +20,10 @@
   background: var(--nise-teal);
 }
 
+.danger {
+  background: var(--nise-error);
+}
+
 .secondary {
   height: 46px;
   padding: 0 18px;
