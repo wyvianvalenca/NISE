@@ -814,6 +814,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/actions/{action_id}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Attendance Page */
+        get: operations["attendance_page_api_actions__action_id__attendance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Attendance Marks */
+        put: operations["save_attendance_marks_api_actions__action_id__attendance_marks_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/girls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Walk In Girl */
+        post: operations["add_walk_in_girl_api_actions__action_id__attendance_girls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/conclude": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Conclude */
+        post: operations["conclude_api_actions__action_id__attendance_conclude_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/present/{participation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Present */
+        post: operations["mark_present_api_actions__action_id__attendance_present__participation_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Event Detail */
+        get: operations["event_detail_api_events__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/sign-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Sign Up */
+        put: operations["sign_up_api_events__item_id__sign_up_put"];
+        post?: never;
+        /** Undo Sign Up */
+        delete: operations["undo_sign_up_api_events__item_id__sign_up_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/went": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Went */
+        put: operations["went_api_events__item_id__went_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/did-not-go": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Did Not Go */
+        put: operations["did_not_go_api_events__item_id__did_not_go_put"];
+        post?: never;
+        /** Undo Did Not Go Route */
+        delete: operations["undo_did_not_go_route_api_events__item_id__did_not_go_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reminder */
+        put: operations["reminder_api_events__item_id__reminder_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/followup/current": {
         parameters: {
             query?: never;
@@ -1273,6 +1445,100 @@ export interface components {
             upcoming: components["schemas"]["UpcomingItemOut"][];
         };
         /**
+         * AttendanceActionOut
+         * @description The header of the action page (K11): what the other versions also show.
+         */
+        AttendanceActionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            type: components["schemas"]["ActionType"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Starts At Time */
+            starts_at_time: string | null;
+            /** Ends At Time */
+            ends_at_time: string | null;
+            format: components["schemas"]["ActionFormat"];
+            /** City Name */
+            city_name: string | null;
+            visibility: components["schemas"]["ActionVisibility"];
+            /**
+             * Created On
+             * Format: date
+             */
+            created_on: string;
+        };
+        /**
+         * AttendanceGirlOut
+         * @description One registered girl of the action, as the lists of the page show her.
+         *
+         *     `id` is the registration (the participation), never the girl's record: the
+         *     page only needs to tell the rows apart.
+         */
+        AttendanceGirlOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            study_stage: components["schemas"]["StudyStage"] | null;
+            /** Saved Present */
+            saved_present: boolean;
+            /** Present */
+            present: boolean;
+        };
+        /**
+         * AttendancePageOut
+         * @description Everything the action page needs around the attendance (C3, #135).
+         *
+         *     `today` is the date in Maceió time, the same the status uses (RN-37), so the
+         *     page never decides "the day of the event has come" with the browser's clock.
+         */
+        AttendancePageOut: {
+            action: components["schemas"]["AttendanceActionOut"];
+            status: components["schemas"]["ActionStatus"];
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Registrations Open */
+            registrations_open: boolean;
+            /** Can Delete */
+            can_delete: boolean;
+            /** Registered Count */
+            registered_count: number;
+            /** Saved Count */
+            saved_count: number;
+            /** Last Registered On */
+            last_registered_on: string | null;
+            /** Concluded On */
+            concluded_on: string | null;
+            /** Present Count */
+            present_count: number;
+            /** Invites To Send */
+            invites_to_send: number;
+            /** Invites Sent */
+            invites_sent: number;
+            /** Evaluations Sent */
+            evaluations_sent: number;
+            /** Columns */
+            columns: string[];
+            /** Girls */
+            girls: components["schemas"]["AttendanceGirlOut"][];
+        };
+        /**
          * BandCountOut
          * @description Uma faixa do Descobrir e quantas sugestões ela tem (A06·1, RF-F10.03).
          *
@@ -1374,6 +1640,14 @@ export interface components {
          * @enum {string}
          */
         ComputingView: "want_to_follow" | "like_but_unsure" | "less_interested" | "not_for_me";
+        /**
+         * ConcludeIn
+         * @description "Concluir presença" (#348): the registrations marked as present.
+         */
+        ConcludeIn: {
+            /** Present Ids */
+            present_ids: number[];
+        };
         /**
          * CourseCode
          * @description O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis.
@@ -1556,6 +1830,83 @@ export interface components {
             tecnico: components["schemas"]["LevelSummaryOut"];
             recent: components["schemas"]["RecentFoundOut"] | null;
         };
+        /**
+         * EventOut
+         * @description O detalhe de um evento do filé (A06·4b, #178, RF-F10.13). O front lê em camelCase.
+         *
+         *     Os campos seguem `EventDetail` em frontend/lib/evento.ts. As contas de dias
+         *     são feitas aqui, no fuso de Maceió, para o front não depender do relógio do
+         *     celular.
+         */
+        EventOut: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["EventStatus"];
+            type: components["schemas"]["EventType"];
+            /** Typelabel */
+            typeLabel: string;
+            /** Topic */
+            topic: string | null;
+            band: components["schemas"]["EffortBand"];
+            /** Title */
+            title: string;
+            /** Group */
+            group: string | null;
+            /** Organizer */
+            organizer: string;
+            /**
+             * Startson
+             * Format: date
+             */
+            startsOn: string;
+            /**
+             * Endson
+             * Format: date
+             */
+            endsOn: string;
+            /** City */
+            city: string | null;
+            /** Deadline */
+            deadline: string | null;
+            /** Daysleft */
+            daysLeft: number | null;
+            /** Registrationsopen */
+            registrationsOpen: boolean;
+            /** Daysuntilstart */
+            daysUntilStart: number;
+            /** Afterevent */
+            afterEvent: boolean;
+            /** Waitingattendance */
+            waitingAttendance: boolean;
+            /** Reminder */
+            reminder: boolean;
+            /** Cost */
+            cost: string | null;
+            /** Stage */
+            stage: string | null;
+            /** Prerequisites */
+            prerequisites: string[];
+            /** Registrationurl */
+            registrationUrl: string | null;
+        };
+        /**
+         * EventStatus
+         * @description Onde o evento está no filé dela, como a A06·4b lê (frontend/lib/evento.ts).
+         *
+         *     O banco guarda a inscrição como `FileStatus.SIGNED_UP`; a tela chama de
+         *     "in_progress" ("Inscrita"), o mesmo modelo das atividades (tabela da #118).
+         * @enum {string}
+         */
+        EventStatus: "next" | "in_progress" | "concluded";
+        /**
+         * EventType
+         * @description Os tipos que a A06·4b conhece: os de ação (ActionType, RF-F17.01).
+         *
+         *     Um evento da curadoria que não é hackathon vira "outro", que a tela chama de
+         *     "Evento". O nome do tipo de verdade vai em `type_label`.
+         * @enum {string}
+         */
+        EventType: "oficina" | "palestra" | "minicurso" | "hackathon" | "visita" | "acolhimento" | "outro";
         /**
          * FeedbackIn
          * @description O "O que achou?" e o "Quer sugestões parecidas?" de uma atividade concluída.
@@ -2246,6 +2597,14 @@ export interface components {
             school_year: string | null;
         };
         /**
+         * ReminderIn
+         * @description Liga ou desliga o "Me lembra um dia antes" (#186).
+         */
+        ReminderIn: {
+            /** On */
+            on: boolean;
+        };
+        /**
          * ResetPasswordIn
          * @description A senha nova da A16b (#331). O tamanho mínimo é conferido na rota.
          */
@@ -2277,6 +2636,16 @@ export interface components {
          * @enum {string}
          */
         Role: "girl" | "coordinator" | "nise_team";
+        /**
+         * SavedMarksIn
+         * @description "Salvar e continuar depois" (#340): the registrations marked as present.
+         *
+         *     It replaces what was saved before, so a girl left out is unmarked.
+         */
+        SavedMarksIn: {
+            /** Present Ids */
+            present_ids: number[];
+        };
         /**
          * SelfOrigin
          * @description Ela chegou sozinha (M2): os grupos só veem números gerais (RN-04).
@@ -2472,6 +2841,35 @@ export interface components {
         WaitingGirlOut: {
             /** Girlname */
             girlName: string;
+        };
+        /**
+         * WalkInIn
+         * @description "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03, RF-F1.09).
+         *
+         *     Name and e-mail are required; the study level is optional. WhatsApp and
+         *     "Série" come with the registration of C2 (#232, #235).
+         */
+        WalkInIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            study_stage?: components["schemas"]["StudyStage"] | null;
+        };
+        /**
+         * WalkInOut
+         * @description The girl as she now is in the action's list.
+         *
+         *     `already_registered` says that the e-mail was already registered in this
+         *     action: nobody was duplicated (#346).
+         */
+        WalkInOut: {
+            girl: components["schemas"]["AttendanceGirlOut"];
+            /** Already Registered */
+            already_registered: boolean;
         };
     };
     responses: never;
@@ -4289,7 +4687,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no "Não é pra mim"): só um item sem escolha ou no Ver depois aceita uma escolha: {"error": "already_chosen"} */
+            /** @description O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no "Não é pra mim"): só um item sem escolha, no Ver depois ou um evento do "Não deu" que a curadoria adiou aceita uma escolha: {"error": "already_chosen"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4344,7 +4742,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Uma atividade concluída não sai do filé: {"error": "concluded_cannot_be_removed"}. Um evento em que ela se inscreveu também não: {"error": "signed_up_cannot_be_removed"} */
+            /** @description Uma atividade ou um evento concluído não sai do filé: {"error": "concluded_cannot_be_removed"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4648,6 +5046,624 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AgendaDatesOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attendance_page_api_actions__action_id__attendance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_attendance_marks_api_actions__action_id__attendance_marks_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedMarksIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_walk_in_girl_api_actions__action_id__attendance_girls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalkInIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkInOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    conclude_api_actions__action_id__attendance_conclude_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConcludeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    mark_present_api_actions__action_id__attendance_present__participation_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                participation_id: number;
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    event_detail_api_events__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_up_api_events__item_id__sign_up_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi concluído: {"error": "event_concluded"}. O último dia do evento já passou: {"error": "event_over"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {"error": "event_cancelled"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_sign_up_api_events__item_id__sign_up_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi concluído: {"error": "event_concluded"}. O último dia do evento já passou: {"error": "event_over"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {"error": "event_cancelled"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    went_api_events__item_id__went_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    did_not_go_api_events__item_id__did_not_go_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_did_not_go_route_api_events__item_id__did_not_go_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reminder_api_events__item_id__reminder_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ao ligar: o evento não está inscrita, a véspera já passou ou é hoje, ou o evento de fora foi cancelado pela curadoria. Desligar vale sempre: {"error": "reminder_not_available"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

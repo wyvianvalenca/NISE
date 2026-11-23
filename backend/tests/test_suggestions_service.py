@@ -250,13 +250,29 @@ def test_devolve_as_5_faixas_na_ordem_da_tela_com_a_contagem() -> None:
 # O que já está no filé não volta
 
 
-@pytest.mark.parametrize("status", list(FileStatus), ids=lambda s: s.value)
+@pytest.mark.parametrize(
+    "status",
+    [s for s in FileStatus if s is not FileStatus.DID_NOT_GO],
+    ids=lambda s: s.value,
+)
 def test_item_ja_no_file_nao_volta_como_sugestao(status: FileStatus) -> None:
     # Quero fazer, em andamento, concluído, inscrita, ver depois e não é pra mim.
     feito = item(1, [PROG])
     catalogo = [feito, item(2, [PROG])]
 
     assert ids(catalogo, perfil(PROG), [escolha(feito, status)]) == ["curadoria-2"]
+
+
+def test_evento_do_nao_deu_adiado_volta_como_sugestao() -> None:
+    # O catálogo só tem itens futuros: se o evento do "Não deu" está nele, a
+    # curadoria o adiou, e ele pode ser escolhido de novo (#190).
+    adiado = item(1, [PROG])
+    catalogo = [adiado, item(2, [PROG])]
+
+    assert ids(catalogo, perfil(PROG), [escolha(adiado, FileStatus.DID_NOT_GO)]) == [
+        "curadoria-1",
+        "curadoria-2",
+    ]
 
 
 # "Por que pra você" (RF-F11.04)

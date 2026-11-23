@@ -60,8 +60,9 @@ CHOICE_RESPONSES: dict[int | str, dict[str, Any]] = {
     status.HTTP_409_CONFLICT: {
         "description": (
             "O item já tem outra escolha dela que não se troca por aqui (no filé,"
-            ' concluído, inscrita ou no "Não é pra mim"): só um item sem escolha ou'
-            ' no Ver depois aceita uma escolha: {"error": "already_chosen"}'
+            ' concluído, inscrita ou no "Não é pra mim"): só um item sem escolha,'
+            ' no Ver depois ou um evento do "Não deu" que a curadoria adiou aceita'
+            ' uma escolha: {"error": "already_chosen"}'
         )
     },
 }
@@ -110,9 +111,11 @@ async def my_file(
 # `item_id` é o id do catálogo, "curadoria-12" ou "acao-7". Só um item sem
 # escolha dela, que ela veria nas sugestões hoje (visível, da cidade e do perfil
 # dela), ou um item do Ver depois aceita uma escolha (o "+ Quero fazer" da #110).
-# No filé, concluído, inscrita ou no "Não é pra mim" responde 409, sem apagar a
-# nota, o dia da conclusão ou a inscrição. Repetir a mesma escolha vale. A
-# menina é sempre a da sessão: não há id dela na URL nem no corpo (RNF-G.03).
+# O evento do "Não deu" (#190) também, quando a curadoria o adiou e ele voltou às
+# sugestões; antes disso ele já passou e não é visível (404). No filé, concluído,
+# inscrita ou no "Não é pra mim" responde 409, sem apagar a nota, o dia da conclusão ou
+# a inscrição. Repetir a mesma escolha vale. A menina é sempre a da sessão: não há id
+# dela na URL nem no corpo (RNF-G.03).
 @router.put("/{item_id}", response_model=ChoiceOut, responses=CHOICE_RESPONSES)
 async def choose(
     item_id: str, data: ChoiceIn, user: AcceptedGirlDep, session: AsyncSessionDep
@@ -139,7 +142,10 @@ async def choose(
     entry = await find_entry(session, girl_id, origin, number, for_update=True)
     # Um item novo só vale se for do perfil dela, como nas sugestões. O que já está
     # no Ver depois foi sugerido a ela antes: o perfil pode ter mudado desde então.
-    if entry is None and not fits_profile(
+    # O evento do "Não deu" que a curadoria adiou volta como um item novo: a
+    # curadoria pode ter mudado o público dele.
+    is_new = entry is None or entry.status is FileStatus.DID_NOT_GO
+    if is_new and not fits_profile(
         audience.topics, audience.stages, audience.min_age, profile_of(girl, today)
     ):
         return not_found("item_not_found")
@@ -163,9 +169,8 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
     },
     status.HTTP_409_CONFLICT: {
         "description": (
-            "Uma atividade concluída não sai do filé:"
-            ' {"error": "concluded_cannot_be_removed"}. Um evento em que ela se'
-            ' inscreveu também não: {"error": "signed_up_cannot_be_removed"}'
+            "Uma atividade ou um evento concluído não sai do filé:"
+            ' {"error": "concluded_cannot_be_removed"}'
         )
     },
 }
@@ -173,20 +178,19 @@ UNDO_RESPONSES: dict[int | str, dict[str, Any]] = {
 # Por que a escolha não pôde ser apagada (remove_choice devolve o status).
 CANNOT_REMOVE: dict[FileStatus, str] = {
     FileStatus.CONCLUDED: "concluded_cannot_be_removed",
-    FileStatus.SIGNED_UP: "signed_up_cannot_be_removed",
 }
 
 
 # A06·2 · "Desfazer" (#106, RF-F10.05): apaga a escolha dela sobre um item, com
 # o motivo do "Não é pra mim", e o item volta a poder ser sugerido. Responde o
 # novo total do filé, para a pílula "Meu filé". É também o "Remover" do Ver
-# depois e o "Tirar do filé" de uma atividade próxima ou em andamento (#119).
+# depois, o "Tirar do filé" de uma atividade próxima ou em andamento (#119) e o
+# de um evento próximo ou em que ela se inscreveu (#184, D-39).
 #
 # Não confere se o item ainda aparece nas sugestões: uma ação que fechou entre a
 # escolha e o "Desfazer" também precisa ser desfeita. Um item sem escolha dela
 # responde 200 sem mudar nada, então chamar duas vezes dá o mesmo resultado.
-# Uma atividade concluída e um evento em que ela se inscreveu não saem do filé:
-# responde 409 (tabela de status da #78).
+# O que foi concluído não sai do filé: responde 409 (tabela de status da #78).
 # A menina é sempre a da sessão; a linha de outra menina nunca é achada (RNF-G.03).
 @router.delete("/{item_id}", response_model=ChoiceOut, responses=UNDO_RESPONSES)
 async def undo_choice(

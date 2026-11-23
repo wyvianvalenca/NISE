@@ -2988,7 +2988,7 @@
             "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não existe ou ela não poderia vê-lo nas sugestões: {\"error\": \"item_not_found\"}"
           },
           "409": {
-            "description": "O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no \"Não é pra mim\"): só um item sem escolha ou no Ver depois aceita uma escolha: {\"error\": \"already_chosen\"}"
+            "description": "O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no \"Não é pra mim\"): só um item sem escolha, no Ver depois ou um evento do \"Não deu\" que a curadoria adiou aceita uma escolha: {\"error\": \"already_chosen\"}"
           },
           "422": {
             "description": "Validation Error",
@@ -3070,7 +3070,7 @@
             "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O id não é de um item do catálogo: {\"error\": \"item_not_found\"}"
           },
           "409": {
-            "description": "Uma atividade concluída não sai do filé: {\"error\": \"concluded_cannot_be_removed\"}. Um evento em que ela se inscreveu também não: {\"error\": \"signed_up_cannot_be_removed\"}"
+            "description": "Uma atividade ou um evento concluído não sai do filé: {\"error\": \"concluded_cannot_be_removed\"}"
           },
           "422": {
             "description": "Validation Error",
@@ -3710,6 +3710,1003 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/attendance": {
+      "get": {
+        "tags": [
+          "API",
+          "Attendance"
+        ],
+        "summary": "Attendance Page",
+        "operationId": "attendance_page_api_actions__action_id__attendance_get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendancePageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/attendance/marks": {
+      "put": {
+        "tags": [
+          "API",
+          "Attendance"
+        ],
+        "summary": "Save Attendance Marks",
+        "operationId": "save_attendance_marks_api_actions__action_id__attendance_marks_put",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedMarksIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendancePageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "Fora do momento: {\"error\": \"too_early\"} antes do dia do evento, {\"error\": \"already_concluded\"} para marcar ou salvar depois de concluir, {\"error\": \"not_concluded\"} para marcar uma por uma antes"
+          },
+          "422": {
+            "description": "Um id que não é inscrição desta ação: {\"error\": \"unknown_registration\"}"
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/attendance/girls": {
+      "post": {
+        "tags": [
+          "API",
+          "Attendance"
+        ],
+        "summary": "Add Walk In Girl",
+        "operationId": "add_walk_in_girl_api_actions__action_id__attendance_girls_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalkInIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalkInOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "Fora do momento: {\"error\": \"too_early\"} antes do dia do evento, {\"error\": \"already_concluded\"} para marcar ou salvar depois de concluir, {\"error\": \"not_concluded\"} para marcar uma por uma antes"
+          },
+          "422": {
+            "description": "Um id que não é inscrição desta ação: {\"error\": \"unknown_registration\"}"
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/attendance/conclude": {
+      "post": {
+        "tags": [
+          "API",
+          "Attendance"
+        ],
+        "summary": "Conclude",
+        "operationId": "conclude_api_actions__action_id__attendance_conclude_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConcludeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendancePageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "Fora do momento: {\"error\": \"too_early\"} antes do dia do evento, {\"error\": \"already_concluded\"} para marcar ou salvar depois de concluir, {\"error\": \"not_concluded\"} para marcar uma por uma antes"
+          },
+          "422": {
+            "description": "Um id que não é inscrição desta ação: {\"error\": \"unknown_registration\"}"
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}/attendance/present/{participation_id}": {
+      "post": {
+        "tags": [
+          "API",
+          "Attendance"
+        ],
+        "summary": "Mark Present",
+        "operationId": "mark_present_api_actions__action_id__attendance_present__participation_id__post",
+        "parameters": [
+          {
+            "name": "participation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Participation Id"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendancePageOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "Fora do momento: {\"error\": \"too_early\"} antes do dia do evento, {\"error\": \"already_concluded\"} para marcar ou salvar depois de concluir, {\"error\": \"not_concluded\"} para marcar uma por uma antes"
+          },
+          "422": {
+            "description": "Um id que não é inscrição desta ação: {\"error\": \"unknown_registration\"}"
+          }
+        }
+      }
+    },
+    "/api/events/{item_id}": {
+      "get": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Event Detail",
+        "operationId": "event_detail_api_events__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{item_id}/sign-up": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Sign Up",
+        "operationId": "sign_up_api_events__item_id__sign_up_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "O evento já foi concluído: {\"error\": \"event_concluded\"}. O último dia do evento já passou: {\"error\": \"event_over\"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {\"error\": \"event_cancelled\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Undo Sign Up",
+        "operationId": "undo_sign_up_api_events__item_id__sign_up_delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "O evento já foi concluído: {\"error\": \"event_concluded\"}. O último dia do evento já passou: {\"error\": \"event_over\"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {\"error\": \"event_cancelled\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{item_id}/went": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Went",
+        "operationId": "went_api_events__item_id__went_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "Só um evento de fora, depois da data e com ela inscrita, pergunta \"Você foi?\" (um evento de grupo da NISE espera a presença, #194): {\"error\": \"event_not_asked\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{item_id}/did-not-go": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Did Not Go",
+        "operationId": "did_not_go_api_events__item_id__did_not_go_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "Só um evento de fora, depois da data e com ela inscrita, pergunta \"Você foi?\" (um evento de grupo da NISE espera a presença, #194): {\"error\": \"event_not_asked\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Undo Did Not Go Route",
+        "operationId": "undo_did_not_go_route_api_events__item_id__did_not_go_delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "Só um evento de fora, depois da data e com ela inscrita, pergunta \"Você foi?\" (um evento de grupo da NISE espera a presença, #194): {\"error\": \"event_not_asked\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{item_id}/reminder": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Reminder",
+        "operationId": "reminder_api_events__item_id__reminder_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\", fora do filé pelo \"Não deu\", a não ser no Desfazer dele, ou uma atividade): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "Ao ligar: o evento não está inscrita, a véspera já passou ou é hoje, ou o evento de fora foi cancelado pela curadoria. Desligar vale sempre: {\"error\": \"reminder_not_available\"}"
           },
           "422": {
             "description": "Validation Error",
@@ -5175,6 +6172,243 @@
         "title": "AgendaDatesOut",
         "description": "As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b)."
       },
+      "AttendanceActionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ActionType"
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Ends On"
+          },
+          "starts_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At Time"
+          },
+          "ends_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At Time"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "city_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Name"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ActionVisibility"
+          },
+          "created_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Created On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "starts_on",
+          "ends_on",
+          "starts_at_time",
+          "ends_at_time",
+          "format",
+          "city_name",
+          "visibility",
+          "created_on"
+        ],
+        "title": "AttendanceActionOut",
+        "description": "The header of the action page (K11): what the other versions also show."
+      },
+      "AttendanceGirlOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "study_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "saved_present": {
+            "type": "boolean",
+            "title": "Saved Present"
+          },
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "study_stage",
+          "saved_present",
+          "present"
+        ],
+        "title": "AttendanceGirlOut",
+        "description": "One registered girl of the action, as the lists of the page show her.\n\n`id` is the registration (the participation), never the girl's record: the\npage only needs to tell the rows apart."
+      },
+      "AttendancePageOut": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/AttendanceActionOut"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ActionStatus"
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "registrations_open": {
+            "type": "boolean",
+            "title": "Registrations Open"
+          },
+          "can_delete": {
+            "type": "boolean",
+            "title": "Can Delete"
+          },
+          "registered_count": {
+            "type": "integer",
+            "title": "Registered Count"
+          },
+          "saved_count": {
+            "type": "integer",
+            "title": "Saved Count"
+          },
+          "last_registered_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Registered On"
+          },
+          "concluded_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concluded On"
+          },
+          "present_count": {
+            "type": "integer",
+            "title": "Present Count"
+          },
+          "invites_to_send": {
+            "type": "integer",
+            "title": "Invites To Send"
+          },
+          "invites_sent": {
+            "type": "integer",
+            "title": "Invites Sent"
+          },
+          "evaluations_sent": {
+            "type": "integer",
+            "title": "Evaluations Sent"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "girls": {
+            "items": {
+              "$ref": "#/components/schemas/AttendanceGirlOut"
+            },
+            "type": "array",
+            "title": "Girls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "status",
+          "today",
+          "registrations_open",
+          "can_delete",
+          "registered_count",
+          "saved_count",
+          "last_registered_on",
+          "concluded_on",
+          "present_count",
+          "invites_to_send",
+          "invites_sent",
+          "evaluations_sent",
+          "columns",
+          "girls"
+        ],
+        "title": "AttendancePageOut",
+        "description": "Everything the action page needs around the attendance (C3, #135).\n\n`today` is the date in Maceió time, the same the status uses (RN-37), so the\npage never decides \"the day of the event has come\" with the browser's clock."
+      },
       "BandCountOut": {
         "properties": {
           "code": {
@@ -5375,6 +6609,24 @@
         ],
         "title": "ComputingView",
         "description": "Pergunta 1: \"Hoje, computação pra você é…\"."
+      },
+      "ConcludeIn": {
+        "properties": {
+          "present_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Present Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present_ids"
+        ],
+        "title": "ConcludeIn",
+        "description": "\"Concluir presença\" (#348): the registrations marked as present."
       },
       "CourseCode": {
         "type": "string",
@@ -5763,6 +7015,213 @@
         ],
         "title": "EnrollmentSummaryOut",
         "description": "O resumo do topo da tela Ingressantes (#316, RF-F5.21).\n\nMostra os números mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75)."
+      },
+      "EventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EventStatus"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "typeLabel": {
+            "type": "string",
+            "title": "Typelabel"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "band": {
+            "$ref": "#/components/schemas/EffortBand"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "organizer": {
+            "type": "string",
+            "title": "Organizer"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "title": "Startson"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date",
+            "title": "Endson"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "daysLeft": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daysleft"
+          },
+          "registrationsOpen": {
+            "type": "boolean",
+            "title": "Registrationsopen"
+          },
+          "daysUntilStart": {
+            "type": "integer",
+            "title": "Daysuntilstart"
+          },
+          "afterEvent": {
+            "type": "boolean",
+            "title": "Afterevent"
+          },
+          "waitingAttendance": {
+            "type": "boolean",
+            "title": "Waitingattendance"
+          },
+          "reminder": {
+            "type": "boolean",
+            "title": "Reminder"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "prerequisites": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Prerequisites"
+          },
+          "registrationUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrationurl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "type",
+          "typeLabel",
+          "topic",
+          "band",
+          "title",
+          "group",
+          "organizer",
+          "startsOn",
+          "endsOn",
+          "city",
+          "deadline",
+          "daysLeft",
+          "registrationsOpen",
+          "daysUntilStart",
+          "afterEvent",
+          "waitingAttendance",
+          "reminder",
+          "cost",
+          "stage",
+          "prerequisites",
+          "registrationUrl"
+        ],
+        "title": "EventOut",
+        "description": "O detalhe de um evento do filé (A06·4b, #178, RF-F10.13). O front lê em camelCase.\n\nOs campos seguem `EventDetail` em frontend/lib/evento.ts. As contas de dias\nsão feitas aqui, no fuso de Maceió, para o front não depender do relógio do\ncelular."
+      },
+      "EventStatus": {
+        "type": "string",
+        "enum": [
+          "next",
+          "in_progress",
+          "concluded"
+        ],
+        "title": "EventStatus",
+        "description": "Onde o evento está no filé dela, como a A06·4b lê (frontend/lib/evento.ts).\n\nO banco guarda a inscrição como `FileStatus.SIGNED_UP`; a tela chama de\n\"in_progress\" (\"Inscrita\"), o mesmo modelo das atividades (tabela da #118)."
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "oficina",
+          "palestra",
+          "minicurso",
+          "hackathon",
+          "visita",
+          "acolhimento",
+          "outro"
+        ],
+        "title": "EventType",
+        "description": "Os tipos que a A06·4b conhece: os de ação (ActionType, RF-F17.01).\n\nUm evento da curadoria que não é hackathon vira \"outro\", que a tela chama de\n\"Evento\". O nome do tipo de verdade vai em `type_label`."
       },
       "FeedbackIn": {
         "properties": {
@@ -7412,6 +8871,21 @@
         "title": "RegistrationOut",
         "description": "One girl in an action. `id` is the registration's, not the record's."
       },
+      "ReminderIn": {
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "title": "On"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "on"
+        ],
+        "title": "ReminderIn",
+        "description": "Liga ou desliga o \"Me lembra um dia antes\" (#186)."
+      },
       "ResetPasswordIn": {
         "properties": {
           "token": {
@@ -7472,6 +8946,24 @@
           "nise_team"
         ],
         "title": "Role"
+      },
+      "SavedMarksIn": {
+        "properties": {
+          "present_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Present Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present_ids"
+        ],
+        "title": "SavedMarksIn",
+        "description": "\"Salvar e continuar depois\" (#340): the registrations marked as present.\n\nIt replaces what was saved before, so a girl left out is unmarked."
       },
       "SelfOrigin": {
         "properties": {
@@ -7905,6 +9397,56 @@
         ],
         "title": "WaitingGirlOut",
         "description": "Uma menina com indício sem resposta, na última linha da lista (#318).\n\nSó o nome curto. Nem lista, curso, instituição ou id do indício vão: só a\nmenina vê os detalhes (RN-21, RNF-F31.02)."
+      },
+      "WalkInIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "study_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "WalkInIn",
+        "description": "\"Veio sem inscrição? Adicionar participante\" (#346, RF-F3.03, RF-F1.09).\n\nName and e-mail are required; the study level is optional. WhatsApp and\n\"Série\" come with the registration of C2 (#232, #235)."
+      },
+      "WalkInOut": {
+        "properties": {
+          "girl": {
+            "$ref": "#/components/schemas/AttendanceGirlOut"
+          },
+          "already_registered": {
+            "type": "boolean",
+            "title": "Already Registered"
+          }
+        },
+        "type": "object",
+        "required": [
+          "girl",
+          "already_registered"
+        ],
+        "title": "WalkInOut",
+        "description": "The girl as she now is in the action's list.\n\n`already_registered` says that the e-mail was already registered in this\naction: nobody was duplicated (#346)."
       }
     }
   }
