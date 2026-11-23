@@ -11,6 +11,7 @@ Nomes e endereços são fictícios.
 import asyncio
 import logging
 import smtplib
+import threading
 from dataclasses import dataclass
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock
@@ -415,18 +416,14 @@ async def test_endereco_recusado_de_vez_nao_trava_as_outras(
     "erro",
     [
         smtplib.SMTPDataError(550, b"5.4.5 Daily user sending quota exceeded"),
-        smtplib.SMTPDataError(550, b"5.7.1 Message blocked as spam"),
         smtplib.SMTPDataError(552, b"5.7.0 Content blocked"),
-        smtplib.SMTPDataError(554, b"message rejected"),
         smtplib.SMTPRecipientsRefused(
             {"x@example.com": (550, b"5.4.5 Daily user sending quota exceeded")}
         ),
     ],
     ids=[
         "cota-diaria",
-        "bloqueio-5.7.1",
         "conteudo-5.7.0",
-        "data-sem-codigo",
         "rcpt-5.4.5",
     ],
 )
@@ -458,8 +455,19 @@ async def test_5xx_da_conta_ou_do_conteudo_para_e_desfaz_as_marcas(
         smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"no such user")}),
         smtplib.SMTPRecipientsRefused({"x@example.com": (553, b"5.1.3 bad address")}),
         smtplib.SMTPDataError(552, b"5.2.2 mailbox full"),
+        # Depois do DATA, um domínio que recusa só este e-mail não trava os de
+        # trás: descarta, e a trava de descartes seguidos cuida do resto.
+        smtplib.SMTPDataError(554, b"5.7.1 Message rejected by recipient domain"),
+        smtplib.SMTPDataError(554, b"message rejected"),
     ],
-    ids=["5.1.1", "rcpt-sem-codigo", "5.1.3", "caixa-cheia-5.2.2"],
+    ids=[
+        "5.1.1",
+        "rcpt-sem-codigo",
+        "5.1.3",
+        "caixa-cheia-5.2.2",
+        "data-5.7.1",
+        "data-sem-codigo",
+    ],
 )
 async def test_5xx_do_endereco_descarta_so_aquele_lembrete(
     monkeypatch: pytest.MonkeyPatch, erro: Exception
@@ -605,7 +613,7 @@ async def test_um_envio_certo_zera_a_conta_dos_5xx_seguidos(
 ) -> None:
     linhas = [linha(n, f"Menina{n}") for n in range(1, 6)]
     tabela, _, _ = preparar(monkeypatch, *linhas)
-    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"5.1.1 No user")})
+    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"5.4.1 Rejected")})
     conectar, _ = _conexao_falsa([erro, erro, None, erro, erro])
 
     resultado = await send_event_reminders(tabela.session, HOJE, conectar)
@@ -613,24 +621,80 @@ async def test_um_envio_certo_zera_a_conta_dos_5xx_seguidos(
     assert resultado == SendResult(sent=1, dropped=4, stopped=False)
 
 
-async def test_cancelamento_no_meio_desfaz_as_marcas_do_que_nao_saiu(
+async def test_enderecos_inexistentes_seguidos_nao_param_a_rotina(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 5.1.x diz que a caixa não existe: não é erro da conta, e não conta para a
+    # trava, senão endereços falsos cadastrados em sequência travariam os outros.
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 8)]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"5.1.1 No user")})
+    conectar, _ = _conexao_falsa([erro] * 5 + [None, None])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=2, dropped=5, stopped=False)
+
+
+async def test_um_descarte_que_nao_e_5xx_nao_zera_a_conta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Um endereço inválido no meio (ValueError) não desarma a trava.
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 6)]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"5.4.1 Rejected")})
+    conectar, _ = _conexao_falsa([erro, ValueError("endereço"), erro, erro, None])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=0, dropped=3, stopped=True)
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA] * 3 + [None] * 2
+
+
+async def test_cancelamento_no_meio_nao_reenvia_o_que_estava_saindo(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
     tabela, _, _ = preparar(monkeypatch, *linhas)
-    conectar, conexao = _conexao_falsa([None, asyncio.CancelledError()])
+    saindo = threading.Event()
+    soltar = threading.Event()
+    saiu: list[str] = []
 
+    class Lenta:
+        """O 2º envio demora; o cancelamento chega com ele na thread."""
+
+        def __init__(self) -> None:
+            self.close = MagicMock()
+            self.vezes = 0
+
+        def send(self, to: str, subject: str, body: str) -> None:
+            self.vezes += 1
+            if self.vezes == 2:
+                saindo.set()
+                soltar.wait(5)
+            saiu.append(to)
+
+    conexao = Lenta()
+    tarefa = asyncio.create_task(
+        send_event_reminders(tabela.session, HOJE, lambda: conexao)
+    )
+    await asyncio.to_thread(saindo.wait, 5)
+    tarefa.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await send_event_reminders(tabela.session, HOJE, conectar)
+        await tarefa
+    soltar.set()
+    await asyncio.sleep(0.05)
 
-    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, None, None]
-    conexao.close.assert_called_once()
+    # O 2º saiu mesmo com o cancelamento (a thread não para): fica marcado, e
+    # a próxima rodada não manda de novo. Só o 3º, que não foi tentado, volta.
+    assert len(saiu) == 2
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, AMANHA, None]
 
 
 async def test_erro_inesperado_desfaz_as_marcas_e_se_o_desfazer_falha_so_o_tipo_vai_ao_log(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    linhas = [linha(1), linha(2, "Bia")]
+    linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
     tabela, _, _ = preparar(monkeypatch, *linhas)
     conectar, _ = _conexao_falsa([None, Interrupcao()])
     # O desfazer falha: o erro de verdade tem de seguir sendo o levantado.

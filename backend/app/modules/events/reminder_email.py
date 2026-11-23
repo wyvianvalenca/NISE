@@ -60,8 +60,9 @@ TIME_BUDGET_SECONDS = 40.0
 # Espera por resposta do servidor em cada leitura: menor que a do restante do
 # app (30 s), para um envio lento não passar muito do tempo da rotina.
 SMTP_TIMEOUT_SECONDS = 10
-# Quantos lembretes seguidos descartados por um 5xx até a rotina desconfiar de
-# um erro da conta que não conhecemos e parar.
+# Quantos lembretes seguidos descartados por um 5xx que não fala do endereço
+# (5.1.x, 5.2.x) até a rotina desconfiar de um erro da conta que não
+# conhecemos e parar.
 MAX_DROPS_IN_A_ROW = 3
 
 # Código de status estendido (RFC 3463) no começo da resposta do servidor, como
@@ -84,19 +85,20 @@ def _about_account(message: bytes | str) -> bool:
 
 
 def _about_mailbox(message: bytes | str) -> bool:
-    """O 5xx, depois do DATA, fala do endereço dela (5.1.x, 5.2.x)?"""
+    """O 5xx fala do endereço dela (5.1.x, 5.2.x)?"""
     code = _enhanced_code(message)
     return code is not None and code[0] == 5 and code[1] in (1, 2)
 
 
 def reminder_outcome(error: Exception) -> SendOutcome:
-    """Como `send_outcome`, mas um 5xx só descarta o lembrete se não é da conta.
+    """Como `send_outcome`, mas um 5xx que fala da conta toda não descarta.
 
-    Na recusa do destinatário (RCPT) o 5xx é daquele endereço, qualquer que seja
-    o código: o lembrete é descartado, menos se o código fala da conta toda
-    (cota 5.4.5, bloqueio 5.7.0), que vale para os lembretes que faltam também;
-    então a rotina para e desfaz a marca, como num 4xx. Depois do DATA o erro
-    pode ser do conteúdo ou do servidor: só 5.1.x e 5.2.x descartam.
+    Um 5xx descarta só aquele lembrete, na recusa do destinatário (RCPT) ou
+    depois do DATA, para um endereço ou domínio que recusa não travar os
+    lembretes de trás. Se o código fala da conta toda (cota 5.4.5, bloqueio
+    5.7.0), vale para os que faltam também: a rotina para e desfaz a marca, como
+    num 4xx. Um erro da conta com outro código é pego pela trava de descartes
+    seguidos (`MAX_DROPS_IN_A_ROW`).
     """
     outcome = send_outcome(error)
     if outcome != "drop":
@@ -107,14 +109,23 @@ def reminder_outcome(error: Exception) -> SendOutcome:
         )
         return "retry" if about_account else "drop"
     if isinstance(error, smtplib.SMTPResponseException):
-        return "drop" if _about_mailbox(error.smtp_error) else "retry"
+        return "retry" if _about_account(error.smtp_error) else "drop"
     return outcome
 
 
-def _is_5xx(error: Exception) -> bool:
-    return isinstance(
-        error, smtplib.SMTPRecipientsRefused | smtplib.SMTPResponseException
-    )
+def _suspicious_drop(error: Exception) -> bool:
+    """Um 5xx descartado que não diz que o endereço é que não existe.
+
+    5.1.x e 5.2.x falam da caixa dela e não contam para a trava: endereços
+    inexistentes seguidos não param a rotina.
+    """
+    if isinstance(error, smtplib.SMTPRecipientsRefused):
+        return not all(
+            _about_mailbox(message) for _, message in error.recipients.values()
+        )
+    if isinstance(error, smtplib.SMTPResponseException):
+        return not _about_mailbox(error.smtp_error)
+    return False
 
 
 @dataclass(frozen=True)
@@ -239,6 +250,10 @@ async def _send_batch(
                     unresolved = []
                     await _unmark(session, outgoing[index:])
                     return
+                # Enquanto este sai, um cancelamento não para a thread do envio:
+                # o e-mail pode sair mesmo assim. Na dúvida, não reenvia
+                # (RNF-F4.01): este fica marcado e só a marca dos de trás volta.
+                unresolved = outgoing[index + 1 :]
                 try:
                     await asyncio.to_thread(
                         connection.send, item.address, item.subject, item.body
@@ -255,13 +270,13 @@ async def _send_batch(
                     )
                     if outcome == "drop":
                         # O problema é deste e-mail: não adianta repetir, e os
-                        # outros seguem. Mas muitos 5xx seguidos podem ser um
-                        # erro da conta que não conhecemos: não descarta a
-                        # lista toda, para e deixa este para a repetição.
-                        if _is_5xx(error):
+                        # outros seguem. Mas muitos 5xx seguidos que não falam
+                        # do endereço podem ser um erro da conta que não
+                        # conhecemos: não descarta a lista toda, para e deixa
+                        # este para a repetição. Só um envio que deu certo zera
+                        # a contagem.
+                        if _suspicious_drop(error):
                             run.drops_in_a_row += 1
-                        else:
-                            run.drops_in_a_row = 0
                         if run.drops_in_a_row >= MAX_DROPS_IN_A_ROW:
                             run.stopped = True
                             unresolved = []
