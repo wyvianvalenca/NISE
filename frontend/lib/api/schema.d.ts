@@ -578,6 +578,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/profile/course": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Course */
+        get: operations["profile_course_api_profile_course_get"];
+        put?: never;
+        /** Register Course */
+        post: operations["register_course_api_profile_course_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/discover": {
         parameters: {
             query?: never;
@@ -765,11 +783,82 @@ export interface paths {
         };
         /**
          * To Answer
-         * @description O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10).
+         * @description O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).
          */
         get: operations["to_answer_api_agenda_to_answer_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agenda/dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dates
+         * @description As datas e os questionários que ainda vão chegar (RF-F4.11b).
+         */
+        get: operations["dates_api_agenda_dates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Followup */
+        get: operations["current_followup_api_followup_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Followup Options */
+        get: operations["followup_options_api_followup_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Followup */
+        post: operations["answer_followup_api_followup_answers_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -785,6 +874,23 @@ export interface paths {
         };
         /** Group Enrollments */
         get: operations["group_enrollments_api_coordinator_enrollments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/results/after-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** After Action Route */
+        get: operations["after_action_route_api_coordinator_results_after_action_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1060,6 +1166,12 @@ export interface components {
          */
         ActionVisibility: "open" | "closed";
         /**
+         * Activity
+         * @description Pergunta 4: "Desde a última vez, você…" (várias escolhas).
+         * @enum {string}
+         */
+        Activity: "online_course" | "event" | "self_study" | "project" | "none_yet";
+        /**
          * ActivityOut
          * @description O detalhe de uma atividade do filé (A06·4a, RF-F10.08). O front lê em camelCase.
          *
@@ -1103,6 +1215,29 @@ export interface components {
          * @enum {string}
          */
         AdmissionOrigin: "self_declared" | "official_list";
+        /**
+         * AfterActionOut
+         * @description O card "Logo depois da ação" (RF-F5.09). O front lê em camelCase.
+         *
+         *     Só totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`
+         *     são o "de M" de cada lado, e `returned` é quantas de cada lado voltaram a
+         *     outra ação. O front calcula a porcentagem.
+         */
+        AfterActionOut: {
+            /** Participants */
+            participants: number;
+            /** Noshows */
+            noShows: number;
+            returned: components["schemas"]["ComparedOut"];
+        };
+        /**
+         * AgendaDatesOut
+         * @description As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b).
+         */
+        AgendaDatesOut: {
+            /** Upcoming */
+            upcoming: components["schemas"]["UpcomingItemOut"][];
+        };
         /**
          * BandCountOut
          * @description Uma faixa do Descobrir e quantas sugestões ela tem (A06·1, RF-F10.03).
@@ -1190,11 +1325,42 @@ export interface components {
             name: string;
         };
         /**
+         * ComparedOut
+         * @description Quantas fizeram algo, entre as participantes e entre as que não compareceram.
+         */
+        ComparedOut: {
+            /** Participants */
+            participants: number;
+            /** Noshows */
+            noShows: number;
+        };
+        /**
+         * ComputingView
+         * @description Pergunta 1: "Hoje, computação pra você é…".
+         * @enum {string}
+         */
+        ComputingView: "want_to_follow" | "like_but_unsure" | "less_interested" | "not_for_me";
+        /**
+         * CourseCode
+         * @description O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis.
+         * @enum {string}
+         */
+        CourseCode: "sistemas_informacao" | "ciencia_computacao" | "engenharia_computacao" | "redes" | "outro";
+        /**
          * CourseLevel
          * @description Nível do curso em que ela entrou ou foi aprovada (RF-F6.02).
          * @enum {string}
          */
         CourseLevel: "tecnico" | "graduacao";
+        /**
+         * CourseStatus
+         * @description Pergunta 3: "Você entrou num curso da área?" (RF-F6.02).
+         *
+         *     Os dois primeiros valores são os mesmos de `CourseLevel` (ingresso).
+         *     "Tô tentando entrar" não conta como ingresso (RN-22).
+         * @enum {string}
+         */
+        CourseStatus: "tecnico" | "graduacao" | "trying" | "not_yet";
         /**
          * CuratedType
          * @description Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.
@@ -1203,6 +1369,32 @@ export interface components {
          * @enum {string}
          */
         CuratedType: "video" | "quiz" | "article" | "tutorial" | "mini_project" | "course" | "personal_project" | "community" | "playlist" | "game" | "olympiad" | "club" | "cohort_course" | "hackathon" | "internship" | "other";
+        /**
+         * CurrentCourseOut
+         * @description O curso em que ela está hoje, para a pergunta "Continua nesse curso?".
+         */
+        CurrentCourseOut: {
+            level: components["schemas"]["CourseLevel"];
+            /** Course */
+            course: string;
+        };
+        /**
+         * CurrentFollowupOut
+         * @description A rodada aberta hoje para a menina da sessão (A18, #293).
+         */
+        CurrentFollowupOut: {
+            round: components["schemas"]["FollowupRound"];
+            /**
+             * Lastday
+             * Format: date
+             */
+            lastDay: string;
+            /** Firstname */
+            firstName: string;
+            /** Answered */
+            answered: boolean;
+            currentCourse?: components["schemas"]["CurrentCourseOut"] | null;
+        };
         /**
          * DiscoverOut
          * @description A tela Descobrir (A06·1, #86). O front lê em camelCase (DiscoverData).
@@ -1400,6 +1592,64 @@ export interface components {
             section: components["schemas"]["FileSection"];
         };
         /**
+         * FollowupIn
+         * @description As respostas da A18 (RF-F4.13, RF-F4.08).
+         *
+         *     Toda pergunta é opcional, mas pelo menos uma precisa de resposta: sem
+         *     nenhuma, a tela não deixa enviar, e "Agora não" não chama o back.
+         *     Códigos fora das listas são recusados, e campos desconhecidos também.
+         */
+        FollowupIn: {
+            round: components["schemas"]["FollowupRound"];
+            computingView?: components["schemas"]["ComputingView"] | null;
+            futureSelf?: components["schemas"]["FutureSelf"] | null;
+            /**
+             * Activities
+             * @default []
+             */
+            activities: components["schemas"]["Activity"][];
+            /**
+             * Helps
+             * @default []
+             */
+            helps: components["schemas"]["HelpWanted"][];
+            courseStatus?: components["schemas"]["CourseStatus"] | null;
+            stillEnrolled?: components["schemas"]["StillEnrolled"] | null;
+            course?: components["schemas"]["CourseCode"] | null;
+            /** Othercourse */
+            otherCourse?: string | null;
+            /** Institution */
+            institution?: string | null;
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * FollowupOptionsOut
+         * @description As opções das perguntas fechadas da A18, na ordem do Figma.
+         */
+        FollowupOptionsOut: {
+            /** Computingviews */
+            computingViews: components["schemas"]["OptionOut"][];
+            /** Futureselves */
+            futureSelves: components["schemas"]["OptionOut"][];
+            /** Activities */
+            activities: components["schemas"]["OptionOut"][];
+            /** Helps */
+            helps: components["schemas"]["OptionOut"][];
+            /** Coursestatuses */
+            courseStatuses: components["schemas"]["OptionOut"][];
+            /** Courses */
+            courses: components["schemas"]["OptionOut"][];
+            /** Stillenrolled */
+            stillEnrolled: components["schemas"]["OptionOut"][];
+        };
+        /**
+         * FollowupRound
+         * @description A rodada do questionário: quantos meses depois de criar a conta.
+         * @enum {string}
+         */
+        FollowupRound: "three_months" | "six_months" | "twelve_months" | "eighteen_months";
+        /**
          * ForgotPasswordIn
          * @description O e-mail da conta que esqueceu a senha (A16, #331).
          */
@@ -1407,6 +1657,12 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * FutureSelf
+         * @description Pergunta 2: "Daqui a uns anos, você se vê estudando ou trabalhando…".
+         * @enum {string}
+         */
+        FutureSelf: "sure" | "maybe" | "probably_not";
         /**
          * GoogleSignupCompleteIn
          * @description O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).
@@ -1455,6 +1711,12 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * HelpWanted
+         * @description Pergunta 5: "O que te ajudaria agora?" (várias escolhas).
+         * @enum {string}
+         */
+        HelpWanted: "mentoring" | "online_courses" | "internship" | "events" | "other";
         /**
          * HomeOut
          * @description A primeira tela de quem já entrou, para a A01 mandá-la adiante.
@@ -1696,6 +1958,18 @@ export interface components {
          */
         MatchResult: "enrolled" | "approved" | "dismissed";
         /**
+         * OpenFollowupOut
+         * @description O questionário "Como está seu caminho?" aberto e sem resposta (A18).
+         */
+        OpenFollowupOut: {
+            round: components["schemas"]["FollowupRound"];
+            /**
+             * Lastday
+             * Format: date
+             */
+            lastDay: string;
+        };
+        /**
          * OpportunityEmailsIn
          * @description A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).
          *
@@ -1749,6 +2023,42 @@ export interface components {
             email: string;
             /** Invite */
             invite: string | null;
+        };
+        /**
+         * Period
+         * @description Opções do filtro "Período" da aba Resultados (RF-F5.06, D-94).
+         * @enum {string}
+         */
+        Period: "6m" | "12m" | "all";
+        /**
+         * ProfileCourseIn
+         * @description O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).
+         *
+         *     As mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso
+         *     ("Outro curso" pede o nome); "Tô tentando entrar" e "Ainda não" não levam
+         *     dados de curso. Campos desconhecidos são recusados.
+         */
+        ProfileCourseIn: {
+            courseStatus: components["schemas"]["CourseStatus"];
+            course?: components["schemas"]["CourseCode"] | null;
+            /** Othercourse */
+            otherCourse?: string | null;
+            /** Institution */
+            institution?: string | null;
+        };
+        /**
+         * ProfileCourseOut
+         * @description O curso atual dela no perfil (A10, #298) e o nome para a A10b.
+         *
+         *     `level` e `course` vêm vazios quando ela não tem curso registrado. O nome
+         *     do curso é o da lista ou o que ela digitou: vai só para ela.
+         */
+        ProfileCourseOut: {
+            /** Firstname */
+            firstName: string;
+            level?: components["schemas"]["CourseLevel"] | null;
+            /** Course */
+            course?: string | null;
         };
         /**
          * ProfileOut
@@ -1927,6 +2237,12 @@ export interface components {
             status: components["schemas"]["FileSection"];
         };
         /**
+         * StillEnrolled
+         * @description Pergunta 3 para quem já registrou um curso: "Continua nesse curso?" (#299).
+         * @enum {string}
+         */
+        StillEnrolled: "yes" | "changed" | "stopped";
+        /**
          * StudyStage
          * @enum {string}
          */
@@ -1984,18 +2300,42 @@ export interface components {
          * ToAnswerOut
          * @description O que a seção "Pra responder" da agenda (A14) mostra.
          *
-         *     Por enquanto só o indício de lista oficial (RF-F31.10). As avaliações e os
-         *     questionários da M5 (#129) entram aqui quando existirem.
+         *     Nada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o
+         *     sim ou não do indício, as ações que ela mesma foi e a rodada aberta.
          */
         ToAnswerOut: {
             /** List Match */
             list_match: boolean;
+            /** Ratings */
+            ratings: components["schemas"]["PendingRatingOut"][];
+            followup: components["schemas"]["OpenFollowupOut"] | null;
         };
         /**
          * Topic
          * @enum {string}
          */
         Topic: "programacao" | "robotica" | "ia" | "dados" | "ciberseguranca" | "jogos" | "sites" | "design";
+        /**
+         * UpcomingItemOut
+         * @description Uma data da agenda: lembrete da equipe ou rodada de questionário.
+         */
+        UpcomingItemOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "date" | "followup";
+            /**
+             * On
+             * Format: date
+             */
+            on: string;
+            /** Title */
+            title: string | null;
+            /** Details */
+            details: string | null;
+            round: components["schemas"]["FollowupRound"] | null;
+        };
         /** UserOut */
         UserOut: {
             /** Id */
@@ -3464,6 +3804,100 @@ export interface operations {
             };
         };
     };
+    profile_course_api_profile_course_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileCourseOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_course_api_profile_course_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileCourseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     discover_api_discover_get: {
         parameters: {
             query?: never;
@@ -4080,6 +4514,169 @@ export interface operations {
             };
         };
     };
+    dates_api_agenda_dates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaDatesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_followup_api_followup_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentFollowupOut"] | null;
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    followup_options_api_followup_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowupOptionsOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_followup_api_followup_answers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nenhuma rodada aberta, ou a rodada já fechou: {"error": "no_open_round"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ela já respondeu essa rodada: {"error": "already_answered"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {"error": "invalid_course_answer"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     group_enrollments_api_coordinator_enrollments_get: {
         parameters: {
             query?: {
@@ -4101,6 +4698,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnrollmentPageOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    after_action_route_api_coordinator_results_after_action_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterActionOut"];
                 };
             };
             /** @description Não é coordenadora ou sem grupo */

@@ -16,6 +16,8 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        # O lockfile do pnpm 12 tem vários documentos YAML e é gerado.
+        exclude: ^frontend/pnpm-lock\.yaml$
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files

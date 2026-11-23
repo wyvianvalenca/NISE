@@ -1,7 +1,7 @@
 """guarda os dados da inscricao
 
 Revision ID: f2321c6b0a47
-Revises: 888e73d5d48a
+Revises: 51af39d18c76
 Create Date: 2026-11-22 10:00:00.000000
 
 """
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f2321c6b0a47"
-down_revision: str | Sequence[str] | None = "888e73d5d48a"
+down_revision: str | Sequence[str] | None = "51af39d18c76"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
