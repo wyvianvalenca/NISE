@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { ExportedFile, Preview } from "../lib/exportar";
+import type { ExportedFile, HistoryItem, Preview } from "../lib/exportar";
 
 // Simula as rotas de /api/coordinator/exports (#375) para os testes não
 // dependerem do FastAPI. Dados fictícios.
@@ -34,7 +34,28 @@ export const FILE: ExportedFile = {
   expiresAt: "",
 };
 
+/** O histórico antes de ela gerar: duas exportações antigas, de duas coordenadoras. */
+export const OLD_HISTORY: HistoryItem[] = [
+  {
+    id: 6,
+    who: "Joana",
+    createdAt: "2026-10-02T12:40:00.000Z",
+    cut: "Dados anônimos · todas as ações",
+    rowCount: 66,
+  },
+  {
+    id: 5,
+    who: "Kátia",
+    createdAt: "2026-09-18T15:00:00.000Z",
+    cut: "Dados anônimos · todas as ações",
+    rowCount: 1,
+  },
+];
+
 type Options = {
+  historyStatus?: 403 | 500;
+  /** Histórico que a rota devolve; o "Gerar arquivo" põe a nova no topo. */
+  history?: HistoryItem[];
   /** Status de erro no lugar da resposta de cada rota. */
   previewStatus?: 403 | 500;
   generateStatus?: 403 | 500;
@@ -43,6 +64,7 @@ type Options = {
 /** Responde a prévia e o "Gerar arquivo", e devolve quantas vezes o arquivo foi gerado. */
 export async function mockExportApi(page: Page, options: Options = {}): Promise<{ generated: number }> {
   const calls = { generated: 0 };
+  const history = [...(options.history ?? OLD_HISTORY)];
 
   await page.route("**/api/coordinator/exports/preview", (route) =>
     options.previewStatus
@@ -50,9 +72,21 @@ export async function mockExportApi(page: Page, options: Options = {}): Promise<
       : route.fulfill({ json: PREVIEW }),
   );
   await page.route("**/api/coordinator/exports", (route) => {
+    if (route.request().method() === "GET") {
+      return options.historyStatus
+        ? route.fulfill({ status: options.historyStatus })
+        : route.fulfill({ json: history });
+    }
     if (route.request().method() !== "POST") return route.fallback();
     if (options.generateStatus) return route.fulfill({ status: options.generateStatus });
     calls.generated += 1;
+    history.unshift({
+      id: FILE.id,
+      who: "Kátia",
+      createdAt: new Date().toISOString(),
+      cut: "Dados anônimos · todas as ações",
+      rowCount: FILE.rowCount,
+    });
     return route.fulfill({
       status: 201,
       json: { ...FILE, expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() },

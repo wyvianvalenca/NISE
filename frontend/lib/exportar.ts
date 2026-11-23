@@ -63,15 +63,14 @@ export async function generateExport(): Promise<ExportedFile> {
 }
 
 /** One line of the "Histórico de exportações" panel (RF-F24.07). */
-export type HistoryItem = {
-  id: number;
-  /** First name of whoever exported. */
-  who: string;
-  createdAt: string;
-  /** The model and the cut, e.g. "Dados anônimos · todas as ações". */
-  cut: string;
-  rowCount: number;
-};
+export type HistoryItem = components["schemas"]["ExportHistoryItemOut"];
+
+/** The group's exports, newest first, from every coordinator of the group. */
+export async function getHistory(): Promise<HistoryItem[]> {
+  const response = await fetch("/api/coordinator/exports");
+  if (!response.ok) throw new Error(`history ${response.status}`);
+  return (await response.json()) as HistoryItem[];
+}
 
 /** Alagoas time, so "hoje" does not depend on where the browser is. */
 const TIME_ZONE = "America/Maceio";

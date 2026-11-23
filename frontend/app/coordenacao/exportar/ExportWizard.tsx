@@ -12,6 +12,7 @@ import {
   countdownLabel,
   type ExportedFile,
   generateExport,
+  getHistory,
   getPreview,
   type HistoryItem,
   KIND_LABELS,
@@ -298,25 +299,31 @@ function Done({
         </>
       )}
 
-      <ExportHistory items={SAMPLE_HISTORY} />
+      <History fileId={file.id} />
     </div>
   );
 }
 
-// Dados de exemplo até o painel ler a rota (#376). Fictícios.
-const SAMPLE_HISTORY: HistoryItem[] = [
-  {
-    id: 2,
-    who: "Kátia",
-    createdAt: new Date().toISOString(),
-    cut: "Dados anônimos · todas as ações",
-    rowCount: 66,
-  },
-  {
-    id: 1,
-    who: "Joana",
-    createdAt: "2026-10-02T12:40:00.000Z",
-    cut: "Dados anônimos · todas as ações",
-    rowCount: 1,
-  },
-];
+/** The panel under "Pronto". It asks again when a new file is made, so it shows at the top. */
+function History({ fileId }: { fileId: number }) {
+  const [items, setItems] = useState<HistoryItem[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    getHistory()
+      .then((history) => {
+        if (!current) return;
+        setItems(history);
+        setFailed(false);
+      })
+      .catch(() => current && setFailed(true));
+    return () => {
+      current = false;
+    };
+  }, [fileId]);
+
+  if (failed) return <p role="alert">Não foi possível carregar o histórico de exportações.</p>;
+  if (items === null) return <Loading label="Carregando o histórico…" />;
+  return <ExportHistory items={items} />;
+}
