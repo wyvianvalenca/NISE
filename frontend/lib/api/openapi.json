@@ -4025,6 +4025,147 @@
         }
       }
     },
+    "/api/coordinator/enrollments/summary": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Group Enrollment Summary",
+        "operationId": "group_enrollment_summary_api_coordinator_enrollments_summary_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentSummaryOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinator/list-search": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "List Search",
+        "operationId": "list_search_api_coordinator_list_search_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSearchOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/coordinator/results/after-action": {
       "get": {
         "tags": [
@@ -5507,6 +5648,17 @@
             "type": "integer",
             "title": "Total"
           },
+          "waiting": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingGirlOut"
+            },
+            "type": "array",
+            "title": "Waiting"
+          },
+          "waitingTotal": {
+            "type": "integer",
+            "title": "Waitingtotal"
+          },
           "page": {
             "type": "integer",
             "title": "Page"
@@ -5520,6 +5672,8 @@
         "required": [
           "items",
           "total",
+          "waiting",
+          "waitingTotal",
           "page",
           "pageSize"
         ],
@@ -5571,6 +5725,44 @@
         ],
         "title": "EnrollmentRowOut",
         "description": "Uma linha de \"Quem ingressou\" (#315). O front lê em camelCase.\n\nSó o que a tela mostra: o nome vem curto (\"Ana L.\"), e não vão e-mail,\nnascimento nem a chamada da lista oficial."
+      },
+      "EnrollmentSummaryOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "percent": {
+            "type": "integer",
+            "title": "Percent"
+          },
+          "graduacao": {
+            "$ref": "#/components/schemas/LevelSummaryOut"
+          },
+          "tecnico": {
+            "$ref": "#/components/schemas/LevelSummaryOut"
+          },
+          "recent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecentFoundOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "percent",
+          "graduacao",
+          "tecnico",
+          "recent"
+        ],
+        "title": "EnrollmentSummaryOut",
+        "description": "O resumo do topo da tela Ingressantes (#316, RF-F5.21).\n\nMostra os números mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75)."
       },
       "FeedbackIn": {
         "properties": {
@@ -6474,6 +6666,71 @@
         "title": "LaterOut",
         "description": "A tela Ver depois (A06·2b, #110). O front lê em camelCase."
       },
+      "LevelSummaryOut": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "institutions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Institutions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "institutions"
+        ],
+        "title": "LevelSummaryOut",
+        "description": "Quantas ingressaram num nível e em quais instituições."
+      },
+      "ListSearchOut": {
+        "properties": {
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "lastSearchAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastsearchat"
+          },
+          "nextSearchOn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextsearchon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources",
+          "lastSearchAt",
+          "nextSearchOn"
+        ],
+        "title": "ListSearchOut",
+        "description": "O card \"Busca nas listas de ingressantes\" (#317, RF-F5.23).\n\nSó fontes e datas, iguais para todas as coordenadoras: a busca não é por\ngrupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24)."
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -6928,6 +7185,60 @@
         ],
         "title": "RatingIn",
         "description": "A nota de 1 a 5 e o comentário opcional da A03 (RF-F4.03a).\n\nO front manda em camelCase (actionId). Quem confere se ela pode avaliar a\nação é o serviço."
+      },
+      "RecentFoundOut": {
+        "properties": {
+          "searchedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Searchedat"
+          },
+          "girls": {
+            "items": {
+              "$ref": "#/components/schemas/RecentGirlOut"
+            },
+            "type": "array",
+            "title": "Girls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "searchedAt",
+          "girls"
+        ],
+        "title": "RecentFoundOut",
+        "description": "As ingressantes que a última busca achou e que confirmaram (RF-F5.22)."
+      },
+      "RecentGirlOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName",
+          "course",
+          "institution"
+        ],
+        "title": "RecentGirlOut",
+        "description": "Uma menina de \"Mais recentes\": o primeiro nome, o curso e a instituição."
       },
       "RegistrationAddedOut": {
         "properties": {
@@ -7580,6 +7891,20 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WaitingGirlOut": {
+        "properties": {
+          "girlName": {
+            "type": "string",
+            "title": "Girlname"
+          }
+        },
+        "type": "object",
+        "required": [
+          "girlName"
+        ],
+        "title": "WaitingGirlOut",
+        "description": "Uma menina com indício sem resposta, na última linha da lista (#318).\n\nSó o nome curto. Nem lista, curso, instituição ou id do indício vão: só a\nmenina vê os detalhes (RN-21, RNF-F31.02)."
       }
     }
   }

@@ -882,6 +882,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/enrollments/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Group Enrollment Summary */
+        get: operations["group_enrollment_summary_api_coordinator_enrollments_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/list-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Search */
+        get: operations["list_search_api_coordinator_list_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/results/after-action": {
         parameters: {
             query?: never;
@@ -1475,6 +1509,10 @@ export interface components {
             items: components["schemas"]["EnrollmentRowOut"][];
             /** Total */
             total: number;
+            /** Waiting */
+            waiting: components["schemas"]["WaitingGirlOut"][];
+            /** Waitingtotal */
+            waitingTotal: number;
             /** Page */
             page: number;
             /** Pagesize */
@@ -1502,6 +1540,21 @@ export interface components {
              */
             registeredAt: string;
             origin: components["schemas"]["AdmissionOrigin"];
+        };
+        /**
+         * EnrollmentSummaryOut
+         * @description O resumo do topo da tela Ingressantes (#316, RF-F5.21).
+         *
+         *     Mostra os números mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75).
+         */
+        EnrollmentSummaryOut: {
+            /** Total */
+            total: number;
+            /** Percent */
+            percent: number;
+            graduacao: components["schemas"]["LevelSummaryOut"];
+            tecnico: components["schemas"]["LevelSummaryOut"];
+            recent: components["schemas"]["RecentFoundOut"] | null;
         };
         /**
          * FeedbackIn
@@ -1883,6 +1936,31 @@ export interface components {
             /** Items */
             items: components["schemas"]["LaterItemOut"][];
         };
+        /**
+         * LevelSummaryOut
+         * @description Quantas ingressaram num nível e em quais instituições.
+         */
+        LevelSummaryOut: {
+            /** Count */
+            count: number;
+            /** Institutions */
+            institutions: string[];
+        };
+        /**
+         * ListSearchOut
+         * @description O card "Busca nas listas de ingressantes" (#317, RF-F5.23).
+         *
+         *     Só fontes e datas, iguais para todas as coordenadoras: a busca não é por
+         *     grupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24).
+         */
+        ListSearchOut: {
+            /** Sources */
+            sources: string[];
+            /** Lastsearchat */
+            lastSearchAt: string | null;
+            /** Nextsearchon */
+            nextSearchOn: string | null;
+        };
         /** LoginIn */
         LoginIn: {
             /**
@@ -2086,6 +2164,31 @@ export interface components {
             score: number;
             /** Comment */
             comment?: string | null;
+        };
+        /**
+         * RecentFoundOut
+         * @description As ingressantes que a última busca achou e que confirmaram (RF-F5.22).
+         */
+        RecentFoundOut: {
+            /**
+             * Searchedat
+             * Format: date-time
+             */
+            searchedAt: string;
+            /** Girls */
+            girls: components["schemas"]["RecentGirlOut"][];
+        };
+        /**
+         * RecentGirlOut
+         * @description Uma menina de "Mais recentes": o primeiro nome, o curso e a instituição.
+         */
+        RecentGirlOut: {
+            /** Firstname */
+            firstName: string;
+            /** Course */
+            course: string;
+            /** Institution */
+            institution: string | null;
         };
         /** RegistrationAddedOut */
         RegistrationAddedOut: {
@@ -2358,6 +2461,17 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WaitingGirlOut
+         * @description Uma menina com indício sem resposta, na última linha da lista (#318).
+         *
+         *     Só o nome curto. Nem lista, curso, instituição ou id do indício vão: só a
+         *     menina vê os detalhes (RN-21, RNF-F31.02).
+         */
+        WaitingGirlOut: {
+            /** Girlname */
+            girlName: string;
         };
     };
     responses: never;
@@ -4709,6 +4823,91 @@ export interface operations {
             };
             /** @description Coordenadora em mais de um grupo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    group_enrollment_summary_api_coordinator_enrollments_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentSummaryOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_search_api_coordinator_list_search_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSearchOut"];
+                };
+            };
+            /** @description Não é coordenadora */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
