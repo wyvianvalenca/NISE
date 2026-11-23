@@ -1692,6 +1692,151 @@
         }
       }
     },
+    "/api/profile/course": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile Course",
+        "operationId": "profile_course_api_profile_course_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileCourseOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Register Course",
+        "operationId": "register_course_api_profile_course_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileCourseIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/discover": {
       "get": {
         "tags": [
@@ -2679,7 +2824,7 @@
           "Agenda"
         ],
         "summary": "To Answer",
-        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10).",
+        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).",
         "operationId": "to_answer_api_agenda_to_answer_get",
         "parameters": [
           {
@@ -2735,6 +2880,290 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/agenda/dates": {
+      "get": {
+        "tags": [
+          "API",
+          "Agenda"
+        ],
+        "summary": "Dates",
+        "description": "As datas e os questionários que ainda vão chegar (RF-F4.11b).",
+        "operationId": "dates_api_agenda_dates_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaDatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/current": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Current Followup",
+        "operationId": "current_followup_api_followup_current_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CurrentFollowupOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Current Followup Api Followup Current Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/options": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Followup Options",
+        "operationId": "followup_options_api_followup_options_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupOptionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/answers": {
+      "post": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Answer Followup",
+        "operationId": "answer_followup_api_followup_answers_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "Nenhuma rodada aberta, ou a rodada já fechou: {\"error\": \"no_open_round\"}"
+          },
+          "409": {
+            "description": "Ela já respondeu essa rodada: {\"error\": \"already_answered\"}"
+          },
+          "422": {
+            "description": "Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {\"error\": \"invalid_course_answer\"}"
           }
         }
       }
@@ -2800,6 +3229,136 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EnrollmentPageOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinator/results/after-action": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "After Action Route",
+        "operationId": "after_action_route_api_coordinator_results_after_action_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "12m"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterActionOut"
                 }
               }
             }
@@ -3318,6 +3877,18 @@
         ],
         "title": "ActionVisibility"
       },
+      "Activity": {
+        "type": "string",
+        "enum": [
+          "online_course",
+          "event",
+          "self_study",
+          "project",
+          "none_yet"
+        ],
+        "title": "Activity",
+        "description": "Pergunta 4: \"Desde a última vez, você…\" (várias escolhas)."
+      },
       "ActivityOut": {
         "properties": {
           "id": {
@@ -3452,6 +4023,46 @@
         "title": "AdmissionOrigin",
         "description": "De onde veio o registro (RF-F6.03)."
       },
+      "AfterActionOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          },
+          "returned": {
+            "$ref": "#/components/schemas/ComparedOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows",
+          "returned"
+        ],
+        "title": "AfterActionOut",
+        "description": "O card \"Logo depois da ação\" (RF-F5.09). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado, e `returned` é quantas de cada lado voltaram a\noutra ação. O front calcula a porcentagem."
+      },
+      "AgendaDatesOut": {
+        "properties": {
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingItemOut"
+            },
+            "type": "array",
+            "title": "Upcoming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upcoming"
+        ],
+        "title": "AgendaDatesOut",
+        "description": "As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b)."
+      },
       "BandCountOut": {
         "properties": {
           "code": {
@@ -3561,6 +4172,48 @@
         ],
         "title": "CityOut"
       },
+      "ComparedOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows"
+        ],
+        "title": "ComparedOut",
+        "description": "Quantas fizeram algo, entre as participantes e entre as que não compareceram."
+      },
+      "ComputingView": {
+        "type": "string",
+        "enum": [
+          "want_to_follow",
+          "like_but_unsure",
+          "less_interested",
+          "not_for_me"
+        ],
+        "title": "ComputingView",
+        "description": "Pergunta 1: \"Hoje, computação pra você é…\"."
+      },
+      "CourseCode": {
+        "type": "string",
+        "enum": [
+          "sistemas_informacao",
+          "ciencia_computacao",
+          "engenharia_computacao",
+          "redes",
+          "outro"
+        ],
+        "title": "CourseCode",
+        "description": "O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis."
+      },
       "CourseLevel": {
         "type": "string",
         "enum": [
@@ -3569,6 +4222,17 @@
         ],
         "title": "CourseLevel",
         "description": "Nível do curso em que ela entrou ou foi aprovada (RF-F6.02)."
+      },
+      "CourseStatus": {
+        "type": "string",
+        "enum": [
+          "tecnico",
+          "graduacao",
+          "trying",
+          "not_yet"
+        ],
+        "title": "CourseStatus",
+        "description": "Pergunta 3: \"Você entrou num curso da área?\" (RF-F6.02).\n\nOs dois primeiros valores são os mesmos de `CourseLevel` (ingresso).\n\"Tô tentando entrar\" não conta como ingresso (RN-22)."
       },
       "CuratedType": {
         "type": "string",
@@ -3592,6 +4256,63 @@
         ],
         "title": "CuratedType",
         "description": "Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.\n\nOs nomes que aparecem na tela ficam em `CURATED_TYPE_LABELS` (utils.py)."
+      },
+      "CurrentCourseOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/CourseLevel"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "course"
+        ],
+        "title": "CurrentCourseOut",
+        "description": "O curso em que ela está hoje, para a pergunta \"Continua nesse curso?\"."
+      },
+      "CurrentFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "answered": {
+            "type": "boolean",
+            "title": "Answered"
+          },
+          "currentCourse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCourseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay",
+          "firstName",
+          "answered"
+        ],
+        "title": "CurrentFollowupOut",
+        "description": "A rodada aberta hoje para a menina da sessão (A18, #293)."
       },
       "DiscoverOut": {
         "properties": {
@@ -3973,6 +4694,200 @@
         "title": "FileSquareOut",
         "description": "Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma.\n\nO id e o título são os do item: o título aparece no balãozinho do quadradinho, e o\nid deixa o front reconhecer os quadradinhos novos para animá-los."
       },
+      "FollowupIn": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "computingView": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComputingView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "futureSelf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FutureSelf"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/Activity"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Activities",
+            "default": []
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/HelpWanted"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Helps",
+            "default": []
+          },
+          "courseStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stillEnrolled": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StillEnrolled"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "round"
+        ],
+        "title": "FollowupIn",
+        "description": "As respostas da A18 (RF-F4.13, RF-F4.08).\n\nToda pergunta é opcional, mas pelo menos uma precisa de resposta: sem\nnenhuma, a tela não deixa enviar, e \"Agora não\" não chama o back.\nCódigos fora das listas são recusados, e campos desconhecidos também."
+      },
+      "FollowupOptionsOut": {
+        "properties": {
+          "computingViews": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Computingviews"
+          },
+          "futureSelves": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Futureselves"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Activities"
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Helps"
+          },
+          "courseStatuses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Coursestatuses"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "stillEnrolled": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Stillenrolled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computingViews",
+          "futureSelves",
+          "activities",
+          "helps",
+          "courseStatuses",
+          "courses",
+          "stillEnrolled"
+        ],
+        "title": "FollowupOptionsOut",
+        "description": "As opções das perguntas fechadas da A18, na ordem do Figma."
+      },
+      "FollowupRound": {
+        "type": "string",
+        "enum": [
+          "three_months",
+          "six_months",
+          "twelve_months",
+          "eighteen_months"
+        ],
+        "title": "FollowupRound",
+        "description": "A rodada do questionário: quantos meses depois de criar a conta."
+      },
       "ForgotPasswordIn": {
         "properties": {
           "email": {
@@ -3987,6 +4902,16 @@
         ],
         "title": "ForgotPasswordIn",
         "description": "O e-mail da conta que esqueceu a senha (A16, #331)."
+      },
+      "FutureSelf": {
+        "type": "string",
+        "enum": [
+          "sure",
+          "maybe",
+          "probably_not"
+        ],
+        "title": "FutureSelf",
+        "description": "Pergunta 2: \"Daqui a uns anos, você se vê estudando ou trabalhando…\"."
       },
       "GoogleSignupCompleteIn": {
         "properties": {
@@ -4045,6 +4970,18 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HelpWanted": {
+        "type": "string",
+        "enum": [
+          "mentoring",
+          "online_courses",
+          "internship",
+          "events",
+          "other"
+        ],
+        "title": "HelpWanted",
+        "description": "Pergunta 5: \"O que te ajudaria agora?\" (várias escolhas)."
       },
       "HomeOut": {
         "properties": {
@@ -4348,6 +5285,25 @@
         ],
         "title": "MatchResult"
       },
+      "OpenFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay"
+        ],
+        "title": "OpenFollowupOut",
+        "description": "O questionário \"Como está seu caminho?\" aberto e sem resposta (A18)."
+      },
       "OpportunityEmailsIn": {
         "properties": {
           "enabled": {
@@ -4453,6 +5409,99 @@
         ],
         "title": "PendingSignupOut",
         "description": "O que veio do Google, para a A02b mostrar (#52). Só leitura."
+      },
+      "Period": {
+        "type": "string",
+        "enum": [
+          "6m",
+          "12m",
+          "all"
+        ],
+        "title": "Period",
+        "description": "Opções do filtro \"Período\" da aba Resultados (RF-F5.06, D-94)."
+      },
+      "ProfileCourseIn": {
+        "properties": {
+          "courseStatus": {
+            "$ref": "#/components/schemas/CourseStatus"
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "courseStatus"
+        ],
+        "title": "ProfileCourseIn",
+        "description": "O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).\n\nAs mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso\n(\"Outro curso\" pede o nome); \"Tô tentando entrar\" e \"Ainda não\" não levam\ndados de curso. Campos desconhecidos são recusados."
+      },
+      "ProfileCourseOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName"
+        ],
+        "title": "ProfileCourseOut",
+        "description": "O curso atual dela no perfil (A10, #298) e o nome para a A10b.\n\n`level` e `course` vêm vazios quando ela não tem curso registrado. O nome\ndo curso é o da lista ou o que ela digitou: vai só para ela."
       },
       "ProfileOut": {
         "properties": {
@@ -4665,6 +5714,16 @@
         "title": "StatusIn",
         "description": "A seção para onde ela quer levar a atividade.\n\nSó o próximo passo é aceito: \"in_progress\" a partir de \"next\" e\n\"concluded\" a partir de \"in_progress\". Outro salto responde 409."
       },
+      "StillEnrolled": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "changed",
+          "stopped"
+        ],
+        "title": "StillEnrolled",
+        "description": "Pergunta 3 para quem já registrou um curso: \"Continua nesse curso?\" (#299)."
+      },
       "StudyStage": {
         "type": "string",
         "enum": [
@@ -4803,14 +5862,33 @@
           "list_match": {
             "type": "boolean",
             "title": "List Match"
+          },
+          "ratings": {
+            "items": {
+              "$ref": "#/components/schemas/PendingRatingOut"
+            },
+            "type": "array",
+            "title": "Ratings"
+          },
+          "followup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenFollowupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
-          "list_match"
+          "list_match",
+          "ratings",
+          "followup"
         ],
         "title": "ToAnswerOut",
-        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nPor enquanto só o indício de lista oficial (RF-F31.10). As avaliações e os\nquestionários da M5 (#129) entram aqui quando existirem."
+        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nNada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o\nsim ou não do indício, as ações que ela mesma foi e a rodada aberta."
       },
       "Topic": {
         "type": "string",
@@ -4825,6 +5903,65 @@
           "design"
         ],
         "title": "Topic"
+      },
+      "UpcomingItemOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "date",
+              "followup"
+            ],
+            "title": "Kind"
+          },
+          "on": {
+            "type": "string",
+            "format": "date",
+            "title": "On"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowupRound"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "on",
+          "title",
+          "details",
+          "round"
+        ],
+        "title": "UpcomingItemOut",
+        "description": "Uma data da agenda: lembrete da equipe ou rodada de questionário."
       },
       "UserOut": {
         "properties": {

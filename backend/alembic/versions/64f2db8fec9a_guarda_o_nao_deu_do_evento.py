@@ -1,7 +1,7 @@
 """guarda o nao deu do evento
 
 Revision ID: 64f2db8fec9a
-Revises: ade65470c827
+Revises: 51af39d18c76
 Create Date: 2026-11-21 02:40:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "64f2db8fec9a"
-down_revision: str | Sequence[str] | None = "ade65470c827"
+down_revision: str | Sequence[str] | None = "51af39d18c76"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

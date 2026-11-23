@@ -22,6 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.auth.service import create_password_reset_token
 from app.config import settings
+from app.core.email import EmailNotConfiguredError, send_email
 from app.db.engine import SessionLocal
 from app.users.service import get_user_by_email
 
@@ -43,20 +44,6 @@ Equipe NISE
 
 # A16b "Crie uma nova senha", no front.
 RESET_PATH = "/entrar/nova-senha"
-
-
-# TEMPORÁRIO: o envio de e-mail chega com o PR #287 (app/core/email.py).
-# Quando ele entrar, apague a classe e a função abaixo e importe as de lá:
-#     from app.core.email import EmailNotConfiguredError, send_email
-# Elas têm o mesmo nome e a mesma assinatura, então o resto do arquivo e os
-# testes não mudam. Até lá, o pedido de nova senha responde normalmente e o
-# e-mail não sai.
-class EmailNotConfiguredError(Exception):
-    """O envio de e-mail ainda não existe neste ramo (#287)."""
-
-
-def send_email(to: str, subject: str, body: str) -> None:
-    raise EmailNotConfiguredError
 
 
 def reset_url(token: str) -> str:
@@ -96,5 +83,11 @@ def send_reset_email(to: str, token: str) -> None:
 
     try:
         send_email(to, SUBJECT, body)
-    except (EmailNotConfiguredError, smtplib.SMTPException, OSError) as error:
+    except (
+        EmailNotConfiguredError,
+        smtplib.SMTPException,
+        OSError,
+        ValueError,
+    ) as error:
+        # ValueError: endereço com quebra de linha, recusado antes de sair.
         logger.warning("E-mail de nova senha não enviado: %s", type(error).__name__)

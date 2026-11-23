@@ -12,6 +12,7 @@ from app.modules.admissions.exceptions import (
     MatchAlreadyAnsweredError,
     MatchNotFoundError,
 )
+from app.modules.admissions.match_email import queue_match_email
 from app.modules.admissions.models import (
     AdmissionOrigin,
     Approval,
@@ -48,8 +49,9 @@ async def create_match(
 
     Devolve None, sem criar nada, se ela já tem para essa chamada um indício,
     a marca de um indício apagado, uma aprovação ou um ingresso: assim a mesma
-    chamada nunca gera o indício de novo (RF-F31.06). Não faz commit; quem
-    chama grava a rodada inteira de uma vez.
+    chamada nunca gera o indício de novo (RF-F31.06). Põe na fila o e-mail que
+    a avisa, se ela aceitou e-mails de oportunidades (RF-F31.11, #275). Não faz
+    commit; quem chama grava a rodada inteira de uma vez.
     """
     if now is None:
         now = datetime.now(UTC)
@@ -87,6 +89,7 @@ async def create_match(
         expires_at=now + timedelta(days=MATCH_DAYS),
     )
     session.add(match)
+    await queue_match_email(session, match)
 
     return match
 
@@ -238,6 +241,51 @@ async def answer_match(
     await session.commit()
 
     return result
+
+
+async def current_enrollment(session: AsyncSession, girl_id: int) -> Enrollment | None:
+    """O curso em que ela está hoje: o ingresso mais recente que ela não deixou.
+
+    Ingresso com `left_on` (ela parou ou trocou de curso, RF-F6.06) não conta,
+    mas continua guardado. None se ela nunca registrou um curso ou se deixou
+    todos. Serve ao questionário (M5) e ao perfil.
+    """
+    return await session.scalar(
+        select(Enrollment)
+        .where(Enrollment.girl_id == girl_id, Enrollment.left_on.is_(None))
+        .order_by(Enrollment.created_at.desc(), Enrollment.id.desc())
+        .limit(1)
+    )
+
+
+def add_self_declared_enrollment(
+    session: AsyncSession,
+    girl_id: int,
+    level: CourseLevel,
+    course: str,
+    institution: str | None,
+    now: datetime | None = None,
+) -> Enrollment:
+    """Junta à sessão o ingresso que ela declarou, com a data de hoje (RF-F6.03).
+
+    Não faz commit: quem chama grava junto com as próprias linhas, para a
+    declaração ser atômica (RNF-F6.01). `course` e `institution` são texto
+    livre quando ela digita: nunca vão para logs (RN-11).
+    """
+    if now is None:
+        now = datetime.now(UTC)
+
+    enrollment = Enrollment(
+        girl_id=girl_id,
+        level=level,
+        course=course,
+        institution=institution,
+        enrolled_on=now.astimezone(LOCAL_TIMEZONE).date(),
+        origin=AdmissionOrigin.SELF_DECLARED,
+    )
+    session.add(enrollment)
+
+    return enrollment
 
 
 # ---------------------------------------------------------------------------

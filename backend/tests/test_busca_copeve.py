@@ -190,9 +190,11 @@ def indicios(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, str, str]]:
     """Troca a gravação dos indícios (já testada na #270) por uma lista."""
     criados: list[tuple[int, str, str]] = []
 
-    async def lista(_session: object, call: str) -> OfficialList:
+    async def lista(
+        _session: object, institution: str, selection: str, call: str, url: str
+    ) -> OfficialList:
         return OfficialList(
-            institution="UFAL", selection_process="Sisu 2026", call=call
+            institution=institution, selection_process=selection, call=call, url=url
         )
 
     async def criar(
@@ -394,6 +396,9 @@ async def test_mesma_menina_nos_cursos_6_e_7_gera_um_indicio_so() -> None:
         if "FROM official_lists" in sql:
             # A chamada já criada nesta rodada, se houver.
             return next((o for o in adicionados if isinstance(o, OfficialList)), None)
+        if "FROM users" in sql:
+            # A conta dela, para a fila do e-mail (#275): sem conta, sem e-mail.
+            return None
         # A checagem de create_match: sem autoflush, o indício pendente não
         # aparece aqui, como numa sessão com autoflush desligado.
         return False
@@ -561,9 +566,10 @@ async def test_script_imprime_so_contagens(
 
     assert codigo == 0
     assert capsys.readouterr().out.splitlines() == [
-        "Consultas: 54",
-        "Linhas lidas: 900",
-        "Indícios novos: 2",
+        "COPEVE",
+        "  Consultas: 54",
+        "  Linhas lidas: 900",
+        "  Indícios novos: 2",
     ]
 
 

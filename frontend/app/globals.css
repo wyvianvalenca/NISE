@@ -26,6 +26,7 @@
   --nise-shadow: rgba(10, 59, 72, 0.25);
   --nise-veil: rgba(10, 59, 72, 0.38); /* fundo atrás de modais */
   --nise-fileEmpty: #d9c9b3; /* casas vazias do filé */
+  --nise-error: #a22d37; /* botão de ação sem volta (Excluir ação) */
 
   /* Cor de cada tema no filé (A06·3): a forte pinta o quadradinho concluído,
    * a clara é o fundo do ícone no item. */

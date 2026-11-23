@@ -10,7 +10,7 @@ import styles from "./CoordHeader.module.css";
  */
 const SECTIONS = [
   { key: "acoes", label: "Ações", href: "/coordenacao/acoes" },
-  { key: "funil", label: "Funil" },
+  { key: "resultados", label: "Resultados", href: "/coordenacao/resultados" },
   { key: "ingressantes", label: "Ingressantes", href: "/coordenacao/ingressantes" },
   { key: "relatorios", label: "Relatórios" },
   { key: "exportar", label: "Exportar" },

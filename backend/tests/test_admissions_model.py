@@ -115,8 +115,11 @@ def test_marca_de_indicio_apagado_guarda_so_menina_e_chamada() -> None:
 def test_ingresso_tem_data_e_origem_obrigatorias() -> None:
     # RF-F6.03
     colunas = TABLES["enrollments"].c
-    for nome in ("enrolled_on", "origin", "level", "course", "institution"):
+    for nome in ("enrolled_on", "origin", "level", "course"):
         assert not colunas[nome].nullable, nome
+    # "Onde?" é opcional (RF-F6.02); `left_on` só vale para quem parou (RF-F6.06).
+    assert colunas["institution"].nullable
+    assert colunas["left_on"].nullable
 
 
 def test_aprovacao_fica_separada_do_ingresso() -> None:
@@ -136,8 +139,16 @@ def test_codigos_de_nivel_e_origem() -> None:
 # --- Criar indício -----------------------------------------------------------
 
 
+def _sessao_criacao() -> AsyncMock:
+    # 1º scalar: a checagem "já existe?" (não); 2º: a conta da menina, para a
+    # fila do e-mail (#275). Sem conta, nada entra na fila.
+    sessao_falsa = _sessao()
+    sessao_falsa.scalar.side_effect = [False, None]
+    return sessao_falsa
+
+
 async def test_cria_indicio_que_vence_em_30_dias() -> None:
-    sessao_falsa = _sessao(scalar=False)
+    sessao_falsa = _sessao_criacao()
 
     indicio = await create_match(
         sessao_falsa, 3, LISTA, "Ciência da Computação", CourseLevel.GRADUACAO, AGORA
@@ -164,11 +175,13 @@ async def test_nao_cria_de_novo_o_indicio_da_mesma_chamada() -> None:
 
 
 async def test_a_checagem_olha_indicio_marca_aprovacao_e_ingresso() -> None:
-    sessao_falsa = _sessao(scalar=False)
+    sessao_falsa = _sessao_criacao()
 
     await create_match(sessao_falsa, 3, LISTA, "x", CourseLevel.GRADUACAO, AGORA)
 
-    sql = _sql(sessao_falsa)
+    # A checagem é o primeiro scalar; o segundo acha a conta para o e-mail (#275).
+    checagem = sessao_falsa.scalar.call_args_list[0].args[0]
+    sql = str(checagem.compile(compile_kwargs={"literal_binds": True}))
     for tabela in ("list_matches", "dismissed_matches", "approvals", "enrollments"):
         assert f"FROM {tabela}" in sql, tabela
         # Sem o filtro da menina, a primeira confirmação bloquearia todas as outras.
@@ -177,7 +190,7 @@ async def test_a_checagem_olha_indicio_marca_aprovacao_e_ingresso() -> None:
 
 
 async def test_chamada_sem_flush_ganha_id_antes_da_checagem() -> None:
-    sessao_falsa = _sessao(scalar=False)
+    sessao_falsa = _sessao_criacao()
     nova = OfficialList(institution="UFAL", selection_process="Sisu 2027", call="2ª")
 
     async def flush() -> None:
@@ -188,7 +201,10 @@ async def test_chamada_sem_flush_ganha_id_antes_da_checagem() -> None:
     await create_match(sessao_falsa, 3, nova, "x", CourseLevel.GRADUACAO, AGORA)
 
     sessao_falsa.flush.assert_awaited_once()
-    assert "list_matches.official_list_id = 8" in _sql(sessao_falsa)
+    # A checagem é o primeiro scalar; depois vem a fila do e-mail (#275).
+    checagem = sessao_falsa.scalar.call_args_list[0].args[0]
+    sql = str(checagem.compile(compile_kwargs={"literal_binds": True}))
+    assert "list_matches.official_list_id = 8" in sql
 
 
 # --- Ler o indício -----------------------------------------------------------
