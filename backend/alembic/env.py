@@ -24,6 +24,7 @@ from app.modules.catalog.models import CuratedItem  # noqa: F401
 from app.modules.cities.models import City  # noqa: F401
 from app.modules.consents.models import TermsAcceptance  # noqa: F401
 from app.modules.dates.models import ImportantDate  # noqa: F401
+from app.modules.exports.models import DataExport  # noqa: F401
 from app.modules.followup.models import (  # noqa: F401
     FollowupActivity,
     FollowupAnswer,
