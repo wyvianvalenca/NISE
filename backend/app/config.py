@@ -48,8 +48,22 @@ class AppSettings(BaseSettings):
         "https://copeve.ufal.br/concursos/sisu_2026_acompanhamento.php"
     )
     copeve_selection_process: str = "Sisu 2026"
+    # Listas de convocação do IFAL, em PDF (#274). Cada edição tem as suas
+    # seleções na API pública: o número da seleção e o nome do processo seletivo
+    # vêm daqui, não do código, ex.: IFAL_SELECTIONS='{"123": "SiSU 2027"}'.
+    ifal_api_url: str = "https://exame-api.ifal.edu.br/api"
+    ifal_selections: dict[int, str] = {}
+    # Cursos-alvo do IFAL (RF-F31.02), como (curso, campus) aparecem no PDF.
+    ifal_target_courses: list[tuple[str, str]] = [("Sistemas de Informação", "Maceió")]
+    # Um PDF maior que isso para a rodada sem ser lido inteiro. Os do spike
+    # tinham uns 1 MB; os maiores achados antes, uns 5 MB.
+    ifal_max_pdf_bytes: int = 15 * 1024 * 1024
     # Intervalo mínimo entre duas requisições do robô (RNF-F31.05).
     list_search_interval_seconds: float = 2.0
+    # De quantos em quantos meses a equipe roda a busca (D-72: trimestral,
+    # semestral ou bimestral, perto do Sisu). A data da "próxima busca" da tela
+    # Ingressantes é a da última somada a este intervalo (#317).
+    list_search_every_months: int = 3
     # Segredo das rotas chamadas pelo agendador da hospedagem. Vazio recusa tudo.
     cron_secret: str = ""
 

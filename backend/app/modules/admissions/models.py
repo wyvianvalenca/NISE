@@ -161,9 +161,14 @@ class Enrollment(Base):
     )
     level: Mapped[CourseLevel] = mapped_column()
     course: Mapped[str] = mapped_column()
-    institution: Mapped[str] = mapped_column()
+    # Vazio quando ela não diz onde (RF-F6.02, "Onde?" é opcional). Texto livre:
+    # nunca vai para exportações, logs nem LLM (RN-11).
+    institution: Mapped[str | None] = mapped_column()
     enrolled_on: Mapped[date] = mapped_column()
     origin: Mapped[AdmissionOrigin] = mapped_column()
+    # O dia em que ela disse que parou ou trocou de curso (RF-F6.06). O ingresso
+    # não é apagado: só ganha esta data.
+    left_on: Mapped[date | None] = mapped_column()
     # A chamada confirmada por ela, quando a origem é OFFICIAL_LIST.
     official_list_id: Mapped[int | None] = mapped_column(
         ForeignKey("official_lists.id", ondelete="SET NULL")

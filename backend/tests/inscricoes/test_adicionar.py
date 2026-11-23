@@ -248,7 +248,7 @@ async def test_nothing_about_the_girl_is_logged(
     assert "sigilo@exemplo.com" not in caplog.text
 
 
-# ---- GET email-check ----
+# ---- POST email-check ----
 
 
 def check(action: Action, email: str) -> tuple[str, dict[str, str]]:
@@ -264,8 +264,8 @@ async def test_check_girl_of_the_group_lists_the_other_actions(
     await register(banco, old, girl)
     await register(banco, action, girl)  # this action is never listed
 
-    path, params = check(action, girl.email.upper())
-    response = await api(coordinator, BEFORE).get(path, params=params)
+    path, body = check(action, girl.email.upper())
+    response = await api(coordinator, BEFORE).post(path, json=body)
 
     assert response.status_code == 200
     assert response.json() == {
@@ -282,8 +282,8 @@ async def test_check_girl_of_another_group_exists_with_no_actions(
     girl = await make_girl(banco)
     await register(banco, await make_action(banco, other_group, name="Segredo"), girl)
 
-    path, params = check(action, girl.email)
-    response = await api(coordinator, BEFORE).get(path, params=params)
+    path, body = check(action, girl.email)
+    response = await api(coordinator, BEFORE).post(path, json=body)
 
     assert response.json() == {"exists": True, "group_actions": []}
     assert "Segredo" not in response.text
@@ -302,8 +302,8 @@ async def test_check_girl_of_both_lists_only_the_own_group_newest_first_max_thre
         )
         await register(banco, past, girl)
 
-    path, params = check(action, girl.email)
-    response = await api(coordinator, BEFORE).get(path, params=params)
+    path, body = check(action, girl.email)
+    response = await api(coordinator, BEFORE).post(path, json=body)
 
     names = [item["name"] for item in response.json()["group_actions"]]
     assert names == ["Mês 6", "Mês 5", "Mês 4"]
@@ -313,8 +313,8 @@ async def test_check_girl_of_both_lists_only_the_own_group_newest_first_max_thre
 async def test_check_unknown_email(banco: AsyncSession, api: Api) -> None:
     _, coordinator, action = await setup(banco)
 
-    path, params = check(action, "ninguem@exemplo.com")
-    response = await api(coordinator, BEFORE).get(path, params=params)
+    path, body = check(action, "ninguem@exemplo.com")
+    response = await api(coordinator, BEFORE).post(path, json=body)
 
     assert response.json() == {"exists": False, "group_actions": []}
 
@@ -326,7 +326,7 @@ async def test_check_action_of_another_group_is_404(
     other_group, _ = await make_group(banco)
     other_action = await make_action(banco, other_group)
 
-    path, params = check(other_action, "ana@exemplo.com")
-    response = await api(coordinator, BEFORE).get(path, params=params)
+    path, body = check(other_action, "ana@exemplo.com")
+    response = await api(coordinator, BEFORE).post(path, json=body)
 
     assert response.status_code == 404

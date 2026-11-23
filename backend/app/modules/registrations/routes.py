@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import asdict
 from typing import Annotated, Any
@@ -20,6 +21,7 @@ from app.modules.girls.models import Girl
 from app.modules.registrations.exceptions import EventDayReachedError
 from app.modules.registrations.schemas import (
     CorrectionBody,
+    EmailCheckIn,
     EmailCheckOut,
     GroupActionOut,
     ImportOut,
@@ -116,7 +118,8 @@ def _error(code: str, **extra: object) -> JSONResponse:
 async def _read_sheet(file: UploadFile) -> Sheet:
     # One byte more than the limit is enough to know it is too large.
     content = await file.read(MAX_BYTES + 1)
-    return read_spreadsheet(file.filename or "", content)
+    # Reading an XLSX is slow and blocking: off the event loop.
+    return await asyncio.to_thread(read_spreadsheet, file.filename or "", content)
 
 
 def _parse_mapping(text: str) -> Mapping:
@@ -313,16 +316,17 @@ async def add_registration_route(
     )
 
 
-# While she types the e-mail (RF-F1.17, Should). Only actions of the coordinator's
+# While she types the e-mail (RF-F1.17, Should). A POST so the e-mail is not in
+# the URL (and so not in logs). Only actions of the coordinator's
 # own groups are named, so another group's data never leaks (RN-01, RN-04).
-@router.get("/email-check", response_model=EmailCheckOut, responses=NOT_FOUND)
+@router.post("/email-check", response_model=EmailCheckOut, responses=NOT_FOUND)
 async def email_check_route(
     action: GroupActionDep,
     group_ids: CoordinatorGroupIdsDep,
     session: AsyncSessionDep,
-    email: Annotated[str, Query(min_length=1, max_length=320)],
+    body: EmailCheckIn,
 ) -> EmailCheckOut:
-    exists, actions = await email_check(session, action, group_ids, email)
+    exists, actions = await email_check(session, action, group_ids, body.email)
     return EmailCheckOut(
         exists=exists,
         group_actions=[

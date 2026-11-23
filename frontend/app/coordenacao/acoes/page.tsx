@@ -1,18 +1,14 @@
-import { Suspense } from "react";
 import { CoordHeader } from "@/components/CoordHeader";
-import { getCoordActionList } from "@/lib/coord-actions";
 import { getCoordinator } from "@/lib/coordinator";
-import { ActionsList } from "./ActionsList";
-import { SavedNotice } from "./SavedNotice";
+import { ActionsView } from "./ActionsView";
 import styles from "./page.module.css";
 
 /**
  * K10 "Ações", coordinator side (RF-F30.10): the group's actions by status.
- * The notice "Ação salva." reads `?salva=<action id>`, which is how the form
- * (#212) will lead back here after saving.
+ * The list is loaded in the browser by `ActionsView`.
  */
 export default async function CoordActionsPage() {
-  const [coordinator, list] = await Promise.all([getCoordinator(), getCoordActionList()]);
+  const coordinator = await getCoordinator();
 
   return (
     <>
@@ -22,10 +18,7 @@ export default async function CoordActionsPage() {
         accountInitial={coordinator.initial}
       />
       <main className={styles.main}>
-        <Suspense>
-          <SavedNotice actions={list.actions} />
-        </Suspense>
-        <ActionsList actions={list.actions} counts={list.counts} />
+        <ActionsView />
       </main>
     </>
   );

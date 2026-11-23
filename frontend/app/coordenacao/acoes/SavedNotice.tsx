@@ -24,7 +24,7 @@ type SavedNoticeProps = {
 export function SavedNotice({ actions }: SavedNoticeProps) {
   const savedId = useSearchParams().get("salva");
   const [open, setOpen] = useState(true);
-  const saved = actions.find((action) => action.id === savedId);
+  const saved = actions.find((action) => String(action.id) === savedId);
 
   if (!saved || !open) return null;
 

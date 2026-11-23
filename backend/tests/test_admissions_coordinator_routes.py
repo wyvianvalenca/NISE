@@ -7,6 +7,7 @@ com dados fictícios, como descrito no PR. Cada teste diz o critério de aceite
 que cobre.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -51,21 +52,29 @@ def sessao(
     grupos: list[int],
     linhas: list[tuple[Enrollment, str]] | None = None,
     total: int = 0,
+    esperando: Sequence[tuple[int, str]] = (),
+    total_esperando: int | None = None,
 ) -> AsyncMock:
     # get: a usuária da sessão. scalars(...).all(): os grupos dela.
-    # scalar: o total da lista. execute(...).tuples().all(): a página.
+    # scalar, em ordem: o total da lista e o de meninas esperando a resposta.
+    # execute, em ordem: a página e, se couber, as que esperam (#318).
     sessao_falsa = AsyncMock()
     sessao_falsa.get.return_value = usuaria
     sessao_falsa.scalars.return_value = MagicMock(all=MagicMock(return_value=grupos))
-    sessao_falsa.scalar.return_value = total
+    sessao_falsa.scalar.side_effect = [
+        total,
+        len(esperando) if total_esperando is None else total_esperando,
+    ]
     resultado = MagicMock()
     resultado.tuples.return_value.all.return_value = linhas or []
-    sessao_falsa.execute.return_value = resultado
+    das_que_esperam = MagicMock()
+    das_que_esperam.tuples.return_value.all.return_value = list(esperando)
+    sessao_falsa.execute.side_effect = [resultado, das_que_esperam]
     return sessao_falsa
 
 
 def sql_da_pagina(sessao_falsa: AsyncMock) -> str:
-    statement = sessao_falsa.execute.call_args.args[0]
+    statement = sessao_falsa.execute.call_args_list[0].args[0]
     return str(
         statement.compile(
             dialect=postgresql.dialect(),  # type: ignore[no-untyped-call]
@@ -162,6 +171,8 @@ async def test_cada_linha_tem_menina_curso_instituicao_registro_e_origem() -> No
             },
         ],
         "total": 2,
+        "waiting": [],
+        "waitingTotal": 0,
         "page": 1,
         "pageSize": 15,
     }
@@ -183,7 +194,14 @@ async def test_lista_vazia_responde_sem_itens() -> None:
         app, "GET", URL, sessao(katia(), [5]), create_access_token(1)
     )
 
-    assert response.json() == {"items": [], "total": 0, "page": 1, "pageSize": 15}
+    assert response.json() == {
+        "items": [],
+        "total": 0,
+        "waiting": [],
+        "waitingTotal": 0,
+        "page": 1,
+        "pageSize": 15,
+    }
 
 
 async def test_pagina_zero_e_recusada() -> None:

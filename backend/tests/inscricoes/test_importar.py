@@ -14,6 +14,11 @@ from app.modules.girls.models import Girl, StudyStage
 from app.modules.groups.models import Group
 from app.modules.registrations import routes as registration_routes
 from app.modules.registrations.service import register_girl
+from app.modules.registrations.spreadsheet import (
+    MAX_LINES,
+    SpreadsheetError,
+    read_spreadsheet,
+)
 from app.users.models import Role, User
 from tests.inscricoes.dados import Api, make_action, make_girl, make_group, register
 
@@ -117,6 +122,21 @@ async def test_read_xlsx(banco: AsyncSession, api: Api) -> None:
 
     assert response.status_code == 200
     assert response.json()["line_count"] == 1
+
+
+def test_xlsx_over_the_line_limit_stops_reading() -> None:
+    book = Workbook()
+    sheet = book.active
+    assert sheet is not None
+    sheet.append(["Nome", "E-mail"])
+    for n in range(MAX_LINES + 1):
+        sheet.append([f"Menina {n}", f"m{n}@exemplo.com"])
+        sheet.append([])  # blank rows don't count toward the limit
+    buffer = io.BytesIO()
+    book.save(buffer)
+
+    with pytest.raises(SpreadsheetError, match="too_large"):
+        read_spreadsheet("planilha.xlsx", buffer.getvalue())
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import exists, select
+from sqlalchemy import ColumnElement, exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,15 @@ class RatingResult(enum.Enum):
     ALREADY_RATED = "already_rated"
 
 
+def _already_rated() -> ColumnElement[bool]:
+    """EXISTS: a participação já tem a avaliação da ação (RF-F4.03a)."""
+    return exists().where(
+        Answer.girl_id == Participation.girl_id,
+        Answer.action_id == Participation.action_id,
+        Answer.stage == AnswerStage.RATING,
+    )
+
+
 async def get_pending_rating(
     session: AsyncSession, user_id: int
 ) -> PendingRatingOut | None:
@@ -28,11 +37,7 @@ async def get_pending_rating(
     ainda não avaliou. Se houver mais de uma, vem a mais recente. Quem chegou
     sozinha (M2) não tem participação, e a resposta é None: o front pula a A03.
     """
-    already_rated = exists().where(
-        Answer.girl_id == Participation.girl_id,
-        Answer.action_id == Participation.action_id,
-        Answer.stage == AnswerStage.RATING,
-    )
+    already_rated = _already_rated()
 
     row = (
         await session.execute(
@@ -71,6 +76,47 @@ async def get_pending_rating(
         starts_on=starts_on,
         city_name=city_name,
     )
+
+
+async def list_pending_ratings(
+    session: AsyncSession, user_id: int
+) -> list[PendingRatingOut]:
+    """Todas as ações que a menina da sessão foi e ainda não avaliou (RF-F4.03b).
+
+    É o "Pra responder" da agenda (A14): a avaliação adiada com "Agora não"
+    volta para cá. A mais recente vem primeiro, como em get_pending_rating.
+    """
+    rows = await session.execute(
+        select(
+            Action.id,
+            Action.name,
+            Group.name,
+            Action.starts_on,
+            City.name,
+        )
+        .select_from(Participation)
+        .join(Girl, Girl.id == Participation.girl_id)
+        .join(Action, Action.id == Participation.action_id)
+        .join(Group, Group.id == Action.group_id)
+        .outerjoin(City, City.id == Action.city_ibge_code)
+        .where(
+            Girl.user_id == user_id,
+            Participation.attended_at.is_not(None),
+            ~_already_rated(),
+        )
+        .order_by(Action.starts_on.desc(), Action.id.desc())
+    )
+
+    return [
+        PendingRatingOut(
+            action_id=action_id,
+            action_name=action_name,
+            group_name=group_name,
+            starts_on=starts_on,
+            city_name=city_name,
+        )
+        for action_id, action_name, group_name, starts_on, city_name in rows
+    ]
 
 
 async def record_rating(

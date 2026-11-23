@@ -24,6 +24,12 @@ from app.modules.attendance.models import AttendanceEmail  # noqa: F401
 from app.modules.catalog.models import CuratedItem  # noqa: F401
 from app.modules.cities.models import City  # noqa: F401
 from app.modules.consents.models import TermsAcceptance  # noqa: F401
+from app.modules.dates.models import ImportantDate  # noqa: F401
+from app.modules.followup.models import (  # noqa: F401
+    FollowupActivity,
+    FollowupAnswer,
+    FollowupHelp,
+)
 from app.modules.girl_file.models import FileEntry  # noqa: F401
 from app.modules.girls.models import Girl, GirlTopic  # noqa: F401
 from app.modules.groups.models import Group, GroupCoordinator, Invite  # noqa: F401

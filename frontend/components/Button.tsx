@@ -6,8 +6,11 @@ type ButtonProps = ComponentProps<"button"> & {
   /** Mostra "Enviando…" e bloqueia o clique enquanto algo é salvo. */
   loading?: boolean;
   loadingLabel?: string;
-  /** "primary": fundo escuro. "secondary": contorno, para a ação menos importante. */
-  variant?: "primary" | "secondary";
+  /**
+   * "primary": fundo escuro. "secondary": contorno, para a ação menos importante.
+   * "danger": fundo vermelho, para a ação sem volta ("Excluir ação").
+   */
+  variant?: "primary" | "secondary" | "danger";
   /** "sm": 44px de altura, para ações dentro de cartões ("+ Quero fazer"). */
   size?: "md" | "sm";
 };

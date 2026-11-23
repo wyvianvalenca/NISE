@@ -1,0 +1,12 @@
+/* Pergunta do curso (A18, pergunta 3; também no perfil). */
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.congrats {
+  color: var(--nise-teal);
+  font-size: 18px;
+  font-weight: 700;
+}

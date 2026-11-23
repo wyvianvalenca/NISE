@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { AgendaDates, ToAnswer } from "../lib/agenda";
 import { mockFileApi } from "./file-api";
 
 /**
@@ -8,11 +9,21 @@ import { mockFileApi } from "./file-api";
  * The FastAPI route is mocked; the back-end has its own tests. Fictional data.
  */
 
+function body(listMatch: boolean): ToAnswer {
+  return { list_match: listMatch, ratings: [], followup: null };
+}
+
 async function mockToAnswer(page: Page, listMatch: boolean, status = 200): Promise<void> {
   await page.route("**/api/agenda/to-answer", (route) =>
-    route.fulfill({ status, json: status === 200 ? { list_match: listMatch } : {} }),
+    route.fulfill({ status, json: status === 200 ? body(listMatch) : {} }),
   );
 }
+
+// The agenda also asks for the dates (#295); here there are none.
+test.beforeEach(async ({ page }) => {
+  const none: AgendaDates = { upcoming: [] };
+  await page.route("**/api/agenda/dates", (route) => route.fulfill({ json: none }));
+});
 
 const ITEM = "Achamos seu nome numa lista de aprovados!";
 
@@ -80,7 +91,7 @@ test.describe("Sua agenda · Pra responder", () => {
     await page.route("**/api/agenda/to-answer", (route) =>
       failing
         ? route.fulfill({ status: 500, json: {} })
-        : route.fulfill({ json: { list_match: true } }),
+        : route.fulfill({ json: body(true) }),
     );
     await page.goto("/agenda");
 
