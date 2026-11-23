@@ -41,5 +41,11 @@ test("sends the cut in the body of the POST", async ({ page }) => {
   await page.getByRole("button", { name: "Gerar arquivo" }).click();
 
   await expect(page.getByText("Arquivo pronto")).toBeVisible();
-  expect(calls.body).toEqual({ year: 2026, actionId: null, type: "oficina", tag: null });
+  expect(calls.body).toEqual({
+    packages: ["groups", "funnel", "ratings", "interest", "admission"],
+    year: 2026,
+    actionId: null,
+    type: "oficina",
+    tag: null,
+  });
 });

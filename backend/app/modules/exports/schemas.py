@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.modules.actions.models import ActionType
+from app.modules.exports.service import DEFAULT_PACKAGES, Package
 from app.modules.girls.models import Topic
 
 
@@ -14,9 +15,14 @@ class _CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class ExportCutIn(_CamelModel):
-    """O recorte do primeiro passo (RF-F24.09). Campo vazio é "todos"."""
+class ExportIn(_CamelModel):
+    """O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).
 
+    Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os
+    pacotes padrão e `packages` vazio é só a Base.
+    """
+
+    packages: list[Package] = Field(default_factory=lambda: list(DEFAULT_PACKAGES))
     year: int | None = Field(default=None, ge=2000, le=2100)
     action_id: int | None = Field(default=None, ge=1)
     type: ActionType | None = None

@@ -1632,18 +1632,6 @@ export interface components {
             kind: "code" | "generalized" | "action";
         };
         /**
-         * ExportCutIn
-         * @description O recorte do primeiro passo (RF-F24.09). Campo vazio é "todos".
-         */
-        ExportCutIn: {
-            /** Year */
-            year?: number | null;
-            /** Actionid */
-            actionId?: number | null;
-            type?: components["schemas"]["ActionType"] | null;
-            tag?: components["schemas"]["Topic"] | null;
-        };
-        /**
          * ExportCutOptionsOut
          * @description O que ela pode escolher no "Recorte": só dados do próprio grupo.
          */
@@ -1675,6 +1663,23 @@ export interface components {
             cut: string;
             /** Rowcount */
             rowCount: number;
+        };
+        /**
+         * ExportIn
+         * @description O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).
+         *
+         *     Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os
+         *     pacotes padrão e `packages` vazio é só a Base.
+         */
+        ExportIn: {
+            /** Packages */
+            packages?: components["schemas"]["Package"][];
+            /** Year */
+            year?: number | null;
+            /** Actionid */
+            actionId?: number | null;
+            type?: components["schemas"]["ActionType"] | null;
+            tag?: components["schemas"]["Topic"] | null;
         };
         /**
          * ExportOut
@@ -2200,6 +2205,12 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /**
+         * Package
+         * @description Os pacotes que a coordenadora liga ou desliga (RF-F24.08).
+         * @enum {string}
+         */
+        Package: "groups" | "funnel" | "ratings" | "interest" | "admission" | "other_groups";
         /**
          * PendingRatingOut
          * @description A ação que a menina pode avaliar na A03 (#58).
@@ -5096,6 +5107,8 @@ export interface operations {
     preview_route_api_coordinator_exports_preview_get: {
         parameters: {
             query?: {
+                /** @description Pacotes ligados, separados por vírgula */
+                packages?: string | null;
                 year?: number | null;
                 action_id?: number | null;
                 type?: components["schemas"]["ActionType"] | null;
@@ -5195,7 +5208,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ExportCutIn"] | null;
+                "application/json": components["schemas"]["ExportIn"] | null;
             };
         };
         responses: {

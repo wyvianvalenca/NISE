@@ -17,17 +17,19 @@ from app.modules.exports.models import DataExport
 from app.modules.exports.schemas import (
     ActionOptionOut,
     ExportColumnOut,
-    ExportCutIn,
     ExportCutOptionsOut,
     ExportHistoryItemOut,
+    ExportIn,
     ExportOut,
     ExportPreviewOut,
     ExportSummaryOut,
     OptionOut,
 )
 from app.modules.exports.service import (
+    DEFAULT_PACKAGES,
     PREVIEW_ROWS,
     ExportCut,
+    Package,
     action_is_of_group,
     build_table,
     create_export,
@@ -75,6 +77,18 @@ _CUT_NOT_FOUND: dict[int | str, dict[str, Any]] = {
 }
 
 
+def parse_packages(text: str | None) -> list[Package]:
+    """ "groups,funnel" vira a lista. Sem o parâmetro vale o padrão; "" é só a Base."""
+    if text is None:
+        return list(DEFAULT_PACKAGES)
+    try:
+        return [Package(name) for name in text.split(",") if name]
+    except ValueError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Pacote desconhecido"
+        ) from None
+
+
 # O grupo vem sempre da sessão, nunca da requisição (RN-07, RNF-G.03).
 @router.get("/options", response_model=ExportCutOptionsOut, responses=_NOT_COORDINATOR)
 async def options_route(
@@ -102,10 +116,22 @@ async def summary_route(
 
 @router.get("/preview", response_model=ExportPreviewOut, responses=_CUT_NOT_FOUND)
 async def preview_route(
-    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep, cut: CutDep
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    cut: CutDep,
+    packages: Annotated[
+        str | None, Query(description="Pacotes ligados, separados por vírgula")
+    ] = None,
 ) -> ExportPreviewOut:
     """Cinco linhas do arquivo que vai sair, para o passo "Revisão" (RF-F24.32)."""
-    table = await build_table(session, group_id, today_in_maceio(), PREVIEW_ROWS, cut)
+    table = await build_table(
+        session,
+        group_id,
+        today_in_maceio(),
+        PREVIEW_ROWS,
+        packages=parse_packages(packages),
+        cut=cut,
+    )
     return ExportPreviewOut(
         columns=[
             ExportColumnOut(key=c.key, label=c.label, kind=c.kind)
@@ -126,16 +152,23 @@ async def create_export_route(
     user: CoordinatorDep,
     group_id: CoordinatorGroupIdDep,
     session: AsyncSessionDep,
-    body: ExportCutIn | None = None,
+    body: ExportIn | None = None,
 ) -> ExportOut:
     """Gera o CSV anônimo do recorte e registra a exportação (RF-F24.34, RN-07)."""
-    wanted = body or ExportCutIn()
+    wanted = body or ExportIn()
     cut = await checked_cut(
         session,
         group_id,
         ExportCut(wanted.year, wanted.action_id, wanted.type, wanted.tag),
     )
-    export = await create_export(session, group_id, user.id, today_in_maceio(), cut=cut)
+    export = await create_export(
+        session,
+        group_id,
+        user.id,
+        today_in_maceio(),
+        packages=wanted.packages,
+        cut=cut,
+    )
     return ExportOut.model_validate(export, from_attributes=True)
 
 

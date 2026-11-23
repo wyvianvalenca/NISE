@@ -13,6 +13,7 @@ import {
   countdownLabel,
   type Cut,
   type CutOptions,
+  DEFAULT_PACKAGES,
   type ExportedFile,
   generateExport,
   getCutOptions,
@@ -23,10 +24,14 @@ import {
   KIND_LABELS,
   NEVER_LEAVES,
   NO_CUT,
+  PACKAGES,
+  type PackageId,
   type Preview,
   STEPS,
   type Summary,
+  summaryLabel,
 } from "@/lib/exportar";
+import { PackageCard } from "./PackageCard";
 import { ExportHistory } from "./ExportHistory";
 import styles from "./ExportWizard.module.css";
 import { SummaryBar } from "./SummaryBar";
@@ -39,6 +44,7 @@ export function ExportWizard() {
   const [optionsFailed, setOptionsFailed] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [summaryFailed, setSummaryFailed] = useState(false);
+  const [packages, setPackages] = useState<readonly PackageId[]>(DEFAULT_PACKAGES);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -70,6 +76,10 @@ export function ExportWizard() {
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+
+  function toggle(id: PackageId, on: boolean) {
+    setPackages((current) => (on ? [...current, id] : current.filter((item) => item !== id)));
+  }
 
   function back() {
     setStep((current) => current - 1);
@@ -183,6 +193,17 @@ export function ExportWizard() {
                 ))}
               </ul>
             </div>
+            {PACKAGES.map((item) => (
+              <PackageCard
+                key={item.id}
+                item={item}
+                on={packages.includes(item.id)}
+                onChange={(on) => toggle(item.id, on)}
+              />
+            ))}
+            <p className={styles.summary} aria-live="polite">
+              {summaryLabel(packages)}
+            </p>
             <SummaryOrError summary={summary} failed={summaryFailed} />
             <div className={styles.actions}>
               <Button variant="secondary" onClick={back}>
@@ -196,6 +217,7 @@ export function ExportWizard() {
         {step === 2 && (
           <Review
             cut={cut}
+            packages={packages}
             onBack={back}
             onDone={(made) => {
               setFile(made);
@@ -204,7 +226,9 @@ export function ExportWizard() {
           />
         )}
 
-        {step === 3 && file && <Done file={file} cut={cut} onNewFile={setFile} />}
+        {step === 3 && file && (
+          <Done file={file} packages={packages} cut={cut} onNewFile={setFile} />
+        )}
       </section>
     </>
   );
@@ -223,10 +247,12 @@ function SummaryOrError({ summary, failed }: { summary: Summary | null; failed: 
 
 function Review({
   cut,
+  packages,
   onBack,
   onDone,
 }: {
   cut: Cut;
+  packages: readonly PackageId[];
   onBack: () => void;
   onDone: (file: ExportedFile) => void;
 }) {
@@ -238,13 +264,13 @@ function Review({
 
   useEffect(() => {
     let current = true;
-    getPreview(cut)
+    getPreview(packages, cut)
       .then((loaded) => current && setPreview(loaded))
       .catch(() => current && setFailed(true));
     return () => {
       current = false;
     };
-  }, [cut, attempt]);
+  }, [packages, cut, attempt]);
 
   function retry() {
     setFailed(false);
@@ -256,7 +282,7 @@ function Review({
     setGenerating(true);
     setGenerateFailed(false);
     try {
-      onDone(await generateExport(cut));
+      onDone(await generateExport(packages, cut));
     } catch {
       setGenerateFailed(true);
       setGenerating(false);
@@ -266,6 +292,7 @@ function Review({
   return (
     <>
       <h3 className={styles.baseTitle}>Raio-X do arquivo</h3>
+      <p className={styles.summary}>{summaryLabel(packages)}</p>
       {failed && (
         <div role="alert" className={styles.problem}>
           <p>Não foi possível montar a prévia do arquivo.</p>
@@ -357,10 +384,12 @@ function Review({
 function Done({
   file,
   cut,
+  packages,
   onNewFile,
 }: {
   file: ExportedFile;
   cut: Cut;
+  packages: readonly PackageId[];
   onNewFile: (file: ExportedFile) => void;
 }) {
   const expiresAt = new Date(file.expiresAt).getTime();
@@ -376,7 +405,7 @@ function Done({
   async function generateAgain() {
     setAgain("loading");
     try {
-      onNewFile(await generateExport(cut));
+      onNewFile(await generateExport(packages, cut));
       setNow(Date.now());
       setAgain("idle");
     } catch {

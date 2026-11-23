@@ -4376,6 +4376,24 @@
         "operationId": "preview_route_api_coordinator_exports_preview_get",
         "parameters": [
           {
+            "name": "packages",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Pacotes ligados, separados por vírgula",
+              "title": "Packages"
+            },
+            "description": "Pacotes ligados, separados por vírgula"
+          },
+          {
             "name": "year",
             "in": "query",
             "required": false,
@@ -4554,7 +4572,7 @@
               "schema": {
                 "anyOf": [
                   {
-                    "$ref": "#/components/schemas/ExportCutIn"
+                    "$ref": "#/components/schemas/ExportIn"
                   },
                   {
                     "type": "null"
@@ -6215,58 +6233,6 @@
         ],
         "title": "ExportColumnOut"
       },
-      "ExportCutIn": {
-        "properties": {
-          "year": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 2100.0,
-                "minimum": 2000.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Year"
-          },
-          "actionId": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Actionid"
-          },
-          "type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ActionType"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "tag": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Topic"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "title": "ExportCutIn",
-        "description": "O recorte do primeiro passo (RF-F24.09). Campo vazio é \"todos\"."
-      },
       "ExportCutOptionsOut": {
         "properties": {
           "years": {
@@ -6342,6 +6308,65 @@
         ],
         "title": "ExportHistoryItemOut",
         "description": "Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07)."
+      },
+      "ExportIn": {
+        "properties": {
+          "packages": {
+            "items": {
+              "$ref": "#/components/schemas/Package"
+            },
+            "type": "array",
+            "title": "Packages"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "actionId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actionid"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Topic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ExportIn",
+        "description": "O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).\n\nCampo vazio no recorte é \"todos\". A Base sempre sai; sem `packages` valem os\npacotes padrão e `packages` vazio é só a Base."
       },
       "ExportOut": {
         "properties": {
@@ -7564,6 +7589,19 @@
         ],
         "title": "OpportunityEmailsIn",
         "description": "A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).\n\nStrictBool: só aceita true ou false. Um texto como \"false\" é recusado em\nvez de virar True."
+      },
+      "Package": {
+        "type": "string",
+        "enum": [
+          "groups",
+          "funnel",
+          "ratings",
+          "interest",
+          "admission",
+          "other_groups"
+        ],
+        "title": "Package",
+        "description": "Os pacotes que a coordenadora liga ou desliga (RF-F24.08)."
       },
       "PendingRatingOut": {
         "properties": {

@@ -23,6 +23,9 @@ export type Summary = components["schemas"]["ExportSummaryOut"];
 
 export const STEPS = ["Recorte", "Conteúdo", "Revisão", "Pronto"] as const;
 
+/** The file has 8 columns of the Base: the card shows "mês e nome da ação" as one chip. */
+const BASE_COLUMN_COUNT = 8;
+
 /** The columns of the "Base" card, always in the file (RF-F24.08). */
 export const BASE_COLUMNS = [
   "código",
@@ -33,6 +36,73 @@ export const BASE_COLUMNS = [
   "tags",
   "mês e nome da ação",
 ] as const;
+
+/** The packages she turns on or off; the ids are the ones of the API (RF-F24.08). */
+export type PackageId = components["schemas"]["Package"];
+
+export type ContentPackage = {
+  id: PackageId;
+  name: string;
+  description: string;
+  /** The names of its columns, as they head the file. */
+  columns: readonly string[];
+};
+
+export const PACKAGES: readonly ContentPackage[] = [
+  {
+    id: "groups",
+    name: "Grupos de comparação",
+    description: "Quem a menina é para esta ação: participante ou não compareceu.",
+    columns: ["grupo de comparação"],
+  },
+  {
+    id: "funnel",
+    name: "Funil",
+    description: "Até onde cada menina chegou: inscrita, presente e concluinte.",
+    columns: ["inscrita", "presente", "concluinte"],
+  },
+  {
+    id: "ratings",
+    name: "Avaliações",
+    description: "A nota de 1 a 5 da ação. Comentários nunca saem.",
+    columns: ["nota da avaliação"],
+  },
+  {
+    id: "interest",
+    name: "Interesse",
+    description: "Como ela respondeu a “Hoje, computação pra você é…” no cadastro e aos 3, 6, 12 e 18 meses.",
+    columns: ["interesse_cadastro", "interesse_3m", "interesse_6m", "interesse_12m", "interesse_18m"],
+  },
+  {
+    id: "admission",
+    name: "Ingresso",
+    description: "Se entrou num curso, o nível e a área. Nunca a instituição.",
+    columns: ["ingressou", "nível de ingresso", "área de ingresso"],
+  },
+  {
+    id: "other_groups",
+    name: "Outros grupos",
+    description: "Quantas ações de outros grupos ela frequentou. Só o número, nunca qual grupo.",
+    columns: ["outros grupos"],
+  },
+];
+
+/** Before the models exist (#379): everything on, except "Outros grupos". */
+export const DEFAULT_PACKAGES: readonly PackageId[] = [
+  "groups",
+  "funnel",
+  "ratings",
+  "interest",
+  "admission",
+];
+
+/** "21 colunas · 6 pacotes": the Base counts as a package. */
+export function summaryLabel(selected: readonly PackageId[]): string {
+  const chosen = PACKAGES.filter((item) => selected.includes(item.id));
+  const columns =
+    BASE_COLUMN_COUNT + chosen.reduce((total, item) => total + item.columns.length, 0);
+  return `${columns} ${columns === 1 ? "coluna" : "colunas"} · ${chosen.length + 1} pacotes`;
+}
 
 /** What never leaves, as the "Nunca sai" list of the Figma (RF-F24.02). */
 export const NEVER_LEAVES = [
@@ -61,12 +131,16 @@ export function countdownLabel(msLeft: number): string {
 const BASE = "/api/coordinator/exports";
 
 /** The cut as a query string: only what she chose, since empty means "todos". */
-function cutQuery(cut: Cut): string {
+function cutParams(cut: Cut): URLSearchParams {
   const params = new URLSearchParams();
   if (cut.year) params.set("year", cut.year);
   if (cut.actionId) params.set("action_id", cut.actionId);
   if (cut.type) params.set("type", cut.type);
   if (cut.tag) params.set("tag", cut.tag);
+  return params;
+}
+
+function withQuery(params: URLSearchParams): string {
   const text = params.toString();
   return text ? `?${text}` : "";
 }
@@ -80,21 +154,28 @@ export async function getCutOptions(): Promise<CutOptions> {
 
 /** The numbers of the dark bar for this cut (RF-F24.33). */
 export async function getSummary(cut: Cut): Promise<Summary> {
-  const response = await fetch(`${BASE}/summary${cutQuery(cut)}`);
+  const response = await fetch(`${BASE}/summary${withQuery(cutParams(cut))}`);
   if (!response.ok) throw new Error(`summary ${response.status}`);
   return (await response.json()) as Summary;
 }
 
-/** The five lines of the "Revisão" step. The group comes from the session. */
-export async function getPreview(cut: Cut): Promise<Preview> {
-  const response = await fetch(`${BASE}/preview${cutQuery(cut)}`);
+/** The five lines of the "Revisão" step, for the cut and the packages she turned on. */
+export async function getPreview(packages: readonly PackageId[], cut: Cut): Promise<Preview> {
+  const params = cutParams(cut);
+  // An empty list is valid: only the Base.
+  params.set("packages", packages.join(","));
+  const response = await fetch(`${BASE}/preview${withQuery(params)}`);
   if (!response.ok) throw new Error(`preview ${response.status}`);
   return (await response.json()) as Preview;
 }
 
-/** "Gerar arquivo": makes the CSV of the cut and registers it (RF-F24.34). */
-export async function generateExport(cut: Cut): Promise<ExportedFile> {
+/** "Gerar arquivo": makes the CSV of the cut with those packages and registers it (RF-F24.34). */
+export async function generateExport(
+  packages: readonly PackageId[],
+  cut: Cut,
+): Promise<ExportedFile> {
   const body = {
+    packages,
     year: cut.year ? Number(cut.year) : null,
     actionId: cut.actionId ? Number(cut.actionId) : null,
     type: cut.type || null,

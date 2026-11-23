@@ -163,7 +163,7 @@ async def test_arquivo_sem_identificador_direto(db_session: AsyncSession) -> Non
     await db_session.flush()
     await inscrever(db_session, quem, a)
 
-    texto = to_csv(await build_table(db_session, g.id, HOJE))
+    texto = to_csv(await build_table(db_session, g.id, HOJE, packages=[]))
 
     assert texto.startswith(BOM)
     assert "Menina Ficticia" not in texto
@@ -237,7 +237,7 @@ async def test_gerar_registra_e_o_link_vale_15_minutos(
     feito = await create_export(db_session, g.id, usuaria.id, HOJE, agora)
 
     assert feito.row_count == 1
-    assert feito.column_count == 8
+    assert feito.column_count == 21
     assert feito.expires_at == agora + timedelta(minutes=15)
     assert feito.filename == "rendeiras-do-codigo_dados-anonimos_2026-10-16.csv"
     assert feito.content is not None
