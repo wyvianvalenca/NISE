@@ -33,3 +33,13 @@
   color: var(--nise-teal);
   font-size: 14px;
 }
+
+/* A real link: pointer and a visible focus ring (RNF-G.02). */
+.live {
+  cursor: pointer;
+}
+
+.live:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
+}

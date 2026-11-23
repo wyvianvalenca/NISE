@@ -27,6 +27,14 @@
   margin-top: 20px;
 }
 
+.loadFailed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
 .title:focus {
   outline: none;
 }
