@@ -11,6 +11,21 @@ export type Preview = components["schemas"]["ExportPreviewOut"];
 export type ExportedFile = components["schemas"]["ExportOut"];
 export type ColumnKind = components["schemas"]["ExportColumnOut"]["kind"];
 
+/** What she chose in "Recorte". Empty text means "todos" (RF-F24.09). */
+export type Cut = { year: string; actionId: string; type: string; tag: string };
+
+export const NO_CUT: Cut = { year: "", actionId: "", type: "", tag: "" };
+
+export type CutOptions = {
+  years: number[];
+  actions: { id: number; name: string; startsOn: string }[];
+  types: { value: string; label: string }[];
+  tags: { value: string; label: string }[];
+};
+
+/** The numbers of the dark bar (RF-F24.33). */
+export type Summary = { rows: number; girls: number; alone: number; actions: number };
+
 export const STEPS = ["Recorte", "Conteúdo", "Revisão", "Pronto"] as const;
 
 /** The columns of the "Base" card, always in the file (RF-F24.08). */
@@ -60,4 +75,23 @@ export async function generateExport(): Promise<ExportedFile> {
   const response = await fetch("/api/coordinator/exports", { method: "POST" });
   if (!response.ok) throw new Error(`export ${response.status}`);
   return (await response.json()) as ExportedFile;
+}
+
+/** Sample data while the screen is not on the routes yet. */
+export async function getCutOptions(): Promise<CutOptions> {
+  return {
+    years: [2026, 2025],
+    actions: [{ id: 1, name: "Oficina de Python", startsOn: "2026-09-20" }],
+    types: [
+      { value: "oficina", label: "Oficina" },
+      { value: "palestra", label: "Palestra" },
+    ],
+    tags: [{ value: "programacao", label: "Programação" }],
+  };
+}
+
+/** Sample data while the screen is not on the routes yet. */
+export async function getSummary(cut: Cut): Promise<Summary> {
+  void cut;
+  return { rows: 72, girls: 62, alone: 4, actions: 3 };
 }

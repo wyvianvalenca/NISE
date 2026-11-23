@@ -7,23 +7,61 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { Notice } from "@/components/Notice";
+import { Select } from "@/components/Select";
 import {
   BASE_COLUMNS,
   countdownLabel,
+  type Cut,
+  type CutOptions,
   type ExportedFile,
   generateExport,
+  getCutOptions,
   getPreview,
+  getSummary,
   KIND_LABELS,
   NEVER_LEAVES,
+  NO_CUT,
   type Preview,
   STEPS,
+  type Summary,
 } from "@/lib/exportar";
 import styles from "./ExportWizard.module.css";
+import { SummaryBar } from "./SummaryBar";
 
 export function ExportWizard() {
   const [step, setStep] = useState(0);
   const [file, setFile] = useState<ExportedFile | null>(null);
+  const [cut, setCut] = useState<Cut>(NO_CUT);
+  const [options, setOptions] = useState<CutOptions | null>(null);
+  const [optionsFailed, setOptionsFailed] = useState(false);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [summaryFailed, setSummaryFailed] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    getCutOptions()
+      .then(setOptions)
+      .catch(() => setOptionsFailed(true));
+  }, []);
+
+  // The bar follows the cut. `current` drops an answer that arrives late.
+  useEffect(() => {
+    let current = true;
+    getSummary(cut)
+      .then((loaded) => current && setSummary(loaded))
+      .catch(() => current && setSummaryFailed(true));
+    return () => {
+      current = false;
+    };
+  }, [cut]);
+
+  function choose(field: keyof Cut, value: string) {
+    setCut((current) => ({ ...current, [field]: value }));
+    setSummary(null);
+    setSummaryFailed(false);
+  }
+
+  const nothingMatches = summary !== null && summary.rows === 0;
 
   // Ao trocar de passo, o foco vai para o título dele (teclado e leitor de tela).
   useEffect(() => {
@@ -57,9 +95,74 @@ export function ExportWizard() {
         </h2>
 
         {step === 0 && (
-          <div className={styles.actions}>
-            <Button onClick={() => setStep(1)}>Continuar</Button>
-          </div>
+          <>
+            {optionsFailed && (
+              <p role="alert" className={styles.problem}>
+                Não foi possível carregar as opções do recorte.
+              </p>
+            )}
+            <div className={styles.selectors}>
+              <Select
+                label="Período"
+                value={cut.year}
+                onChange={(event) => choose("year", event.target.value)}
+              >
+                <option value="">Todo o período</option>
+                {options?.years.map((year) => (
+                  <option key={year} value={year}>
+                    Ano de {year}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Ação"
+                value={cut.actionId}
+                onChange={(event) => choose("actionId", event.target.value)}
+              >
+                <option value="">Todas as ações</option>
+                {options?.actions.map((action) => (
+                  <option key={action.id} value={action.id}>
+                    {action.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Tipo"
+                value={cut.type}
+                onChange={(event) => choose("type", event.target.value)}
+              >
+                <option value="">Todos os tipos</option>
+                {options?.types.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Tags"
+                value={cut.tag}
+                onChange={(event) => choose("tag", event.target.value)}
+              >
+                <option value="">Todas as tags</option>
+                {options?.tags.map((tag) => (
+                  <option key={tag.value} value={tag.value}>
+                    {tag.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <SummaryOrError summary={summary} failed={summaryFailed} />
+            {nothingMatches && (
+              <p role="status" className={styles.muted}>
+                Nenhuma linha neste recorte. Mude as escolhas para continuar.
+              </p>
+            )}
+            <div className={styles.actions}>
+              <Button onClick={() => setStep(1)} disabled={summary === null || nothingMatches}>
+                Continuar
+              </Button>
+            </div>
+          </>
         )}
 
         {step === 1 && (
@@ -77,6 +180,7 @@ export function ExportWizard() {
                 ))}
               </ul>
             </div>
+            <SummaryOrError summary={summary} failed={summaryFailed} />
             <div className={styles.actions}>
               <Button variant="secondary" onClick={back}>
                 Voltar
@@ -100,6 +204,17 @@ export function ExportWizard() {
       </section>
     </>
   );
+}
+
+function SummaryOrError({ summary, failed }: { summary: Summary | null; failed: boolean }) {
+  if (failed) {
+    return (
+      <p role="alert" className={styles.problem}>
+        Não foi possível calcular o tamanho do arquivo.
+      </p>
+    );
+  }
+  return <SummaryBar summary={summary} />;
 }
 
 function Review({

@@ -243,3 +243,9 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.selectors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
