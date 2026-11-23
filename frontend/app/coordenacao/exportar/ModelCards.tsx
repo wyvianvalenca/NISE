@@ -8,9 +8,12 @@ import styles from "./ExportWizard.module.css";
 export function ModelCards({
   value,
   onChange,
+  disabled,
 }: {
   value: ModelId | null;
   onChange: (id: ModelId) => void;
+  /** The packages of each model come from the API: wait for them. */
+  disabled: boolean;
 }) {
   return (
     <fieldset className={styles.modelGrid}>
@@ -21,6 +24,7 @@ export function ModelCards({
             type="radio"
             name="export-model"
             className={styles.srOnly}
+            disabled={disabled}
             checked={value === model.id}
             onChange={() => onChange(model.id)}
           />

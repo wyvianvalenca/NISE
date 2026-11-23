@@ -6262,6 +6262,13 @@
             },
             "type": "array",
             "title": "Tags"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ExportModelOut"
+            },
+            "type": "array",
+            "title": "Models"
           }
         },
         "type": "object",
@@ -6269,7 +6276,8 @@
           "years",
           "actions",
           "types",
-          "tags"
+          "tags",
+          "models"
         ],
         "title": "ExportCutOptionsOut",
         "description": "O que ela pode escolher no \"Recorte\": só dados do próprio grupo."
@@ -6311,11 +6319,28 @@
       },
       "ExportIn": {
         "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "packages": {
-            "items": {
-              "$ref": "#/components/schemas/Package"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Package"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Packages"
           },
           "year": {
@@ -6366,7 +6391,39 @@
         },
         "type": "object",
         "title": "ExportIn",
-        "description": "O que a coordenadora escolheu: recorte (RF-F24.09) e pacotes (RF-F24.08).\n\nCampo vazio no recorte é \"todos\". A Base sempre sai; sem `packages` valem os\npacotes padrão e `packages` vazio é só a Base."
+        "description": "O que a coordenadora escolheu: modelo, recorte e pacotes (RF-F24.08 a 10).\n\nCampo vazio no recorte é \"todos\". A Base sempre sai; sem `packages` valem os do\nmodelo (sem modelo, \"Do meu jeito\", D-104) e `packages` vazio é só a Base."
+      },
+      "ExportModel": {
+        "type": "string",
+        "enum": [
+          "accountability",
+          "research",
+          "planning",
+          "my_way"
+        ],
+        "title": "ExportModel",
+        "description": "Os quatro modelos do primeiro passo (RF-F24.10). Cada um já marca pacotes."
+      },
+      "ExportModelOut": {
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/ExportModel"
+          },
+          "packages": {
+            "items": {
+              "$ref": "#/components/schemas/Package"
+            },
+            "type": "array",
+            "title": "Packages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "packages"
+        ],
+        "title": "ExportModelOut",
+        "description": "Um modelo do primeiro passo e os pacotes que ele já liga (RF-F24.10)."
       },
       "ExportOut": {
         "properties": {

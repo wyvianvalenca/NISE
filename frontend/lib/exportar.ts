@@ -18,6 +18,9 @@ export const NO_CUT: Cut = { year: "", actionId: "", type: "", tag: "" };
 
 export type CutOptions = components["schemas"]["ExportCutOptionsOut"];
 
+/** A model and the packages it turns on, as the API says (RF-F24.10). */
+export type ExportModelOption = CutOptions["models"][number];
+
 /** The numbers of the dark bar (RF-F24.33). */
 export type Summary = components["schemas"]["ExportSummaryOut"];
 
@@ -88,7 +91,7 @@ export const PACKAGES: readonly ContentPackage[] = [
 ];
 
 /** The models of the first step (RF-F24.10). `my_way` is the one that counts with no choice (D-104). */
-export type ModelId = "accountability" | "research" | "planning" | "my_way";
+export type ModelId = components["schemas"]["ExportModel"];
 
 export type ExportModelCard = {
   id: ModelId;
@@ -128,14 +131,6 @@ export const MODELS: readonly ExportModelCard[] = [
 
 /** With no model chosen, "Do meu jeito" counts (D-104). */
 export const DEFAULT_MODEL: ModelId = "my_way";
-
-/** The packages each model turns on. Sample data until it comes from the API. */
-export const MODEL_PACKAGES: Record<ModelId, readonly PackageId[]> = {
-  accountability: ["funnel", "ratings"],
-  research: ["groups", "funnel", "ratings", "interest", "admission"],
-  planning: ["ratings", "interest"],
-  my_way: ["groups", "funnel", "ratings", "interest", "admission"],
-};
 
 /** The name that goes in the chip "Modelo: Pesquisa". */
 export function modelName(id: ModelId): string {
@@ -228,8 +223,10 @@ export async function getPreview(packages: readonly PackageId[], cut: Cut): Prom
 export async function generateExport(
   packages: readonly PackageId[],
   cut: Cut,
+  model: ModelId | null,
 ): Promise<ExportedFile> {
   const body = {
+    model,
     packages,
     year: cut.year ? Number(cut.year) : null,
     actionId: cut.actionId ? Number(cut.actionId) : null,
