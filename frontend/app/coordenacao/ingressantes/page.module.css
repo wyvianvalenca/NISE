@@ -136,12 +136,6 @@
   font-size: 14px;
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* Card do resumo no topo ("5 meninas do grupo ... entraram na área"). */
 .summary {
   display: flex;

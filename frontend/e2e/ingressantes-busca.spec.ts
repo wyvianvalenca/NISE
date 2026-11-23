@@ -52,7 +52,7 @@ test("shows the date of the last search and the month of the next one", async ({
   await mockListSearchApi(page);
   await page.goto(URL);
 
-  await expect(page.getByText("Última busca: 10 de out · próxima: jan")).toBeVisible();
+  await expect(page.getByText("Última busca: 10 de out · próxima: janeiro de 2027")).toBeVisible();
 });
 
 test("the date is the day in Maceió, not in UTC", async ({ page }) => {
@@ -66,7 +66,7 @@ test("the date is the day in Maceió, not in UTC", async ({ page }) => {
   });
   await page.goto(URL);
 
-  await expect(page.getByText("Última busca: 10 de out · próxima: fev")).toBeVisible();
+  await expect(page.getByText("Última busca: 10 de out · próxima: fevereiro de 2027")).toBeVisible();
 });
 
 test("has no button to run the search, and shows no name or number of matches", async ({
@@ -118,7 +118,7 @@ test("has no horizontal scroll at 1366 px", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto(URL);
 
-  await expect(page.getByText("Última busca: 10 de out · próxima: jan")).toBeVisible();
+  await expect(page.getByText("Última busca: 10 de out · próxima: janeiro de 2027")).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

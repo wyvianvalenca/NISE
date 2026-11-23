@@ -97,9 +97,24 @@ export function dayMonthLabel(isoDateTime: string): string {
   return `${day} de ${MONTHS[month - 1]}`;
 }
 
-/** "fev": só o mês de um dia "2027-02-10", como a "próxima busca" do card. */
+const FULL_MONTHS = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+/** "fevereiro de 2027": mês e ano de um dia "2027-02-10", como a "próxima busca" do card. */
 export function monthLabel(isoDate: string): string {
-  return MONTHS[Number(isoDate.slice(5, 7)) - 1];
+  return `${FULL_MONTHS[Number(isoDate.slice(5, 7)) - 1]} de ${isoDate.slice(0, 4)}`;
 }
 
 export type EnrollmentSummaryResult =
