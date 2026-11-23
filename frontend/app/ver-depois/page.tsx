@@ -1,0 +1,258 @@
+"use client";
+
+// A06·2b · Ver depois: o que ela guardou com "Talvez depois", com filtro por faixa.
+// Atende RF-F10.06 e RF-F11.07 (issues #110 e #111), pela rota GET /api/later da #112
+// (integração na #113). "+ Quero fazer" e "Remover" usam PUT e DELETE /api/file/{id}.
+
+import { useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AppHeader } from "@/components/AppHeader";
+import { AccountMenu } from "@/components/AccountMenu";
+import { BottomNav } from "@/components/BottomNav";
+import { LinkButton } from "@/components/Button";
+import { Chip } from "@/components/Chip";
+import { LoadFailed } from "@/components/LoadFailed";
+import { SavedItemCard } from "@/components/SavedItemCard";
+import { BAND_CODES, BANDS, type BandCode } from "@/lib/descobrir";
+import { SIGNUP_PATHS } from "@/lib/signup";
+import { WITHOUT_SESSION } from "@/lib/signup-api";
+import {
+  deadlineLabel,
+  getSavedItems,
+  itemMeta,
+  moveToFile,
+  removeSaved,
+  typeIcon,
+  type SavedItem,
+  type SavedResult,
+} from "@/lib/ver-depois";
+import styles from "./page.module.css";
+
+type Filter = BandCode | "todos";
+
+/** Para onde ela vai quando a rota recusa: sem sessão, ou sem o aceite dos termos. */
+function redirectFor(result: SavedResult | null): string | null {
+  if (!result || result.ok) return null;
+  if (result.reason === "terms_not_accepted") return SIGNUP_PATHS.terms;
+  if (result.reason === "failed") return null;
+  return WITHOUT_SESSION[result.reason];
+}
+
+export default function SavedForLaterPage() {
+  const router = useRouter();
+  const [result, setResult] = useState<SavedResult | null>(null);
+  // Muda a cada "Tentar novamente", para buscar de novo.
+  const [attempt, setAttempt] = useState(0);
+  const [items, setItems] = useState<SavedItem[] | null>(null);
+  const [filter, setFilter] = useState<Filter>("todos");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+  const [failure, setFailure] = useState("");
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const wantButtons = useRef(new Map<string, HTMLButtonElement>());
+  // Item que recebe o foco depois que outro sai da lista, ou depois de uma falha.
+  const focusNext = useRef<string | null>(null);
+  const redirect = redirectFor(result);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getSavedItems(controller.signal).then(
+      (loaded) => {
+        setResult(loaded);
+        if (loaded.ok) setItems(loaded.data.items);
+      },
+      () => {
+        // Sem conexão, a busca falha. Sair da tela também a cancela, mas isso não é uma falha.
+        if (!controller.signal.aborted) setResult({ ok: false, reason: "failed" });
+      },
+    );
+    return () => controller.abort();
+  }, [attempt]);
+
+  // Com cacheComponents, o Next esconde esta tela (Activity) quando ela sai, em vez de
+  // desmontá-la, e na volta mostraria a lista de antes até a busca nova chegar. A limpeza de
+  // um useLayoutEffect roda quando a tela é escondida: a lista e os avisos saem, e na volta
+  // ela mostra o "Carregando…", como na primeira visita. O filtro escolhido fica. A busca
+  // acima roda de novo quando ela volta. É o mesmo que o useLongWait faz no Descobrir.
+  useLayoutEffect(() => {
+    return () => {
+      setResult(null);
+      setItems(null);
+      setStatus("");
+      setFailure("");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (redirect) router.replace(redirect);
+  }, [redirect, router]);
+
+  const visible = items?.filter((item) => filter === "todos" || item.band === filter) ?? [];
+
+  // Quando um cartão sai, o foco vai para o próximo (ou para o título, se a lista esvaziou),
+  // para quem usa teclado não voltar ao começo da página. Depois de uma falha, volta para o
+  // "+ Quero fazer" do mesmo cartão, que ficou bloqueado enquanto a escolha era salva.
+  useEffect(() => {
+    if (focusNext.current === null || busyId !== null) return;
+    const target = focusNext.current ? wantButtons.current.get(focusNext.current) : null;
+    (target ?? titleRef.current)?.focus();
+    focusNext.current = null;
+  }, [items, busyId]);
+
+  async function decide(item: SavedItem, action: "want" | "remove") {
+    setBusyId(item.id);
+    setFailure("");
+    try {
+      if (action === "want") {
+        await moveToFile(item.id);
+      } else {
+        await removeSaved(item.id);
+      }
+    } catch (error) {
+      console.warn("Não foi possível salvar a escolha do Ver depois.", error);
+      focusNext.current = item.id;
+      setBusyId(null);
+      setFailure(action === "want" ? "Não deu pra guardar. Tente de novo." : "Não deu pra remover. Tente de novo.");
+      return;
+    }
+    const index = visible.findIndex((other) => other.id === item.id);
+    const next = visible[index + 1] ?? visible[index - 1];
+    focusNext.current = next ? next.id : "";
+    setItems((list) => list?.filter((other) => other.id !== item.id) ?? null);
+    setBusyId(null);
+    setStatus(
+      action === "want" ? `${item.title} foi pro seu filé.` : `${item.title} saiu do Ver depois.`,
+    );
+  }
+
+  if (result && !result.ok && result.reason === "failed") {
+    return (
+      <LoadFailed
+        onRetry={() => {
+          setResult(null);
+          setAttempt(attempt + 1);
+        }}
+      />
+    );
+  }
+
+  const firstName = result?.ok ? result.data.firstName : null;
+
+  return (
+    <div className={styles.page}>
+      <AppHeader>
+        {firstName !== null && <AccountMenu name={firstName} />}
+      </AppHeader>
+
+      <div className={styles.scroll}>
+        <main className={styles.main}>
+          <h1 ref={titleRef} tabIndex={-1} className={styles.title}>
+            Ver depois
+          </h1>
+          <p className={styles.subtitle}>O que você guardou pra decidir com calma.</p>
+
+          {!items ? (
+            // Provisório: o esqueleto de carregamento das listas (nota "Estados da Alana") ainda não existe.
+            <p className={styles.status}>Carregando…</p>
+          ) : items.length === 0 ? (
+            <EmptySaved />
+          ) : (
+            <>
+              <div role="group" aria-label="Filtrar por faixa" className={styles.filters}>
+                <Chip variant="filter" size="lg" selected={filter === "todos"} onClick={() => setFilter("todos")}>
+                  Todos
+                </Chip>
+                {BAND_CODES.map((code) => (
+                  <Chip
+                    key={code}
+                    variant="filter"
+                    size="lg"
+                    selected={filter === code}
+                    onClick={() => setFilter(code)}
+                  >
+                    {BANDS[code].title}
+                  </Chip>
+                ))}
+              </div>
+
+              {failure && (
+                <p className={styles.error} role="alert">
+                  {failure}
+                </p>
+              )}
+
+              <ul className={styles.list}>
+                {visible.map((item) => (
+                  <li key={item.id}>
+                    <SavedItemCard
+                      icon={typeIcon(item.type)}
+                      tone={item.kind === "evento" ? "pink" : "teal"}
+                      meta={itemMeta(item)}
+                      title={item.title}
+                      details={item.details}
+                      deadline={item.deadline && deadlineLabel(item.deadline)}
+                      busy={busyId === item.id}
+                      onWant={() => decide(item, "want")}
+                      onRemove={() => decide(item, "remove")}
+                      wantRef={(button) => {
+                        if (button) wantButtons.current.set(item.id, button);
+                        else wantButtons.current.delete(item.id);
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
+
+              <p className={styles.hint}>Toque em “Talvez depois” num cartão de sugestão pra guardar aqui.</p>
+            </>
+          )}
+
+          <p className={styles.srOnly} aria-live="polite">
+            {status}
+          </p>
+        </main>
+      </div>
+
+      <BottomNav active="ver-depois" />
+    </div>
+  );
+}
+
+/** V01 · Ver depois vazio (#167): nada guardado ainda, sem filtros nem dica. */
+function EmptySaved() {
+  return (
+    <section className={styles.empty} aria-labelledby="ver-depois-vazio">
+      <SymbolOutline />
+      <h2 id="ver-depois-vazio" className={styles.emptyTitle}>
+        Nada guardado por enquanto
+      </h2>
+      <p className={styles.emptyText}>
+        Quando uma sugestão parecer legal mas não for a hora, toque em “Talvez depois” e ela fica aqui.
+      </p>
+      <LinkButton href="/descobrir" variant="secondary" className={styles.emptyAction}>
+        Ver sugestões
+      </LinkButton>
+    </section>
+  );
+}
+
+// O símbolo da NISE só no contorno, com o centro cheio (Figma: Ilustração / Filé do V01).
+const SYMBOL_CELLS = [
+  [2, 0],
+  [1, 1], [2, 1], [3, 1],
+  [0, 2], [1, 2], [3, 2], [4, 2],
+  [1, 3], [2, 3], [3, 3],
+  [2, 4],
+];
+
+function SymbolOutline() {
+  return (
+    <svg width="84" height="84" viewBox="0 0 84 84" fill="none" aria-hidden="true" className={styles.emptyArt}>
+      {SYMBOL_CELLS.map(([col, row]) => (
+        <rect key={`${col}-${row}`} x={2.5 + col * 16} y={2.5 + row * 16} width="11" height="11" stroke="currentColor" strokeDasharray="3 2" />
+      ))}
+      <rect x="34" y="34" width="12" height="12" fill="var(--nise-ink)" />
+      <rect x="66" y="66" width="11" height="11" fill="var(--nise-pink)" transform="rotate(15 71.5 71.5)" />
+    </svg>
+  );
+}

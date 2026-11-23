@@ -1,0 +1,8 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--nise-ink);
+  font-size: 20px;
+  font-weight: 700;
+}

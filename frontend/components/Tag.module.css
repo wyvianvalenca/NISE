@@ -1,0 +1,76 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--nise-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.outline {
+  padding: 2px 8px;
+  border-color: var(--nise-border);
+}
+
+.surface {
+  padding: 3px 10px;
+  border-color: var(--nise-border);
+  background: var(--nise-surface);
+}
+
+.pink {
+  padding: 5px 12px;
+  background: var(--nise-pinkSoft);
+  color: var(--nise-pink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.teal {
+  padding: 2px 10px;
+  background: var(--nise-tealLight);
+  font-weight: 700;
+}
+
+/*
+ * A borda transparente de .tag soma 1px; o padding desconta para bater com o Figma.
+ * O texto é ink e não teal como no Figma: teal sobre tealSoft dá 4,06:1, abaixo
+ * dos 4,5:1 do WCAG AA para texto de 12px.
+ */
+.soft {
+  padding: 1px 7px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+/* Mesmo tamanho do "pink", para ficarem lado a lado no card de sugestão. */
+.chip {
+  padding: 5px 12px;
+  border-color: var(--nise-border);
+  font-size: 13px;
+}
+
+.wait {
+  padding: 1px 8px;
+  background: var(--nise-paper);
+  color: var(--nise-muted);
+}
+
+.list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-chart-3);
+  color: var(--nise-onPrimary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}

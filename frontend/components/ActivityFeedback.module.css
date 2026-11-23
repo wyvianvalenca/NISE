@@ -1,0 +1,52 @@
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: none;
+}
+
+.title {
+  padding: 0;
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* legend não aceita gap do fieldset; a margem faz o papel. */
+legend.title {
+  margin-bottom: 8px;
+}
+
+.optional {
+  color: var(--nise-muted);
+  font-weight: 400;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Pular e Enviar lado a lado, com a mesma largura (Figma: Ações). */
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.actions .action {
+  flex: 1 0 0;
+  height: 52px;
+  font-size: 16px;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+}

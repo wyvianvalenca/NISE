@@ -1,0 +1,6035 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_auth_me_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/home": {
+      "get": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Home",
+        "operationId": "home_api_auth_home_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/auth/signup/email": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Signup Email",
+        "operationId": "signup_email_api_auth_signup_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSignupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já cadastrado"
+          },
+          "422": {
+            "description": "Dado recusado, ex.: {\"error\": \"under_13\"}"
+          }
+        }
+      }
+    },
+    "/api/auth/signup/pending": {
+      "get": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Pending Signup",
+        "operationId": "pending_signup_api_auth_signup_pending_get",
+        "parameters": [
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingSignupOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sem cadastro pendente"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/signup/complete": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Complete Signup",
+        "operationId": "complete_signup_api_auth_signup_complete_post",
+        "parameters": [
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSignupCompleteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sem cadastro pendente"
+          },
+          "409": {
+            "description": "Conta já existe"
+          },
+          "422": {
+            "description": "Dado recusado, ex.: {\"error\": \"under_13\"}"
+          }
+        }
+      }
+    },
+    "/api/auth/signup/discard": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Discard Signup",
+        "operationId": "discard_signup_api_auth_signup_discard_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-mail ou senha incorretos"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password/forgot": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Forgot Password",
+        "operationId": "forgot_password_api_auth_password_forgot_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password/reset/check": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Check Reset Token",
+        "operationId": "check_reset_token_api_auth_password_reset_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetTokenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetTokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Link vencido, usado ou desconhecido: {\"error\": \"invalid_token\"}"
+          }
+        }
+      }
+    },
+    "/api/auth/password/reset": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Reset Password Route",
+        "operationId": "reset_password_route_api_auth_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Recusa, ex.: {\"error\": \"invalid_token\"} ou {\"error\": \"password_too_short\"}"
+          }
+        }
+      }
+    },
+    "/api/auth/google/login": {
+      "get": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Google Login",
+        "operationId": "google_login_api_auth_google_login_get",
+        "parameters": [
+          {
+            "name": "invite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Invite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/google/callback": {
+      "get": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Google Callback",
+        "operationId": "google_callback_api_auth_google_callback_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "name": "nise_google_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Google State"
+            }
+          },
+          {
+            "name": "nise_google_verifier",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Google Verifier"
+            }
+          },
+          {
+            "name": "nise_google_convite",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Google Convite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/actions": {
+      "get": {
+        "tags": [
+          "API",
+          "Actions"
+        ],
+        "summary": "List Actions Route",
+        "operationId": "list_actions_route_api_actions_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionListOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Actions"
+        ],
+        "summary": "Create Action Route",
+        "operationId": "create_action_route_api_actions_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field breaks a rule of the form: detail[].loc and detail[].msg name the field and the message. A city outside the IBGE list answers {\"error\": \"invalid_city\"}."
+          }
+        }
+      }
+    },
+    "/api/actions/{action_id}": {
+      "put": {
+        "tags": [
+          "API",
+          "Actions"
+        ],
+        "summary": "Update Action Route",
+        "operationId": "update_action_route_api_actions__action_id__put",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field breaks a rule of the form: detail[].loc and detail[].msg name the field and the message. A city outside the IBGE list answers {\"error\": \"invalid_city\"}."
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API",
+          "Actions"
+        ],
+        "summary": "Delete Action Route",
+        "operationId": "delete_action_route_api_actions__action_id__delete",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "A presença já foi registrada, a ação não pode ser excluída"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cities": {
+      "get": {
+        "tags": [
+          "API",
+          "Cities"
+        ],
+        "summary": "List Cities",
+        "operationId": "list_cities_api_cities_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100,
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CityOut"
+                  },
+                  "title": "Response List Cities Api Cities Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terms/summary": {
+      "get": {
+        "tags": [
+          "API",
+          "Terms"
+        ],
+        "summary": "Terms Summary",
+        "operationId": "terms_summary_api_terms_summary_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terms/acceptance": {
+      "post": {
+        "tags": [
+          "API",
+          "Terms"
+        ],
+        "summary": "Accept Terms",
+        "operationId": "accept_terms_api_terms_acceptance_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermsAcceptanceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Os termos mudaram: {\"error\": \"terms_outdated\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preferences/opportunity-emails": {
+      "put": {
+        "tags": [
+          "API",
+          "Preferences"
+        ],
+        "summary": "Update Opportunity Emails",
+        "operationId": "update_opportunity_emails_api_preferences_opportunity_emails_put",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpportunityEmailsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invites/{code}": {
+      "get": {
+        "tags": [
+          "API",
+          "Invites"
+        ],
+        "summary": "Get Invite",
+        "operationId": "get_invite_api_invites__code__get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Convite não encontrado"
+          },
+          "410": {
+            "description": "Convite vencido"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings/pending": {
+      "get": {
+        "tags": [
+          "API",
+          "Ratings"
+        ],
+        "summary": "Pending Rating",
+        "operationId": "pending_rating_api_ratings_pending_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PendingRatingOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Pending Rating Api Ratings Pending Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings": {
+      "post": {
+        "tags": [
+          "API",
+          "Ratings"
+        ],
+        "summary": "Rate Action",
+        "operationId": "rate_action_api_ratings_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "Sem participação com presença nessa ação: {\"error\": \"nothing_to_rate\"}"
+          },
+          "409": {
+            "description": "Ela já avaliou essa ação: {\"error\": \"already_rated\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/interest-options": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Interest Options",
+        "operationId": "interest_options_api_profile_interest_options_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterestOptionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/interests": {
+      "put": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Update Interests",
+        "operationId": "update_interests_api_profile_interests_put",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterestsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile",
+        "operationId": "profile_api_profile_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/file-intro-seen": {
+      "put": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "File Intro Seen",
+        "operationId": "file_intro_seen_api_profile_file_intro_seen_put",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/course": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile Course",
+        "operationId": "profile_course_api_profile_course_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileCourseOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Register Course",
+        "operationId": "register_course_api_profile_course_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileCourseIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/discover": {
+      "get": {
+        "tags": [
+          "API",
+          "Discover"
+        ],
+        "summary": "Discover",
+        "operationId": "discover_api_discover_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/discover/last-band": {
+      "put": {
+        "tags": [
+          "API",
+          "Discover"
+        ],
+        "summary": "Update Last Band",
+        "operationId": "update_last_band_api_discover_last_band_put",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LastBandIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/discover/{band}": {
+      "get": {
+        "tags": [
+          "API",
+          "Discover"
+        ],
+        "summary": "Band Suggestions",
+        "operationId": "band_suggestions_api_discover__band__get",
+        "parameters": [
+          {
+            "name": "band",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EffortBand"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BandSuggestionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file": {
+      "get": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "My File",
+        "operationId": "my_file_api_file_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/{item_id}": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Choose",
+        "operationId": "choose_api_file__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChoiceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChoiceOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não existe ou ela não poderia vê-lo nas sugestões: {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no \"Não é pra mim\"): só um item sem escolha ou no Ver depois aceita uma escolha: {\"error\": \"already_chosen\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Undo Choice",
+        "operationId": "undo_choice_api_file__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChoiceOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O id não é de um item do catálogo: {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "Uma atividade concluída não sai do filé: {\"error\": \"concluded_cannot_be_removed\"}. Um evento em que ela se inscreveu também não: {\"error\": \"signed_up_cannot_be_removed\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Activity Detail",
+        "operationId": "activity_detail_api_file__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é uma atividade do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\" ou um evento): {\"error\": \"item_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/{item_id}/status": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Change Status",
+        "operationId": "change_status_api_file__item_id__status_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é uma atividade do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\" ou um evento): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "Não é o próximo passo da atividade (ex.: da próxima direto para concluída): {\"error\": \"invalid_status_change\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/{item_id}/feedback": {
+      "put": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "Send Feedback",
+        "operationId": "send_feedback_api_file__item_id__feedback_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}. O item não é uma atividade do filé dela (sem escolha, no Ver depois, no \"Não é pra mim\" ou um evento): {\"error\": \"item_not_found\"}"
+          },
+          "409": {
+            "description": "A atividade ainda não foi concluída: {\"error\": \"activity_not_concluded\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/later": {
+      "get": {
+        "tags": [
+          "API",
+          "File"
+        ],
+        "summary": "My Later",
+        "operationId": "my_later_api_later_get",
+        "parameters": [
+          {
+            "name": "band",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EffortBand"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Band"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaterOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/matches": {
+      "get": {
+        "tags": [
+          "API",
+          "Matches"
+        ],
+        "summary": "List My Matches",
+        "description": "Os indícios sem resposta dela, para a A19 \"É você na lista?\".",
+        "operationId": "list_my_matches_api_matches_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MatchOut"
+                  },
+                  "title": "Response List My Matches Api Matches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/matches/{match_id}/answer": {
+      "post": {
+        "tags": [
+          "API",
+          "Matches"
+        ],
+        "summary": "Answer My Match",
+        "description": "Grava a resposta da A19 (RF-F31.04). Só dá pra responder uma vez.",
+        "operationId": "answer_my_match_api_matches__match_id__answer_post",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchAnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchAnswerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agenda/to-answer": {
+      "get": {
+        "tags": [
+          "API",
+          "Agenda"
+        ],
+        "summary": "To Answer",
+        "description": "O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).",
+        "operationId": "to_answer_api_agenda_to_answer_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToAnswerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agenda/dates": {
+      "get": {
+        "tags": [
+          "API",
+          "Agenda"
+        ],
+        "summary": "Dates",
+        "description": "As datas e os questionários que ainda vão chegar (RF-F4.11b).",
+        "operationId": "dates_api_agenda_dates_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaDatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/current": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Current Followup",
+        "operationId": "current_followup_api_followup_current_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CurrentFollowupOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Current Followup Api Followup Current Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/options": {
+      "get": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Followup Options",
+        "operationId": "followup_options_api_followup_options_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupOptionsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/followup/answers": {
+      "post": {
+        "tags": [
+          "API",
+          "Followup"
+        ],
+        "summary": "Answer Followup",
+        "operationId": "answer_followup_api_followup_answers_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "Nenhuma rodada aberta, ou a rodada já fechou: {\"error\": \"no_open_round\"}"
+          },
+          "409": {
+            "description": "Ela já respondeu essa rodada: {\"error\": \"already_answered\"}"
+          },
+          "422": {
+            "description": "Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {\"error\": \"invalid_course_answer\"}"
+          }
+        }
+      }
+    },
+    "/api/coordinator/enrollments": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Group Enrollments",
+        "operationId": "group_enrollments_api_coordinator_enrollments_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentPageOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinator/results/after-action": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "After Action Route",
+        "operationId": "after_action_route_api_coordinator_results_after_action_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "12m"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterActionOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "API",
+          "Health"
+        ],
+        "summary": "Health Check",
+        "operationId": "health_check_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Api Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionFormat": {
+        "type": "string",
+        "enum": [
+          "in_person",
+          "online"
+        ],
+        "title": "ActionFormat"
+      },
+      "ActionIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ActionType"
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "city_ibge_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Ibge Code"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ActionVisibility"
+          },
+          "registration_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Url"
+          },
+          "starts_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At Time"
+          },
+          "ends_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At Time"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/Topic"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Topics",
+            "default": []
+          },
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/StudyStage"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Audiences",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "starts_on",
+          "format",
+          "visibility"
+        ],
+        "title": "ActionIn",
+        "description": "What the form sends to create or edit an action (RF-F30.01, RF-F30.03).\n\nThere is no group here on purpose: the group is always the signed-in\ncoordinator's, and a `group_id` sent anyway is ignored (RN-14). The rules that\nneed more than one field or the database live in\n`service.validate_action_data`, which the creation and the edit share."
+      },
+      "ActionListItemOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ActionType"
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Ends On"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "city_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Label"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ActionVisibility"
+          },
+          "registrations_open": {
+            "type": "boolean",
+            "title": "Registrations Open"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ActionStatus"
+          },
+          "registered_count": {
+            "type": "integer",
+            "title": "Registered Count"
+          },
+          "attended_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attended Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "starts_on",
+          "ends_on",
+          "format",
+          "city_label",
+          "visibility",
+          "registrations_open",
+          "status",
+          "registered_count",
+          "attended_count"
+        ],
+        "title": "ActionListItemOut",
+        "description": "One row of the \"Ações\" list (K10, RF-F30.10).\n\n`attended_count` is null while there is no attendance to count (RN-37), so the\nrow can tell \"22 de 30 presentes\" from \"26 inscritas\"."
+      },
+      "ActionListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActionListItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ActionStatusCountsOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "counts"
+        ],
+        "title": "ActionListOut",
+        "description": "The actions of the group that pass the filters, and the chip counts."
+      },
+      "ActionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ActionType"
+          },
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          },
+          "ends_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Ends On"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "city_ibge_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Ibge Code"
+          },
+          "city_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Label"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ActionVisibility"
+          },
+          "registration_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Url"
+          },
+          "starts_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At Time"
+          },
+          "ends_at_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At Time"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "registrations_open": {
+            "type": "boolean",
+            "title": "Registrations Open"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/Topic"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/StudyStage"
+            },
+            "type": "array",
+            "title": "Audiences"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ActionStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "starts_on",
+          "ends_on",
+          "format",
+          "city_ibge_code",
+          "city_label",
+          "visibility",
+          "registration_url",
+          "starts_at_time",
+          "ends_at_time",
+          "address",
+          "description",
+          "registrations_open",
+          "topics",
+          "audiences",
+          "status"
+        ],
+        "title": "ActionOut",
+        "description": "A saved action, as the form and the list read it.\n\n`city_label` is \"Maceió, AL\", the text of the notice \"Já aparece nas\nsugestões das meninas de <cidade>\"; it is null for an online action (D-45)."
+      },
+      "ActionStatus": {
+        "type": "string",
+        "enum": [
+          "awaiting_registrations",
+          "awaiting_event",
+          "awaiting_attendance",
+          "concluded"
+        ],
+        "title": "ActionStatus",
+        "description": "Where an action is in its life (RN-37).\n\nIt is computed on every query by `compute_status` and never stored, so there\nis no column of this type."
+      },
+      "ActionStatusCountsOut": {
+        "properties": {
+          "all": {
+            "type": "integer",
+            "title": "All"
+          },
+          "awaiting_registrations": {
+            "type": "integer",
+            "title": "Awaiting Registrations"
+          },
+          "awaiting_event": {
+            "type": "integer",
+            "title": "Awaiting Event"
+          },
+          "awaiting_attendance": {
+            "type": "integer",
+            "title": "Awaiting Attendance"
+          },
+          "concluded": {
+            "type": "integer",
+            "title": "Concluded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "all",
+          "awaiting_registrations",
+          "awaiting_event",
+          "awaiting_attendance",
+          "concluded"
+        ],
+        "title": "ActionStatusCountsOut",
+        "description": "The numbers on the filter chips: \"Todas 10\", \"Aguardando inscrições 3\"..."
+      },
+      "ActionType": {
+        "type": "string",
+        "enum": [
+          "oficina",
+          "palestra",
+          "minicurso",
+          "hackathon",
+          "visita",
+          "acolhimento",
+          "outro"
+        ],
+        "title": "ActionType",
+        "description": "Lista fixa de tipos de ação (RF-F17.01)."
+      },
+      "ActionVisibility": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ],
+        "title": "ActionVisibility"
+      },
+      "Activity": {
+        "type": "string",
+        "enum": [
+          "online_course",
+          "event",
+          "self_study",
+          "project",
+          "none_yet"
+        ],
+        "title": "Activity",
+        "description": "Pergunta 4: \"Desde a última vez, você…\" (várias escolhas)."
+      },
+      "ActivityOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FileSection"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CuratedType"
+          },
+          "typeLabel": {
+            "type": "string",
+            "title": "Typelabel"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Topic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "band": {
+            "$ref": "#/components/schemas/EffortBand"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "duration": {
+            "type": "string",
+            "title": "Duration"
+          },
+          "costCents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costcents"
+          },
+          "minAge": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minage"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why"
+          },
+          "concludedOn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concludedon"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "type",
+          "typeLabel",
+          "theme",
+          "band",
+          "title",
+          "source",
+          "description",
+          "url",
+          "format",
+          "duration",
+          "costCents",
+          "minAge",
+          "why",
+          "concludedOn",
+          "firstName"
+        ],
+        "title": "ActivityOut",
+        "description": "O detalhe de uma atividade do filé (A06·4a, RF-F10.08). O front lê em camelCase.\n\nO formato e o custo vão como código e número, como no card da sugestão; o\ntexto da tela (\"Online\", \"Grátis\") é montado no front (frontend/lib/atividade.ts)."
+      },
+      "AdmissionOrigin": {
+        "type": "string",
+        "enum": [
+          "self_declared",
+          "official_list"
+        ],
+        "title": "AdmissionOrigin",
+        "description": "De onde veio o registro (RF-F6.03)."
+      },
+      "AfterActionOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          },
+          "returned": {
+            "$ref": "#/components/schemas/ComparedOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows",
+          "returned"
+        ],
+        "title": "AfterActionOut",
+        "description": "O card \"Logo depois da ação\" (RF-F5.09). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado, e `returned` é quantas de cada lado voltaram a\noutra ação. O front calcula a porcentagem."
+      },
+      "AgendaDatesOut": {
+        "properties": {
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingItemOut"
+            },
+            "type": "array",
+            "title": "Upcoming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upcoming"
+        ],
+        "title": "AgendaDatesOut",
+        "description": "As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b)."
+      },
+      "BandCountOut": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/EffortBand"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "BandCountOut",
+        "description": "Uma faixa do Descobrir e quantas sugestões ela tem (A06·1, RF-F10.03).\n\nO nome, a descrição, o ícone e o grupo (\"Sozinha\", \"Em grupo\") são fixos\npela faixa e ficam no front (BANDS em frontend/lib/descobrir.ts)."
+      },
+      "BandSuggestionsOut": {
+        "properties": {
+          "band": {
+            "$ref": "#/components/schemas/EffortBand"
+          },
+          "fileTotal": {
+            "type": "integer",
+            "title": "Filetotal"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionCardOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "band",
+          "fileTotal",
+          "items"
+        ],
+        "title": "BandSuggestionsOut",
+        "description": "As sugestões de uma faixa, na ordem da #80, e o total do filé (A06·2)."
+      },
+      "Choice": {
+        "type": "string",
+        "enum": [
+          "quero-fazer",
+          "talvez-depois",
+          "nao-e-pra-mim"
+        ],
+        "title": "Choice",
+        "description": "Os três botões de uma sugestão (A06·2, RF-F10.04).\n\nOs valores são os mesmos de `Choice` no front (frontend/lib/sugestoes.ts)."
+      },
+      "ChoiceIn": {
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/Choice"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DismissReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "choice"
+        ],
+        "title": "ChoiceIn",
+        "description": "O que ela decidiu sobre um item, com o motivo opcional do \"Não é pra mim\".\n\nO motivo é da lista fechada da A06·2a (`DismissReason`); um motivo fora\ndela, ou um motivo em outra escolha, responde 422."
+      },
+      "ChoiceOut": {
+        "properties": {
+          "fileTotal": {
+            "type": "integer",
+            "title": "Filetotal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fileTotal"
+        ],
+        "title": "ChoiceOut",
+        "description": "A resposta da escolha: o novo total do filé, para a pílula \"Meu filé\"."
+      },
+      "CityOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CityOut"
+      },
+      "ComparedOut": {
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "title": "Participants"
+          },
+          "noShows": {
+            "type": "integer",
+            "title": "Noshows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participants",
+          "noShows"
+        ],
+        "title": "ComparedOut",
+        "description": "Quantas fizeram algo, entre as participantes e entre as que não compareceram."
+      },
+      "ComputingView": {
+        "type": "string",
+        "enum": [
+          "want_to_follow",
+          "like_but_unsure",
+          "less_interested",
+          "not_for_me"
+        ],
+        "title": "ComputingView",
+        "description": "Pergunta 1: \"Hoje, computação pra você é…\"."
+      },
+      "CourseCode": {
+        "type": "string",
+        "enum": [
+          "sistemas_informacao",
+          "ciencia_computacao",
+          "engenharia_computacao",
+          "redes",
+          "outro"
+        ],
+        "title": "CourseCode",
+        "description": "O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis."
+      },
+      "CourseLevel": {
+        "type": "string",
+        "enum": [
+          "tecnico",
+          "graduacao"
+        ],
+        "title": "CourseLevel",
+        "description": "Nível do curso em que ela entrou ou foi aprovada (RF-F6.02)."
+      },
+      "CourseStatus": {
+        "type": "string",
+        "enum": [
+          "tecnico",
+          "graduacao",
+          "trying",
+          "not_yet"
+        ],
+        "title": "CourseStatus",
+        "description": "Pergunta 3: \"Você entrou num curso da área?\" (RF-F6.02).\n\nOs dois primeiros valores são os mesmos de `CourseLevel` (ingresso).\n\"Tô tentando entrar\" não conta como ingresso (RN-22)."
+      },
+      "CuratedType": {
+        "type": "string",
+        "enum": [
+          "video",
+          "quiz",
+          "article",
+          "tutorial",
+          "mini_project",
+          "course",
+          "personal_project",
+          "community",
+          "playlist",
+          "game",
+          "olympiad",
+          "club",
+          "cohort_course",
+          "hackathon",
+          "internship",
+          "other"
+        ],
+        "title": "CuratedType",
+        "description": "Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.\n\nOs nomes que aparecem na tela ficam em `CURATED_TYPE_LABELS` (utils.py)."
+      },
+      "CurrentCourseOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/CourseLevel"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "course"
+        ],
+        "title": "CurrentCourseOut",
+        "description": "O curso em que ela está hoje, para a pergunta \"Continua nesse curso?\"."
+      },
+      "CurrentFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "answered": {
+            "type": "boolean",
+            "title": "Answered"
+          },
+          "currentCourse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCourseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay",
+          "firstName",
+          "answered"
+        ],
+        "title": "CurrentFollowupOut",
+        "description": "A rodada aberta hoje para a menina da sessão (A18, #293)."
+      },
+      "DiscoverOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/BandCountOut"
+            },
+            "type": "array",
+            "title": "Bands"
+          },
+          "lastBand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EffortBand"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName",
+          "bands",
+          "lastBand"
+        ],
+        "title": "DiscoverOut",
+        "description": "A tela Descobrir (A06·1, #86). O front lê em camelCase (DiscoverData)."
+      },
+      "DismissReason": {
+        "type": "string",
+        "enum": [
+          "ja-conheco",
+          "muito-dificil",
+          "muito-facil",
+          "nao-curto-o-tema",
+          "sem-tempo-agora",
+          "outro-motivo"
+        ],
+        "title": "DismissReason",
+        "description": "Motivos do \"Não é pra mim\" (A06·2a), na ordem do Figma.\n\nOs valores são os mesmos de `REASONS` no front (frontend/lib/sugestoes.ts)."
+      },
+      "EffortBand": {
+        "type": "string",
+        "enum": [
+          "primeiros-passos",
+          "uma-tarde",
+          "no-meu-ritmo",
+          "role-com-a-galera",
+          "grande-desafio"
+        ],
+        "title": "EffortBand",
+        "description": "As 5 faixas de esforço, na ordem da tela Descobrir (RF-F10.03).\n\nOs valores são os mesmos de `BAND_CODES` no front (frontend/lib/descobrir.ts)."
+      },
+      "EmailSignupIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Password"
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Birthdate"
+          },
+          "cityId": {
+            "type": "integer",
+            "title": "Cityid"
+          },
+          "invite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "password",
+          "birthDate",
+          "cityId"
+        ],
+        "title": "EmailSignupIn",
+        "description": "Cadastro por e-mail e senha (A02, #51).\n\nO front manda em camelCase (birthDate, cityId). O formato do e-mail, o\ntamanho mínimo da senha, a idade, a cidade e o convite são conferidos no\nserviço, que devolve um código que o front sabe mostrar junto ao campo.\nAqui ficam só os limites que protegem o servidor."
+      },
+      "EnrollmentPageOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentRowOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "pageSize": {
+            "type": "integer",
+            "title": "Pagesize"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "title": "EnrollmentPageOut",
+        "description": "Uma página da lista e o que a paginação precisa (D-77)."
+      },
+      "EnrollmentRowOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "girlName": {
+            "type": "string",
+            "title": "Girlname"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "registeredAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registeredat"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/AdmissionOrigin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "girlName",
+          "course",
+          "institution",
+          "registeredAt",
+          "origin"
+        ],
+        "title": "EnrollmentRowOut",
+        "description": "Uma linha de \"Quem ingressou\" (#315). O front lê em camelCase.\n\nSó o que a tela mostra: o nome vem curto (\"Ana L.\"), e não vão e-mail,\nnascimento nem a chamada da lista oficial."
+      },
+      "FeedbackIn": {
+        "properties": {
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "similar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FeedbackIn",
+        "description": "O \"O que achou?\" e o \"Quer sugestões parecidas?\" de uma atividade concluída.\n\nAs duas partes são opcionais (RN-28), mas o \"Enviar\" só existe com pelo menos\numa escolhida: o \"Pular\" não chama a rota. As duas vazias, ou uma nota fora\nde 1 a 5, respondem 422. Os valores de `similar` são os de `SIMILAR_OPTIONS`\nno front (frontend/lib/atividade-feedback.ts).\n\nEstrito, como a entrada da curadoria: a nota é um inteiro de verdade (\"3\",\n3.0 e true respondem 422, em vez de virar 3, 3 e 1), e um campo que a tela\nnão manda também responde 422."
+      },
+      "FileGroupOut": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FileItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "items"
+        ],
+        "title": "FileGroupOut",
+        "description": "Uma seção do filé: o contador e os itens, na ordem em que entraram."
+      },
+      "FileItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ItemKind"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Topic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "typeLabel": {
+            "type": "string",
+            "title": "Typelabel"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "details": {
+            "type": "string",
+            "title": "Details"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "signedUp": {
+            "type": "boolean",
+            "title": "Signedup"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "theme",
+          "typeLabel",
+          "title",
+          "details",
+          "deadline",
+          "signedUp"
+        ],
+        "title": "FileItemOut",
+        "description": "Um item de uma seção do filé (A06·3). O front lê em camelCase."
+      },
+      "FileOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "inProgress": {
+            "$ref": "#/components/schemas/FileGroupOut"
+          },
+          "next": {
+            "$ref": "#/components/schemas/FileGroupOut"
+          },
+          "concluded": {
+            "$ref": "#/components/schemas/FileGroupOut"
+          },
+          "squares": {
+            "items": {
+              "$ref": "#/components/schemas/FileSquareOut"
+            },
+            "type": "array",
+            "title": "Squares"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName",
+          "inProgress",
+          "next",
+          "concluded",
+          "squares"
+        ],
+        "title": "FileOut",
+        "description": "A tela Seu filé (A06·3, #114). O front lê em camelCase (FileData).\n\nNão há porcentagem, barra de progresso nem nada que compare meninas (RN-28):\nsó os contadores das seções dela."
+      },
+      "FileSection": {
+        "type": "string",
+        "enum": [
+          "in_progress",
+          "next",
+          "concluded"
+        ],
+        "title": "FileSection",
+        "description": "As três seções do filé, na ordem da tela (RF-F10.07).\n\n\"Próximas aventuras\" é `NEXT`. Um evento em que ela se inscreveu\n(`FileStatus.SIGNED_UP`) também fica nela, porque ainda vai acontecer."
+      },
+      "FileSquareOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Topic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "$ref": "#/components/schemas/FileSection"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "theme",
+          "section"
+        ],
+        "title": "FileSquareOut",
+        "description": "Um quadradinho do desenho do filé: o tema dá a cor, a seção dá a forma.\n\nO id e o título são os do item: o título aparece no balãozinho do quadradinho, e o\nid deixa o front reconhecer os quadradinhos novos para animá-los."
+      },
+      "FollowupIn": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "computingView": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComputingView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "futureSelf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FutureSelf"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/Activity"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Activities",
+            "default": []
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/HelpWanted"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Helps",
+            "default": []
+          },
+          "courseStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stillEnrolled": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StillEnrolled"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "round"
+        ],
+        "title": "FollowupIn",
+        "description": "As respostas da A18 (RF-F4.13, RF-F4.08).\n\nToda pergunta é opcional, mas pelo menos uma precisa de resposta: sem\nnenhuma, a tela não deixa enviar, e \"Agora não\" não chama o back.\nCódigos fora das listas são recusados, e campos desconhecidos também."
+      },
+      "FollowupOptionsOut": {
+        "properties": {
+          "computingViews": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Computingviews"
+          },
+          "futureSelves": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Futureselves"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Activities"
+          },
+          "helps": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Helps"
+          },
+          "courseStatuses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Coursestatuses"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "stillEnrolled": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Stillenrolled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computingViews",
+          "futureSelves",
+          "activities",
+          "helps",
+          "courseStatuses",
+          "courses",
+          "stillEnrolled"
+        ],
+        "title": "FollowupOptionsOut",
+        "description": "As opções das perguntas fechadas da A18, na ordem do Figma."
+      },
+      "FollowupRound": {
+        "type": "string",
+        "enum": [
+          "three_months",
+          "six_months",
+          "twelve_months",
+          "eighteen_months"
+        ],
+        "title": "FollowupRound",
+        "description": "A rodada do questionário: quantos meses depois de criar a conta."
+      },
+      "ForgotPasswordIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordIn",
+        "description": "O e-mail da conta que esqueceu a senha (A16, #331)."
+      },
+      "FutureSelf": {
+        "type": "string",
+        "enum": [
+          "sure",
+          "maybe",
+          "probably_not"
+        ],
+        "title": "FutureSelf",
+        "description": "Pergunta 2: \"Daqui a uns anos, você se vê estudando ou trabalhando…\"."
+      },
+      "GoogleSignupCompleteIn": {
+        "properties": {
+          "birthDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Birthdate"
+          },
+          "cityId": {
+            "type": "integer",
+            "title": "Cityid"
+          },
+          "withoutInvite": {
+            "type": "boolean",
+            "title": "Withoutinvite",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "birthDate",
+          "cityId"
+        ],
+        "title": "GoogleSignupCompleteIn",
+        "description": "O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).\n\nNome e e-mail vêm do Google, pelo cookie do cadastro pendente, e não daqui."
+      },
+      "GroupOrigin": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "group",
+            "title": "Kind",
+            "default": "group"
+          },
+          "groupName": {
+            "type": "string",
+            "title": "Groupname"
+          }
+        },
+        "type": "object",
+        "required": [
+          "groupName"
+        ],
+        "title": "GroupOrigin",
+        "description": "Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01)."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HelpWanted": {
+        "type": "string",
+        "enum": [
+          "mentoring",
+          "online_courses",
+          "internship",
+          "events",
+          "other"
+        ],
+        "title": "HelpWanted",
+        "description": "Pergunta 5: \"O que te ajudaria agora?\" (várias escolhas)."
+      },
+      "HomeOut": {
+        "properties": {
+          "nextPath": {
+            "type": "string",
+            "title": "Nextpath"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nextPath"
+        ],
+        "title": "HomeOut",
+        "description": "A primeira tela de quem já entrou, para a A01 mandá-la adiante."
+      },
+      "InterestOptionsOut": {
+        "properties": {
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topics",
+          "stages"
+        ],
+        "title": "InterestOptionsOut",
+        "description": "As listas de temas e de etapas de estudo da A05 (RF-F10.01)."
+      },
+      "InterestsIn": {
+        "properties": {
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/Topic"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Topics"
+          },
+          "everything": {
+            "type": "boolean",
+            "title": "Everything"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/StudyStage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topics",
+          "everything",
+          "stage"
+        ],
+        "title": "InterestsIn",
+        "description": "O que ela escolheu na A05: temas e etapa de estudo (RF-F10.01).\n\nCódigos fora das listas são recusados. Não há \"Pular por agora\" (D-19):\nela escolhe pelo menos um tema ou \"Ainda não sei, me mostra de tudo\", e a\netapa de estudo é obrigatória."
+      },
+      "InviteOut": {
+        "properties": {
+          "groupName": {
+            "type": "string",
+            "title": "Groupname"
+          }
+        },
+        "type": "object",
+        "required": [
+          "groupName"
+        ],
+        "title": "InviteOut",
+        "description": "O que a rota pública do convite mostra, para a tela A01b.\n\nSó o nome do grupo, de propósito: a rota é pública, e devolver aqui algo\nda menina (como o e-mail de um registro importado) deixaria quem adivinha\num código ler dados de menores. O vínculo com o registro importado\nacontece no cadastro, pelo e-mail que ela digita (RF-F2.02)."
+      },
+      "ItemKind": {
+        "type": "string",
+        "enum": [
+          "atividade",
+          "evento"
+        ],
+        "title": "ItemKind",
+        "description": "Atividade ela faz quando quiser; evento tem datas e prazo (RF-F10.13).\n\nOs valores são os mesmos de `SavedKind` no front (frontend/lib/ver-depois.ts)."
+      },
+      "LastBandIn": {
+        "properties": {
+          "band": {
+            "$ref": "#/components/schemas/EffortBand"
+          }
+        },
+        "type": "object",
+        "required": [
+          "band"
+        ],
+        "title": "LastBandIn",
+        "description": "A faixa que ela acabou de abrir no Descobrir."
+      },
+      "LaterItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ItemKind"
+          },
+          "band": {
+            "$ref": "#/components/schemas/EffortBand"
+          },
+          "typeLabel": {
+            "type": "string",
+            "title": "Typelabel"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "details": {
+            "type": "string",
+            "title": "Details"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "band",
+          "typeLabel",
+          "title",
+          "details",
+          "deadline"
+        ],
+        "title": "LaterItemOut",
+        "description": "Um cartão do Ver depois (A06·2b). O front lê em camelCase (SavedItem)."
+      },
+      "LaterOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LaterItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName",
+          "items"
+        ],
+        "title": "LaterOut",
+        "description": "A tela Ver depois (A06·2b, #110). O front lê em camelCase."
+      },
+      "LoginIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "MatchAnswerIn": {
+        "properties": {
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "enrolled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrolled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_me"
+        ],
+        "title": "MatchAnswerIn",
+        "description": "\"Sou eu\" / \"Não sou eu\" e, se for ela, \"Já me matriculei\" / \"Ainda não\"."
+      },
+      "MatchAnswerOut": {
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/MatchResult"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "MatchAnswerOut"
+      },
+      "MatchOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "institution": {
+            "type": "string",
+            "title": "Institution"
+          },
+          "selection_process": {
+            "type": "string",
+            "title": "Selection Process"
+          },
+          "call": {
+            "type": "string",
+            "title": "Call"
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          },
+          "level": {
+            "$ref": "#/components/schemas/CourseLevel"
+          },
+          "list_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Url"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "institution",
+          "selection_process",
+          "call",
+          "course",
+          "level",
+          "list_url",
+          "expires_at"
+        ],
+        "title": "MatchOut",
+        "description": "O card da lista oficial na A19 (RF-F31.04).\n\nSó para a própria menina. `name` é o nome dela na conta, que é o que a busca\nachou igual na lista; nenhum outro nome da lista existe no sistema."
+      },
+      "MatchResult": {
+        "type": "string",
+        "enum": [
+          "enrolled",
+          "approved",
+          "dismissed"
+        ],
+        "title": "MatchResult"
+      },
+      "OpenFollowupOut": {
+        "properties": {
+          "round": {
+            "$ref": "#/components/schemas/FollowupRound"
+          },
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "title": "Lastday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "round",
+          "lastDay"
+        ],
+        "title": "OpenFollowupOut",
+        "description": "O questionário \"Como está seu caminho?\" aberto e sem resposta (A18)."
+      },
+      "OpportunityEmailsIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "OpportunityEmailsIn",
+        "description": "A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).\n\nStrictBool: só aceita true ou false. Um texto como \"false\" é recusado em\nvez de virar True."
+      },
+      "OptionOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "OptionOut",
+        "description": "Uma opção de lista fechada: o código vai para o back, o nome vai para a tela."
+      },
+      "PendingRatingOut": {
+        "properties": {
+          "actionId": {
+            "type": "integer",
+            "title": "Actionid"
+          },
+          "actionName": {
+            "type": "string",
+            "title": "Actionname"
+          },
+          "groupName": {
+            "type": "string",
+            "title": "Groupname"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "title": "Startson"
+          },
+          "cityName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cityname"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actionId",
+          "actionName",
+          "groupName",
+          "startsOn",
+          "cityName"
+        ],
+        "title": "PendingRatingOut",
+        "description": "A ação que a menina pode avaliar na A03 (#58).\n\nO front lê em camelCase (PendingRating em frontend/lib/signup-api.ts) e\nmonta a data e a cidade como no Figma (\"Sáb, 11 de out · Maceió\")."
+      },
+      "PendingSignupOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "invite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "invite"
+        ],
+        "title": "PendingSignupOut",
+        "description": "O que veio do Google, para a A02b mostrar (#52). Só leitura."
+      },
+      "Period": {
+        "type": "string",
+        "enum": [
+          "6m",
+          "12m",
+          "all"
+        ],
+        "title": "Period",
+        "description": "Opções do filtro \"Período\" da aba Resultados (RF-F5.06, D-94)."
+      },
+      "ProfileCourseIn": {
+        "properties": {
+          "courseStatus": {
+            "$ref": "#/components/schemas/CourseStatus"
+          },
+          "course": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "otherCourse": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercourse"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "courseStatus"
+        ],
+        "title": "ProfileCourseIn",
+        "description": "O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).\n\nAs mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso\n(\"Outro curso\" pede o nome); \"Tô tentando entrar\" e \"Ainda não\" não levam\ndados de curso. Campos desconhecidos são recusados."
+      },
+      "ProfileCourseOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "course": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName"
+        ],
+        "title": "ProfileCourseOut",
+        "description": "O curso atual dela no perfil (A10, #298) e o nome para a A10b.\n\n`level` e `course` vêm vazios quando ela não tem curso registrado. O nome\ndo curso é o da lista ou o que ela digitou: vai só para ela."
+      },
+      "ProfileOut": {
+        "properties": {
+          "fileIntroSeen": {
+            "type": "boolean",
+            "title": "Fileintroseen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fileIntroSeen"
+        ],
+        "title": "ProfileOut",
+        "description": "O perfil da menina da sessão, do jeito que o app lê.\n\nPor enquanto só o que o filé precisa: se ela já viu \"Por que filé?\"\n(RF-F10.02, #84). O front lê em camelCase (Profile em\nfrontend/lib/file-intro.ts). Sem nome, e-mail nem data de nascimento."
+      },
+      "RatingIn": {
+        "properties": {
+          "actionId": {
+            "type": "integer",
+            "title": "Actionid"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actionId",
+          "score"
+        ],
+        "title": "RatingIn",
+        "description": "A nota de 1 a 5 e o comentário opcional da A03 (RF-F4.03a).\n\nO front manda em camelCase (actionId). Quem confere se ela pode avaliar a\nação é o serviço."
+      },
+      "ResetPasswordIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Token"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "ResetPasswordIn",
+        "description": "A senha nova da A16b (#331). O tamanho mínimo é conferido na rota."
+      },
+      "ResetTokenIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ResetTokenIn",
+        "description": "O token do link de nova senha. Vai no corpo, não na URL da API, para\nnão ficar em logs de acesso."
+      },
+      "ResetTokenOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ResetTokenOut",
+        "description": "O e-mail da conta, que a A16b mostra (\"Pra conta alana@...\")."
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "girl",
+          "coordinator",
+          "nise_team"
+        ],
+        "title": "Role"
+      },
+      "SelfOrigin": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "self",
+            "title": "Kind",
+            "default": "self"
+          }
+        },
+        "type": "object",
+        "title": "SelfOrigin",
+        "description": "Ela chegou sozinha (M2): os grupos só veem números gerais (RN-04)."
+      },
+      "SessionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "nextPath": {
+            "type": "string",
+            "title": "Nextpath"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "nextPath"
+        ],
+        "title": "SessionOut",
+        "description": "A conta que acabou de entrar e a tela para onde ela vai (A15, #330)."
+      },
+      "SignupOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "nextStep": {
+            "type": "string",
+            "const": "terms",
+            "title": "Nextstep",
+            "default": "terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ],
+        "title": "SignupOut"
+      },
+      "SimilarChoice": {
+        "type": "string",
+        "enum": [
+          "mais-avancado",
+          "mesmo-nivel",
+          "outro-tema",
+          "por-enquanto-nao"
+        ],
+        "title": "SimilarChoice",
+        "description": "Resposta do \"Quer sugestões parecidas?\" da atividade concluída (A06·5, RF-F10.09).\n\nOs valores são os mesmos de `SIMILAR_OPTIONS` no front\n(frontend/lib/atividade-feedback.ts). Como cada um muda as próximas\nsugestões está em app/modules/suggestions/service.py (#80)."
+      },
+      "StatusIn": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/FileSection"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "StatusIn",
+        "description": "A seção para onde ela quer levar a atividade.\n\nSó o próximo passo é aceito: \"in_progress\" a partir de \"next\" e\n\"concluded\" a partir de \"in_progress\". Outro salto responde 409."
+      },
+      "StillEnrolled": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "changed",
+          "stopped"
+        ],
+        "title": "StillEnrolled",
+        "description": "Pergunta 3 para quem já registrou um curso: \"Continua nesse curso?\" (#299)."
+      },
+      "StudyStage": {
+        "type": "string",
+        "enum": [
+          "fundamental",
+          "medio",
+          "tecnico",
+          "graduacao",
+          "formada"
+        ],
+        "title": "StudyStage"
+      },
+      "SuggestionCardOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "typeLabel": {
+            "type": "string",
+            "title": "Typelabel"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ActionFormat"
+          },
+          "duration": {
+            "type": "string",
+            "title": "Duration"
+          },
+          "costCents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costcents"
+          },
+          "minAge": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minage"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "typeLabel",
+          "title",
+          "source",
+          "format",
+          "duration",
+          "costCents",
+          "minAge",
+          "why"
+        ],
+        "title": "SuggestionCardOut",
+        "description": "O que o card de uma sugestão mostra (A06·2, #102). O front lê em camelCase.\n\nO formato e o custo vão como código e número; o texto da tela (\"Online\",\n\"Grátis\", \"R$ 20\") é montado no front (frontend/lib/sugestoes.ts)."
+      },
+      "TermsAcceptanceIn": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "TermsAcceptanceIn",
+        "description": "A versão dos termos que ela leu e aceitou na A04·1 (RF-F7.05).\n\nO servidor só aceita a versão atual; quem confere é o serviço."
+      },
+      "TermsSummaryOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GroupOrigin"
+              },
+              {
+                "$ref": "#/components/schemas/SelfOrigin"
+              }
+            ],
+            "title": "Origin",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "group": "#/components/schemas/GroupOrigin",
+                "self": "#/components/schemas/SelfOrigin"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "origin"
+        ],
+        "title": "TermsSummaryOut",
+        "description": "O que a A04·1 precisa para montar o resumo dos termos (RF-F7.03, RF-F7.04).\n\nO texto fica no front; aqui vão só a versão que ela vai aceitar e a origem,\nque decide qual versão do resumo ela lê."
+      },
+      "ToAnswerOut": {
+        "properties": {
+          "list_match": {
+            "type": "boolean",
+            "title": "List Match"
+          },
+          "ratings": {
+            "items": {
+              "$ref": "#/components/schemas/PendingRatingOut"
+            },
+            "type": "array",
+            "title": "Ratings"
+          },
+          "followup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenFollowupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "list_match",
+          "ratings",
+          "followup"
+        ],
+        "title": "ToAnswerOut",
+        "description": "O que a seção \"Pra responder\" da agenda (A14) mostra.\n\nNada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o\nsim ou não do indício, as ações que ela mesma foi e a rodada aberta."
+      },
+      "Topic": {
+        "type": "string",
+        "enum": [
+          "programacao",
+          "robotica",
+          "ia",
+          "dados",
+          "ciberseguranca",
+          "jogos",
+          "sites",
+          "design"
+        ],
+        "title": "Topic"
+      },
+      "UpcomingItemOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "date",
+              "followup"
+            ],
+            "title": "Kind"
+          },
+          "on": {
+            "type": "string",
+            "format": "date",
+            "title": "On"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowupRound"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "on",
+          "title",
+          "details",
+          "round"
+        ],
+        "title": "UpcomingItemOut",
+        "description": "Uma data da agenda: lembrete da equipe ou rodada de questionário."
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

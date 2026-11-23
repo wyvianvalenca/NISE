@@ -1,0 +1,16 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}

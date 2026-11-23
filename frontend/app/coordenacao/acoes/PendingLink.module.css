@@ -1,0 +1,35 @@
+.link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.primary {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: var(--radius-8);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+  font-size: 14px;
+}
+
+.secondary {
+  height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--nise-ink);
+  border-radius: var(--radius-8);
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font-size: 15px;
+}
+
+.text {
+  min-height: 44px;
+  color: var(--nise-teal);
+  font-size: 14px;
+}

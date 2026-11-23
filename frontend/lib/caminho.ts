@@ -1,0 +1,199 @@
+/**
+ * Questionário de acompanhamento "Como está seu caminho?" (A18, M5, #293).
+ *
+ * Chama as rotas /api/followup/ do back. Os tipos vêm do OpenAPI do FastAPI,
+ * gerados em lib/api/schema.d.ts por `pnpm api:types`. Este arquivo também traduz
+ * as respostas para o que a tela precisa decidir: mostrar o formulário, um
+ * aviso, ou mandar para outra página.
+ */
+
+import type { components } from "./api/schema";
+import type { SessionProblem } from "@/lib/signup-api";
+
+export type FollowupRound = components["schemas"]["FollowupRound"];
+
+/** A rodada aberta hoje (GET /api/followup/current); `null` se não há. */
+export type CurrentFollowupOut = components["schemas"]["CurrentFollowupOut"];
+
+/** As opções das perguntas, na ordem do Figma (GET /api/followup/options). */
+export type FollowupOptionsOut = components["schemas"]["FollowupOptionsOut"];
+
+/** As respostas (POST /api/followup/answers). Toda pergunta é opcional. */
+export type FollowupIn = components["schemas"]["FollowupIn"];
+
+export type CourseStatus = NonNullable<FollowupIn["courseStatus"]>;
+export type CourseCode = NonNullable<FollowupIn["course"]>;
+export type StillEnrolled = NonNullable<FollowupIn["stillEnrolled"]>;
+
+/** A resposta da pergunta do curso, como a tela guarda (A18 e, depois, o perfil). */
+export type CourseAnswer = {
+  courseStatus: CourseStatus | null;
+  course: CourseCode | null;
+  /** O nome que ela digita em "Outro curso". Texto livre (RN-11). */
+  otherCourse: string;
+  /** "Onde?", opcional. Texto livre (RN-11). */
+  institution: string;
+};
+
+export const EMPTY_COURSE_ANSWER: CourseAnswer = {
+  courseStatus: null,
+  course: null,
+  otherCourse: "",
+  institution: "",
+};
+
+/** "Curso técnico" e "Graduação" pedem o curso; "Tô tentando entrar" e "Ainda não", não. */
+export function enteredCourse(status: CourseStatus | null): boolean {
+  return status === "tecnico" || status === "graduacao";
+}
+
+/** Pode enviar: quem entrou escolheu o curso, e "Outro curso" tem o nome. */
+export function courseAnswerReady(answer: CourseAnswer): boolean {
+  if (!enteredCourse(answer.courseStatus)) return true;
+  if (answer.course === null) return false;
+  return answer.course !== "outro" || answer.otherCourse.trim() !== "";
+}
+
+/** Os campos do corpo do envio. Só vai o que vale para a escolha de agora. */
+export function courseFields(
+  answer: CourseAnswer,
+): Pick<FollowupIn, "courseStatus" | "course" | "otherCourse" | "institution"> {
+  if (!enteredCourse(answer.courseStatus)) {
+    return { courseStatus: answer.courseStatus };
+  }
+  return {
+    courseStatus: answer.courseStatus,
+    course: answer.course,
+    otherCourse: answer.course === "outro" ? answer.otherCourse.trim() : null,
+    institution: answer.institution.trim() || null,
+  };
+}
+
+/**
+ * Pode enviar a pergunta 3. "Mudei de curso" pede um nível (técnico ou
+ * graduação) e o curso; as outras escolhas seguem a regra de `courseAnswerReady`.
+ */
+export function courseQuestionReady(
+  stillEnrolled: StillEnrolled | null,
+  answer: CourseAnswer,
+): boolean {
+  if (stillEnrolled === "changed" && !enteredCourse(answer.courseStatus)) {
+    return false;
+  }
+  return courseAnswerReady(answer);
+}
+
+/**
+ * Os campos da pergunta 3 no corpo do envio. Quem já tem curso responde
+ * `stillEnrolled`; só "Mudei de curso" leva também o curso novo.
+ */
+export function courseQuestionFields(
+  stillEnrolled: StillEnrolled | null,
+  answer: CourseAnswer,
+): Pick<
+  FollowupIn,
+  "courseStatus" | "course" | "otherCourse" | "institution" | "stillEnrolled"
+> {
+  if (stillEnrolled === "changed") {
+    return { stillEnrolled, ...courseFields(answer) };
+  }
+  if (stillEnrolled) return { stillEnrolled };
+  return courseFields(answer);
+}
+
+export type FollowupProblem = SessionProblem | "terms_not_accepted" | "failed";
+
+/** O que a A18 precisa para abrir: a rodada de hoje (ou nenhuma) e as opções. */
+export type FollowupScreen = {
+  current: CurrentFollowupOut | null;
+  options: FollowupOptionsOut;
+};
+
+export type LoadResult =
+  { ok: true; screen: FollowupScreen } | { ok: false; reason: FollowupProblem };
+
+export type SendResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: FollowupProblem | "no_open_round" | "already_answered";
+    };
+
+/** O corpo de erro do back: {"error": "<código>"} ou {"detail": "..."}. */
+type ErrorBody = { error?: string; detail?: string } | null;
+
+async function errorBody(response: Response): Promise<ErrorBody> {
+  try {
+    return (await response.json()) as ErrorBody;
+  } catch {
+    return null;
+  }
+}
+
+function problemFrom(status: number, error: ErrorBody): FollowupProblem {
+  if (status === 401) {
+    return error?.detail === "Cadastro incompleto"
+      ? "incomplete_signup"
+      : "unauthenticated";
+  }
+  if (status === 403 && error?.error === "terms_not_accepted") {
+    return "terms_not_accepted";
+  }
+  return "failed";
+}
+
+/**
+ * A rodada aberta hoje e as opções das perguntas.
+ * Lança o erro do `fetch` quando a requisição nem chega ao back.
+ */
+export async function loadFollowup(signal?: AbortSignal): Promise<LoadResult> {
+  const [current, options] = await Promise.all([
+    fetch("/api/followup/current", { signal }),
+    fetch("/api/followup/options", { signal }),
+  ]);
+
+  if (!current.ok) {
+    return {
+      ok: false,
+      reason: problemFrom(current.status, await errorBody(current)),
+    };
+  }
+  if (!options.ok) {
+    return {
+      ok: false,
+      reason: problemFrom(options.status, await errorBody(options)),
+    };
+  }
+
+  try {
+    return {
+      ok: true,
+      screen: {
+        current: (await current.json()) as CurrentFollowupOut | null,
+        options: (await options.json()) as FollowupOptionsOut,
+      },
+    };
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
+}
+
+/** Envia as respostas da rodada. "Agora não" não chama nada. */
+export async function sendFollowup(body: FollowupIn): Promise<SendResult> {
+  const response = await fetch("/api/followup/answers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (response.ok) return { ok: true };
+
+  const error = await errorBody(response);
+  if (response.status === 404 && error?.error === "no_open_round") {
+    return { ok: false, reason: "no_open_round" };
+  }
+  if (response.status === 409 && error?.error === "already_answered") {
+    return { ok: false, reason: "already_answered" };
+  }
+  return { ok: false, reason: problemFrom(response.status, error) };
+}

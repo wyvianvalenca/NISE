@@ -1,0 +1,155 @@
+/* A14 · Sua agenda. Cabeçalho e barra inferior fixos; só o meio rola, como no filé. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-padding-block: 16px;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 24px 32px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.status {
+  color: var(--nise-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.card {
+  list-style: none;
+  padding: 6px 0;
+  border: 1px solid var(--nise-border);
+  border-radius: 16px;
+  background: var(--nise-surface);
+}
+
+/* Item inteiro clicável, com alvo bem maior que 44px. */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: var(--nise-ink);
+  text-decoration: none;
+}
+
+.item:hover .itemTitle {
+  text-decoration: underline;
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--nise-pink);
+  outline-offset: -2px;
+}
+
+/* Barra rosa: "Questionário da NISE" na legenda do Figma. */
+.bar {
+  align-self: stretch;
+  flex: none;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--nise-pink);
+}
+
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemTitle {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.meta {
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.answer {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--nise-pink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--nise-muted);
+}
+
+.empty strong {
+  color: var(--nise-ink);
+  font-size: 16px;
+}
+
+/* Legenda das cores das datas: a mesma da MonthAgenda. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.teal {
+  background: var(--nise-teal);
+}
+
+.pink {
+  background: var(--nise-pink);
+}

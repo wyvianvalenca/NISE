@@ -1,0 +1,58 @@
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 0;
+  padding: 16px 24px;
+  border-radius: 12px;
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+}
+
+/* Número em cima, rótulo embaixo; no HTML o rótulo vem antes (dt/dd). */
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 0 28px;
+  border-left: 1px solid var(--nise-onPrimary);
+}
+
+.stat:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+/* No celular, grade de duas colunas sem as divisórias. */
+@media (max-width: 639px) {
+  .strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .stat {
+    padding: 0;
+    border-left: none;
+  }
+}
+
+.label {
+  font-size: 13px;
+}
+
+.value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.default {
+  color: var(--nise-onPrimary);
+}
+
+.pink {
+  color: var(--nise-pinkLight);
+}
+
+.pinkSoft {
+  color: var(--nise-pinkSoft);
+}

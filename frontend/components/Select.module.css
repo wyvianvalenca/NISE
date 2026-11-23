@@ -1,0 +1,45 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 200px;
+}
+
+.label {
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.control {
+  position: relative;
+}
+
+.select {
+  width: 100%;
+  height: 44px;
+  padding: 0 40px 0 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+  background: var(--nise-surface);
+  color: var(--nise-ink);
+  font: inherit;
+  font-size: 15px;
+  /* Esconde a seta do navegador; a nossa é o ícone ao lado. */
+  appearance: none;
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 0;
+}
+
+.chevron {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: var(--nise-ink);
+  pointer-events: none;
+}

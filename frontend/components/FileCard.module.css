@@ -1,0 +1,64 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 12px;
+}
+
+.uploaded {
+  padding: 14px 16px;
+  background: var(--nise-paper);
+}
+
+.download {
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  background: var(--nise-surface);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+}
+
+.format {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 52px;
+  border-radius: 6px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+  font-family: var(--nise-font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.texts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.details {
+  color: var(--nise-muted);
+  font-size: 13px;
+}

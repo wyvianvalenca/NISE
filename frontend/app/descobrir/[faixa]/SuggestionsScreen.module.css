@@ -1,0 +1,419 @@
+/* Cabeçalho fixo; só o meio rola, como no Descobrir. */
+.page {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--nise-border);
+  background: var(--nise-surface);
+}
+
+.back {
+  gap: 6px;
+  font-size: 16px;
+}
+
+/* Pílula "Meu filé" com o contador (Figma: Action / Meu filé). */
+.filePill {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border: 1.5px solid var(--nise-teal);
+  border-radius: var(--radius-pill);
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.filePill:hover {
+  background: var(--nise-tealSoft);
+}
+
+.fileCount {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-teal);
+  color: var(--nise-onPrimary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* No computador a tela continua estreita, como no celular do Figma. */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 14px 24px 24px;
+  /* O card que sai para o lado não pode abrir uma rolagem horizontal no caminho. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/*
+ * Reservado para o aviso "Desfazer" (#107): 64px como no Figma (844px de altura).
+ * Em celular mais baixo o espaço encolhe, para os três botões caberem sem rolar.
+ */
+.noticeSlot {
+  flex-shrink: 0;
+  width: 100%;
+  height: clamp(0px, calc(100dvh - 780px), 64px);
+}
+
+/*
+ * Aviso "Desfazer" (#107): por cima do espaço do aviso, logo abaixo do cabeçalho,
+ * na mesma largura do card (Figma: Aviso / Sugestão salva, 342 × 64).
+ */
+.toastArea {
+  position: absolute;
+  top: calc(68px + 14px);
+  left: 50%;
+  /* Acima do card que sai para cima (.leaving). */
+  z-index: 2;
+  width: min(100% - 48px, 342px);
+  transform: translateX(-50%);
+  /* Entra descendo um pouco, a cada escolha (o aviso é recriado a cada uma). */
+  animation: toast-in 200ms ease-out both;
+}
+
+/* Quando o tempo acaba, sobe e some; o fim da animação tira o aviso da tela (UndoToast.tsx). */
+.toastLeaving {
+  animation: toast-out 160ms ease-in both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+
+/* Com menos movimento, o aviso só aparece e some, sem deslizar. */
+@media (prefers-reduced-motion: reduce) {
+  .toastArea {
+    animation-name: card-fade-in;
+  }
+
+  .toastLeaving {
+    animation-name: card-fade-out;
+  }
+}
+
+.counter {
+  color: var(--nise-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Escolha que não foi guardada: aparece acima do contador, sem tirar o card do lugar. */
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Baralho: o card da frente e até dois cards tortos atrás. */
+.deck {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 342px;
+  padding: 0 4px;
+}
+
+.front {
+  position: relative;
+}
+
+.backCard {
+  position: absolute;
+  inset: 7px 4px;
+  border: 1px solid var(--nise-border);
+  border-radius: 22px;
+  background: var(--nise-surface);
+}
+
+.backLeft {
+  transform: rotate(-3deg);
+}
+
+.backRight {
+  transform: rotate(2.5deg);
+}
+
+/*
+ * Movimento do card. O que foi escolhido sai por cima do baralho para o lado do botão
+ * (Não é pra mim à esquerda, Quero fazer à direita, Talvez depois para cima), e o próximo
+ * sobe do baralho. Com o "Desfazer", o card volta pelo lado de onde saiu: é a mesma
+ * animação da saída, de trás para frente. O lado vem no data-motion (SuggestionsScreen.tsx).
+ */
+.leaving {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  left: 4px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Depois da última escolha não há card embaixo: o que sai ocupa o lugar dele. */
+.leavingLast {
+  position: relative;
+  right: auto;
+  left: auto;
+}
+
+.front[data-motion="chega"] {
+  animation: card-arrive 220ms ease-out both;
+}
+
+.leaving[data-motion="sai-esquerda"] {
+  animation: card-out-left 320ms ease-in both;
+}
+
+.leaving[data-motion="sai-direita"] {
+  animation: card-out-right 320ms ease-in both;
+}
+
+.leaving[data-motion="sai-cima"] {
+  animation: card-out-up 320ms ease-in both;
+}
+
+.front[data-motion="volta-esquerda"] {
+  animation: card-out-left 320ms ease-in reverse both;
+}
+
+.front[data-motion="volta-direita"] {
+  animation: card-out-right 320ms ease-in reverse both;
+}
+
+.front[data-motion="volta-cima"] {
+  animation: card-out-up 320ms ease-in reverse both;
+}
+
+@keyframes card-arrive {
+  from {
+    opacity: 0.6;
+    scale: 0.96;
+    translate: 0 8px;
+  }
+}
+
+/* O card fica opaco na primeira metade do caminho, para o texto dele não se misturar
+ * com o do card que chega embaixo, e some na segunda. */
+@keyframes card-out-left {
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    translate: -115% 0;
+    rotate: -12deg;
+  }
+}
+
+@keyframes card-out-right {
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    translate: 115% 0;
+    rotate: 12deg;
+  }
+}
+
+@keyframes card-out-up {
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: 0.92;
+    translate: 0 -60%;
+  }
+}
+
+/*
+ * Quem pediu menos movimento vê o card só sumir e aparecer, sem deslizar. A saída continua
+ * sendo uma animação (curta, só de opacidade): é o fim dela que tira o card da tela.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .front[data-motion] {
+    animation: card-fade-in 150ms ease-out both;
+  }
+
+  .leaving[data-motion] {
+    animation: card-fade-out 150ms ease-out both;
+  }
+}
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes card-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Os três botões (Figma: Ações). O espaço entre eles encolhe no celular estreito. */
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(8px, 6vw, 40px);
+  margin-top: 6px;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-16);
+  background: none;
+  color: var(--nise-ink);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 4px;
+}
+
+.action[aria-disabled="true"] {
+  cursor: progress;
+}
+
+.actionCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--nise-border);
+  border-radius: 50%;
+  background: var(--nise-surface);
+}
+
+.action:first-child .actionCircle {
+  color: var(--nise-pink);
+}
+
+.action:hover:not([aria-disabled="true"]) .actionCircle {
+  border-color: var(--nise-teal);
+}
+
+.actionMain {
+  font-weight: 700;
+}
+
+.actionMain .actionCircle {
+  width: 76px;
+  height: 76px;
+  border: none;
+  background: var(--nise-ink);
+  color: var(--nise-onPrimary);
+  box-shadow: 0 8px 24px rgba(10, 59, 71, 0.1);
+}
+
+.actionMain:hover:not([aria-disabled="true"]) .actionCircle {
+  background: var(--nise-teal);
+}
+
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  text-align: center;
+}
+
+.endTitle {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.endText {
+  color: var(--nise-muted);
+  font-size: 15px;
+}
+
+/* Fim da faixa (#166): ilustração, título e as duas saídas em largura total. */
+.endArt {
+  margin-top: 40px;
+  margin-bottom: 4px;
+  color: var(--nise-muted);
+}
+
+.endTitle:focus {
+  outline: none;
+}
+
+.endActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 36px;
+}
+
+/* Os dois são LinkButton; aqui só a largura total e a borda teal do Figma no secundário.
+ * O texto do secundário fica ink: teal sobre tealSoft no hover dá 4,06:1, abaixo do AA. */
+.endAction {
+  width: 100%;
+}
+
+.endActions .endSecondary {
+  border: 1.5px solid var(--nise-teal);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

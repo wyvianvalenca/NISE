@@ -1,0 +1,63 @@
+/* A01 "Boas-vindas" (Figma 511:15325). */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/*
+ * A browser with the session hint waits on the loading screen instead of the
+ * welcome, while SignedInRedirect asks the server where she goes. The
+ * attribute on <html> comes from the script in app/layout.tsx.
+ */
+.welcome {
+  display: contents;
+}
+
+.waiting {
+  display: none;
+}
+
+:global(html[data-entrou]) .welcome {
+  display: none;
+}
+
+:global(html[data-entrou]) .waiting {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* On a desktop the screen stays narrow, like the phone in Figma. */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 24px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 16px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+/* Pushes the action to the bottom, as in Figma. */
+.spacer {
+  flex: 1;
+  min-height: 24px;
+}
+
+.fullWidth {
+  width: 100%;
+}

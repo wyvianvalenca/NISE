@@ -1,0 +1,118 @@
+.wrapper {
+  width: 100%;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--nise-font-sans);
+}
+
+.highlight {
+  fill: var(--nise-chart-highlight);
+}
+
+.grid {
+  stroke: var(--nise-track);
+  stroke-dasharray: 4 4;
+}
+
+.yLabel {
+  fill: var(--nise-chart-axis);
+  font-size: 10px;
+  text-anchor: end;
+}
+
+/* Cada série define `color`; linha e pontos usam currentColor. */
+.line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.dot {
+  fill: currentColor;
+  stroke: var(--nise-surface);
+  stroke-width: 1.5;
+}
+
+.xCircle {
+  fill: var(--nise-surface);
+  stroke: var(--nise-border);
+}
+
+.xCircleActive {
+  fill: var(--nise-ink);
+}
+
+.xLabel,
+.xLabelActive {
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.xLabel {
+  fill: var(--nise-ink);
+}
+
+.xLabelActive {
+  fill: var(--nise-onPrimary);
+}
+
+.xButton {
+  cursor: pointer;
+  outline: none;
+}
+
+.xButton:focus-visible .xCircle,
+.xButton:focus-visible .xCircleActive {
+  stroke: var(--nise-pink);
+  stroke-width: 3;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  list-style: none;
+  color: var(--nise-ink);
+  font-size: 12px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legendLine {
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.legendDot {
+  fill: currentColor;
+}
+
+.legendCount {
+  color: var(--nise-muted);
+  font-size: 11px;
+}
+
+.swatch,
+.stripes {
+  width: 20px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.stripes {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--nise-chart-pendingStripe) 0 1.2px,
+    var(--nise-chart-pending) 1.2px 4.2px
+  );
+}

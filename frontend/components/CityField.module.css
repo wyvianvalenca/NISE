@@ -1,0 +1,33 @@
+/* Lista de sugestões do campo Cidade: abre logo abaixo do campo, por cima do
+   que vem depois, como um dropdown. */
+.list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  /* Cerca de 5 cidades à vista; o resto rola. */
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+  background: var(--nise-surface);
+  box-shadow: 0 6px 16px var(--nise-shadow);
+}
+
+.option {
+  /* 44px de altura mínima: alvo de toque confortável no celular. */
+  min-height: 44px;
+  padding: 12px 14px;
+  color: var(--nise-ink);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.option:hover,
+.option[aria-selected="true"] {
+  background: var(--nise-track);
+}

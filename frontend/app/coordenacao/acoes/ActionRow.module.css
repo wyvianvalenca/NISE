@@ -1,0 +1,156 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: var(--nise-surface);
+}
+
+.row + .row {
+  border-top: 1px solid var(--nise-track);
+}
+
+.attention {
+  background: var(--nise-pinkTint);
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  background: var(--nise-teal);
+}
+
+.date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 60px;
+  height: 64px;
+  border-radius: 12px;
+  background: var(--nise-paper);
+  line-height: 1.4;
+}
+
+.day {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.month {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.weekday {
+  color: var(--nise-muted);
+  font-size: 11px;
+}
+
+.info {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.reminder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+  color: var(--nise-pink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.girls,
+.girlsEmpty {
+  flex-shrink: 0;
+  width: 230px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.girlsEmpty {
+  color: var(--nise-muted);
+}
+
+.buttons {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  min-width: 190px;
+}
+
+/*
+ * On phones the row has no room for five columns side by side (RNF-G.01, 360 px):
+ * the date and the name stay on top, and the line about the girls and the
+ * buttons go below the name. The "..." button stays at the top right.
+ */
+@media (max-width: 767px) {
+  .row {
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date info more"
+      ". girls girls"
+      ". buttons buttons";
+    align-items: start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .date {
+    grid-area: date;
+  }
+
+  .info {
+    grid-area: info;
+  }
+
+  .girls,
+  .girlsEmpty {
+    grid-area: girls;
+    width: auto;
+  }
+
+  .buttons {
+    grid-area: buttons;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 16px;
+    min-width: 0;
+  }
+
+  /*
+   * The "..." button is built by RowMenu (its own CSS), and it is the only button
+   * that is a direct child of the row.
+   */
+  .row > button {
+    grid-area: more;
+    margin: -10px -10px 0 0;
+  }
+}
