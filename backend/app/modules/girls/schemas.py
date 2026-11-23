@@ -3,11 +3,21 @@ from typing import Annotated, Self
 from pydantic import (
     AfterValidator,
     BaseModel,
+    ConfigDict,
     Field,
     StrictBool,
     model_validator,
 )
+from pydantic.alias_generators import to_camel
 
+from app.modules.admissions.declaration import (
+    FreeText,
+    blank_is_none,
+    check_course_fields,
+    level_of,
+)
+from app.modules.admissions.models import CourseLevel
+from app.modules.followup.models import CourseCode, CourseStatus
 from app.modules.girls.models import StudyStage, Topic
 
 
@@ -68,3 +78,52 @@ class ProfileOut(BaseModel):
     """
 
     file_intro_seen: bool = Field(serialization_alias="fileIntroSeen")
+
+
+# O front lê e manda em camelCase (courseStatus, otherCourse). Mesma regra de
+# followup/schemas.py, que importa este arquivo e por isso não pode ser
+# importado aqui.
+_CAMEL_CASE = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class ProfileCourseOut(BaseModel):
+    """O curso atual dela no perfil (A10, #298) e o nome para a A10b.
+
+    `level` e `course` vêm vazios quando ela não tem curso registrado. O nome
+    do curso é o da lista ou o que ela digitou: vai só para ela.
+    """
+
+    model_config = _CAMEL_CASE
+
+    first_name: str
+    level: CourseLevel | None = None
+    course: str | None = None
+
+
+class ProfileCourseIn(BaseModel):
+    """O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).
+
+    As mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso
+    ("Outro curso" pede o nome); "Tô tentando entrar" e "Ainda não" não levam
+    dados de curso. Campos desconhecidos são recusados.
+    """
+
+    model_config = ConfigDict(**_CAMEL_CASE, extra="forbid")
+
+    course_status: CourseStatus
+    course: CourseCode | None = None
+    other_course: Annotated[FreeText | None, AfterValidator(blank_is_none)] = None
+    institution: Annotated[FreeText | None, AfterValidator(blank_is_none)] = None
+
+    @property
+    def level(self) -> CourseLevel | None:
+        """O nível do curso, se ela entrou (técnico ou graduação)."""
+        return level_of(self.course_status)
+
+    @model_validator(mode="after")
+    def course_rules(self) -> Self:
+        # A tela confere antes; o servidor confere de novo (RNF-G.03).
+        check_course_fields(
+            self.level, self.course, self.other_course, self.institution
+        )
+        return self

@@ -93,7 +93,7 @@ export function AccountMenu({ name }: AccountMenuProps) {
         <div id={panelId} className={styles.panel}>
           <p className={styles.name}>{name}</p>
 
-          {/* O perfil ainda não existe; por enquanto o link dá 404. */}
+          {/* A10 · Perfil (#298). */}
           <Link href="/perfil" className={styles.item}>
             Ver perfil
           </Link>
