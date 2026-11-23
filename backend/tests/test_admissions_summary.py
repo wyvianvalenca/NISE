@@ -41,7 +41,7 @@ def linha(
     nome: str = "Ana Lima",
     level: CourseLevel = GRAD,
     course: str = "Ciência da Computação",
-    institution: str = "UFAL",
+    institution: str | None = "UFAL",
     origin: AdmissionOrigin = SELF,
     list_id: int | None = None,
 ) -> SummaryRow:
@@ -158,6 +158,28 @@ def test_cada_instituicao_aparece_uma_vez_em_ordem_alfabetica() -> None:
 
     assert resumo.graduacao.institutions == ["UFAL", "UNEAL"]
     assert resumo.tecnico.institutions == ["ifal", "IFAL · Maceió"]
+
+
+def test_ingresso_sem_instituicao_conta_mas_nao_entra_na_lista_de_instituicoes() -> (
+    None
+):
+    # "Onde?" é opcional (RF-F6.02): a instituição pode ser None.
+    linhas = [linha(1, institution=None), linha(2, institution="UFAL")]
+
+    resumo = build_summary(linhas, 10, None, set())
+
+    assert resumo.graduacao.count == 2
+    assert resumo.graduacao.institutions == ["UFAL"]
+
+
+def test_nome_vazio_nao_quebra_o_resumo() -> None:
+    linhas = [linha(1, nome="  ", origin=LISTA, list_id=7, institution=None)]
+
+    resumo = build_summary(linhas, 1, ULTIMA, {(1, 7)})
+
+    assert resumo.recent is not None
+    assert resumo.recent.girls[0].first_name == ""
+    assert resumo.recent.girls[0].institution is None
 
 
 def test_nivel_sem_meninas_vem_zerado_e_sem_instituicoes() -> None:

@@ -420,7 +420,7 @@ class SummaryRow:
     girl_name: str
     level: CourseLevel
     course: str
-    institution: str
+    institution: str | None
     origin: AdmissionOrigin
     official_list_id: int | None
 
@@ -428,7 +428,7 @@ class SummaryRow:
 def _level_summary(rows: Iterable[SummaryRow], level: CourseLevel) -> LevelSummaryOut:
     of_level = [row for row in rows if row.level == level]
     # Cada instituição uma vez, em ordem alfabética, sem as vazias.
-    institutions = {row.institution.strip() for row in of_level} - {""}
+    institutions = {(row.institution or "").strip() for row in of_level} - {""}
 
     return LevelSummaryOut(
         count=len(of_level), institutions=sorted(institutions, key=str.casefold)
@@ -457,9 +457,9 @@ def build_summary(
     # Só as que a busca achou: quem declarou o curso sozinha nunca aparece aqui.
     recent = [
         RecentGirlOut(
-            first_name=row.girl_name.split()[0],
+            first_name=row.girl_name.split()[0] if row.girl_name.strip() else "",
             course=row.course,
-            institution=row.institution.strip() or None,
+            institution=(row.institution or "").strip() or None,
         )
         for row in rows
         if row.origin == AdmissionOrigin.OFFICIAL_LIST
@@ -551,9 +551,17 @@ async def list_waiting_girls(
     if now is None:
         now = datetime.now(UTC)
 
+    # Quem já tem ingresso está na lista "Quem ingressou": a linha de quem
+    # aguarda é só para a menina sem ingresso (RF-F5.24). Mesma noção da lista
+    # (qualquer ingresso dela), lendo só o id para não tocar em curso nem
+    # instituição.
     waiting = (
         select(ListMatch.girl_id, func.min(ListMatch.created_at).label("waiting_since"))
-        .where(ListMatch.girl_id.in_(girls_of_group(group_id)), _is_open(now))
+        .where(
+            ListMatch.girl_id.in_(girls_of_group(group_id)),
+            ListMatch.girl_id.not_in(select(Enrollment.girl_id)),
+            _is_open(now),
+        )
         .group_by(ListMatch.girl_id)
         .subquery()
     )
