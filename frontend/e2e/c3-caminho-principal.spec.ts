@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockActionPageApi } from "./action-page-api";
+import { mockActionsListApi } from "./actions-list-api";
 import {
   BEFORE_THE_DAY_ACTION_ID,
   SIX_GIRLS_ACTION_ID,
@@ -228,6 +229,8 @@ test("concluding: the confirmation, the message, the concluded page with its tab
   expect(status).toBe(409);
 
   // The actions list shows the concluded ones with the summary and the evaluation.
+  // The list reads the real route since #383, so it gets its own mock.
+  await mockActionsListApi(page);
   await page.goto("/coordenacao/acoes");
   const concluded = page.getByRole("listitem").filter({ hasText: "Arduino na escola" });
   await expect(concluded.getByRole("link", { name: "Ver resumo", disabled: true })).toBeVisible();
