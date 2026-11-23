@@ -320,3 +320,74 @@
     transition: none;
   }
 }
+
+.modelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.model,
+.modelOn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+  cursor: pointer;
+}
+
+.modelOn {
+  border: 2px solid var(--nise-teal);
+  background: var(--nise-tealSoft);
+}
+
+.model:has(input:focus-visible),
+.modelOn:has(input:focus-visible) {
+  outline: 3px solid var(--nise-ink);
+  outline-offset: 2px;
+}
+
+.modelCheck {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.modelPackages {
+  margin-top: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.modelChip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
+.change {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.change:focus-visible {
+  outline: 3px solid var(--nise-ink);
+  outline-offset: 2px;
+}
