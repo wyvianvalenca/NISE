@@ -119,7 +119,7 @@ def test_celula_que_comeca_com_formula_vira_texto() -> None:
 def test_nome_do_arquivo() -> None:
     assert (
         file_name("Rendeiras do Código", HOJE)
-        == "rendeiras-do-codigo_dados-anonimos_2026-10-16.csv"
+        == "rendeiras-do-codigo_do-meu-jeito_2026-10-16.csv"
     )
 
 
@@ -239,7 +239,7 @@ async def test_gerar_registra_e_o_link_vale_15_minutos(
     assert feito.row_count == 1
     assert feito.column_count == 21
     assert feito.expires_at == agora + timedelta(minutes=15)
-    assert feito.filename == "rendeiras-do-codigo_dados-anonimos_2026-10-16.csv"
+    assert feito.filename == "rendeiras-do-codigo_do-meu-jeito_2026-10-16.csv"
     assert feito.content is not None
 
 
