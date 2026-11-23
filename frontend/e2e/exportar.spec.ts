@@ -1,12 +1,20 @@
 import { expect, test } from "@playwright/test";
+import { FILE, mockExportApi } from "./exportar-api";
 
 // Exportar dados anônimos (#375): os quatro passos. Dados fictícios.
 
 const URL = "/coordenacao/exportar";
 
+async function goToReview(page: import("@playwright/test").Page) {
+  await page.goto(URL);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("button", { name: "Continuar" }).click();
+}
+
 test("goes through the four steps with the buttons, not by clicking the steps", async ({
   page,
 }) => {
+  const calls = await mockExportApi(page);
   await page.goto(URL);
 
   await expect(page.getByRole("heading", { name: "Exportar dados anônimos" })).toBeVisible();
@@ -41,8 +49,32 @@ test("goes through the four steps with the buttons, not by clicking the steps", 
   // Passo 4: Pronto.
   await expect(page.getByText("Arquivo pronto")).toBeVisible();
   await expect(page.getByText("Ficou registrado no histórico do grupo.")).toBeVisible();
-  await expect(page.getByText(/\.csv$/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Baixar" })).toBeVisible();
+  expect(calls.generated).toBe(1);
+  await expect(page.getByText(FILE.filename)).toBeVisible();
+  await expect(page.getByText(/42 linhas · 8 colunas · UTF-8, separador “;”/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Baixar" })).toHaveAttribute(
+    "href",
+    "/api/coordinator/exports/7/file",
+  );
   await expect(page.getByText(/pro link expirar · depois é só gerar de novo/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Gerar arquivo" })).toHaveCount(0);
+});
+
+test("tells her when the preview cannot be loaded and lets her try again", async ({ page }) => {
+  await mockExportApi(page, { previewStatus: 500 });
+  await goToReview(page);
+
+  await expect(page.getByRole("alert")).toContainText("Não foi possível montar a prévia");
+  await expect(page.getByRole("button", { name: "Gerar arquivo" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
+});
+
+test("stays on the review step when generating fails", async ({ page }) => {
+  await mockExportApi(page, { generateStatus: 500 });
+  await goToReview(page);
+
+  await page.getByRole("button", { name: "Gerar arquivo" }).click();
+
+  await expect(page.getByText("Não foi possível gerar o arquivo. Tente novamente.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gerar arquivo" })).toBeEnabled();
 });

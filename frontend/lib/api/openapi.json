@@ -4155,6 +4155,225 @@
         }
       }
     },
+    "/api/coordinator/exports/preview": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Preview Route",
+        "description": "Cinco linhas do arquivo que vai sair, para o passo \"Revisão\" (RF-F24.32).",
+        "operationId": "preview_route_api_coordinator_exports_preview_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPreviewOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinator/exports": {
+      "post": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Create Export Route",
+        "description": "Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07).",
+        "operationId": "create_export_route_api_coordinator_exports_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinator/exports/{export_id}/file": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Download Route",
+        "description": "Baixa o CSV. Precisa de sessão e vale 15 minutos (RF-F24.34).",
+        "operationId": "download_route_api_coordinator_exports__export_id__file_get",
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Export Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "404": {
+            "description": "Exportação de outro grupo"
+          },
+          "410": {
+            "description": "O link expirou"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -5571,6 +5790,102 @@
         ],
         "title": "EnrollmentRowOut",
         "description": "Uma linha de \"Quem ingressou\" (#315). O front lê em camelCase.\n\nSó o que a tela mostra: o nome vem curto (\"Ana L.\"), e não vão e-mail,\nnascimento nem a chamada da lista oficial."
+      },
+      "ExportColumnOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "code",
+              "generalized",
+              "action"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "kind"
+        ],
+        "title": "ExportColumnOut"
+      },
+      "ExportOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "rowCount": {
+            "type": "integer",
+            "title": "Rowcount"
+          },
+          "columnCount": {
+            "type": "integer",
+            "title": "Columncount"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiresat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "rowCount",
+          "columnCount",
+          "expiresAt"
+        ],
+        "title": "ExportOut",
+        "description": "O arquivo pronto (RF-F24.34). O CSV se baixa por `GET .../{id}/file`."
+      },
+      "ExportPreviewOut": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ExportColumnOut"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "totalRows": {
+            "type": "integer",
+            "title": "Totalrows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns",
+          "rows",
+          "totalRows"
+        ],
+        "title": "ExportPreviewOut",
+        "description": "As primeiras linhas do arquivo que vai sair (RF-F24.32).\n\nOs códigos são de mentira: o arquivo de verdade sorteia outros."
       },
       "FeedbackIn": {
         "properties": {
