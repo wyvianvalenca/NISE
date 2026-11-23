@@ -899,6 +899,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/exports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Route
+         * @description Cinco linhas do arquivo que vai sair, para o passo "Revisão" (RF-F24.32).
+         */
+        get: operations["preview_route_api_coordinator_exports_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Export Route
+         * @description Gera o CSV anônimo do grupo e registra a exportação (RF-F24.34, RN-07).
+         */
+        post: operations["create_export_route_api_coordinator_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports/{export_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Route
+         * @description Baixa o CSV. Precisa de sessão e vale 15 minutos (RF-F24.34).
+         */
+        get: operations["download_route_api_coordinator_exports__export_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1502,6 +1562,51 @@ export interface components {
              */
             registeredAt: string;
             origin: components["schemas"]["AdmissionOrigin"];
+        };
+        /** ExportColumnOut */
+        ExportColumnOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "code" | "generalized" | "action";
+        };
+        /**
+         * ExportOut
+         * @description O arquivo pronto (RF-F24.34). O CSV se baixa por `GET .../{id}/file`.
+         */
+        ExportOut: {
+            /** Id */
+            id: number;
+            /** Filename */
+            filename: string;
+            /** Rowcount */
+            rowCount: number;
+            /** Columncount */
+            columnCount: number;
+            /**
+             * Expiresat
+             * Format: date-time
+             */
+            expiresAt: string;
+        };
+        /**
+         * ExportPreviewOut
+         * @description As primeiras linhas do arquivo que vai sair (RF-F24.32).
+         *
+         *     Os códigos são de mentira: o arquivo de verdade sorteia outros.
+         */
+        ExportPreviewOut: {
+            /** Columns */
+            columns: components["schemas"]["ExportColumnOut"][];
+            /** Rows */
+            rows: string[][];
+            /** Totalrows */
+            totalRows: number;
         };
         /**
          * FeedbackIn
@@ -4760,6 +4865,137 @@ export interface operations {
             };
             /** @description Coordenadora em mais de um grupo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_route_api_coordinator_exports_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportPreviewOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_export_route_api_coordinator_exports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_route_api_coordinator_exports__export_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exportação de outro grupo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O link expirou */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

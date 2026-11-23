@@ -1,0 +1,245 @@
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step,
+.stepCurrent,
+.stepDone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.stepCurrent {
+  color: var(--nise-ink);
+  font-weight: 700;
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--nise-borderStrong);
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.stepCurrent .stepNumber {
+  border-color: var(--nise-primary);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+}
+
+.stepDone .stepNumber {
+  border-color: var(--nise-teal);
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.stepTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.stepTitle:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 4px;
+}
+
+.muted {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.baseCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+}
+
+.baseTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.never {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.never .chip {
+  background: var(--nise-pinkSoft);
+}
+
+.example {
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--nise-ink);
+}
+
+.table th,
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--nise-divider);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  font-weight: 700;
+}
+
+.code {
+  background: var(--nise-pinkSoft);
+}
+
+.generalized {
+  background: var(--nise-tealSoft);
+}
+
+.action {
+  background: transparent;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--nise-muted);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--nise-borderStrong);
+  border-radius: 4px;
+}
+
+.problem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.doneTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.filename {
+  margin-top: 8px;
+  font-weight: 500;
+  color: var(--nise-ink);
+  overflow-wrap: anywhere;
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  margin-top: 8px;
+  padding: 0 20px;
+  border-radius: var(--radius-8);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.download:hover {
+  background: var(--nise-teal);
+}
+
+.download:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

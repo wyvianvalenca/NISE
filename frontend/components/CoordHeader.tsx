@@ -13,7 +13,7 @@ const SECTIONS = [
   { key: "resultados", label: "Resultados", href: "/coordenacao/resultados" },
   { key: "ingressantes", label: "Ingressantes", href: "/coordenacao/ingressantes" },
   { key: "relatorios", label: "Relatórios" },
-  { key: "exportar", label: "Exportar" },
+  { key: "exportar", label: "Exportar", href: "/coordenacao/exportar" },
 ] as const satisfies readonly { key: string; label: string; href?: string }[];
 
 export type CoordSection = (typeof SECTIONS)[number]["key"];
