@@ -44,3 +44,13 @@ class ExportIn(_CamelModel):
     """Os pacotes ligados. A Base sempre sai; lista vazia é só a Base (RF-F24.08)."""
 
     packages: list[Package]
+
+
+class ExportHistoryItemOut(_CamelModel):
+    """Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07)."""
+
+    id: int
+    who: str
+    created_at: datetime
+    cut: str
+    row_count: int

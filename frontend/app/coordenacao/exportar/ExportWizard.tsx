@@ -13,7 +13,9 @@ import {
   DEFAULT_PACKAGES,
   type ExportedFile,
   generateExport,
+  getHistory,
   getPreview,
+  type HistoryItem,
   KIND_LABELS,
   NEVER_LEAVES,
   PACKAGES,
@@ -23,6 +25,7 @@ import {
   summaryLabel,
 } from "@/lib/exportar";
 import { PackageCard } from "./PackageCard";
+import { ExportHistory } from "./ExportHistory";
 import styles from "./ExportWizard.module.css";
 
 export function ExportWizard() {
@@ -322,6 +325,32 @@ function Done({
           )}
         </>
       )}
+
+      <History fileId={file.id} />
     </div>
   );
+}
+
+/** The panel under "Pronto". It asks again when a new file is made, so it shows at the top. */
+function History({ fileId }: { fileId: number }) {
+  const [items, setItems] = useState<HistoryItem[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    getHistory()
+      .then((history) => {
+        if (!current) return;
+        setItems(history);
+        setFailed(false);
+      })
+      .catch(() => current && setFailed(true));
+    return () => {
+      current = false;
+    };
+  }, [fileId]);
+
+  if (failed) return <p role="alert">Não foi possível carregar o histórico de exportações.</p>;
+  if (items === null) return <Loading label="Carregando o histórico…" />;
+  return <ExportHistory items={items} />;
 }

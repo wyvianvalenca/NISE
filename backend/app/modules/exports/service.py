@@ -31,6 +31,7 @@ from app.modules.followup.models import ComputingView, FollowupAnswer, FollowupR
 from app.modules.girls.models import Girl
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, age_on
 from app.modules.groups.models import Group
+from app.users.models import User
 
 # O link vale 15 minutos e o texto do arquivo some do servidor em 24 horas.
 LINK_LIFETIME = timedelta(minutes=15)
@@ -54,8 +55,9 @@ FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 ColumnKind = Literal["code", "generalized", "action"]
 
 # RN-13: todo campo é identificador direto, quase-identificador, analítico ou
-# texto livre. Os dois primeiros e o texto livre nunca saem; por isso uma coluna
-# só pode ter uma destas duas classes. Sem classe, a coluna não é exportada.
+# texto livre. Só o identificador direto e o texto livre nunca saem; por isso uma
+# coluna só pode ser quase-identificador (sai generalizado) ou analítica. Sem
+# classe, a coluna não é exportada.
 Classification = Literal["quasi_identifier", "analytic"]
 
 
@@ -450,3 +452,47 @@ async def create_export(
     session.add(export)
     await session.commit()
     return export
+
+
+# Quantos itens o painel "Histórico de exportações" traz. Decisão assumida na
+# #376 (o doc e o Figma não dizem): as 20 mais recentes.
+HISTORY_LIMIT = 20
+
+# O recorte e o modelo ainda não existem (#378, #379): toda exportação é a Base
+# de todas as ações do grupo, e é isso que o item diz.
+DEFAULT_CUT = "Dados anônimos · todas as ações"
+
+
+@dataclass(frozen=True)
+class HistoryItem:
+    id: int
+    who: str
+    created_at: datetime
+    cut: str
+    row_count: int
+
+
+async def list_history(session: AsyncSession, group_id: int) -> list[HistoryItem]:
+    """As exportações do grupo, da mais recente para a mais antiga (RF-F24.07).
+
+    Entram as de todas as coordenadoras do grupo. Nada é apagado: só o texto do
+    arquivo some (`purge_old_files`), a linha fica.
+    """
+    rows = await session.execute(
+        select(DataExport, User.name)
+        .outerjoin(User, User.id == DataExport.user_id)
+        .where(DataExport.group_id == group_id)
+        .order_by(DataExport.created_at.desc(), DataExport.id.desc())
+        .limit(HISTORY_LIMIT)
+    )
+    return [
+        HistoryItem(
+            id=export.id,
+            # Só o primeiro nome, como no Figma ("Kátia").
+            who=name.split()[0] if name and name.split() else "Coordenadora",
+            created_at=export.created_at,
+            cut=DEFAULT_CUT,
+            row_count=export.row_count,
+        )
+        for export, name in rows
+    ]
