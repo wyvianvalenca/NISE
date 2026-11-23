@@ -121,6 +121,24 @@ class ActionOut(BaseModel):
     status: ActionStatus
 
 
+class ActionPageOut(ActionOut):
+    """The action page (K11, #233): the action plus what the page needs to decide.
+
+    `registrations_open` here is the effective value (RF-F1.16): closed by the
+    coordinator or by the day of the event arriving. `today` comes from the server
+    so the screen and the rules agree on the date (Maceió).
+    """
+
+    city_name: str | None
+    created_on: date
+    today: date
+    registered_count: int
+    registrations_closed_by_coordinator: bool
+    can_reopen: bool
+    # False once the attendance is saved (RF-F30.12).
+    can_delete: bool
+
+
 class ActionListItemOut(BaseModel):
     """One row of the "Ações" list (K10, RF-F30.10).
 

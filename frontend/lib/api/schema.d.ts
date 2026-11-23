@@ -250,12 +250,142 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Action Page Route */
+        get: operations["get_action_page_route_api_actions__action_id__get"];
         /** Update Action Route */
         put: operations["update_action_route_api_actions__action_id__put"];
         post?: never;
         /** Delete Action Route */
         delete: operations["delete_action_route_api_actions__action_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Registrations Route */
+        get: operations["list_registrations_route_api_actions__action_id__registrations_get"];
+        put?: never;
+        /** Add Registration Route */
+        post: operations["add_registration_route_api_actions__action_id__registrations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/import/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Read Route
+         * @description Step 1: the columns of the file, its first line and a suggested mapping.
+         */
+        post: operations["import_read_route_api_actions__action_id__registrations_import_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/import/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Review Route
+         * @description Step 2: ready, to review and repeated lines. Saves nothing.
+         */
+        post: operations["import_review_route_api_actions__action_id__registrations_import_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Route
+         * @description Registers the new girls, all or nothing: one commit at the end (RF-F1.08).
+         */
+        post: operations["import_route_api_actions__action_id__registrations_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/email-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email Check Route */
+        post: operations["email_check_route_api_actions__action_id__registrations_email_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Registrations Route */
+        post: operations["close_registrations_route_api_actions__action_id__registrations_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Registrations Route */
+        post: operations["reopen_registrations_route_api_actions__action_id__registrations_reopen_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1019,6 +1149,74 @@ export interface components {
             status: components["schemas"]["ActionStatus"];
         };
         /**
+         * ActionPageOut
+         * @description The action page (K11, #233): the action plus what the page needs to decide.
+         *
+         *     `registrations_open` here is the effective value (RF-F1.16): closed by the
+         *     coordinator or by the day of the event arriving. `today` comes from the server
+         *     so the screen and the rules agree on the date (Maceió).
+         */
+        ActionPageOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            type: components["schemas"]["ActionType"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            format: components["schemas"]["ActionFormat"];
+            /** City Ibge Code */
+            city_ibge_code: number | null;
+            /** City Label */
+            city_label: string | null;
+            visibility: components["schemas"]["ActionVisibility"];
+            /** Registration Url */
+            registration_url: string | null;
+            /** Starts At Time */
+            starts_at_time: string | null;
+            /** Ends At Time */
+            ends_at_time: string | null;
+            /** Address */
+            address: string | null;
+            /** Description */
+            description: string | null;
+            /** Registrations Open */
+            registrations_open: boolean;
+            /** Topics */
+            topics: components["schemas"]["Topic"][];
+            /** Audiences */
+            audiences: components["schemas"]["StudyStage"][];
+            status: components["schemas"]["ActionStatus"];
+            /** City Name */
+            city_name: string | null;
+            /**
+             * Created On
+             * Format: date
+             */
+            created_on: string;
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Registered Count */
+            registered_count: number;
+            /** Registrations Closed By Coordinator */
+            registrations_closed_by_coordinator: boolean;
+            /** Can Reopen */
+            can_reopen: boolean;
+            /** Can Delete */
+            can_delete: boolean;
+        };
+        /**
          * ActionStatus
          * @description Where an action is in its life (RN-37).
          *
@@ -1149,6 +1347,35 @@ export interface components {
             fileTotal: number;
             /** Items */
             items: components["schemas"]["SuggestionCardOut"][];
+        };
+        /** Body_import_read_route_api_actions__action_id__registrations_import_read_post */
+        Body_import_read_route_api_actions__action_id__registrations_import_read_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_import_review_route_api_actions__action_id__registrations_import_review_post */
+        Body_import_review_route_api_actions__action_id__registrations_import_review_post: {
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping: string;
+        };
+        /** Body_import_route_api_actions__action_id__registrations_import_post */
+        Body_import_route_api_actions__action_id__registrations_import_post: {
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping: string;
+            /**
+             * Corrections
+             * @default []
+             */
+            corrections: string;
+            /**
+             * Skip
+             * @default []
+             */
+            skip: string;
         };
         /**
          * Choice
@@ -1282,6 +1509,24 @@ export interface components {
          * @enum {string}
          */
         EffortBand: "primeiros-passos" | "uma-tarde" | "no-meu-ritmo" | "role-com-a-galera" | "grande-desafio";
+        /**
+         * EmailCheckIn
+         * @description The e-mail goes in the body, never in the URL, so it stays out of access logs.
+         */
+        EmailCheckIn: {
+            /** Email */
+            email: string;
+        };
+        /**
+         * EmailCheckOut
+         * @description Whether the e-mail is in the NISE, and which actions of the group she took part in.
+         */
+        EmailCheckOut: {
+            /** Exists */
+            exists: boolean;
+            /** Group Actions */
+            group_actions: components["schemas"]["GroupActionOut"][];
+        };
         /**
          * EmailSignupIn
          * @description Cadastro por e-mail e senha (A02, #51).
@@ -1602,6 +1847,16 @@ export interface components {
              */
             withoutInvite: boolean;
         };
+        /** GroupActionOut */
+        GroupActionOut: {
+            /** Name */
+            name: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
         /**
          * GroupOrigin
          * @description Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01).
@@ -1633,6 +1888,83 @@ export interface components {
         HomeOut: {
             /** Nextpath */
             nextPath: string;
+        };
+        /** ImportOut */
+        ImportOut: {
+            /** Imported */
+            imported: number;
+            /** Already In Action */
+            already_in_action: number;
+            /** Registered Count */
+            registered_count: number;
+        };
+        /** ImportReadOut */
+        ImportReadOut: {
+            /** File Name */
+            file_name: string;
+            /** Line Count */
+            line_count: number;
+            /** Columns */
+            columns: string[];
+            /** First Line */
+            first_line: {
+                [key: string]: string;
+            };
+            suggested: components["schemas"]["MappingBody"];
+        };
+        /** ImportRepeatedOut */
+        ImportRepeatedOut: {
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Count */
+            count: number;
+        };
+        /** ImportReviewOut */
+        ImportReviewOut: {
+            /** File Name */
+            file_name: string;
+            /** Line Count */
+            line_count: number;
+            /** Ready */
+            ready: components["schemas"]["ImportRowOut"][];
+            /** To Review */
+            to_review: components["schemas"]["ImportReviewRowOut"][];
+            /** Repeated */
+            repeated: components["schemas"]["ImportRepeatedOut"][];
+            /** Already In Action */
+            already_in_action: number;
+            /** New Count */
+            new_count: number;
+        };
+        /** ImportReviewRowOut */
+        ImportReviewRowOut: {
+            /** Line */
+            line: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "incomplete_email" | "missing_email" | "missing_name";
+        };
+        /** ImportRowOut */
+        ImportRowOut: {
+            /** Line */
+            line: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Whatsapp */
+            whatsapp: string | null;
+            study_stage: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year: string | null;
         };
         /**
          * InterestOptionsOut
@@ -1724,6 +2056,22 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * MappingBody
+         * @description Column of the file for each field of the NISE; null = "Não usar".
+         */
+        MappingBody: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Whatsapp */
+            whatsapp?: string | null;
+            /** Study Stage */
+            study_stage?: string | null;
+            /** School Year */
+            school_year?: string | null;
         };
         /**
          * MatchAnswerIn
@@ -1902,6 +2250,61 @@ export interface components {
             score: number;
             /** Comment */
             comment?: string | null;
+        };
+        /** RegistrationAddedOut */
+        RegistrationAddedOut: {
+            registration: components["schemas"]["RegistrationOut"];
+            /** Already Registered */
+            already_registered: boolean;
+            /** Record Existed */
+            record_existed: boolean;
+        };
+        /**
+         * RegistrationIn
+         * @description Add a girl by hand (RF-F1.09): name and e-mail required, the rest optional.
+         */
+        RegistrationIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Whatsapp */
+            whatsapp?: string | null;
+            study_stage?: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year?: string | null;
+        };
+        /**
+         * RegistrationListOut
+         * @description A page of the girls, the matches in `total`, and the columns with data.
+         */
+        RegistrationListOut: {
+            /** Items */
+            items: components["schemas"]["RegistrationOut"][];
+            /** Total */
+            total: number;
+            /** Columns */
+            columns: ("whatsapp" | "study_stage" | "school_year")[];
+        };
+        /**
+         * RegistrationOut
+         * @description One girl in an action. `id` is the registration's, not the record's.
+         */
+        RegistrationOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Whatsapp */
+            whatsapp: string | null;
+            study_stage: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year: string | null;
         };
         /**
          * ReminderIn
@@ -2629,6 +3032,47 @@ export interface operations {
             };
         };
     };
+    get_action_page_route_api_actions__action_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_action_route_api_actions__action_id__put: {
         parameters: {
             query?: never;
@@ -2701,6 +3145,359 @@ export interface operations {
                 content?: never;
             };
             /** @description A presença já foi registrada, a ação não pode ser excluída */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_registrations_route_api_actions__action_id__registrations_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationListOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_registration_route_api_actions__action_id__registrations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationAddedOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_read_route_api_actions__action_id__registrations_import_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_read_route_api_actions__action_id__registrations_import_read_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReadOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "unsupported_type" | "unreadable_file" | "empty_file" | "too_large" | "missing_columns" | "invalid_request"}, or {"error": "invalid_corrections", "lines": [...]} on the import */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    import_review_route_api_actions__action_id__registrations_import_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_review_route_api_actions__action_id__registrations_import_review_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReviewOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "unsupported_type" | "unreadable_file" | "empty_file" | "too_large" | "missing_columns" | "invalid_request"}, or {"error": "invalid_corrections", "lines": [...]} on the import */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    import_route_api_actions__action_id__registrations_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_route_api_actions__action_id__registrations_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "unsupported_type" | "unreadable_file" | "empty_file" | "too_large" | "missing_columns" | "invalid_request"}, or {"error": "invalid_corrections", "lines": [...]} on the import */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    email_check_route_api_actions__action_id__registrations_email_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCheckOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_registrations_route_api_actions__action_id__registrations_close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_registrations_route_api_actions__action_id__registrations_reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O dia do evento chegou: {"error": "event_day_reached"} */
             409: {
                 headers: {
                     [name: string]: unknown;
