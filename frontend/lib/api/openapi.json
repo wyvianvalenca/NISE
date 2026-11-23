@@ -2465,6 +2465,78 @@
         }
       }
     },
+    "/api/profile/details": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile Details",
+        "operationId": "profile_details_api_profile_details_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDetailsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/profile/course": {
       "get": {
         "tags": [
@@ -8750,6 +8822,95 @@
         ],
         "title": "ProfileCourseOut",
         "description": "O curso atual dela no perfil (A10, #298) e o nome para a A10b.\n\n`level` e `course` vêm vazios quando ela não tem curso registrado. O nome\ndo curso é o da lista ou o que ela digitou: vai só para ela."
+      },
+      "ProfileDetailsOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "title": "Haspassword"
+          },
+          "google": {
+            "type": "boolean",
+            "title": "Google"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "allTopics": {
+            "type": "boolean",
+            "title": "Alltopics"
+          },
+          "studyStage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GroupOrigin"
+              },
+              {
+                "$ref": "#/components/schemas/SelfOrigin"
+              }
+            ],
+            "title": "Origin",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "group": "#/components/schemas/GroupOrigin",
+                "self": "#/components/schemas/SelfOrigin"
+              }
+            }
+          },
+          "opportunityEmails": {
+            "type": "boolean",
+            "title": "Opportunityemails"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "city",
+          "hasPassword",
+          "google",
+          "topics",
+          "allTopics",
+          "studyStage",
+          "origin",
+          "opportunityEmails"
+        ],
+        "title": "ProfileDetailsOut",
+        "description": "O que a A10 mostra do perfil dela (RF-F7.11, RF-F7.12, RF-S2.09).\n\nSó o que a tela exibe. Sem data de nascimento, hash de senha, ids nem o\nidentificador da conta Google. Tudo vai só para ela."
       },
       "ProfileOut": {
         "properties": {

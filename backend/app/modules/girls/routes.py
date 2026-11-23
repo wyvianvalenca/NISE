@@ -16,10 +16,12 @@ from app.modules.girls.schemas import (
     OptionOut,
     ProfileCourseIn,
     ProfileCourseOut,
+    ProfileDetailsOut,
     ProfileOut,
 )
 from app.modules.girls.service import (
     get_girl_of_user,
+    get_profile_details,
     mark_file_intro_seen,
     save_interests,
 )
@@ -148,6 +150,27 @@ async def file_intro_seen(
         return profile_not_found()
 
     return None
+
+
+# A tela de perfil (A10, RF-F7.11, RF-F7.12): conta, interesses, grupo e o que
+# chega no e-mail. É uma rota à parte de GET /api/profile, que a A06·0 lê
+# sempre e não pode trazer dado pessoal.
+#
+# Não há id na URL: ela só lê o próprio perfil, o da sessão (RNF-G.03).
+@router.get(
+    "/details",
+    response_model=ProfileDetailsOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def profile_details(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ProfileDetailsOut | JSONResponse:
+    details = await get_profile_details(session, user)
+
+    if details is None:
+        return profile_not_found()
+
+    return details
 
 
 # "Seu caminho" no perfil (A10, #298): o curso em que ela está hoje e o nome

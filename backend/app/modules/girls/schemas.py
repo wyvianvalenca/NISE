@@ -17,6 +17,7 @@ from app.modules.admissions.declaration import (
     level_of,
 )
 from app.modules.admissions.models import CourseLevel
+from app.modules.consents.schemas import GroupOrigin, SelfOrigin
 from app.modules.followup.models import CourseCode, CourseStatus
 from app.modules.girls.models import StudyStage, Topic
 
@@ -84,6 +85,30 @@ class ProfileOut(BaseModel):
 # followup/schemas.py, que importa este arquivo e por isso não pode ser
 # importado aqui.
 _CAMEL_CASE = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class ProfileDetailsOut(BaseModel):
+    """O que a A10 mostra do perfil dela (RF-F7.11, RF-F7.12, RF-S2.09).
+
+    Só o que a tela exibe. Sem data de nascimento, hash de senha, ids nem o
+    identificador da conta Google. Tudo vai só para ela.
+    """
+
+    model_config = _CAMEL_CASE
+
+    name: str
+    email: str
+    # "Maceió, AL"; vazio se o registro não tem cidade.
+    city: str | None
+    # Quem tem senha vê "Mudar senha"; quem tem Google vê o cartão do Google.
+    # Conta mista (os dois) mostra os dois (P6 do épico #130).
+    has_password: bool
+    google: bool
+    topics: list[OptionOut]
+    all_topics: bool
+    study_stage: OptionOut | None
+    origin: Annotated[GroupOrigin | SelfOrigin, Field(discriminator="kind")]
+    opportunity_emails: bool
 
 
 class ProfileCourseOut(BaseModel):

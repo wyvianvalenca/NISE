@@ -578,6 +578,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/profile/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Details */
+        get: operations["profile_details_api_profile_details_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/profile/course": {
         parameters: {
             query?: never;
@@ -2538,6 +2555,34 @@ export interface components {
             course?: string | null;
         };
         /**
+         * ProfileDetailsOut
+         * @description O que a A10 mostra do perfil dela (RF-F7.11, RF-F7.12, RF-S2.09).
+         *
+         *     Só o que a tela exibe. Sem data de nascimento, hash de senha, ids nem o
+         *     identificador da conta Google. Tudo vai só para ela.
+         */
+        ProfileDetailsOut: {
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** City */
+            city: string | null;
+            /** Haspassword */
+            hasPassword: boolean;
+            /** Google */
+            google: boolean;
+            /** Topics */
+            topics: components["schemas"]["OptionOut"][];
+            /** Alltopics */
+            allTopics: boolean;
+            studyStage: components["schemas"]["OptionOut"] | null;
+            /** Origin */
+            origin: components["schemas"]["GroupOrigin"] | components["schemas"]["SelfOrigin"];
+            /** Opportunityemails */
+            opportunityEmails: boolean;
+        };
+        /**
          * ProfileOut
          * @description O perfil da menina da sessão, do jeito que o app lê.
          *
@@ -4342,6 +4387,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_details_api_profile_details_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileDetailsOut"];
+                };
             };
             /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
             403: {
