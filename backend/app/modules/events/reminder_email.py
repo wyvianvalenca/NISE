@@ -1,7 +1,8 @@
 """O envio do lembrete "Me lembra um dia antes" (RF-F4.12, #188, RN-30, RNF-F4.01).
 
 A rotina agendada (`/api/cron/event-reminders`) chama `send_event_reminders` uma
-vez por dia:
+vez por dia, e ele envia em lotes até não haver mais nada ou acabar o tempo.
+Para cada lote:
 
 1. `reminders_due` acha, travadas, as inscritas com o lembrete ligado e o
    evento amanhã; `mark_reminder_sent` marca cada uma e o commit grava tudo
@@ -48,48 +49,72 @@ from app.modules.girl_file.models import FileEntry
 
 logger = logging.getLogger(__name__)
 
-# Quantos lembretes uma chamada da rotina marca e tenta enviar, e por quanto
-# tempo, para caber no limite de duração da hospedagem (como no e-mail do
-# indício, #287). Uma rotina cortada no meio deixaria marcadas as meninas que
-# não foram alcançadas; o que sobrar sai se a rotina for repetida no mesmo dia.
+# Uma chamada da rotina manda em lotes de BATCH_SIZE, até acabar o que há para
+# enviar ou o tempo (TIME_BUDGET_SECONDS), para caber no limite de duração da
+# hospedagem (como no e-mail do indício, #287). A marca é gravada por lote: uma
+# rotina cortada no meio perde, no máximo, a dos lembretes de um lote. Se o
+# tempo acaba com lembrete sobrando, a rotina avisa (`stopped`) e o resto sai se
+# ela for repetida no mesmo dia.
 BATCH_SIZE = 50
 TIME_BUDGET_SECONDS = 40.0
+# Espera por resposta do servidor em cada leitura: menor que a do restante do
+# app (30 s), para um envio lento não passar muito do tempo da rotina.
+SMTP_TIMEOUT_SECONDS = 10
+# Quantos lembretes seguidos descartados por um 5xx até a rotina desconfiar de
+# um erro da conta que não conhecemos e parar.
+MAX_DROPS_IN_A_ROW = 3
 
 # Código de status estendido (RFC 3463) no começo da resposta do servidor, como
 # "5.1.1" ou "5.4.5".
-_ENHANCED_CODE = re.compile(rb"([245])\.(\d{1,3})\.\d{1,3}\b")
+_ENHANCED_CODE = re.compile(rb"([245])\.(\d{1,3})\.(\d{1,3})\b")
 
 
-def _about_mailbox(message: bytes | str, *, rcpt: bool) -> bool:
-    """O 5xx fala do endereço dela (caixa que não existe, endereço inválido)?"""
+def _enhanced_code(message: bytes | str) -> tuple[int, int, int] | None:
     if isinstance(message, str):
         message = message.encode()
     found = _ENHANCED_CODE.match(message.strip())
     if found is None:
-        # Sem código estendido, só a recusa do destinatário (RCPT) é do endereço.
-        return rcpt
-    return found.group(1) == b"5" and found.group(2) in (b"1", b"2")
+        return None
+    return int(found.group(1)), int(found.group(2)), int(found.group(3))
+
+
+def _about_account(message: bytes | str) -> bool:
+    """O 5xx fala da conta toda (cota de envio 5.4.5, bloqueio 5.7.0)?"""
+    return _enhanced_code(message) in ((5, 4, 5), (5, 7, 0))
+
+
+def _about_mailbox(message: bytes | str) -> bool:
+    """O 5xx, depois do DATA, fala do endereço dela (5.1.x, 5.2.x)?"""
+    code = _enhanced_code(message)
+    return code is not None and code[0] == 5 and code[1] in (1, 2)
 
 
 def reminder_outcome(error: Exception) -> SendOutcome:
-    """Como `send_outcome`, mas um 5xx só descarta o lembrete se é do endereço.
+    """Como `send_outcome`, mas um 5xx só descarta o lembrete se não é da conta.
 
-    Cota diária (5.4.5), bloqueio de conteúdo (5.7.x) e outros 5xx no DATA são
-    da conta ou do servidor: valem para os lembretes que faltam também, então a
-    rotina para e desfaz a marca, como num 4xx.
+    Na recusa do destinatário (RCPT) o 5xx é daquele endereço, qualquer que seja
+    o código: o lembrete é descartado, menos se o código fala da conta toda
+    (cota 5.4.5, bloqueio 5.7.0), que vale para os lembretes que faltam também;
+    então a rotina para e desfaz a marca, como num 4xx. Depois do DATA o erro
+    pode ser do conteúdo ou do servidor: só 5.1.x e 5.2.x descartam.
     """
     outcome = send_outcome(error)
     if outcome != "drop":
         return outcome
     if isinstance(error, smtplib.SMTPRecipientsRefused):
-        about_address = all(
-            _about_mailbox(message, rcpt=True)
-            for _, message in error.recipients.values()
+        about_account = any(
+            _about_account(message) for _, message in error.recipients.values()
         )
-        return "drop" if about_address else "retry"
+        return "retry" if about_account else "drop"
     if isinstance(error, smtplib.SMTPResponseException):
-        return "drop" if _about_mailbox(error.smtp_error, rcpt=False) else "retry"
+        return "drop" if _about_mailbox(error.smtp_error) else "retry"
     return outcome
+
+
+def _is_5xx(error: Exception) -> bool:
+    return isinstance(
+        error, smtplib.SMTPRecipientsRefused | smtplib.SMTPResponseException
+    )
 
 
 @dataclass(frozen=True)
@@ -111,6 +136,10 @@ class _Outgoing:
     body: str
     # A marca de antes, para desfazer se se sabe que nada saiu.
     previous_sent_for: date | None
+
+
+def _connect() -> Sender:
+    return SmtpConnection(timeout=SMTP_TIMEOUT_SECONDS)
 
 
 def event_url(item_id: str) -> str:
@@ -151,78 +180,152 @@ async def _unmark(session: AsyncSession, outgoing: list[_Outgoing]) -> None:
     await session.commit()
 
 
+@dataclass
+class _Run:
+    """O que a rodada já fez, de um lote para o outro."""
+
+    sent: int = 0
+    dropped: int = 0
+    stopped: bool = False
+    # Descartados seguidos por um 5xx (zera quando um e-mail sai).
+    drops_in_a_row: int = 0
+
+
+async def _unmark_quietly(session: AsyncSession, outgoing: list[_Outgoing]) -> None:
+    """Desfaz a marca depois de um erro inesperado ou de um cancelamento.
+
+    Se o desfazer também falha, só o tipo do erro vai ao log: quem chamou está
+    levantando o erro de verdade, e esse não pode ser trocado por este.
+    """
+    try:
+        await _unmark(session, outgoing)
+    except Exception as error:  # noqa: BLE001
+        logger.warning("Marcas dos lembretes não voltaram: %s", type(error).__name__)
+
+
+async def _send_batch(
+    session: AsyncSession,
+    outgoing: list[_Outgoing],
+    connect: Callable[[], Sender],
+    clock: Callable[[], float],
+    started: float,
+    run: _Run,
+) -> None:
+    """Envia um lote já marcado. Nenhum lembrete fica marcado sem ter saído,
+    salvo o que pode ter saído (conexão caída), mesmo se a rotina for cancelada.
+    """
+    # O que ainda não foi resolvido: se algo inesperado ou um cancelamento
+    # (CancelledError não é Exception) interrompe o lote, a marca disso volta.
+    unresolved = outgoing
+    try:
+        try:
+            connection = await asyncio.to_thread(connect)
+        except (EmailNotConfiguredError, smtplib.SMTPException, OSError) as error:
+            # Nada saiu: desmarca, e a rodada pode ser repetida. A mensagem do
+            # erro pode trazer o endereço: só o tipo vai ao log.
+            unresolved = []
+            await _unmark(session, outgoing)
+            logger.warning("Envio dos lembretes parou: %s", type(error).__name__)
+            run.stopped = True
+            return
+
+        try:
+            for index, item in enumerate(outgoing):
+                unresolved = outgoing[index:]
+                if clock() - started >= TIME_BUDGET_SECONDS:
+                    # Acabou o tempo: os que faltam não foram tentados, e a
+                    # marca volta.
+                    run.stopped = True
+                    unresolved = []
+                    await _unmark(session, outgoing[index:])
+                    return
+                try:
+                    await asyncio.to_thread(
+                        connection.send, item.address, item.subject, item.body
+                    )
+                # Qualquer erro: um endereço inválido (ValueError) ou outro erro
+                # do e-mail em si não pode travar os outros lembretes nem virar
+                # 500.
+                except Exception as error:  # noqa: BLE001
+                    outcome = reminder_outcome(error)
+                    # A mensagem do erro pode trazer o endereço: só o tipo vai
+                    # ao log.
+                    logger.warning(
+                        "Lembrete não enviado (%s): %s", outcome, type(error).__name__
+                    )
+                    if outcome == "drop":
+                        # O problema é deste e-mail: não adianta repetir, e os
+                        # outros seguem. Mas muitos 5xx seguidos podem ser um
+                        # erro da conta que não conhecemos: não descarta a
+                        # lista toda, para e deixa este para a repetição.
+                        if _is_5xx(error):
+                            run.drops_in_a_row += 1
+                        else:
+                            run.drops_in_a_row = 0
+                        if run.drops_in_a_row >= MAX_DROPS_IN_A_ROW:
+                            run.stopped = True
+                            unresolved = []
+                            await _unmark(session, outgoing[index:])
+                            return
+                        run.dropped += 1
+                        continue
+                    # O erro é do servidor ou da conta: os que faltam não saem.
+                    # Se nada saiu com este, a marca dele e a dos que faltam
+                    # voltam; se a conexão caiu no meio ("unknown"), este fica
+                    # marcado (RNF-F4.01) e só os que faltam voltam.
+                    run.stopped = True
+                    waiting = outgoing[index + 1 :]
+                    unresolved = []
+                    await _unmark(
+                        session, waiting if outcome == "unknown" else waiting + [item]
+                    )
+                    return
+                run.sent += 1
+                run.drops_in_a_row = 0
+            unresolved = []
+        finally:
+            try:
+                await asyncio.to_thread(connection.close)
+            except (smtplib.SMTPException, OSError) as error:
+                logger.warning("Conexão SMTP não fechou: %s", type(error).__name__)
+    except BaseException:
+        if unresolved:
+            await _unmark_quietly(session, unresolved)
+        raise
+
+
 async def send_event_reminders(
     session: AsyncSession,
     today: date | None = None,
-    connect: Callable[[], Sender] = SmtpConnection,
+    connect: Callable[[], Sender] = _connect,
     clock: Callable[[], float] = time.monotonic,
 ) -> SendResult:
     """Envia os lembretes de hoje (os eventos de amanhã) e devolve só contagens.
 
-    Para depois de BATCH_SIZE lembretes ou TIME_BUDGET_SECONDS: o que falta é
+    Manda em lotes de BATCH_SIZE, até não haver mais nada ou acabar o tempo
+    (TIME_BUDGET_SECONDS). Se o tempo acaba com lembrete sobrando, ele é
     desmarcado e sai se a rotina for repetida (`stopped`).
     """
     if today is None:
         today = today_in_maceio()
     started = clock()
+    run = _Run()
 
-    outgoing, left_over = _outgoing(await reminders_due(session, today))
-    # Grava as marcas e solta as linhas travadas antes de falar com o SMTP.
-    await session.commit()
-    if not outgoing:
-        return SendResult(sent=0, dropped=0, stopped=False)
+    first = True
+    left_over = True
+    while left_over and not run.stopped:
+        if not first and clock() - started >= TIME_BUDGET_SECONDS:
+            run.stopped = True
+            break
+        first = False
+        outgoing, left_over = _outgoing(await reminders_due(session, today))
+        # Grava as marcas e solta as linhas travadas antes de falar com o SMTP.
+        await session.commit()
+        if not outgoing:
+            break
+        await _send_batch(session, outgoing, connect, clock, started, run)
 
-    try:
-        connection = await asyncio.to_thread(connect)
-    except (EmailNotConfiguredError, smtplib.SMTPException, OSError) as error:
-        # Nada saiu: desmarca, e a rodada pode ser repetida. A mensagem do erro
-        # pode trazer o endereço: só o tipo vai ao log.
-        await _unmark(session, outgoing)
-        logger.warning("Envio dos lembretes parou: %s", type(error).__name__)
-        return SendResult(sent=0, dropped=0, stopped=True)
-
-    sent = dropped = 0
-    stopped = left_over
-    try:
-        for index, item in enumerate(outgoing):
-            if clock() - started >= TIME_BUDGET_SECONDS:
-                # Acabou o tempo: os que faltam não foram tentados, e a marca volta.
-                stopped = True
-                await _unmark(session, outgoing[index:])
-                break
-            try:
-                await asyncio.to_thread(
-                    connection.send, item.address, item.subject, item.body
-                )
-            # Qualquer erro: um endereço inválido (ValueError) ou outro erro do
-            # e-mail em si não pode travar os outros lembretes nem virar 500.
-            except Exception as error:  # noqa: BLE001
-                outcome = reminder_outcome(error)
-                # A mensagem do erro pode trazer o endereço: só o tipo vai ao log.
-                logger.warning(
-                    "Lembrete não enviado (%s): %s", outcome, type(error).__name__
-                )
-                if outcome == "drop":
-                    # O problema é deste e-mail: não adianta repetir, e os
-                    # outros seguem.
-                    dropped += 1
-                    continue
-                # O erro é do servidor ou da conta: os que faltam não saem. Se
-                # nada saiu com este, a marca dele e a dos que faltam voltam;
-                # se a conexão caiu no meio ("unknown"), este fica marcado
-                # (RNF-F4.01) e só os que faltam voltam.
-                stopped = True
-                waiting = outgoing[index + 1 :]
-                await _unmark(
-                    session, waiting if outcome == "unknown" else waiting + [item]
-                )
-                break
-            sent += 1
-    finally:
-        try:
-            await asyncio.to_thread(connection.close)
-        except (smtplib.SMTPException, OSError) as error:
-            logger.warning("Conexão SMTP não fechou: %s", type(error).__name__)
-
-    logger.info("Lembretes de evento: %s enviados, %s descartados", sent, dropped)
-    return SendResult(sent=sent, dropped=dropped, stopped=stopped)
+    logger.info(
+        "Lembretes de evento: %s enviados, %s descartados", run.sent, run.dropped
+    )
+    return SendResult(sent=run.sent, dropped=run.dropped, stopped=run.stopped)

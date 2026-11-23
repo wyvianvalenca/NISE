@@ -137,9 +137,11 @@ async def match_emails(session: AsyncSessionDep) -> dict[str, int]:
 async def event_reminders(session: AsyncSessionDep) -> dict[str, int]:
     """Envia os lembretes "Me lembra um dia antes" dos eventos de amanhã (RF-F4.12, #188).
 
-    Roda uma vez por dia, de manhã em Maceió. Responde só contagens. Se o envio
-    parar (SMTP fora do ar ou não configurado), responde 502 para a falha
-    aparecer no painel de cron; o que não saiu pode ser repetido no mesmo dia.
+    Roda uma vez por dia, de manhã em Maceió, e envia em lotes de 50 até não
+    haver mais nada ou acabar o tempo (40 s). Responde só contagens. Se o envio
+    parar (SMTP fora do ar ou não configurado, ou sobrou lembrete quando o tempo
+    acabou), responde 502 para a falha aparecer no painel de cron; o que não
+    saiu pode ser repetido no mesmo dia.
     """
     result = await send_event_reminders(session)
     if result.stopped:

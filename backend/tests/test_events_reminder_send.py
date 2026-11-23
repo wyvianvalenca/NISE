@@ -39,6 +39,10 @@ HOJE = date(2026, 12, 1)
 AMANHA = HOJE + timedelta(days=1)
 
 
+class Interrupcao(BaseException):
+    """Um erro que não é Exception, como o CancelledError."""
+
+
 @dataclass
 class Linha:
     """Uma inscrita com o lembrete ligado, e o evento como está agora."""
@@ -114,7 +118,7 @@ class Tabela:
 class Conexao:
     """Imita app.core.email.SmtpConnection: guarda o que foi enviado."""
 
-    def __init__(self, erros: list[Exception | None] | None = None) -> None:
+    def __init__(self, erros: list[BaseException | None] | None = None) -> None:
         self.send = MagicMock(side_effect=erros)
         self.close = MagicMock()
 
@@ -127,7 +131,9 @@ def preparar(
     return tabela, *_conexao_falsa(None)
 
 
-def _conexao_falsa(erros: list[Exception | None] | None) -> tuple[MagicMock, Conexao]:
+def _conexao_falsa(
+    erros: list[BaseException | None] | None,
+) -> tuple[MagicMock, Conexao]:
     conexao = Conexao(erros)
     return MagicMock(return_value=conexao), conexao
 
@@ -494,21 +500,147 @@ async def test_rota_responde_502_quando_a_cota_diaria_estoura(
 # --- Limite do lote e do tempo ------------------------------------------------
 
 
-async def test_o_lote_marca_e_envia_so_ate_o_limite(
+async def test_uma_chamada_envia_em_lotes_ate_acabar_o_que_havia(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sending, "BATCH_SIZE", 2)
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 6)]
+    tabela, conectar, conexao = preparar(monkeypatch, *linhas)
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=5, dropped=0, stopped=False)
+    assert len(enviados(conexao)) == 5
+    assert all(i.entry.reminder_sent_for == AMANHA for i in linhas)
+    # Uma conexão por lote (3 lotes), cada uma fechada.
+    assert conectar.call_count == 3
+    assert conexao.close.call_count == 3
+
+
+async def test_acabou_o_tempo_entre_lotes_avisa_e_o_resto_fica_sem_marca(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sending, "BATCH_SIZE", 2)
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 6)]
+    tabela, conectar, _ = preparar(monkeypatch, *linhas)
+    # started, 2 envios do 1º lote, e a checagem entre lotes já passou dos 40 s.
+    horas = iter([0.0, 0.0, 1.0, 50.0])
+
+    resultado = await send_event_reminders(
+        tabela.session, HOJE, conectar, clock=lambda: next(horas)
+    )
+
+    assert resultado == SendResult(sent=2, dropped=0, stopped=True)
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA] * 2 + [None] * 3
+
+
+async def test_o_lote_marca_so_ate_o_limite(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(sending, "BATCH_SIZE", 2)
     linhas = [linha(n, f"Menina{n}") for n in range(1, 5)]
-    tabela, conectar, conexao = preparar(monkeypatch, *linhas)
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    marcadas_no_1o_lote: list[object] = []
 
-    primeira = await send_event_reminders(tabela.session, HOJE, conectar)
+    def conectar() -> Conexao:
+        if not marcadas_no_1o_lote:
+            marcadas_no_1o_lote.extend(i.entry.reminder_sent_for for i in linhas)
+        return Conexao()
 
-    # Sobraram duas: a rotina avisa (502) e elas não ficam marcadas sem sair.
-    assert primeira == SendResult(sent=2, dropped=0, stopped=True)
-    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, AMANHA, None, None]
-    segunda = await send_event_reminders(tabela.session, HOJE, conectar)
-    assert segunda == SendResult(sent=2, dropped=0, stopped=False)
-    assert len(enviados(conexao)) == 4
+    await send_event_reminders(tabela.session, HOJE, conectar)
+
+    # Na hora de conectar do 1º lote só 2 estavam marcadas, nunca as 4.
+    assert marcadas_no_1o_lote == [AMANHA, AMANHA, None, None]
+
+
+async def test_recusa_do_destinatario_com_outro_codigo_descarta_so_aquele(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    primeira, segunda = linha(1), linha(2, "Bia")
+    tabela, _, _ = preparar(monkeypatch, primeira, segunda)
+    erro = smtplib.SMTPRecipientsRefused(
+        {"x@example.com": (550, b"5.4.1 Recipient address rejected")}
+    )
+    conectar, _ = _conexao_falsa([erro, None])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=1, dropped=1, stopped=False)
+    assert primeira.entry.reminder_sent_for == AMANHA
+    assert segunda.entry.reminder_sent_for == AMANHA
+
+
+@pytest.mark.parametrize("codigo", [b"5.4.5 Daily quota", b"5.7.0 Blocked"])
+async def test_recusa_do_destinatario_pela_conta_para_a_rodada(
+    monkeypatch: pytest.MonkeyPatch, codigo: bytes
+) -> None:
+    linhas = [linha(1), linha(2, "Bia")]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, codigo)})
+    conectar, _ = _conexao_falsa([erro, None])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=0, dropped=0, stopped=True)
+    assert [i.entry.reminder_sent_for for i in linhas] == [None, None]
+
+
+async def test_tres_5xx_descartados_seguidos_param_e_deixam_o_terceiro_sem_marca(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 6)]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"5.4.1 Rejected")})
+    conectar, conexao = _conexao_falsa([erro, erro, erro, None, None])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=0, dropped=2, stopped=True)
+    assert len(enviados(conexao)) == 3
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, AMANHA] + [None] * 3
+
+
+async def test_um_envio_certo_zera_a_conta_dos_5xx_seguidos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linhas = [linha(n, f"Menina{n}") for n in range(1, 6)]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    erro = smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"5.1.1 No user")})
+    conectar, _ = _conexao_falsa([erro, erro, None, erro, erro])
+
+    resultado = await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert resultado == SendResult(sent=1, dropped=4, stopped=False)
+
+
+async def test_cancelamento_no_meio_desfaz_as_marcas_do_que_nao_saiu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linhas = [linha(1), linha(2, "Bia"), linha(3, "Carla")]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    conectar, conexao = _conexao_falsa([None, asyncio.CancelledError()])
+
+    with pytest.raises(asyncio.CancelledError):
+        await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert [i.entry.reminder_sent_for for i in linhas] == [AMANHA, None, None]
+    conexao.close.assert_called_once()
+
+
+async def test_erro_inesperado_desfaz_as_marcas_e_se_o_desfazer_falha_so_o_tipo_vai_ao_log(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    linhas = [linha(1), linha(2, "Bia")]
+    tabela, _, _ = preparar(monkeypatch, *linhas)
+    conectar, _ = _conexao_falsa([None, Interrupcao()])
+    # O desfazer falha: o erro de verdade tem de seguir sendo o levantado.
+    tabela.session.execute.side_effect = RuntimeError("menina2@example.com")
+
+    with caplog.at_level(logging.WARNING), pytest.raises(Interrupcao):
+        await send_event_reminders(tabela.session, HOJE, conectar)
+
+    assert "RuntimeError" in caplog.text
+    assert "example.com" not in caplog.text
 
 
 async def test_acabou_o_tempo_para_e_desfaz_as_marcas_dos_que_faltam(
