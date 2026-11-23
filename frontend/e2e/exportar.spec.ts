@@ -64,7 +64,7 @@ test("tells her when the preview cannot be loaded and lets her try again", async
   await mockExportApi(page, { previewStatus: 500 });
   await goToReview(page);
 
-  await expect(page.getByRole("alert")).toContainText("Não foi possível montar a prévia");
+  await expect(page.getByRole("alert").filter({ hasText: "Não foi possível montar a prévia" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Gerar arquivo" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
 });
@@ -117,9 +117,9 @@ test.describe("history of exports (#376)", () => {
     await mockExportApi(page, { historyStatus: 500 });
     await goToDone(page);
 
-    await expect(page.getByRole("alert")).toContainText(
-      "Não foi possível carregar o histórico de exportações.",
-    );
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Não foi possível carregar o histórico de exportações." }),
+    ).toBeVisible();
     await expect(page.getByText("Arquivo pronto")).toBeVisible();
   });
 });

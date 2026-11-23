@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { ExportedFile, HistoryItem, Preview } from "../lib/exportar";
+import type { CutOptions, ExportedFile, HistoryItem, Preview, Summary } from "../lib/exportar";
 
 // Simula as rotas de /api/coordinator/exports (#375) para os testes não
 // dependerem do FastAPI. Dados fictícios.
@@ -52,6 +52,25 @@ export const OLD_HISTORY: HistoryItem[] = [
   },
 ];
 
+export const OPTIONS: CutOptions = {
+  years: [2026, 2025],
+  actions: [{ id: 1, name: "Oficina de Python", startsOn: "2026-09-12" }],
+  types: [
+    { value: "oficina", label: "Oficina" },
+    { value: "palestra", label: "Palestra" },
+  ],
+  tags: [{ value: "programacao", label: "Programação" }],
+};
+
+const WHOLE_SUMMARY: Summary = { rows: 42, girls: 30, alone: 9, actions: 5 };
+
+/** O resumo da barra para o recorte pedido: oficina tem 12 linhas e 2025 nenhuma. */
+function summaryFor(url: URL): Summary {
+  if (url.searchParams.get("year") === "2025") return { rows: 0, girls: 0, alone: 0, actions: 0 };
+  if (url.searchParams.get("type") === "oficina") return { rows: 12, girls: 9, alone: 3, actions: 2 };
+  return WHOLE_SUMMARY;
+}
+
 type Options = {
   historyStatus?: 403 | 500;
   /** Histórico que a rota devolve; o "Gerar arquivo" põe a nova no topo. */
@@ -62,11 +81,18 @@ type Options = {
 };
 
 /** Responde a prévia e o "Gerar arquivo", e devolve quantas vezes o arquivo foi gerado. */
-export async function mockExportApi(page: Page, options: Options = {}): Promise<{ generated: number }> {
-  const calls = { generated: 0 };
+export async function mockExportApi(
+  page: Page,
+  options: Options = {},
+): Promise<{ generated: number; body: unknown }> {
+  const calls: { generated: number; body: unknown } = { generated: 0, body: null };
   const history = [...(options.history ?? OLD_HISTORY)];
 
-  await page.route("**/api/coordinator/exports/preview", (route) =>
+  await page.route("**/api/coordinator/exports/options", (route) => route.fulfill({ json: OPTIONS }));
+  await page.route("**/api/coordinator/exports/summary*", (route) =>
+    route.fulfill({ json: summaryFor(new URL(route.request().url())) }),
+  );
+  await page.route("**/api/coordinator/exports/preview*", (route) =>
     options.previewStatus
       ? route.fulfill({ status: options.previewStatus })
       : route.fulfill({ json: PREVIEW }),
@@ -80,6 +106,7 @@ export async function mockExportApi(page: Page, options: Options = {}): Promise<
     if (route.request().method() !== "POST") return route.fallback();
     if (options.generateStatus) return route.fulfill({ status: options.generateStatus });
     calls.generated += 1;
+    calls.body = route.request().postDataJSON();
     history.unshift({
       id: FILE.id,
       who: "Kátia",
