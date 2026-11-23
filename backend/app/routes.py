@@ -12,6 +12,7 @@ from app.modules.attendance.routes import router as attendance_router
 from app.modules.cities.routes import router as cities_router
 from app.modules.consents.routes import preferences_router
 from app.modules.consents.routes import router as consents_router
+from app.modules.events.routes import router as events_router
 from app.modules.followup.routes import router as followup_router
 from app.modules.girl_file.routes import later_router
 from app.modules.girl_file.routes import router as file_router
@@ -39,6 +40,7 @@ router.include_router(agenda_router)
 router.include_router(cron_router)
 router.include_router(attendance_router)
 router.include_router(attendance_cron_router)
+router.include_router(events_router)
 router.include_router(followup_router)
 router.include_router(coordinator_router)
 router.include_router(results_router)

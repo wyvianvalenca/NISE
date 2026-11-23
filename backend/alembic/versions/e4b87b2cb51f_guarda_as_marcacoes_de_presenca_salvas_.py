@@ -1,7 +1,7 @@
 """guarda as marcacoes de presenca salvas pela metade
 
 Revision ID: e4b87b2cb51f
-Revises: f2321c6b0a47
+Revises: 9b64d0c95ca1
 Create Date: 2026-11-20 22:19:41.196736
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e4b87b2cb51f"
-down_revision: str | Sequence[str] | None = "f2321c6b0a47"
+down_revision: str | Sequence[str] | None = "9b64d0c95ca1"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
