@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import TIMESTAMP, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -29,5 +30,8 @@ class DataExport(Base):
     column_count: Mapped[int] = mapped_column()
     # O CSV pronto, com BOM. Vazio depois que o arquivo foi removido.
     content: Mapped[str | None] = mapped_column(Text)
+    # O recorte usado (período, ação, tipo e tag; RF-F24.09), para o histórico
+    # (#376). Nulo nas exportações de antes do recorte.
+    cut: Mapped[dict[str, int | str | None] | None] = mapped_column(JSONB)
     # Até quando o link de download vale (15 minutos depois de gerar).
     expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))

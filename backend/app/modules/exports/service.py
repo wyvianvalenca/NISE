@@ -14,15 +14,20 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import select, update
+from sqlalchemy import ColumnElement, distinct, extract, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.actions.models import Action, Participation
+from app.modules.actions.models import (
+    Action,
+    ActionTopic,
+    ActionType,
+    Participation,
+)
 from app.modules.catalog.utils import ACTION_TYPE_LABELS
 from app.modules.cities.models import City
 from app.modules.exports.models import DataExport
-from app.modules.girls.models import Girl
+from app.modules.girls.models import Girl, Topic
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, age_on
 from app.modules.groups.models import Group
 
@@ -69,6 +74,52 @@ BASE_COLUMNS: tuple[Column, ...] = (
 
 
 @dataclass(frozen=True)
+class ExportCut:
+    """O recorte do primeiro passo (RF-F24.09). Campo vazio é "todos"."""
+
+    year: int | None = None
+    action_id: int | None = None
+    type: ActionType | None = None
+    tag: Topic | None = None
+
+    def as_json(self) -> dict[str, int | str | None]:
+        """Como o recorte fica guardado no registro da exportação."""
+        return {
+            "year": self.year,
+            "action_id": self.action_id,
+            "type": self.type.value if self.type else None,
+            "tag": self.tag.value if self.tag else None,
+        }
+
+
+# Sem recorte: todas as ações do grupo.
+NO_CUT = ExportCut()
+
+
+@dataclass(frozen=True)
+class ExportSummary:
+    """O resumo do arquivo conforme o recorte (RF-F24.33)."""
+
+    rows: int
+    girls: int
+    alone: int
+    actions: int
+
+
+@dataclass(frozen=True)
+class ActionOption:
+    id: int
+    name: str
+    starts_on: date
+
+
+@dataclass(frozen=True)
+class CutOptions:
+    years: list[int]
+    actions: list[ActionOption]
+
+
+@dataclass(frozen=True)
 class ExportTable:
     columns: tuple[Column, ...]
     rows: list[list[str]]
@@ -110,11 +161,70 @@ def safe_cell(value: str) -> str:
     return f"'{value}" if value.startswith(FORMULA_STARTS) else value
 
 
+def cut_filters(group_id: int, cut: ExportCut) -> list[ColumnElement[bool]]:
+    """As condições sobre `Action`: o grupo (RN-07) e o que ela recortou."""
+    filters: list[ColumnElement[bool]] = [Action.group_id == group_id]
+    if cut.year is not None:
+        filters.append(extract("year", Action.starts_on) == cut.year)
+    if cut.action_id is not None:
+        filters.append(Action.id == cut.action_id)
+    if cut.type is not None:
+        filters.append(Action.type == cut.type)
+    if cut.tag is not None:
+        filters.append(Action.topics.any(ActionTopic.topic == cut.tag))
+    return filters
+
+
+async def cut_options(session: AsyncSession, group_id: int) -> CutOptions:
+    """O que ela pode escolher em "Período" e "Ação": só o que é do grupo."""
+    actions = (
+        await session.scalars(
+            select(Action)
+            .where(Action.group_id == group_id)
+            .order_by(Action.starts_on.desc(), Action.id)
+        )
+    ).all()
+    return CutOptions(
+        years=sorted({a.starts_on.year for a in actions}, reverse=True),
+        actions=[ActionOption(a.id, a.name, a.starts_on) for a in actions],
+    )
+
+
+async def action_is_of_group(
+    session: AsyncSession, group_id: int, action_id: int
+) -> bool:
+    found = await session.scalar(
+        select(Action.id).where(Action.id == action_id, Action.group_id == group_id)
+    )
+    return found is not None
+
+
+async def summarize(
+    session: AsyncSession, group_id: int, cut: ExportCut
+) -> ExportSummary:
+    """Linhas, meninas, ações e quem chegou sozinha do arquivo desse recorte."""
+    filters = cut_filters(group_id, cut)
+    rows, girls = (
+        await session.execute(
+            select(
+                func.count(Participation.id),
+                func.count(distinct(Participation.girl_id)),
+            )
+            .join(Action, Action.id == Participation.action_id)
+            .where(*filters)
+        )
+    ).one()
+    actions = await session.scalar(select(func.count(Action.id)).where(*filters))
+    # Quem chegou sozinha entra com a #380; até lá são zero.
+    return ExportSummary(rows=rows, girls=girls, alone=0, actions=actions or 0)
+
+
 async def build_table(
     session: AsyncSession,
     group_id: int,
     today: date,
     limit: int | None = None,
+    cut: ExportCut = NO_CUT,
 ) -> ExportTable:
     """Uma linha por menina e ação, só das ações do grupo (RF-F24.01, RN-07).
 
@@ -126,7 +236,7 @@ async def build_table(
         .join(Action, Action.id == Participation.action_id)
         .join(Girl, Girl.id == Participation.girl_id)
         .outerjoin(City, City.id == Girl.city_ibge_code)
-        .where(Action.group_id == group_id)
+        .where(*cut_filters(group_id, cut))
         .options(selectinload(Action.topics))
         .order_by(Action.starts_on, Action.id, Participation.id)
     )
@@ -199,8 +309,9 @@ async def create_export(
     user_id: int,
     today: date,
     now: datetime | None = None,
+    cut: ExportCut = NO_CUT,
 ) -> DataExport:
-    """Gera o CSV do grupo e registra a exportação (RN-07)."""
+    """Gera o CSV do grupo (no recorte) e registra a exportação (RN-07)."""
     if now is None:
         now = datetime.now(UTC)
     await purge_old_files(session, now)
@@ -208,7 +319,7 @@ async def create_export(
     group = await session.get(Group, group_id)
     assert group is not None  # a coordenadora vem de GroupCoordinator
 
-    table = await build_table(session, group_id, today)
+    table = await build_table(session, group_id, today, cut=cut)
     export = DataExport(
         group_id=group_id,
         user_id=user_id,
@@ -216,6 +327,7 @@ async def create_export(
         row_count=len(table.rows),
         column_count=len(table.columns),
         content=to_csv(table),
+        cut=cut.as_json(),
         expires_at=now + LINK_LIFETIME,
     )
     session.add(export)
