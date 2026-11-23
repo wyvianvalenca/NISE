@@ -684,6 +684,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Event Detail */
+        get: operations["event_detail_api_events__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/sign-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Sign Up */
+        put: operations["sign_up_api_events__item_id__sign_up_put"];
+        post?: never;
+        /** Undo Sign Up */
+        delete: operations["undo_sign_up_api_events__item_id__sign_up_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/went": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Went */
+        put: operations["went_api_events__item_id__went_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/did-not-go": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Did Not Go */
+        put: operations["did_not_go_api_events__item_id__did_not_go_put"];
+        post?: never;
+        /** Undo Did Not Go Route */
+        delete: operations["undo_did_not_go_route_api_events__item_id__did_not_go_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reminder */
+        put: operations["reminder_api_events__item_id__reminder_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/followup/current": {
         parameters: {
             query?: never;
@@ -1259,6 +1346,83 @@ export interface components {
             origin: components["schemas"]["AdmissionOrigin"];
         };
         /**
+         * EventOut
+         * @description O detalhe de um evento do filé (A06·4b, #178, RF-F10.13). O front lê em camelCase.
+         *
+         *     Os campos seguem `EventDetail` em frontend/lib/evento.ts. As contas de dias
+         *     são feitas aqui, no fuso de Maceió, para o front não depender do relógio do
+         *     celular.
+         */
+        EventOut: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["EventStatus"];
+            type: components["schemas"]["EventType"];
+            /** Typelabel */
+            typeLabel: string;
+            /** Topic */
+            topic: string | null;
+            band: components["schemas"]["EffortBand"];
+            /** Title */
+            title: string;
+            /** Group */
+            group: string | null;
+            /** Organizer */
+            organizer: string;
+            /**
+             * Startson
+             * Format: date
+             */
+            startsOn: string;
+            /**
+             * Endson
+             * Format: date
+             */
+            endsOn: string;
+            /** City */
+            city: string | null;
+            /** Deadline */
+            deadline: string | null;
+            /** Daysleft */
+            daysLeft: number | null;
+            /** Registrationsopen */
+            registrationsOpen: boolean;
+            /** Daysuntilstart */
+            daysUntilStart: number;
+            /** Afterevent */
+            afterEvent: boolean;
+            /** Waitingattendance */
+            waitingAttendance: boolean;
+            /** Reminder */
+            reminder: boolean;
+            /** Cost */
+            cost: string | null;
+            /** Stage */
+            stage: string | null;
+            /** Prerequisites */
+            prerequisites: string[];
+            /** Registrationurl */
+            registrationUrl: string | null;
+        };
+        /**
+         * EventStatus
+         * @description Onde o evento está no filé dela, como a A06·4b lê (frontend/lib/evento.ts).
+         *
+         *     O banco guarda a inscrição como `FileStatus.SIGNED_UP`; a tela chama de
+         *     "in_progress" ("Inscrita"), o mesmo modelo das atividades (tabela da #118).
+         * @enum {string}
+         */
+        EventStatus: "next" | "in_progress" | "concluded";
+        /**
+         * EventType
+         * @description Os tipos que a A06·4b conhece: os de ação (ActionType, RF-F17.01).
+         *
+         *     Um evento da curadoria que não é hackathon vira "outro", que a tela chama de
+         *     "Evento". O nome do tipo de verdade vai em `type_label`.
+         * @enum {string}
+         */
+        EventType: "oficina" | "palestra" | "minicurso" | "hackathon" | "visita" | "acolhimento" | "outro";
+        /**
          * FeedbackIn
          * @description O "O que achou?" e o "Quer sugestões parecidas?" de uma atividade concluída.
          *
@@ -1738,6 +1902,14 @@ export interface components {
             score: number;
             /** Comment */
             comment?: string | null;
+        };
+        /**
+         * ReminderIn
+         * @description Liga ou desliga o "Me lembra um dia antes" (#186).
+         */
+        ReminderIn: {
+            /** On */
+            on: boolean;
         };
         /**
          * ResetPasswordIn
@@ -3378,7 +3550,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no "Não é pra mim"): só um item sem escolha ou no Ver depois aceita uma escolha: {"error": "already_chosen"} */
+            /** @description O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no "Não é pra mim"): só um item sem escolha, no Ver depois ou um evento do "Não deu" que a curadoria adiou aceita uma escolha: {"error": "already_chosen"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3433,7 +3605,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Uma atividade concluída não sai do filé: {"error": "concluded_cannot_be_removed"}. Um evento em que ela se inscreveu também não: {"error": "signed_up_cannot_be_removed"} */
+            /** @description Uma atividade ou um evento concluído não sai do filé: {"error": "concluded_cannot_be_removed"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3737,6 +3909,386 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AgendaDatesOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    event_detail_api_events__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_up_api_events__item_id__sign_up_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi concluído: {"error": "event_concluded"}. O último dia do evento já passou: {"error": "event_over"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {"error": "event_cancelled"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_sign_up_api_events__item_id__sign_up_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi concluído: {"error": "event_concluded"}. O último dia do evento já passou: {"error": "event_over"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {"error": "event_cancelled"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    went_api_events__item_id__went_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    did_not_go_api_events__item_id__did_not_go_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_did_not_go_route_api_events__item_id__did_not_go_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reminder_api_events__item_id__reminder_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ao ligar: o evento não está inscrita, a véspera já passou ou é hoje, ou o evento de fora foi cancelado pela curadoria. Desligar vale sempre: {"error": "reminder_not_available"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
