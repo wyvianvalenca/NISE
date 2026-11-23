@@ -30,6 +30,7 @@ from app.modules.exports.models import DataExport
 from app.modules.girls.models import Girl, Topic
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, age_on
 from app.modules.groups.models import Group
+from app.users.models import User
 
 # O link vale 15 minutos e o texto do arquivo some do servidor em 24 horas.
 LINK_LIFETIME = timedelta(minutes=15)
@@ -333,3 +334,86 @@ async def create_export(
     session.add(export)
     await session.commit()
     return export
+
+
+# Quantos itens o painel "Histórico de exportações" traz. Decisão assumida na
+# #376 (o doc e o Figma não dizem): as 20 mais recentes.
+HISTORY_LIMIT = 20
+
+# O recorte e o modelo ainda não existem (#378, #379): toda exportação é a Base
+# de todas as ações do grupo, e é isso que o item diz.
+ALL_ACTIONS_LABEL = "todas as ações"
+
+
+def cut_label(cut: dict[str, int | str | None] | None, action_name: str | None) -> str:
+    """O recorte gravado em texto: "Oficina · 2026" (RF-F24.07).
+
+    Nulo ou sem nenhum filtro vira "todas as ações".
+    """
+    if not cut:
+        return ALL_ACTIONS_LABEL
+    parts: list[str] = []
+    if action_name:
+        parts.append(action_name)
+    if cut.get("type"):
+        parts.append(ACTION_TYPE_LABELS[ActionType(str(cut["type"]))])
+    if cut.get("tag"):
+        parts.append(TOPIC_LABELS[Topic(str(cut["tag"]))])
+    if cut.get("year"):
+        parts.append(str(cut["year"]))
+    return " · ".join(parts) if parts else ALL_ACTIONS_LABEL
+
+
+@dataclass(frozen=True)
+class HistoryItem:
+    id: int
+    who: str
+    created_at: datetime
+    cut: str
+    row_count: int
+
+
+def _cut_action_id(cut: dict[str, int | str | None] | None) -> int | None:
+    value = cut.get("action_id") if cut else None
+    return int(value) if value else None
+
+
+async def list_history(session: AsyncSession, group_id: int) -> list[HistoryItem]:
+    """As exportações do grupo, da mais recente para a mais antiga (RF-F24.07).
+
+    Entram as de todas as coordenadoras do grupo. Nada é apagado: só o texto do
+    arquivo some (`purge_old_files`), a linha fica.
+    """
+    rows = await session.execute(
+        select(DataExport, User.name)
+        .outerjoin(User, User.id == DataExport.user_id)
+        .where(DataExport.group_id == group_id)
+        .order_by(DataExport.created_at.desc(), DataExport.id.desc())
+        .limit(HISTORY_LIMIT)
+    )
+    pairs = rows.all()
+    # Nome das ações escolhidas, numa consulta só.
+    action_ids = {
+        action_id
+        for export, _ in pairs
+        if (action_id := _cut_action_id(export.cut)) is not None
+    }
+    action_names: dict[int, str] = {}
+    if action_ids:
+        found = await session.execute(
+            select(Action.id, Action.name).where(Action.id.in_(action_ids))
+        )
+        action_names = {action_id: name for action_id, name in found.all()}
+    return [
+        HistoryItem(
+            id=export.id,
+            # Só o primeiro nome, como no Figma ("Kátia").
+            who=name.split()[0] if name and name.split() else "Coordenadora",
+            created_at=export.created_at,
+            cut=cut_label(
+                export.cut, action_names.get(_cut_action_id(export.cut) or 0)
+            ),
+            row_count=export.row_count,
+        )
+        for export, name in pairs
+    ]

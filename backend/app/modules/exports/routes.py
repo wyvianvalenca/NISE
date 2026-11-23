@@ -19,6 +19,7 @@ from app.modules.exports.schemas import (
     ExportColumnOut,
     ExportCutIn,
     ExportCutOptionsOut,
+    ExportHistoryItemOut,
     ExportOut,
     ExportPreviewOut,
     ExportSummaryOut,
@@ -31,6 +32,7 @@ from app.modules.exports.service import (
     build_table,
     create_export,
     cut_options,
+    list_history,
     summarize,
 )
 from app.modules.girls.models import Topic
@@ -135,6 +137,15 @@ async def create_export_route(
     )
     export = await create_export(session, group_id, user.id, today_in_maceio(), cut=cut)
     return ExportOut.model_validate(export, from_attributes=True)
+
+
+@router.get("", response_model=list[ExportHistoryItemOut], responses=_NOT_COORDINATOR)
+async def history_route(
+    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep
+) -> list[ExportHistoryItemOut]:
+    """O histórico do grupo, com as exportações de todas as coordenadoras (RF-F24.07)."""
+    items = await list_history(session, group_id)
+    return [ExportHistoryItemOut.model_validate(i, from_attributes=True) for i in items]
 
 
 @router.get(

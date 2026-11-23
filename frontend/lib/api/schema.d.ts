@@ -966,7 +966,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * History Route
+         * @description O histórico do grupo, com as exportações de todas as coordenadoras (RF-F24.07).
+         */
+        get: operations["history_route_api_coordinator_exports_get"];
         put?: never;
         /**
          * Create Export Route
@@ -1652,6 +1656,25 @@ export interface components {
             types: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
             /** Tags */
             tags: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
+        };
+        /**
+         * ExportHistoryItemOut
+         * @description Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07).
+         */
+        ExportHistoryItemOut: {
+            /** Id */
+            id: number;
+            /** Who */
+            who: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Cut */
+            cut: string;
+            /** Rowcount */
+            rowCount: number;
         };
         /**
          * ExportOut
@@ -5105,6 +5128,45 @@ export interface operations {
             };
             /** @description Ação de outro grupo */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_route_api_coordinator_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportHistoryItemOut"][];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

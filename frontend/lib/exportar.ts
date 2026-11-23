@@ -108,3 +108,42 @@ export async function generateExport(cut: Cut): Promise<ExportedFile> {
   if (!response.ok) throw new Error(`export ${response.status}`);
   return (await response.json()) as ExportedFile;
 }
+
+/** One line of the "Histórico de exportações" panel (RF-F24.07). */
+export type HistoryItem = components["schemas"]["ExportHistoryItemOut"];
+
+/** The group's exports, newest first, from every coordinator of the group. */
+export async function getHistory(): Promise<HistoryItem[]> {
+  const response = await fetch("/api/coordinator/exports");
+  if (!response.ok) throw new Error(`history ${response.status}`);
+  return (await response.json()) as HistoryItem[];
+}
+
+/** Alagoas time, so "hoje" does not depend on where the browser is. */
+const TIME_ZONE = "America/Maceio";
+
+function dateParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return { day: get("day"), month: get("month"), time: `${get("hour")}:${get("minute")}` };
+}
+
+/** "hoje, 14:02" for today's exports, "02/10, 09:40" for the older ones. */
+export function whenLabel(createdAt: string, now: Date = new Date()): string {
+  const made = dateParts(new Date(createdAt));
+  const today = dateParts(now);
+  const isToday = made.day === today.day && made.month === today.month;
+  return isToday ? `hoje, ${made.time}` : `${made.day}/${made.month}, ${made.time}`;
+}
+
+/** "66 linhas", "1 linha". */
+export function linesLabel(rowCount: number): string {
+  return rowCount === 1 ? "1 linha" : `${rowCount} linhas`;
+}
