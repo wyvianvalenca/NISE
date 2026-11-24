@@ -167,7 +167,7 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
             Cada ação passa por 3 etapas até ser concluída: inscrições, evento e presença.
           </p>
         </div>
-        <PendingLink variant="primary">Nova ação</PendingLink>
+        <PendingLink variant="primary" href="/coordenacao/acoes/nova">Nova ação</PendingLink>
       </div>
       {deleteBlocked && (
         <div role="alert" className={styles.failure}>

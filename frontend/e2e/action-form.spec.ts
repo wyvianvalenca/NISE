@@ -226,6 +226,19 @@ test("saving goes back to the list with the id of the action", async ({ page }) 
   ]);
 });
 
+test("from the list, Nova ação leads to the form and the saved action shows on the list without a reload", async ({ page }) => {
+  await page.goto("/coordenacao/acoes");
+  await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Nova ação" }).click();
+  await expect(page).toHaveURL(FORM_URL);
+  await fillRequired(page);
+  await save(page).click();
+
+  await expect(page).toHaveURL(/\/coordenacao\/acoes\?salva=\d+$/);
+  await expect(page.getByRole("heading", { level: 3, name: "Oficina de robótica" })).toBeVisible();
+});
+
 test("an online action saves with no city", async ({ page }) => {
   await page.goto(FORM_URL);
   await page.getByLabel("Nome da ação").fill("Palestra online");
