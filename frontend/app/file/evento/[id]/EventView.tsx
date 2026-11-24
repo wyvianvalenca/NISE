@@ -8,15 +8,13 @@ import { Notice } from "@/components/Notice";
 import { Tag } from "@/components/Tag";
 import { BANDS } from "@/lib/descobrir";
 import {
-  daysLeftText,
   daysUntilText,
-  formatDate,
+  deadlineText,
   formatEventDays,
   formatWeekdays,
   organizerLine,
   reminderDate,
   typeIcon,
-  typeLabel,
   wentQuestion,
   type EventDetail,
   type EventStatus,
@@ -91,14 +89,14 @@ export function EventView(props: EventViewProps) {
 /** Visual, tema, título e organizador: igual em todas as versões. */
 function EventHeading({ event, titleRef }: EventViewProps) {
   const icons = typeIcon(event.type);
-  const topic = `${event.topic} · ${BANDS[event.band].title}`;
+  const topic = event.topic ? `${event.topic} · ${BANDS[event.band].title}` : BANDS[event.band].title;
 
   return (
     <>
       <div className={shared.visual}>
         <span className={shared.kind}>
           <Icon name={icons.small} size={13} />
-          {typeLabel(event.type)}
+          {event.typeLabel}
         </span>
         <span className={shared.iconTile}>
           <Icon name={icons.large} size={42} />
@@ -148,20 +146,8 @@ function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: Eve
           sub={formatWeekdays(event.startsOn, event.endsOn)}
         />
         <PlaceRow event={event} />
-        {event.registrationsOpen ? (
-          <SummaryRow
-            icon="clock"
-            main={`Inscrições até ${formatDate(event.deadline)}`}
-            sub={daysLeftText(event.daysLeft)}
-          />
-        ) : (
-          // RN-36: as inscrições fecharam, mas o evento continua no filé dela.
-          <SummaryRow
-            icon="clock"
-            main={`Inscrições foram até ${formatDate(event.deadline)}`}
-            sub="As inscrições já fecharam"
-          />
-        )}
+        {/* RN-36: se as inscrições fecharam, o evento continua no filé dela. */}
+        <SummaryRow icon="clock" {...deadlineText(event)} />
       </ul>
 
       <DetailChips event={event} />
@@ -170,17 +156,20 @@ function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: Eve
       <Notice>A inscrição é feita no site dos organizadores. Seus dados da NISE não são enviados.</Notice>
 
       <div className={`${shared.actions} ${styles.actions}`}>
-        <a
-          href={event.registrationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={shared.siteButton}
-          onClick={onOpenSignUp}
-        >
-          <Icon name="external" size={18} />
-          Ir para inscrição
-          <span className={shared.srOnly}> (abre em outra aba)</span>
-        </a>
+        {/* A ação fechada do grupo não tem link: a inscrição é por convite. */}
+        {event.registrationUrl && (
+          <a
+            href={event.registrationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={shared.siteButton}
+            onClick={onOpenSignUp}
+          >
+            <Icon name="external" size={18} />
+            Ir para inscrição
+            <span className={shared.srOnly}> (abre em outra aba)</span>
+          </a>
+        )}
 
         <div className={styles.footer}>
           <button
@@ -412,7 +401,7 @@ function RemoveButton({ onRemove, saving }: Pick<EventViewProps, "onRemove" | "s
 type SummaryRowProps = {
   icon: IconName;
   main: string;
-  sub: string;
+  sub?: string;
 };
 
 /** Linha do cartão "Quando e onde": ícone, texto principal e subtexto (Figma: Card / Quando e onde). */
@@ -422,7 +411,7 @@ function SummaryRow({ icon, main, sub }: SummaryRowProps) {
       <Icon name={icon} size={18} className={styles.rowIcon} />
       <span className={styles.rowText}>
         <span className={styles.rowMain}>{main}</span>
-        <span className={styles.rowSub}>{sub}</span>
+        {sub && <span className={styles.rowSub}>{sub}</span>}
       </span>
     </li>
   );

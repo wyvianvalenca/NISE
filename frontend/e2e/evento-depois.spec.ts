@@ -1,16 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApiOptions } from "./evento-api";
 import { mockFileApi } from "./file-api";
 
 // #191 · A06·4b depois da data de um evento de fora: "Você foi?" e "Concluído".
-// Usa os dados de teste de lib/evento.ts.
-
-type Mock = {
-  status?: Record<string, "next" | "in_progress" | "concluded">;
-  today?: string;
-  delayMs?: number;
-  failUpdates?: boolean;
-  failUndo?: boolean;
-};
+// As rotas são simuladas por evento-api.ts.
 
 const PAST = "hackathon-cidades-inteligentes";
 const DONE = "palestra-mulheres-na-computacao";
@@ -20,14 +13,13 @@ const PAST_PATH = `/file/evento/${PAST}`;
 // Com hoje em 16/nov/2025, o hackathon que passou foi em 8 e 9/nov (sábado e domingo).
 const TODAY = "2025-11-16";
 
-async function open(page: Page, path: string, value: Mock = {}) {
-  await page.addInitScript((mockValue) => {
-    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, ...value });
+async function open(page: Page, path: string, value: EventApiOptions = {}) {
+  const api = await mockEventApi(page, { today: TODAY, ...value });
   // Depois do "Não deu" ela volta para o Seu filé (GET /api/file, #116).
   await mockFileApi(page);
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  return api;
 }
 
 function button(page: Page, name: string) {
@@ -164,6 +156,7 @@ test("o concluído mostra que ela foi, os chips e nenhum botão", async ({ page 
 });
 
 test("um evento que ainda vai acontecer não abre a celebração", async ({ page }) => {
+  await mockEventApi(page, { today: TODAY });
   await page.goto(`/file/evento/${UPCOMING}/concluido`);
 
   await expect(page.getByText("Esse evento não está nos concluídos do seu filé.")).toBeVisible();

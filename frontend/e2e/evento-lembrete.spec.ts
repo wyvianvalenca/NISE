@@ -1,15 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApiOptions } from "./evento-api";
 
 // #187 · "Me lembra um dia antes" na versão "Inscrita" da A06·4b.
-// O envio do e-mail é do back (#188); aqui só a escolha, com os dados de teste de lib/evento.ts.
-
-type Mock = {
-  status?: Record<string, "next" | "in_progress" | "concluded">;
-  today?: string;
-  failReminder?: boolean;
-  failLoad?: boolean;
-  delayMs?: number;
-};
+// O envio do e-mail é do back (#188); aqui só a escolha, salva por PUT /api/events/{id}/reminder.
 
 const HACKATHON = "hackathon-meninas-na-tecnologia";
 const TOMORROW = "visita-ao-laboratorio-de-robotica";
@@ -18,12 +11,11 @@ const PATH = `/file/evento/${HACKATHON}`;
 // Com hoje em 15/out/2025, o hackathon começa em 8/nov: o lembrete é no dia 7.
 const TODAY = "2025-10-15";
 
-async function open(page: Page, path = PATH, value: Mock = {}) {
-  await page.addInitScript((mockValue) => {
-    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, status: { [HACKATHON]: "in_progress" }, ...value });
+async function open(page: Page, path = PATH, value: EventApiOptions = {}) {
+  const api = await mockEventApi(page, { today: TODAY, status: { [HACKATHON]: "in_progress" }, ...value });
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  return api;
 }
 
 function reminder(page: Page) {
@@ -90,12 +82,10 @@ test("desfazer a inscrição cancela o lembrete", async ({ page }) => {
 // Revisão do #259: com duas ações no ar, a resposta que chega por último sobrescreve a outra.
 // O mock espera delayMs em cada chamada, então dá para ver a tela no meio do envio.
 test("enquanto o lembrete salva, \"Tirar do filé\" e \"Desfazer\" esperam", async ({ page }) => {
-  await open(page, PATH, { status: { [HACKATHON]: "next" } });
+  const api = await open(page, PATH, { status: { [HACKATHON]: "next" } });
   await page.getByRole("button", { name: "Já me inscrevi" }).click();
   await expect(reminder(page)).toBeVisible();
-  await page.evaluate(() => {
-    globalThis.__NISE_MOCK_EVENTO__ = { ...globalThis.__NISE_MOCK_EVENTO__, delayMs: 1500 };
-  });
+  api.delayMs = 1500;
 
   await reminder(page).check();
 
@@ -114,12 +104,10 @@ test("enquanto o lembrete salva, \"Tirar do filé\" e \"Desfazer\" esperam", asy
 });
 
 test("enquanto desfaz a inscrição, o lembrete fica bloqueado", async ({ page }) => {
-  await open(page, PATH, { status: { [HACKATHON]: "next" } });
+  const api = await open(page, PATH, { status: { [HACKATHON]: "next" } });
   await page.getByRole("button", { name: "Já me inscrevi" }).click();
   await expect(reminder(page)).toBeVisible();
-  await page.evaluate(() => {
-    globalThis.__NISE_MOCK_EVENTO__ = { ...globalThis.__NISE_MOCK_EVENTO__, delayMs: 1500 };
-  });
+  api.delayMs = 1500;
 
   await page.getByRole("status").getByRole("button", { name: "Desfazer" }).click();
 
@@ -138,15 +126,11 @@ test("enquanto tira do filé, o lembrete fica bloqueado", async ({ page }) => {
 });
 
 test("se o evento não carrega, avisa e deixa tentar de novo", async ({ page }) => {
-  await page.addInitScript((mockValue) => {
-    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, status: { [HACKATHON]: "in_progress" }, failLoad: true });
+  const api = await mockEventApi(page, { today: TODAY, status: { [HACKATHON]: "in_progress" }, failLoad: true });
   await page.goto(PATH);
 
   await expect(page.getByRole("main").getByRole("alert")).toHaveText("Não deu pra carregar o evento.");
-  await page.evaluate(() => {
-    globalThis.__NISE_MOCK_EVENTO__ = { ...globalThis.__NISE_MOCK_EVENTO__, failLoad: false };
-  });
+  api.failLoad = false;
   await page.getByRole("button", { name: "Tentar de novo" }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

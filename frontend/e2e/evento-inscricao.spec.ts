@@ -1,15 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApiOptions } from "./evento-api";
 
 // #183 · A09 "Conseguiu se inscrever?" e a versão "Inscrita" da A06·4b.
-// Usa os dados de teste de lib/evento.ts.
-
-type Mock = {
-  status?: Record<string, "next" | "in_progress" | "concluded">;
-  today?: string;
-  delayMs?: number;
-  failUpdates?: boolean;
-  failUndo?: boolean;
-};
+// As rotas de evento são simuladas por evento-api.ts.
 
 const HACKATHON = "hackathon-meninas-na-tecnologia";
 const OFICINA = "oficina-de-robotica-rendeiras";
@@ -19,16 +12,15 @@ const CHECK_PATH = `${EVENT_PATH}/inscricao`;
 // Com hoje em 15/out/2025, o hackathon cai em 8 e 9/nov e as inscrições vão até 30/out.
 const TODAY = "2025-10-15";
 
-async function mock(page: Page, value: Mock = {}) {
-  await page.addInitScript((mockValue) => {
-    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, ...value });
+function mock(page: Page, value: EventApiOptions = {}) {
+  return mockEventApi(page, { today: TODAY, ...value });
 }
 
-async function open(page: Page, path: string, value: Mock = {}) {
-  await mock(page, value);
+async function open(page: Page, path: string, value: EventApiOptions = {}) {
+  const api = await mock(page, value);
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  return api;
 }
 
 function button(page: Page, name: string) {
@@ -250,6 +242,44 @@ test.describe("detalhe do evento", () => {
 
     await expect(page.getByRole("main").getByRole("alert")).toHaveText("Não deu pra enviar. Tente de novo.");
     await expect(page.getByRole("main").getByText("Próxima aventura")).toBeVisible();
+  });
+
+  test("sem sessão, marcar leva ao início em vez de dizer só que não deu", async ({ page }) => {
+    const api = await open(page, EVENT_PATH, { failUpdates: true });
+    api.failure = { status: 401, body: { detail: "Not authenticated" } };
+
+    await button(page, "Já me inscrevi").click();
+
+    await expect(page).toHaveURL("/");
+  });
+
+  test("sem o aceite dos termos, marcar leva à tela dos termos", async ({ page }) => {
+    const api = await open(page, EVENT_PATH, { failUpdates: true });
+    api.failure = { status: 403, body: { error: "terms_not_accepted" } };
+
+    await button(page, "Já me inscrevi").click();
+
+    await expect(page).toHaveURL(/\/cadastro\/termos$/);
+  });
+
+  test("se o evento mudou de estado (409), a tela recarrega e não diz que \"não deu\"", async ({ page }) => {
+    const api = await open(page, EVENT_PATH, { failUpdates: true });
+    api.failure = { status: 409, body: { error: "event_over" } };
+
+    await button(page, "Já me inscrevi").click();
+
+    await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(button(page, "Já me inscrevi")).toBeEnabled();
+  });
+
+  test("na A09, o 409 leva ao evento, que mostra o estado de agora", async ({ page }) => {
+    const api = await open(page, CHECK_PATH, { failUpdates: true });
+    api.failure = { status: 409, body: { error: "event_over" } };
+
+    await button(page, "Sim, me inscrevi").click();
+
+    await expect(page).toHaveURL(EVENT_PATH);
   });
 
   test("dá para usar o aviso pelo teclado, com o foco visível", async ({ page }) => {

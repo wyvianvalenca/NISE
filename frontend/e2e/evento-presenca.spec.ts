@@ -1,13 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApiOptions } from "./evento-api";
 
 // #195 · A06·4b de um evento de grupo da NISE depois da data: "Esperando a lista de presença".
-// A presença é da coordenadora (#135); aqui ela entra pelos dados de teste de lib/evento.ts.
-
-type Mock = {
-  status?: Record<string, "next" | "in_progress" | "concluded">;
-  removed?: string[];
-  today?: string;
-};
+// A presença é da coordenadora (#135); aqui ela entra pelo estado de evento-api.ts.
 
 const GROUP_EVENT = "oficina-de-jogos-rendeiras";
 const PATH = `/file/evento/${GROUP_EVENT}`;
@@ -15,10 +10,8 @@ const PATH = `/file/evento/${GROUP_EVENT}`;
 // Com hoje em 13/nov/2025, a oficina foi no sábado, 8/nov.
 const TODAY = "2025-11-13";
 
-async function open(page: Page, value: Mock = {}) {
-  await page.addInitScript((mockValue) => {
-    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, ...value });
+async function open(page: Page, value: EventApiOptions = {}) {
+  await mockEventApi(page, { today: TODAY, ...value });
   await page.goto(PATH);
 }
 

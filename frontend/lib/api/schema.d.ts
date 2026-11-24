@@ -1909,6 +1909,8 @@ export interface components {
             prerequisites: string[];
             /** Registrationurl */
             registrationUrl: string | null;
+            /** Firstname */
+            firstName: string;
         };
         /**
          * EventStatus

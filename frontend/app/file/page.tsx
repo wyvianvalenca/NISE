@@ -203,12 +203,9 @@ function DidNotGoToast() {
   async function undo() {
     if (!notice || status === "undoing") return;
     setStatus("undoing");
-    try {
-      await undoDidNotGo(notice.id);
-      router.push(eventPath(notice.id));
-    } catch {
-      setStatus("error");
-    }
+    const result = await undoDidNotGo(notice.id);
+    if (result.ok) router.push(eventPath(notice.id));
+    else setStatus("error");
   }
 
   return (
