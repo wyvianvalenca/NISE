@@ -192,35 +192,6 @@ test("Seu caminho segue o do #345", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Mudar curso" })).toBeVisible();
 });
 
-for (const [opportunityEmails, state] of [
-  [true, "Ligado"],
-  [false, "Desligado"],
-] as const) {
-  test(`e-mails: Oportunidades ${state.toLowerCase()} só como texto`, async ({ page }) => {
-    await mockProfileCourseApi(page, { details: { opportunityEmails } });
-    await page.goto(PROFILE);
-
-    const card = page.getByRole("region", { name: "O que chega no seu e-mail" });
-    await expect(
-      card.getByText("Oficinas, cursos e bolsas. No máximo 2 por mês."),
-    ).toBeVisible();
-    await expect(card.getByText(state, { exact: true })).toBeVisible();
-    await expect(
-      card.getByText("ENEM, IFAL, SISU e outras datas importantes. Sempre chegam no seu e-mail."),
-    ).toBeVisible();
-    await expect(
-      card.getByText("Sempre chegam no seu e-mail. Responder é opcional."),
-    ).toBeVisible();
-    // O único interruptor do perfil é o de Oportunidades, e é da #393.
-    await expect(card.getByRole("switch")).toHaveCount(0);
-    await expect(card.getByRole("checkbox")).toHaveCount(0);
-    await expect(card.getByRole("link", { name: /Ver minha agenda/ })).toHaveAttribute(
-      "href",
-      "/agenda",
-    );
-  });
-}
-
 test('"Termos de uso" abre a âncora e o "Voltar" da página volta ao perfil', async ({ page }) => {
   await mockProfileCourseApi(page);
   await page.goto(PROFILE);
@@ -341,7 +312,7 @@ test("falha ao carregar mostra o aviso e Tentar novamente recarrega", async ({ p
   await expect(page.getByText("Alana Ficticia", { exact: true })).toBeVisible();
 });
 
-test("o Tab passa por Voltar, Mudar senha, Editar, os links, Sair e Excluir, com foco visível", async ({
+test("o Tab passa por Voltar, Mudar senha, Editar, o interruptor, os links, Sair e Excluir, com foco visível", async ({
   page,
 }) => {
   // RNF-G.01, RNF-G.02.
@@ -358,6 +329,7 @@ test("o Tab passa por Voltar, Mudar senha, Editar, os links, Sair e Excluir, com
     page.getByRole("link", { name: "Mudar senha" }),
     page.getByRole("link", { name: "Editar" }),
     page.getByRole("button", { name: "Registrar ingresso" }),
+    page.getByRole("switch", { name: "Oportunidades" }),
     page.getByRole("link", { name: /Ver minha agenda/ }),
     page.getByRole("link", { name: /Termos de uso/ }),
     page.getByRole("link", { name: /Política de privacidade/ }),
