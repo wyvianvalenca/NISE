@@ -270,16 +270,17 @@ test("se sair falhar, avisa e continua no perfil", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sair da conta" })).toBeEnabled();
 });
 
-test('"Excluir minha conta e meus dados" existe e, por ora, não faz nada', async ({ page }) => {
+// A exclusão em si é testada em profile-delete.spec.ts (#394).
+test('"Excluir minha conta e meus dados" só abre o modal de confirmação', async ({ page }) => {
   await mockProfileCourseApi(page);
   await page.goto(PROFILE);
 
   const remove = page.getByRole("button", { name: "Excluir minha conta e meus dados" });
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await remove.click();
 
-  await expect(remove).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Excluir sua conta?" })).toBeVisible();
   await expect(page).toHaveURL(/\/perfil$/);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("sem sessão, o perfil manda para o início", async ({ page }) => {

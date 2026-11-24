@@ -63,3 +63,35 @@ export async function getProfileEvents(signal?: AbortSignal): Promise<ProfileEve
     return { ok: false, reason: "failed" };
   }
 }
+
+export type DeleteAccountResult =
+  | { ok: true }
+  | { ok: false; reason: "terms_not_accepted" | "no_session" | "failed" };
+
+/**
+ * "Excluir minha conta e meus dados" (DELETE /api/profile, RF-F7.09). O back
+ * anonimiza a conta e encerra a sessão. A rota é idempotente: uma conta que já
+ * foi anonimizada, com a sessão ainda válida (outra aba), também responde 204.
+ * 401 quer dizer que não há sessão válida (vencida ou apagada), e a conta **não**
+ * foi excluída: nunca dizer que foi ("no_session"). 403 com {"error":
+ * "terms_not_accepted"} leva ela aos termos novos. Qualquer outra falha, ou
+ * ficar sem rede, é "failed" e a conta continua como estava.
+ */
+export async function deleteAccount(): Promise<DeleteAccountResult> {
+  let response: Response;
+  try {
+    response = await fetch("/api/profile", { method: "DELETE" });
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
+
+  if (response.ok) return { ok: true };
+
+  if (response.status === 401) return { ok: false, reason: "no_session" };
+
+  if ((await accessProblem(response)) === "terms_not_accepted") {
+    return { ok: false, reason: "terms_not_accepted" };
+  }
+
+  return { ok: false, reason: "failed" };
+}
