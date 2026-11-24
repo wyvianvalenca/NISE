@@ -286,17 +286,39 @@ async def test_nao_troca_a_escolha_de_um_item_no_file_ou_dispensado(
 
 async def test_escolher_de_novo_um_evento_do_nao_deu_que_foi_adiado() -> None:
     # O evento voltou às sugestões porque a curadoria o adiou (#190).
+    # Ele já esteve no filé (a inscrição de antes do "Não deu").
     linha = FileEntry(
         id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
     )
+    linha.filed_at = datetime(2026, 1, 10, tzinfo=UTC)
     sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
+    antes = datetime.now(UTC)
 
     response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
 
     assert response.status_code == 200
     assert linha.status is FileStatus.NEXT
+    # É um item novo no filé: a data é a de agora (RF-F5.31, D-93).
+    assert linha.filed_at is not None
+    assert antes <= linha.filed_at <= datetime.now(UTC)
     sessao_falsa.add.assert_not_called()
     sessao_falsa.commit.assert_awaited_once()
+
+
+async def test_ver_depois_de_um_evento_do_nao_deu_apaga_a_data_do_file() -> None:
+    # Fora do filé de novo, o item não tem data; o "Quero fazer" depois guarda
+    # a nova (RF-F5.31, D-93).
+    linha = FileEntry(
+        id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
+    )
+    linha.filed_at = datetime(2026, 1, 10, tzinfo=UTC)
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
+
+    response = await escolher(sessao_falsa, {"choice": "talvez-depois"})
+
+    assert response.status_code == 200
+    assert linha.status is FileStatus.LATER
+    assert linha.filed_at is None
 
 
 async def test_repetir_a_mesma_escolha_vale_sem_mudar_nada() -> None:

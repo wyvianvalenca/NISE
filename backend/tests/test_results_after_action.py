@@ -8,6 +8,7 @@ Dados fictícios. Cada teste diz o critério de aceite da #367 que cobre.
 
 from datetime import UTC, date, datetime, time, timedelta
 
+import pytest
 from httpx2 import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -143,8 +144,10 @@ class Cenario:
         await self.sessao.flush()
         return item
 
-    async def quer_fazer(self, menina: Girl, item: Action) -> None:
-        """O "+ Quero fazer" do Ver depois, agora, pelo mesmo caminho da rota."""
+    async def quer_fazer(
+        self, menina: Girl, item: Action, escolha: Choice = Choice.QUERO_FAZER
+    ) -> None:
+        """A escolha dela (o "+ Quero fazer", se nada diz), agora, pelo caminho da rota."""
         linha = await find_entry(
             self.sessao, menina.id, ItemOrigin.GROUP_ACTION, item.id, for_update=True
         )
@@ -154,7 +157,7 @@ class Cenario:
             menina.id,
             ItemOrigin.GROUP_ACTION,
             item.id,
-            Choice.QUERO_FAZER,
+            escolha,
             None,
             linha,
         )
@@ -498,6 +501,42 @@ async def test_item_do_ver_depois_que_ela_quis_fazer_fora_da_janela_nao_conta(
 
     assert corpo["participants"] == 1
     assert corpo["startedFile"] == {"participants": 0, "noShows": 0}
+
+
+@pytest.mark.parametrize(
+    "escolhas",
+    [
+        [Choice.QUERO_FAZER],
+        [Choice.TALVEZ_DEPOIS, Choice.QUERO_FAZER],
+    ],
+    ids=["quero-fazer", "ver-depois-e-quero-fazer"],
+)
+async def test_evento_do_nao_deu_escolhido_de_novo_depois_da_acao_conta(
+    db_session: AsyncSession, escolhas: list[Choice]
+) -> None:
+    # Ela se inscreveu num evento de fora antes da ação e disse "Não deu". A
+    # curadoria adiou o evento, ele voltou às sugestões dela e, depois da
+    # ação, ela o quis fazer de novo (direto ou passando pelo "Ver depois"): é
+    # um item novo no filé (RF-F5.31, D-93).
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    acao = await cenario.acao(grupo, dias_atras(7))
+    ana = await cenario.menina()
+    await cenario.inscrita(ana, acao, True)
+    inscreveu = as_(10, dias_atras(100))
+    item = await cenario.no_file(ana, grupo, inscreveu, FileStatus.SIGNED_UP)
+    linha = await find_entry(db_session, ana.id, ItemOrigin.GROUP_ACTION, item.id)
+    assert linha is not None
+    linha.status = FileStatus.DID_NOT_GO
+    await db_session.flush()
+    assert linha.filed_at == inscreveu
+
+    for escolha in escolhas:
+        await cenario.quer_fazer(ana, item, escolha)
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert corpo["startedFile"] == {"participants": 1, "noShows": 0}
 
 
 async def test_a_propria_acao_no_file_nao_conta(db_session: AsyncSession) -> None:

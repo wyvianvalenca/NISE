@@ -140,21 +140,23 @@ class FileEntry(TimestampMixin, Base):
     # evento (as restrições de único acima), então ela recebe um lembrete por
     # data do evento (RNF-F4.01); se o evento muda de dia, sai outro.
     reminder_sent_for: Mapped[date | None] = mapped_column()
-    # Quando o item entrou no filé (IN_FILE) pela primeira vez: na hora em que
-    # a linha é criada já no filé, ou quando sai do "Ver depois" para ele (o
-    # "+ Quero fazer"). Vazio enquanto o item nunca entrou no filé. O
-    # "Começaram o filé" da aba Resultados conta por aqui (RF-F5.31, D-93):
-    # `created_at` não serve, porque o "Quero fazer" do Ver depois só troca o
-    # status da linha que já existia.
+    # Quando o item entrou no filé (IN_FILE): na hora em que a linha é criada
+    # já no filé, ou quando sai do "Ver depois" para ele (o "+ Quero fazer").
+    # Vazio enquanto o item nunca entrou no filé. O "Começaram o filé" da aba
+    # Resultados conta por aqui (RF-F5.31, D-93): `created_at` não serve,
+    # porque o "Quero fazer" do Ver depois só troca o status da linha que já
+    # existia.
     #
     # Sair do filé e voltar (o "Não deu" e o "Desfazer" dele) não muda a data:
     # é o mesmo item, não um novo. Tirar do filé apaga a linha, e guardar de
-    # novo cria outra, com a data nova.
+    # novo cria outra, com a data nova. Escolher de novo o evento do "Não deu"
+    # que a curadoria adiou também faz dele um item novo: `save_choice` apaga
+    # a data antiga.
     filed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     @validates("status")
     def _marks_filed_at(self, key: str, status: FileStatus) -> FileStatus:
-        """Guarda `filed_at` na primeira vez que o status muda para um do filé.
+        """Guarda `filed_at` quando o status muda para um do filé sem data.
 
         O SQLAlchemy chama isto em todo `entry.status = ...` e em
         `FileEntry(status=...)`, então nenhum caminho que mexe no status

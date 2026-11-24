@@ -188,6 +188,10 @@ async def save_choice(
         return True
     if entry.status not in CHOOSABLE:
         return False
+    # Escolher de novo faz dele um item novo, também o evento do "Não deu" que a
+    # curadoria adiou: sem a data antiga, o `status` abaixo guarda a de agora se
+    # ele entrar no filé (RF-F5.31, D-93).
+    entry.filed_at = None
     entry.status = status
     entry.dismiss_reason = reason
     await session.commit()
