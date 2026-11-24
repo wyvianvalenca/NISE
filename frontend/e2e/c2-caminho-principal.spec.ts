@@ -9,6 +9,7 @@ import {
   type ActionPageApi,
 } from "./action-page-api";
 import { mockActionsListApi } from "./actions-list-api";
+import { mockAttendanceApi } from "./attendance-api";
 import { fileResponse, type MockFileItem } from "./file-api";
 
 /**
@@ -325,8 +326,9 @@ test("reopen (Should): back to the suggestions; on the day of the event there is
   await expect(page.getByRole("heading", { name: ACTION_NAME })).toBeVisible();
 
   // The day of the event: closed, and nothing to reopen (RF-F1.13).
+  await mockAttendanceApi(page);
   await page.goto(`/coordenacao/acoes/${EVENT_DAY_ACTION_ID}`);
-  await expect(page.getByText("23 adicionadas · inscrições fechadas")).toBeVisible();
+  await expect(page.getByText("23 importadas em 16/10")).toBeVisible();
   await expect(page.getByRole("button", { name: "Reabrir inscrições" })).toHaveCount(0);
 });
 

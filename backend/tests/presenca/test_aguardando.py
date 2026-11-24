@@ -146,7 +146,7 @@ async def test_lista_as_inscritas_em_ordem_e_so_as_colunas_com_dado(
     action = await make_action(banco, group)
     bia = await make_girl(banco, name="Beatriz Fictícia")
     ana = await make_girl(banco, name="Ana Fictícia")
-    await register(banco, action, bia)
+    bia_registration = await register(banco, action, bia)
     await register(banco, action, ana)
 
     body = (await api(coordinator).get(URL.format(action.id))).json()
@@ -159,13 +159,43 @@ async def test_lista_as_inscritas_em_ordem_e_so_as_colunas_com_dado(
     # Nobody has a study level: no column for it (RF-F1.14).
     assert body["columns"] == []
 
-    bia.study_stage = StudyStage.MEDIO
+    # What the registration gave (C2, #232): the columns follow it, not the record.
+    bia_registration.study_stage = StudyStage.MEDIO
+    bia_registration.whatsapp = "82999990000"
     await banco.commit()
     body = (await api(coordinator).get(URL.format(action.id))).json()
 
-    assert body["columns"] == ["study_stage"]
+    assert body["columns"] == ["whatsapp", "study_stage"]
     assert body["girls"][1]["study_stage"] == "medio"
+    assert body["girls"][1]["whatsapp"] == "82999990000"
     assert body["girls"][0]["study_stage"] is None
+    assert body["girls"][0]["school_year"] is None
+
+
+async def test_mostra_o_nome_e_a_serie_que_a_inscricao_deu(
+    banco: AsyncSession, api: Api
+) -> None:
+    # C2 (#232): the registration may give another name than the record, which
+    # may have been typed by another group (RN-01). The list shows the former,
+    # and orders by it.
+    group, coordinator = await make_group(banco)
+    action = await make_action(banco, group)
+    zeca = await make_girl(banco, name="Zuleica Registro")
+    ana = await make_girl(banco, name="Ana Fictícia")
+    registration = await register(banco, action, zeca)
+    await register(banco, action, ana)
+    registration.name = "Bianca Digitada"
+    registration.school_year = "2º ano"
+    await banco.commit()
+
+    body = (await api(coordinator).get(URL.format(action.id))).json()
+
+    assert [girl["name"] for girl in body["girls"]] == [
+        "Ana Fictícia",
+        "Bianca Digitada",
+    ]
+    assert body["columns"] == ["school_year"]
+    assert body["girls"][1]["school_year"] == "2º ano"
 
 
 async def test_nao_mostra_inscritas_de_outra_acao(

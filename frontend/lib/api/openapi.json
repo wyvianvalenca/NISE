@@ -4137,6 +4137,90 @@
         }
       }
     },
+    "/api/actions/{action_id}/attendance/import": {
+      "post": {
+        "tags": [
+          "API",
+          "Attendance"
+        ],
+        "summary": "Import Attendance List",
+        "operationId": "import_attendance_list_api_actions__action_id__attendance_import_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportedListIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedListOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ação não encontrada"
+          },
+          "409": {
+            "description": "Fora do momento: {\"error\": \"too_early\"} antes do dia do evento, {\"error\": \"already_concluded\"} para marcar ou salvar depois de concluir, {\"error\": \"not_concluded\"} para marcar uma por uma antes"
+          },
+          "422": {
+            "description": "Lista sem nenhuma linha com e-mail: {\"error\": \"empty_file\"}"
+          }
+        }
+      }
+    },
     "/api/events/{item_id}": {
       "get": {
         "tags": [
@@ -6273,6 +6357,17 @@
             "type": "string",
             "title": "Email"
           },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          },
           "study_stage": {
             "anyOf": [
               {
@@ -6282,6 +6377,17 @@
                 "type": "null"
               }
             ]
+          },
+          "school_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Year"
           },
           "saved_present": {
             "type": "boolean",
@@ -6297,7 +6403,9 @@
           "id",
           "name",
           "email",
+          "whatsapp",
           "study_stage",
+          "school_year",
           "saved_present",
           "present"
         ],
@@ -7965,6 +8073,51 @@
         ],
         "title": "ImportRowOut"
       },
+      "ImportedListIn": {
+        "properties": {
+          "emails": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Emails"
+          }
+        },
+        "type": "object",
+        "required": [
+          "emails"
+        ],
+        "title": "ImportedListIn",
+        "description": "\"Importar lista de presença\" (#349, RF-F3.02): the e-mail of each line.\n\nThe page reads the spreadsheet and sends only the cell of the e-mail column.\nThe server never receives or keeps the file."
+      },
+      "ImportedListOut": {
+        "properties": {
+          "present_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Present Ids"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "not_found_count": {
+            "type": "integer",
+            "title": "Not Found Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present_ids",
+          "line_count",
+          "not_found_count"
+        ],
+        "title": "ImportedListOut",
+        "description": "Who the list marks. Nothing was saved: the page marks them (RF-F3.04).\n\n`present_ids` are the registrations whose e-mail is in the list, once each.\n`not_found_count` is the lines that match no registration (or have no\ne-mail), only counted: which ones are not told (RN-27)."
+      },
       "InterestOptionsOut": {
         "properties": {
           "topics": {
@@ -9411,6 +9564,18 @@
             "format": "email",
             "title": "Email"
           },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          },
           "study_stage": {
             "anyOf": [
               {
@@ -9420,6 +9585,18 @@
                 "type": "null"
               }
             ]
+          },
+          "school_year": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Year"
           }
         },
         "type": "object",
@@ -9428,7 +9605,7 @@
           "email"
         ],
         "title": "WalkInIn",
-        "description": "\"Veio sem inscrição? Adicionar participante\" (#346, RF-F3.03, RF-F1.09).\n\nName and e-mail are required; the study level is optional. WhatsApp and\n\"Série\" come with the registration of C2 (#232, #235)."
+        "description": "\"Veio sem inscrição? Adicionar participante\" (#346, RF-F3.03, RF-F1.09).\n\nThe same fields and validation as \"Adicionar inscrita\" of C2 (#235): name and\ne-mail are required; WhatsApp, study level and school year are optional."
       },
       "WalkInOut": {
         "properties": {
