@@ -1,9 +1,10 @@
 "use client";
 
 // A10 · Perfil (RF-F7.11, RF-F7.12, RF-S2.09, RF-S2.10, #391): conta, o que
-// interessa a ela, grupo, caminho, e-mails, termos e sair. Cada seção é um
-// cartão em components/Profile*Card.tsx. Só ela vê o próprio perfil: não há id
-// na URL, e o servidor decide quem pode abrir (RNF-G.03).
+// interessa a ela, grupo, eventos de que participou (RF-F2.03), caminho,
+// e-mails, termos e sair. Cada seção é um cartão em components/Profile*Card.tsx.
+// Só ela vê o próprio perfil: não há id na URL, e o servidor decide quem pode
+// abrir (RNF-G.03).
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -14,6 +15,7 @@ import { Loading } from "@/components/Loading";
 import { LoadFailed } from "@/components/LoadFailed";
 import { ProfileAccountCard } from "@/components/ProfileAccountCard";
 import { ProfileEmailsCard } from "@/components/ProfileEmailsCard";
+import { ProfileEventsCard } from "@/components/ProfileEventsCard";
 import { ProfileGroupCard } from "@/components/ProfileGroupCard";
 import { ProfileInterestsCard } from "@/components/ProfileInterestsCard";
 import { ProfileLeaveCard } from "@/components/ProfileLeaveCard";
@@ -21,10 +23,20 @@ import { ProfilePathCard } from "@/components/ProfilePathCard";
 import { ProfileTermsCard } from "@/components/ProfileTermsCard";
 import { accessPath } from "@/lib/lista-oficial";
 import { type ProfileCourseOut, getProfileCourse } from "@/lib/perfil-curso";
-import { PROFILE_PATHS, type ProfileDetails, getProfileDetails } from "@/lib/profile-api";
+import {
+  PROFILE_PATHS,
+  type ProfileDetails,
+  type ProfileEvents,
+  getProfileDetails,
+  getProfileEvents,
+} from "@/lib/profile-api";
 import styles from "./page.module.css";
 
-type Loaded = { details: ProfileDetails; course: ProfileCourseOut };
+type Loaded = {
+  details: ProfileDetails;
+  course: ProfileCourseOut;
+  events: ProfileEvents["events"];
+};
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -34,17 +46,31 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([getProfileDetails(controller.signal), getProfileCourse(controller.signal)])
-      .then(([details, course]) => {
-        if (details.ok && course.ok) {
-          setLoaded({ details: details.profile, course: course.profile });
-          return;
+    Promise.all([
+      getProfileDetails(controller.signal),
+      getProfileCourse(controller.signal),
+      // Os eventos são um cartão a mais: se só eles falharem (erro ou sem rede),
+      // o perfil aparece sem o cartão. Login vencido e termos novos seguem abaixo.
+      getProfileEvents(controller.signal).catch(() => ({ ok: false, reason: "failed" }) as const),
+    ])
+      .then(([details, course, events]) => {
+        // Login vencido ou termos novos, em qualquer das três: "Tentar
+        // novamente" não resolveria.
+        for (const result of [details, course, events]) {
+          if (!result.ok && result.reason !== "failed") {
+            router.replace(accessPath(result.reason));
+            return;
+          }
         }
-        const failure = details.ok ? course : details;
-        if (failure.ok) return;
-        if (failure.reason === "failed") setLoaded("error");
-        // Login vencido ou termos novos: "Tentar novamente" não resolveria.
-        else router.replace(accessPath(failure.reason));
+        if (details.ok && course.ok) {
+          setLoaded({
+            details: details.profile,
+            course: course.profile,
+            events: events.ok ? events.events : [],
+          });
+        } else {
+          setLoaded("error");
+        }
       })
       .catch(() => {
         // Sem rede. Se ela só saiu da página, não há o que mostrar.
@@ -97,6 +123,7 @@ export default function ProfilePage() {
                 editHref={PROFILE_PATHS.interests}
               />
               <ProfileGroupCard origin={loaded.details.origin} />
+              <ProfileEventsCard events={loaded.events} />
               <ProfilePathCard profile={loaded.course} />
               <ProfileEmailsCard opportunityEmails={loaded.details.opportunityEmails} />
               <ProfileTermsCard />

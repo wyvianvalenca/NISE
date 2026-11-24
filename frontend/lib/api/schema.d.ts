@@ -595,6 +595,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/profile/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Events */
+        get: operations["profile_events_api_profile_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/profile/course": {
         parameters: {
             query?: never;
@@ -2583,6 +2600,30 @@ export interface components {
             opportunityEmails: boolean;
         };
         /**
+         * ProfileEventOut
+         * @description Um evento de que ela participou: o nome e o dia em que começou.
+         */
+        ProfileEventOut: {
+            /** Name */
+            name: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+        };
+        /**
+         * ProfileEventsOut
+         * @description Os eventos do cartão "Eventos de que você participou" (RF-F2.03).
+         *
+         *     Só nome e data. Sem id de ação, de grupo ou de menina, e sem a hora da
+         *     presença.
+         */
+        ProfileEventsOut: {
+            /** Events */
+            events: components["schemas"]["ProfileEventOut"][];
+        };
+        /**
          * ProfileOut
          * @description O perfil da menina da sessão, do jeito que o app lê.
          *
@@ -4432,6 +4473,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileDetailsOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_events_api_profile_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileEventsOut"];
                 };
             };
             /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */

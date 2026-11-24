@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import type { ProfileCourseIn, ProfileCourseOut } from "../lib/perfil-curso";
-import type { ProfileDetails } from "../lib/profile-api";
+import type { ProfileDetails, ProfileEvents } from "../lib/profile-api";
 import { OPTIONS } from "./followup-api";
 import { type Failure, fail } from "./terms-api";
 
@@ -36,11 +36,15 @@ type Options = {
   details?: Partial<ProfileDetails>;
   /** Como GET /api/profile/details responde. Padrão: 200. */
   detailsLoad?: 200 | "terms_not_accepted" | Failure;
+  /** Os eventos de que ela participou (#391). Padrão: nenhum, e o cartão some. */
+  events?: ProfileEvents["events"];
+  /** Como GET /api/profile/events responde. Padrão: 200. */
+  eventsLoad?: 200 | "terms_not_accepted" | Failure;
 };
 
 /**
- * Responde GET e POST /api/profile/course, GET /api/profile/details e
- * GET /api/followup/options.
+ * Responde GET e POST /api/profile/course, GET /api/profile/details,
+ * GET /api/profile/events e GET /api/followup/options.
  * Devolve a lista dos corpos enviados no POST, para o teste conferir.
  * Chamar de novo no mesmo teste troca as respostas.
  */
@@ -48,7 +52,7 @@ export async function mockProfileCourseApi(
   page: Page,
   options: Options = {},
 ): Promise<ProfileCourseIn[]> {
-  const { load = 200, save = 204, detailsLoad = 200 } = options;
+  const { load = 200, save = 204, detailsLoad = 200, eventsLoad = 200 } = options;
   let current = options.course ?? { level: null, course: null };
   const sent: ProfileCourseIn[] = [];
 
@@ -62,6 +66,15 @@ export async function mockProfileCourseApi(
     }
     if (detailsLoad !== 200) return fail(route, detailsLoad);
     return route.fulfill({ json: { ...PROFILE_DETAILS, ...options.details } });
+  });
+
+  await page.route("**/api/profile/events", (route) => {
+    if (eventsLoad === "terms_not_accepted") {
+      return route.fulfill({ status: 403, json: { error: "terms_not_accepted" } });
+    }
+    if (eventsLoad !== 200) return fail(route, eventsLoad);
+    const body: ProfileEvents = { events: options.events ?? [] };
+    return route.fulfill({ json: body });
   });
 
   await page.route("**/api/profile/course", (route) => {

@@ -38,3 +38,28 @@ export async function getProfileDetails(signal?: AbortSignal): Promise<ProfileDe
     return { ok: false, reason: "failed" };
   }
 }
+
+/** Os eventos de que ela participou como a rota devolve: só nome e data (RF-F2.03). */
+export type ProfileEvents = components["schemas"]["ProfileEventsOut"];
+
+export type ProfileEventsResult =
+  | { ok: true; events: ProfileEvents["events"] }
+  | { ok: false; reason: AccessProblem | "failed" };
+
+/**
+ * Os eventos de que ela participou (GET /api/profile/events): até 5, do mais
+ * recente para o mais antigo. Sem rede, a promessa falha (como o fetch).
+ */
+export async function getProfileEvents(signal?: AbortSignal): Promise<ProfileEventsResult> {
+  const response = await fetch("/api/profile/events", { signal });
+
+  if (!response.ok) {
+    return { ok: false, reason: (await accessProblem(response)) ?? "failed" };
+  }
+
+  try {
+    return { ok: true, events: ((await response.json()) as ProfileEvents).events };
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
+}

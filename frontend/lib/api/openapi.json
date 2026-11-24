@@ -2537,6 +2537,78 @@
         }
       }
     },
+    "/api/profile/events": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Profile Events",
+        "operationId": "profile_events_api_profile_events_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileEventsOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/profile/course": {
       "get": {
         "tags": [
@@ -8911,6 +8983,43 @@
         ],
         "title": "ProfileDetailsOut",
         "description": "O que a A10 mostra do perfil dela (RF-F7.11, RF-F7.12, RF-S2.09).\n\nSó o que a tela exibe. Sem data de nascimento, hash de senha, ids nem o\nidentificador da conta Google. Tudo vai só para ela."
+      },
+      "ProfileEventOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "date"
+        ],
+        "title": "ProfileEventOut",
+        "description": "Um evento de que ela participou: o nome e o dia em que começou."
+      },
+      "ProfileEventsOut": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileEventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "ProfileEventsOut",
+        "description": "Os eventos do cartão \"Eventos de que você participou\" (RF-F2.03).\n\nSó nome e data. Sem id de ação, de grupo ou de menina, e sem a hora da\npresença."
       },
       "ProfileOut": {
         "properties": {

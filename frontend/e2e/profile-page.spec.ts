@@ -103,6 +103,85 @@ test("sem grupo: não diz que um grupo vai aparecer", async ({ page }) => {
   await expect(page.getByText(/o grupo aparece aqui/)).toHaveCount(0);
 });
 
+const EVENTS = [
+  { name: "Oficina de Python", date: "2026-10-11" },
+  { name: "Roda de conversa sobre carreira em tecnologia", date: "2026-09-02" },
+  { name: "Feira de Ciências", date: "2026-03-30" },
+];
+
+test("eventos de que participou: um cartão com nome e data de cada um, na ordem que veio", async ({
+  page,
+}) => {
+  await mockProfileCourseApi(page, { events: EVENTS });
+  await page.goto(PROFILE);
+
+  const card = page.getByRole("region", { name: "Eventos de que você participou" });
+  await expect(
+    card.getByRole("heading", { name: "Eventos de que você participou", level: 2 }),
+  ).toBeVisible();
+  await expect(card.locator("span")).toHaveText([
+    "Oficina de Python",
+    "11 de out",
+    "Roda de conversa sobre carreira em tecnologia",
+    "2 de set",
+    "Feira de Ciências",
+    "30 de mar",
+  ]);
+});
+
+test("o cartão de eventos fica entre Seu grupo e Seu caminho", async ({ page }) => {
+  await mockProfileCourseApi(page, { events: EVENTS });
+  await page.goto(PROFILE);
+
+  await expect(page.getByRole("region", { name: "Eventos de que você participou" })).toBeVisible();
+  const titles = await page.locator("main h2").allTextContents();
+  const events = titles.indexOf("Eventos de que você participou");
+  expect(events).toBe(titles.indexOf("Seu grupo") + 1);
+  expect(events).toBe(titles.indexOf("Seu caminho") - 1);
+});
+
+test("sem eventos, o cartão some (nem o título)", async ({ page }) => {
+  await mockProfileCourseApi(page, { events: [] });
+  await page.goto(PROFILE);
+
+  await expect(page.getByRole("region", { name: "Seu caminho" })).toBeVisible();
+  await expect(page.getByText("Eventos de que você participou")).toHaveCount(0);
+});
+
+test("a rota de eventos falhar não derruba o perfil: só o cartão some", async ({ page }) => {
+  await mockProfileCourseApi(page, { events: EVENTS, eventsLoad: 500 });
+  await page.goto(PROFILE);
+
+  await expect(page.getByText("Alana Ficticia", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Seu caminho" })).toBeVisible();
+  await expect(page.getByText("Não foi possível carregar")).toHaveCount(0);
+  await expect(page.getByText("Eventos de que você participou")).toHaveCount(0);
+});
+
+test("a rota de eventos sem rede também não derruba o perfil", async ({ page }) => {
+  await mockProfileCourseApi(page, { events: EVENTS });
+  await page.route("**/api/profile/events", (route) => route.abort());
+  await page.goto(PROFILE);
+
+  await expect(page.getByRole("region", { name: "Seu caminho" })).toBeVisible();
+  await expect(page.getByText("Eventos de que você participou")).toHaveCount(0);
+});
+
+test("eventos: sem sessão manda para o início", async ({ page }) => {
+  await mockProfileCourseApi(page, { eventsLoad: 401 });
+  await page.goto(PROFILE);
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("eventos: sem aceitar a versão atual dos termos, manda para o aceite", async ({ page }) => {
+  await mockTermsApi(page);
+  await mockProfileCourseApi(page, { eventsLoad: "terms_not_accepted" });
+  await page.goto(PROFILE);
+
+  await expect(page).toHaveURL(/\/cadastro\/termos$/);
+});
+
 test("Seu caminho segue o do #345", async ({ page }) => {
   await mockProfileCourseApi(page, {
     course: { level: "graduacao", course: "Ciência da Computação" },
@@ -308,7 +387,7 @@ for (const width of [360, 1366]) {
 // Figma A10: cada seção é um cartão (fundo claro, borda, raio 14, padding 16) e o título
 // fica fora dele. Sem isso a tela vira texto solto na página (já aconteceu).
 test("cada seção é um cartão com borda e raio, e o título fica fora dele", async ({ page }) => {
-  await mockProfileCourseApi(page, { details: GROUP_ORIGIN });
+  await mockProfileCourseApi(page, { details: GROUP_ORIGIN, events: EVENTS });
   await page.goto(PROFILE);
   await expect(page.getByRole("heading", { name: "Perfil", level: 1 })).toBeVisible();
 
@@ -316,6 +395,7 @@ test("cada seção é um cartão com borda e raio, e o título fica fora dele", 
     "Sua conta",
     "O que te interessa",
     "Seu grupo",
+    "Eventos de que você participou",
     "Seu caminho",
     "O que chega no seu e-mail",
     "Termos e privacidade",
