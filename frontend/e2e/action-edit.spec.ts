@@ -1,16 +1,21 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockActionsListApi, type ActionsListApi } from "./actions-list-api";
 
 /**
  * K02 filled in, to edit an action (#222).
  *
- * Action 1 of the provisional contract is an open, in-person action of one
+ * Action 1 of the mock (actions-list-api.ts) is an open, in-person action of one
  * day with a city, times, tags and an audience; action 2 is a closed online
- * one of two days. Only the IBGE city search is mocked. Fictional data only.
+ * one of two days. GET and PUT /api/actions/{id} and the IBGE city search are
+ * mocked. Fictional data only.
  */
 
 const CITIES = [{ id: "2704302", name: "Maceió, AL" }];
 
+let api: ActionsListApi;
+
 test.beforeEach(async ({ page }) => {
+  api = await mockActionsListApi(page);
   await page.route("**/api/cities**", (route) => route.fulfill({ json: CITIES }));
 });
 
@@ -119,7 +124,8 @@ test("an end date before the start date is refused", async ({ page }) => {
 });
 
 test("a failed save keeps the changes", async ({ page }) => {
-  await page.goto("/coordenacao/acoes/1/editar?fail");
+  api.saveStatus = 500;
+  await page.goto("/coordenacao/acoes/1/editar");
   await page.getByLabel("Nome da ação").fill("Outro nome");
   await save(page).click();
 
@@ -159,4 +165,47 @@ test("has no horizontal scroll at 1366 px", async ({ page }) => {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBe(0);
+});
+
+test("saving sends the whole form to PUT, with the times as HH:MM and empty fields as null", async ({ page }) => {
+  await page.goto("/coordenacao/acoes/1/editar");
+  await page.getByLabel("Nome da ação").fill("Robótica para iniciantes");
+  await save(page).click();
+  await expect(page).toHaveURL(/salva=1$/);
+
+  expect(api.saved).toEqual([
+    {
+      method: "PUT",
+      id: 1,
+      body: {
+        name: "Robótica para iniciantes",
+        type: "oficina",
+        starts_on: "2026-10-24",
+        ends_on: null,
+        format: "in_person",
+        city_ibge_code: 2704302,
+        visibility: "open",
+        registration_url: "https://forms.gle/rendeiras-robotica",
+        starts_at_time: "14:00",
+        ends_at_time: "17:00",
+        address: "Campus de exemplo, Laboratório de Robótica",
+        description: "Vamos montar e programar um robô simples, em dupla.",
+        topics: ["robotica"],
+        audiences: ["medio", "tecnico"],
+      },
+    },
+  ]);
+});
+
+test("a server error while loading offers Tentar novamente", async ({ page }) => {
+  let calls = 0;
+  await page.route("**/api/actions/1", (route) => {
+    calls += 1;
+    return calls === 1 ? route.fulfill({ status: 500, json: { detail: "Erro" } }) : route.fallback();
+  });
+  await page.goto("/coordenacao/acoes/1/editar");
+
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Não foi possível carregar a ação.");
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page.getByLabel("Nome da ação")).toHaveValue("Introdução à robótica");
 });
