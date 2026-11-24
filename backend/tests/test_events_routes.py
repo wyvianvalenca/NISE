@@ -181,6 +181,8 @@ async def test_evento_de_fora_mostra_tudo_o_que_a_tela_pede() -> None:
         "stage": "Ensino médio",
         "prerequisites": ["Não precisa saber programar", "Ter 14 anos"],
         "registrationUrl": "https://exemplo.com/hackathon",
+        # O primeiro nome da menina da sessão, para a celebração (A06·5).
+        "firstName": "Alana",
     }
     # Só ler não muda nada.
     sessao_falsa.commit.assert_not_called()
