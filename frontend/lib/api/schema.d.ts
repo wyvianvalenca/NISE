@@ -4436,7 +4436,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Só menina exclui a própria conta; sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            /** @description Só menina exclui a própria conta */
             403: {
                 headers: {
                     [name: string]: unknown;

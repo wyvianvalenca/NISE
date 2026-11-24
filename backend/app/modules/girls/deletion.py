@@ -14,7 +14,6 @@ from app.modules.admissions.models import (
 )
 from app.modules.answers.models import Answer
 from app.modules.attendance.models import AttendanceEmail
-from app.modules.consents.service import has_accepted_current_terms
 from app.modules.followup.models import FollowupAnswer
 from app.modules.girl_file.models import FileEntry
 from app.modules.girls.models import ANONYMIZED_NAME, Girl, GirlTopic
@@ -28,7 +27,6 @@ class DeletionResult(enum.Enum):
     ALREADY_DELETED = "already_deleted"
     NO_ACCOUNT = "no_account"
     NOT_A_GIRL = "not_a_girl"
-    TERMS_NOT_ACCEPTED = "terms_not_accepted"
 
 
 async def delete_account(
@@ -59,9 +57,6 @@ async def delete_account(
 
     if user.role != Role.GIRL:
         return DeletionResult.NOT_A_GIRL
-
-    if not await has_accepted_current_terms(session, user_id):
-        return DeletionResult.TERMS_NOT_ACCEPTED
 
     now = datetime.now(UTC)
     girl_id = await session.scalar(select(Girl.id).where(Girl.user_id == user_id))

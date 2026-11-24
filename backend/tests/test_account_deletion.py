@@ -50,18 +50,12 @@ def alana_excluida() -> User:
     return conta
 
 
-def sessao_da_exclusao(
-    usuaria: User | None, girl_id: int | None = 7, aceitou: bool = True
-) -> AsyncMock:
-    # Na ordem em que o serviço pergunta: a usuária (travada), o aceite dos
-    # termos e o id da menina. Uma segunda chamada recebe a usuária de novo.
+def sessao_da_exclusao(usuaria: User | None, girl_id: int | None = 7) -> AsyncMock:
+    # Na ordem em que o serviço pergunta: a usuária (travada) e o id da menina.
+    # Não há pergunta sobre os termos: a exclusão não depende do aceite.
+    # Uma segunda chamada recebe a usuária de novo.
     sessao_falsa = AsyncMock()
-    sessao_falsa.scalar.side_effect = [
-        usuaria,
-        1 if aceitou else None,
-        girl_id,
-        usuaria,
-    ]
+    sessao_falsa.scalar.side_effect = [usuaria, girl_id, usuaria]
     return sessao_falsa
 
 
@@ -249,7 +243,7 @@ async def test_excluir_acha_a_menina_pelo_user_id_da_sessao() -> None:
     await excluir(sessao_falsa)
 
     consultas = [sql_com_valores(c.args[0]) for c in sessao_falsa.scalar.call_args_list]
-    assert consultas[2] == "SELECT girls.id FROM girls WHERE girls.user_id = 1"
+    assert consultas[1] == "SELECT girls.id FROM girls WHERE girls.user_id = 1"
 
 
 # C3: nada some do que alimenta painel nem o aceite dos termos.
@@ -368,19 +362,19 @@ async def test_coordenadora_nao_exclui_responde_403_e_nada_e_gravado() -> None:
     assert coordenadora.email == EMAIL
 
 
-async def test_sem_aceite_dos_termos_responde_403_e_nada_e_gravado() -> None:
+async def test_sem_aceite_dos_termos_atuais_a_exclusao_acontece_mesmo_assim() -> None:
+    # Quem recusa a versão nova dos termos precisa poder sair (RF-F7.09).
     usuaria = alana()
-    sessao_falsa = sessao_da_exclusao(usuaria, aceitou=False)
+    sessao_falsa = sessao_da_exclusao(usuaria)
 
     response = await chamar_rota(
         app, "DELETE", "/api/profile", sessao_falsa, token=create_access_token(1)
     )
 
-    assert response.status_code == 403
-    assert response.json() == {"error": "terms_not_accepted"}
-    sessao_falsa.execute.assert_not_awaited()
-    sessao_falsa.commit.assert_not_awaited()
-    assert usuaria.deleted_at is None
+    assert response.status_code == 204
+    sessao_falsa.commit.assert_awaited_once()
+    assert usuaria.deleted_at is not None
+    assert sessao_falsa.scalar.await_count == 2
 
 
 async def test_nao_ha_rota_com_id_na_url() -> None:
@@ -410,9 +404,6 @@ async def test_servico_devolve_cada_resultado() -> None:
     assert await delete_account(sessao_da_exclusao(coordenadora), 1, hoje) == (
         DeletionResult.NOT_A_GIRL
     )
-    assert await delete_account(
-        sessao_da_exclusao(alana(), aceitou=False), 1, hoje
-    ) == (DeletionResult.TERMS_NOT_ACCEPTED)
     assert await delete_account(sessao_da_exclusao(alana()), 1, hoje) == (
         DeletionResult.DELETED
     )
