@@ -72,12 +72,21 @@ class InterestsIn(BaseModel):
 class ProfileOut(BaseModel):
     """O perfil da menina da sessão, do jeito que o app lê.
 
-    Por enquanto só o que o filé precisa: se ela já viu "Por que filé?"
-    (RF-F10.02, #84). O front lê em camelCase (Profile em
-    frontend/lib/file-intro.ts). Sem nome, e-mail nem data de nascimento.
+    O filé precisa de `fileIntroSeen` (RF-F10.02, #84); a A10 precisa do resto
+    para abrir marcada: temas, "me mostra de tudo", etapa de estudo
+    (RF-F10.10) e se ela recebe e-mails de oportunidade (RF-F7.08). O front lê
+    em camelCase (Profile em frontend/lib/file-intro.ts). Sem nome, e-mail nem
+    data de nascimento.
     """
 
     file_intro_seen: bool = Field(serialization_alias="fileIntroSeen")
+    # Na ordem da lista de temas. Vazio quando ela escolheu "me mostra de tudo"
+    # ou quando ainda não respondeu a A05.
+    topics: list[Topic]
+    everything: bool
+    # Vazio enquanto ela não respondeu a A05 (menina só importada).
+    stage: StudyStage | None
+    opportunity_emails: bool = Field(serialization_alias="opportunityEmails")
 
 
 # O front lê e manda em camelCase (courseStatus, otherCourse). Mesma regra de

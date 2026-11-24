@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { mockProfileCourseApi } from "./perfil-api";
+import { expect, test, type Page } from "@playwright/test";
+import type { ProfileOut } from "../lib/perfil-interesses";
+import { mockProfileApi, mockProfileCourseApi } from "./perfil-api";
 
 // #298 · A10 "Seu caminho" e A10b "Conta pra gente do seu curso". As rotas do
 // curso são simuladas. Dados fictícios.
@@ -191,6 +192,8 @@ test("dá para registrar só com o teclado, com foco visível", async ({ page })
   await register.focus();
   await expect(register).toHaveCSS("outline-style", "solid");
   await page.keyboard.press("Enter");
+  // O perfil também tem um "Graduação" (etapa de estudo): espera a A10b abrir.
+  await expect(page).toHaveURL(/\/perfil\/curso$/);
 
   const graduation = page.getByRole("button", { name: "Graduação" });
   await expect(graduation).toBeVisible();
@@ -239,3 +242,232 @@ for (const width of [360, 1366]) {
 function overflow(page: import("@playwright/test").Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
+
+// Curso e perfil simulados juntos: a A10 lê os dois. O perfil vale por último.
+async function setup(page: Page, options: Parameters<typeof mockProfileApi>[1] = {}) {
+  await mockProfileCourseApi(page);
+  return mockProfileApi(page, options);
+}
+
+// #392 · "Seus interesses". As rotas do perfil são simuladas.
+
+const MARKED: Partial<ProfileOut> = {
+  topics: ["programacao", "design"],
+  stage: "medio",
+};
+
+test("os interesses abrem marcados com o que ela já escolheu", async ({ page }) => {
+  await setup(page, { profile: MARKED });
+  await page.goto(PROFILE);
+
+  await expect(page.getByRole("heading", { name: "Seus interesses" })).toBeVisible();
+  const topics = page.getByRole("group", { name: "Temas" });
+  await expect(topics.getByRole("button", { name: "Programação" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(topics.getByRole("button", { name: "Design e criação" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(topics.getByRole("button", { name: "Robótica" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(page.getByRole("button", { name: "Ensino médio" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test('"me mostra de tudo" abre marcado e sem temas', async ({ page }) => {
+  await setup(page, { profile: { everything: true, stage: "graduacao" } });
+  await page.goto(PROFILE);
+
+  await expect(
+    page.getByRole("button", { name: "Ainda não sei, me mostra de tudo" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("group", { name: "Temas" }).locator('[aria-pressed="true"]'),
+  ).toHaveCount(0);
+});
+
+test("sem nenhum interesse, salvar fica desligado até ela escolher tema e etapa", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto(PROFILE);
+  const save = page.getByRole("button", { name: "Salvar interesses" });
+
+  await expect(save).toBeDisabled();
+  await page.getByRole("button", { name: "Jogos" }).click();
+  await expect(save).toBeDisabled();
+  await page.getByRole("button", { name: "Ensino médio" }).click();
+  await expect(save).toBeEnabled();
+});
+
+test("escolher um tema desmarca o de tudo, e o de tudo desmarca os temas", async ({
+  page,
+}) => {
+  await setup(page, { profile: MARKED });
+  await page.goto(PROFILE);
+  const everything = page.getByRole("button", { name: "Ainda não sei, me mostra de tudo" });
+
+  await everything.click();
+  await expect(everything).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("group", { name: "Temas" }).locator('[aria-pressed="true"]'),
+  ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Dados" }).click();
+  await expect(everything).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Dados" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("salvar interesses manda as escolhas e avisa", async ({ page }) => {
+  const { interests } = await setup(page, { profile: MARKED });
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Design e criação" }).click();
+  await page.getByRole("button", { name: "Robótica" }).click();
+  await page.getByRole("button", { name: "Graduação" }).click();
+  await page.getByRole("button", { name: "Salvar interesses" }).click();
+
+  await expect(page.getByText("Interesses salvos.")).toBeVisible();
+  expect(interests).toEqual([
+    { topics: ["programacao", "robotica"], everything: false, stage: "graduacao" },
+  ]);
+});
+
+test("salvar com o de tudo manda tema vazio", async ({ page }) => {
+  const { interests } = await setup(page, { profile: MARKED });
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Ainda não sei, me mostra de tudo" }).click();
+  await page.getByRole("button", { name: "Salvar interesses" }).click();
+
+  await expect(page.getByText("Interesses salvos.")).toBeVisible();
+  expect(interests).toEqual([{ topics: [], everything: true, stage: "medio" }]);
+});
+
+test("erro ao salvar interesses mostra o aviso e mantém as escolhas", async ({ page }) => {
+  const { interests } = await setup(page, {
+    profile: MARKED,
+    saveInterests: 500,
+  });
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Jogos" }).click();
+  await page.getByRole("button", { name: "Salvar interesses" }).click();
+
+  await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Jogos" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Salvar interesses" })).toBeEnabled();
+  expect(interests).toHaveLength(1);
+});
+
+test("sem sessão ao salvar interesses, manda para o início", async ({ page }) => {
+  await setup(page, { profile: MARKED, saveInterests: 401 });
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Jogos" }).click();
+  await page.getByRole("button", { name: "Salvar interesses" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
+// #393 · "E-mails". Só as oportunidades têm chave (RF-F7.08).
+
+test("e-mails de oportunidade abrem como ela deixou", async ({ page }) => {
+  await setup(page, { profile: { opportunityEmails: true } });
+  await page.goto(PROFILE);
+
+  await expect(page.getByRole("button", { name: "Quero receber", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Não quero receber" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
+
+test("desligar as oportunidades grava e avisa", async ({ page }) => {
+  const { emails } = await setup(page, { profile: { opportunityEmails: true } });
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Não quero receber" }).click();
+
+  await expect(page.getByText("Você não vai receber oportunidades por e-mail.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Não quero receber" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(emails).toEqual([false]);
+});
+
+test("ligar as oportunidades grava e avisa", async ({ page }) => {
+  const { emails } = await setup(page);
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Quero receber", exact: true }).click();
+
+  await expect(page.getByText("Você vai receber oportunidades por e-mail.")).toBeVisible();
+  expect(emails).toEqual([true]);
+});
+
+test("escolher o que já está marcado não chama o back", async ({ page }) => {
+  const { emails } = await setup(page);
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Não quero receber" }).click();
+
+  expect(emails).toHaveLength(0);
+});
+
+test("erro ao salvar o e-mail mantém a escolha anterior", async ({ page }) => {
+  await setup(page, { profile: { opportunityEmails: true }, saveEmails: 500 });
+  await page.goto(PROFILE);
+
+  await page.getByRole("button", { name: "Não quero receber" }).click();
+
+  await expect(page.getByText("Não deu pra salvar. Tente de novo.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quero receber", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("questionários e lembretes aparecem como informação, sem interruptor", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto(PROFILE);
+
+  await expect(
+    page.getByText("Questionários e lembretes de datas importantes"),
+  ).toBeVisible();
+  await expect(page.getByRole("group", { name: "Oportunidades por e-mail" })).toBeVisible();
+  await expect(page.getByRole("switch")).toHaveCount(0);
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+});
+
+test("sem sessão ao carregar o perfil, manda para o início", async ({ page }) => {
+  await setup(page, { load: 401 });
+  await page.goto(PROFILE);
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("falha ao ler o perfil mostra o aviso com nova tentativa", async ({ page }) => {
+  await setup(page, { load: 500 });
+  await page.goto(PROFILE);
+
+  await expect(page.getByText("Não foi possível carregar")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
+});

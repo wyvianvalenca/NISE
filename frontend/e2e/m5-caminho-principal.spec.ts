@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "../lib/api/schema";
 import { OPTIONS } from "./followup-api";
+import { mockProfileApi } from "./perfil-api";
 
 /**
  * E2E · M5, caminho principal (#301): do questionário ao perfil.
@@ -74,6 +75,8 @@ async function serve(page: Page, backend: FakeBackend): Promise<void> {
     return route.fulfill(noContent);
   });
   await page.route("**/api/profile/course", (route) => route.fulfill({ json: backend.course }));
+  // A A10 também lê interesses e e-mails, que este caminho não usa.
+  await mockProfileApi(page);
 }
 
 /**

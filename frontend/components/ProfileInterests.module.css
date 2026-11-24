@@ -1,0 +1,42 @@
+/* A10 · "Seus interesses": os mesmos temas e etapas da A05. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Dois temas por linha. */
+.topics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stageTitle {
+  margin-top: 4px;
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved {
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.error {
+  color: var(--nise-error);
+  font-size: 14px;
+}

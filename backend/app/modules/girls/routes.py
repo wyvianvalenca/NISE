@@ -10,6 +10,7 @@ from app.modules.admissions.service import (
     current_enrollment,
 )
 from app.modules.consents.permissions import AcceptedGirlDep
+from app.modules.girls.models import Topic
 from app.modules.girls.schemas import (
     InterestOptionsOut,
     InterestsIn,
@@ -125,7 +126,15 @@ async def profile(
     if girl is None:
         return profile_not_found()
 
-    return ProfileOut(file_intro_seen=girl.file_intro_seen)
+    chosen = {item.topic for item in girl.topics}
+
+    return ProfileOut(
+        file_intro_seen=girl.file_intro_seen,
+        topics=[topic for topic in Topic if topic in chosen],
+        everything=girl.all_topics,
+        stage=girl.study_stage,
+        opportunity_emails=user.opportunity_emails,
+    )
 
 
 # "Começar meu filé" na A06·0: depois disso a explicação não abre mais

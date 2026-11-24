@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
-import type { IconName } from "@/components/Icon";
 import { Loading } from "@/components/Loading";
 import { TopicToggle } from "@/components/TopicToggle";
 import { SIGNUP_PATHS } from "@/lib/signup";
+import { DEFAULT_TOPIC_ICON, TOPIC_ICONS } from "@/lib/topic-icons";
 import {
   getInterestOptions,
   type InterestOptions,
@@ -20,20 +20,6 @@ import {
 } from "@/lib/signup-api";
 import shared from "../cadastro.module.css";
 import styles from "./page.module.css";
-
-// Ícone de cada tema. Os temas vêm do back: um código sem ícone aqui usa o
-// ícone genérico, em vez de quebrar a imagem.
-const TOPIC_ICONS: Record<string, IconName> = {
-  programacao: "topic-programacao",
-  robotica: "topic-robotica",
-  ia: "topic-ia",
-  dados: "topic-dados",
-  ciberseguranca: "topic-ciberseguranca",
-  jogos: "topic-jogos",
-  sites: "topic-sites",
-  design: "topic-design",
-};
-const DEFAULT_TOPIC_ICON: IconName = "sparkle";
 
 export default function InterestsPage() {
   const router = useRouter();

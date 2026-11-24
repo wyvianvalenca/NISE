@@ -7,7 +7,7 @@ from httpx2 import Response
 
 from app.auth.utils import create_access_token
 from app.main import app
-from app.modules.girls.models import Girl
+from app.modules.girls.models import Girl, GirlTopic, StudyStage, Topic
 from app.modules.girls.service import get_girl_of_user, mark_file_intro_seen
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com
@@ -15,17 +15,30 @@ from tests.helpers import chamar_rota, sessao_com
 
 def usuaria(id: int = 1, role: Role = Role.GIRL) -> User:
     return User(
-        id=id, email=f"menina{id}@exemplo.com", name="Menina Ficticia", role=role
+        id=id,
+        email=f"menina{id}@exemplo.com",
+        name="Menina Ficticia",
+        role=role,
+        opportunity_emails=False,
     )
 
 
-def registro(user_id: int = 1, ja_viu: bool = False) -> Girl:
+def registro(
+    user_id: int = 1,
+    ja_viu: bool = False,
+    temas: tuple[Topic, ...] = (),
+    de_tudo: bool = False,
+    etapa: StudyStage | None = None,
+) -> Girl:
     return Girl(
         id=user_id + 10,
         email=f"menina{user_id}@exemplo.com",
         name="Menina Ficticia",
         user_id=user_id,
         file_intro_seen=ja_viu,
+        all_topics=de_tudo,
+        study_stage=etapa,
+        topics=[GirlTopic(topic=tema) for tema in temas],
     )
 
 
@@ -118,20 +131,69 @@ async def test_quem_nao_viu_e_avisada_que_nao_viu() -> None:
     response = await ler_perfil(sessao_do_perfil(usuaria(), registro()))
 
     assert response.status_code == 200
-    assert response.json() == {"fileIntroSeen": False}
+    assert response.json()["fileIntroSeen"] is False
 
 
 async def test_quem_ja_viu_e_avisada_que_viu() -> None:
     response = await ler_perfil(sessao_do_perfil(usuaria(), registro(ja_viu=True)))
 
     assert response.status_code == 200
-    assert response.json() == {"fileIntroSeen": True}
+    assert response.json()["fileIntroSeen"] is True
+
+
+async def test_perfil_traz_temas_na_ordem_da_lista_e_a_etapa() -> None:
+    menina = registro(temas=(Topic.DESIGN, Topic.PROGRAMACAO), etapa=StudyStage.MEDIO)
+
+    response = await ler_perfil(sessao_do_perfil(usuaria(), menina))
+
+    corpo = response.json()
+    assert corpo["topics"] == ["programacao", "design"]
+    assert corpo["everything"] is False
+    assert corpo["stage"] == StudyStage.MEDIO.value
+
+
+async def test_perfil_de_quem_quer_de_tudo_vem_sem_temas() -> None:
+    menina = registro(de_tudo=True, etapa=StudyStage.MEDIO)
+
+    response = await ler_perfil(sessao_do_perfil(usuaria(), menina))
+
+    corpo = response.json()
+    assert corpo["topics"] == []
+    assert corpo["everything"] is True
+
+
+async def test_perfil_de_quem_nao_respondeu_a_a05_vem_sem_etapa() -> None:
+    response = await ler_perfil(sessao_do_perfil(usuaria(), registro()))
+
+    corpo = response.json()
+    assert corpo["topics"] == []
+    assert corpo["everything"] is False
+    assert corpo["stage"] is None
+
+
+async def test_perfil_diz_se_os_emails_de_oportunidade_estao_ligados() -> None:
+    ligada = usuaria()
+    ligada.opportunity_emails = True
+    desligada = usuaria()
+    desligada.opportunity_emails = False
+
+    com = await ler_perfil(sessao_do_perfil(ligada, registro()))
+    sem = await ler_perfil(sessao_do_perfil(desligada, registro()))
+
+    assert com.json()["opportunityEmails"] is True
+    assert sem.json()["opportunityEmails"] is False
 
 
 async def test_perfil_nao_traz_dados_pessoais() -> None:
     response = await ler_perfil(sessao_do_perfil(usuaria(), registro()))
 
-    assert set(response.json()) == {"fileIntroSeen"}
+    assert set(response.json()) == {
+        "fileIntroSeen",
+        "topics",
+        "everything",
+        "stage",
+        "opportunityEmails",
+    }
 
 
 async def test_perfil_de_conta_sem_registro_de_menina_responde_404() -> None:
@@ -174,7 +236,7 @@ async def test_depois_de_marcar_ela_e_avisada_que_viu() -> None:
     lido = await ler_perfil(sessao_do_perfil(usuaria(), menina))
 
     assert marcado.status_code == 204
-    assert lido.json() == {"fileIntroSeen": True}
+    assert lido.json()["fileIntroSeen"] is True
 
 
 async def test_marcar_duas_vezes_responde_igual_e_nao_grava_de_novo() -> None:
@@ -265,7 +327,11 @@ def test_openapi_mostra_as_rotas_do_perfil(client: TestClient) -> None:
     assert "get" in openapi["paths"]["/api/profile"]
     assert "put" in openapi["paths"]["/api/profile/file-intro-seen"]
     assert list(openapi["components"]["schemas"]["ProfileOut"]["properties"]) == [
-        "fileIntroSeen"
+        "fileIntroSeen",
+        "topics",
+        "everything",
+        "stage",
+        "opportunityEmails",
     ]
 
 

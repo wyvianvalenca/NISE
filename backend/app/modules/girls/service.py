@@ -49,7 +49,9 @@ async def save_interests(
 
 async def get_girl_of_user(session: AsyncSession, user_id: int) -> Girl | None:
     """O registro da menina da conta logada, ou None se a conta não tem um."""
-    girl = await session.scalar(select(Girl).where(Girl.user_id == user_id))
+    girl = await session.scalar(
+        select(Girl).where(Girl.user_id == user_id).options(selectinload(Girl.topics))
+    )
 
     return girl
 

@@ -1,0 +1,40 @@
+/* A10 · "E-mails": só as oportunidades têm chave. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.question {
+  margin-top: 4px;
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hint {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved {
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.error {
+  color: var(--nise-error);
+  font-size: 14px;
+}

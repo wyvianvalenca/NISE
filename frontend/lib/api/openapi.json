@@ -8756,14 +8756,43 @@
           "fileIntroSeen": {
             "type": "boolean",
             "title": "Fileintroseen"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/Topic"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "everything": {
+            "type": "boolean",
+            "title": "Everything"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "opportunityEmails": {
+            "type": "boolean",
+            "title": "Opportunityemails"
           }
         },
         "type": "object",
         "required": [
-          "fileIntroSeen"
+          "fileIntroSeen",
+          "topics",
+          "everything",
+          "stage",
+          "opportunityEmails"
         ],
         "title": "ProfileOut",
-        "description": "O perfil da menina da sessão, do jeito que o app lê.\n\nPor enquanto só o que o filé precisa: se ela já viu \"Por que filé?\"\n(RF-F10.02, #84). O front lê em camelCase (Profile em\nfrontend/lib/file-intro.ts). Sem nome, e-mail nem data de nascimento."
+        "description": "O perfil da menina da sessão, do jeito que o app lê.\n\nO filé precisa de `fileIntroSeen` (RF-F10.02, #84); a A10 precisa do resto\npara abrir marcada: temas, \"me mostra de tudo\", etapa de estudo\n(RF-F10.10) e se ela recebe e-mails de oportunidade (RF-F7.08). O front lê\nem camelCase (Profile em frontend/lib/file-intro.ts). Sem nome, e-mail nem\ndata de nascimento."
       },
       "RatingIn": {
         "properties": {
