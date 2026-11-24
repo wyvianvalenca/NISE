@@ -9,6 +9,7 @@ import { SearchField } from "@/components/SearchField";
 import { comparableText, statusGroupLabel } from "@/lib/coord-action-labels";
 import {
   countActions,
+  ActionHasAttendanceError,
   deleteCoordAction,
   type ActionStatus,
   type ActionStatusCounts,
@@ -95,8 +96,8 @@ function StatusGroup({ status, actions, onDelete }: GroupProps) {
  * The interactive part of K10: status chips with their counts, the name
  * search, the groups and the deletion of an action. The chips show the counts
  * of the whole list, so they stay put while she types and drop by one when an
- * action is deleted; the groups show what matches. When the real route lands,
- * deleting refetches the list instead of dropping the row here.
+ * action is deleted; the groups show what matches. A deletion the server
+ * refuses because attendance exists (409) keeps the row and says why.
  */
 export function ActionsList({ actions: initialActions, counts: initialCounts }: ActionsListProps) {
   const [actions, setActions] = useState(initialActions);
@@ -104,6 +105,7 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
   const [target, setTarget] = useState<CoordAction | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   /** Set when a deletion went through: the focus goes to the title once the window closes. */
   const focusTitleWhenClosed = useRef(false);
@@ -132,6 +134,7 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
 
   function askToDelete(action: CoordAction) {
     setDeleteFailed(false);
+    setDeleteBlocked(false);
     setTarget(action);
   }
 
@@ -144,8 +147,9 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
       setActions(remaining);
       setCounts(countActions(remaining));
       focusTitleWhenClosed.current = true;
-    } catch {
-      setDeleteFailed(true);
+    } catch (error) {
+      if (error instanceof ActionHasAttendanceError) setDeleteBlocked(true);
+      else setDeleteFailed(true);
     } finally {
       setDeleting(false);
       setTarget(null);
@@ -165,6 +169,13 @@ export function ActionsList({ actions: initialActions, counts: initialCounts }: 
         </div>
         <PendingLink variant="primary">Nova ação</PendingLink>
       </div>
+      {deleteBlocked && (
+        <div role="alert" className={styles.failure}>
+          <Notice tone="pink" icon="alert">
+            Essa ação já tem presença registrada e não pode ser excluída. Atualize a página.
+          </Notice>
+        </div>
+      )}
       {deleteFailed && (
         <div role="alert" className={styles.failure}>
           <Notice tone="pink" icon="alert">

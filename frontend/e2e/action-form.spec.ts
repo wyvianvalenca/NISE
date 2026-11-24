@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockActionsListApi, type ActionsListApi } from "./actions-list-api";
 
 /**
  * K02, the form that registers an action (#212).
  *
- * The save runs against the provisional contract of `lib/action-form.ts`, so
- * only the IBGE city search is mocked. Fictional data only.
+ * The save is POST /api/actions, mocked in actions-list-api.ts together with the
+ * IBGE city search. Fictional data only.
  */
 
 const FORM_URL = "/coordenacao/acoes/nova";
@@ -13,7 +14,10 @@ const CITIES = [
   { id: "2700300", name: "Arapiraca, AL" },
 ];
 
+let api: ActionsListApi;
+
 test.beforeEach(async ({ page }) => {
+  api = await mockActionsListApi(page);
   await page.route("**/api/cities**", (route) => {
     const search = new URL(route.request().url()).searchParams.get("search") ?? "";
     const plain = (text: string) =>
@@ -198,6 +202,28 @@ test("saving goes back to the list with the id of the action", async ({ page }) 
   await save(page).click();
 
   await expect(page).toHaveURL(/\/coordenacao\/acoes\?salva=\d+$/);
+  expect(api.saved).toEqual([
+    {
+      method: "POST",
+      id: null,
+      body: {
+        name: "Oficina de robótica",
+        type: "oficina",
+        starts_on: "2027-03-10",
+        ends_on: null,
+        format: "in_person",
+        city_ibge_code: 2704302,
+        visibility: "open",
+        registration_url: "https://forms.example/robotica",
+        starts_at_time: null,
+        ends_at_time: null,
+        address: null,
+        description: null,
+        topics: [],
+        audiences: [],
+      },
+    },
+  ]);
 });
 
 test("an online action saves with no city", async ({ page }) => {
@@ -210,16 +236,18 @@ test("an online action saves with no city", async ({ page }) => {
   await save(page).click();
 
   await expect(page).toHaveURL(/\/coordenacao\/acoes\?salva=\d+$/);
+  expect(api.saved[0].body).toMatchObject({ format: "online", city_ibge_code: null });
 });
 
 test("a failed save keeps what she typed and says so", async ({ page }) => {
-  await page.goto(`${FORM_URL}?fail`);
+  api.saveStatus = 500;
+  await page.goto(FORM_URL);
   await fillRequired(page);
   await page.getByRole("button", { name: "Robótica", exact: true }).click();
   await save(page).click();
 
   await expect(page.getByRole("alert").filter({ hasText: "Não deu pra salvar" })).toHaveText("Não deu pra salvar. Tente de novo.");
-  await expect(page).toHaveURL(`${FORM_URL}?fail`);
+  await expect(page).toHaveURL(FORM_URL);
   await expect(page.getByLabel("Nome da ação")).toHaveValue("Oficina de robótica");
   await expect(page.getByLabel("Link de inscrição")).toHaveValue("https://forms.example/robotica");
   await expect(page.getByRole("combobox", { name: "Cidade" })).toHaveValue("Maceió, AL");

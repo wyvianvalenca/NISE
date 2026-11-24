@@ -83,20 +83,24 @@ export async function getCoordActionList(signal?: AbortSignal): Promise<CoordAct
   };
 }
 
+/** What `deleteCoordAction` rejects with when the server refuses because attendance exists (409, RN-15). */
+export class ActionHasAttendanceError extends Error {
+  constructor(id: number) {
+    super(`Action ${id} has attendance and cannot be deleted`);
+    this.name = "ActionHasAttendanceError";
+  }
+}
+
 /**
- * Deletes one action of the group (RF-F30.12, RN-15). Resolves when it is
- * gone and rejects when the server refuses or does not answer.
- *
- * TEMPORARY: the screen is not wired to `DELETE /api/actions/{id}` yet, so this only answers. It runs in the
- * browser, so the test bench reads the address like the other dev benches do:
- * `?fail` makes it reject and `?delay=<ms>` makes it slow, to see the waiting
- * state. The real route also refuses an action with attendance, even by a
- * direct request; the screen only offers the option when
- * `presentCount` is empty.
+ * Deletes one action of the group (RF-F30.12, RN-15) with `DELETE /api/actions/{id}`.
+ * Resolves when it is gone (an action already gone counts, 404). Rejects with
+ * `ActionHasAttendanceError` on a 409, so the screen can say something other
+ * than "try again", and with a plain error on any other failure. The server
+ * refuses an action with attendance even by a direct request; the screen only
+ * offers the option when `presentCount` is empty.
  */
 export async function deleteCoordAction(id: number): Promise<void> {
-  const params = new URLSearchParams(globalThis.location?.search);
-  const delay = Number(params.get("delay") ?? 0);
-  if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-  if (params.has("fail")) throw new Error(`Could not delete action ${id}`);
+  const response = await fetch(`/api/actions/${id}`, { method: "DELETE" });
+  if (response.status === 409) throw new ActionHasAttendanceError(id);
+  if (!response.ok && response.status !== 404) throw new Error(`delete action ${response.status}`);
 }
