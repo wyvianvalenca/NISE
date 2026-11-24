@@ -12,7 +12,8 @@ TABLE = Base.metadata.tables["file_entries"]
 
 
 def test_guarda_todos_os_estados_do_file() -> None:
-    # Quero fazer, em andamento, concluído, inscrita, ver depois e não é pra mim.
+    # Quero fazer, em andamento, concluído, inscrita, ver depois, não é pra mim
+    # e o "Não deu" de um evento (#190).
     assert {status.value for status in FileStatus} == {
         "next",
         "in_progress",
@@ -20,6 +21,7 @@ def test_guarda_todos_os_estados_do_file() -> None:
         "signed_up",
         "later",
         "dismissed",
+        "did_not_go",
     }
 
 
@@ -119,6 +121,7 @@ def test_restricoes_do_banco() -> None:
 
     assert "ck_file_entries_one_source" in constraints
     assert "ck_file_entries_reason_only_when_dismissed" in constraints
+    assert "ck_file_entries_reminder_only_when_signed_up" in constraints
     unique_columns = {
         tuple(column.name for column in constraint.columns)
         for constraint in TABLE.constraints
@@ -144,4 +147,6 @@ def test_nenhum_dado_pessoal_nem_link_no_file() -> None:
         "rating",
         "similar_choice",
         "concluded_on",
+        "reminder",
+        "reminder_sent_for",
     }

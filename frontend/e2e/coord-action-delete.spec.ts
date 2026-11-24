@@ -1,9 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockActionsListApi } from "./actions-list-api";
 
-// #226 · "Excluir ação" in the "..." menu of K10. Uses lib/coord-actions.ts;
-// `?fail` and `?delay=<ms>` are the test bench of its temporary delete function.
+// #226 · "Excluir ação" in the "..." menu of K10. The list is GET /api/actions,
+// mocked in actions-list-api.ts; `?fail` and `?delay=<ms>` are the test bench of
+// the temporary delete function in lib/coord-actions.ts.
 
 const URL = "/coordenacao/acoes";
+
+test.beforeEach(async ({ page }) => {
+  await mockActionsListApi(page);
+});
 
 function more(page: Page, name: string) {
   return page.getByRole("button", { name: `Mais opções de ${name}`, exact: true });

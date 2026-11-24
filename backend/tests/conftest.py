@@ -29,6 +29,7 @@ os.environ.setdefault("JWT_SECRET", "segredo-ficticio-para-testes-32b")
 
 from app.main import app
 
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
@@ -38,11 +39,11 @@ def client() -> Generator[TestClient]:
         yield client
 
 
-async def _create_test_database(url: str) -> None:
-    """Cria o banco de teste se ele ainda não existe."""
+async def _recreate_test_database(url: str) -> None:
+    """Apaga o banco de teste (se existir) e cria um vazio."""
     parts = make_url(url)
-    # CREATE DATABASE não roda dentro de transação nem no próprio banco que
-    # cria: conecta no banco `postgres`, em modo autocommit.
+    # DROP/CREATE DATABASE não rodam dentro de transação nem no próprio banco:
+    # conecta no banco `postgres`, em modo autocommit.
     engine = create_async_engine(
         parts.set(database="postgres"),
         poolclass=NullPool,
@@ -50,13 +51,13 @@ async def _create_test_database(url: str) -> None:
     )
     try:
         async with engine.connect() as connection:
-            exists = await connection.scalar(
-                text("SELECT 1 FROM pg_database WHERE datname = :name"),
-                {"name": parts.database},
+            # Nome de banco não aceita parâmetro; ele vem da nossa própria URL.
+            # Recriar do zero evita que um banco deixado por outra branch
+            # (com outro schema) quebre o downgrade.
+            await connection.execute(
+                text(f'DROP DATABASE IF EXISTS "{parts.database}" WITH (FORCE)')
             )
-            if not exists:
-                # Nome de banco não aceita parâmetro; ele vem da nossa própria URL.
-                await connection.execute(text(f'CREATE DATABASE "{parts.database}"'))
+            await connection.execute(text(f'CREATE DATABASE "{parts.database}"'))
     finally:
         await engine.dispose()
 
@@ -68,17 +69,23 @@ def test_database() -> None:
     Também é o teste das migrações: aplica todas, desfaz todas, aplica de novo
     e confere que os models não têm mudança sem migração (o `alembic check`).
     """
-    database = make_url(TEST_DATABASE_URL).database or ""
-    # As migrações abaixo apagam todas as tabelas. Esta trava impede que um
-    # TEST_DATABASE_URL errado aponte para um banco com dados de verdade.
+    url = make_url(TEST_DATABASE_URL)
+    database = url.database or ""
+    # A fixture apaga o banco e recria. Estas travas impedem que um
+    # TEST_DATABASE_URL errado apague um banco com dados de verdade.
     if not database.endswith("_test"):
         pytest.fail(
             f"O banco de teste precisa terminar em _test (recebi {database!r}). "
             "Confira o TEST_DATABASE_URL."
         )
+    if url.host not in LOCAL_HOSTS:
+        pytest.fail(
+            f"O banco de teste precisa estar na sua máquina (recebi o host {url.host!r}). "
+            "A fixture apaga e recria o banco; confira o TEST_DATABASE_URL."
+        )
 
     try:
-        asyncio.run(_create_test_database(TEST_DATABASE_URL))
+        asyncio.run(_recreate_test_database(TEST_DATABASE_URL))
     except (OSError, SQLAlchemyError) as error:
         pytest.fail(
             f"Não consegui conectar no Postgres dos testes ({error}). "

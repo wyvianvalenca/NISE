@@ -219,7 +219,13 @@ def rank(
     O `sorted` do Python mantém a ordem original nos empates, então quem desempata
     é a ordem do catálogo (curadoria pelo id, depois ações pela data).
     """
-    in_file = {choice.item_id for choice in choices}
+    # O "Não deu" não esconde o evento: o catálogo só tem itens futuros, então
+    # ele só volta se a curadoria o adiou (#190).
+    in_file = {
+        choice.item_id
+        for choice in choices
+        if choice.status is not FileStatus.DID_NOT_GO
+    }
     candidates = [
         item
         for item in catalog

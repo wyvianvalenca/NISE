@@ -258,6 +258,21 @@ async def test_nao_troca_a_escolha_de_um_item_no_file_ou_dispensado(
     sessao_falsa.commit.assert_not_called()
 
 
+async def test_escolher_de_novo_um_evento_do_nao_deu_que_foi_adiado() -> None:
+    # O evento voltou às sugestões porque a curadoria o adiou (#190).
+    linha = FileEntry(
+        id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
+    )
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 200
+    assert linha.status is FileStatus.NEXT
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_awaited_once()
+
+
 async def test_repetir_a_mesma_escolha_vale_sem_mudar_nada() -> None:
     linha = FileEntry(id=42, girl_id=3, curated_item_id=12, status=FileStatus.NEXT)
     sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
@@ -347,6 +362,22 @@ async def test_item_com_idade_minima_acima_da_dela_responde_404() -> None:
     assert response.status_code == 404
     assert response.json() == {"error": "item_not_found"}
     sessao_falsa.add.assert_not_called()
+
+
+async def test_evento_do_nao_deu_adiado_que_saiu_do_perfil_responde_404() -> None:
+    # Adiado, ele volta como um item novo: a curadoria pode ter mudado o público.
+    linha = FileEntry(
+        id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
+    )
+    sessao_falsa = sessao_da_escolha(
+        menina(), curado(12, EffortBand.UMA_TARDE, min_age=18), linha=linha
+    )
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 404
+    assert linha.status is FileStatus.DID_NOT_GO
+    sessao_falsa.commit.assert_not_called()
 
 
 async def test_item_de_outro_tema_responde_404() -> None:

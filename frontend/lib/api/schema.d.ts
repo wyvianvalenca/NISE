@@ -250,12 +250,142 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Action Page Route */
+        get: operations["get_action_page_route_api_actions__action_id__get"];
         /** Update Action Route */
         put: operations["update_action_route_api_actions__action_id__put"];
         post?: never;
         /** Delete Action Route */
         delete: operations["delete_action_route_api_actions__action_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Registrations Route */
+        get: operations["list_registrations_route_api_actions__action_id__registrations_get"];
+        put?: never;
+        /** Add Registration Route */
+        post: operations["add_registration_route_api_actions__action_id__registrations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/import/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Read Route
+         * @description Step 1: the columns of the file, its first line and a suggested mapping.
+         */
+        post: operations["import_read_route_api_actions__action_id__registrations_import_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/import/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Review Route
+         * @description Step 2: ready, to review and repeated lines. Saves nothing.
+         */
+        post: operations["import_review_route_api_actions__action_id__registrations_import_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Route
+         * @description Registers the new girls, all or nothing: one commit at the end (RF-F1.08).
+         */
+        post: operations["import_route_api_actions__action_id__registrations_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/email-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email Check Route */
+        post: operations["email_check_route_api_actions__action_id__registrations_email_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Registrations Route */
+        post: operations["close_registrations_route_api_actions__action_id__registrations_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/registrations/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Registrations Route */
+        post: operations["reopen_registrations_route_api_actions__action_id__registrations_reopen_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -442,6 +572,24 @@ export interface paths {
         /** File Intro Seen */
         put: operations["file_intro_seen_api_profile_file_intro_seen_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profile/course": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profile Course */
+        get: operations["profile_course_api_profile_course_get"];
+        put?: never;
+        /** Register Course */
+        post: operations["register_course_api_profile_course_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -635,11 +783,254 @@ export interface paths {
         };
         /**
          * To Answer
-         * @description O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10).
+         * @description O que ela tem pra responder, para a agenda e a faixa do filé (RF-F31.10, RF-F4.06).
          */
         get: operations["to_answer_api_agenda_to_answer_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agenda/dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dates
+         * @description As datas e os questionários que ainda vão chegar (RF-F4.11b).
+         */
+        get: operations["dates_api_agenda_dates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Attendance Page */
+        get: operations["attendance_page_api_actions__action_id__attendance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Attendance Marks */
+        put: operations["save_attendance_marks_api_actions__action_id__attendance_marks_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/girls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Walk In Girl */
+        post: operations["add_walk_in_girl_api_actions__action_id__attendance_girls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/conclude": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Conclude */
+        post: operations["conclude_api_actions__action_id__attendance_conclude_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/actions/{action_id}/attendance/present/{participation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Present */
+        post: operations["mark_present_api_actions__action_id__attendance_present__participation_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Event Detail */
+        get: operations["event_detail_api_events__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/sign-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Sign Up */
+        put: operations["sign_up_api_events__item_id__sign_up_put"];
+        post?: never;
+        /** Undo Sign Up */
+        delete: operations["undo_sign_up_api_events__item_id__sign_up_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/went": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Went */
+        put: operations["went_api_events__item_id__went_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/did-not-go": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Did Not Go */
+        put: operations["did_not_go_api_events__item_id__did_not_go_put"];
+        post?: never;
+        /** Undo Did Not Go Route */
+        delete: operations["undo_did_not_go_route_api_events__item_id__did_not_go_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{item_id}/reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reminder */
+        put: operations["reminder_api_events__item_id__reminder_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Followup */
+        get: operations["current_followup_api_followup_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Followup Options */
+        get: operations["followup_options_api_followup_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/followup/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Followup */
+        post: operations["answer_followup_api_followup_answers_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -655,6 +1046,40 @@ export interface paths {
         };
         /** Group Enrollments */
         get: operations["group_enrollments_api_coordinator_enrollments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/enrollments/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Group Enrollment Summary */
+        get: operations["group_enrollment_summary_api_coordinator_enrollments_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/list-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Search */
+        get: operations["list_search_api_coordinator_list_search_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -843,6 +1268,74 @@ export interface components {
             status: components["schemas"]["ActionStatus"];
         };
         /**
+         * ActionPageOut
+         * @description The action page (K11, #233): the action plus what the page needs to decide.
+         *
+         *     `registrations_open` here is the effective value (RF-F1.16): closed by the
+         *     coordinator or by the day of the event arriving. `today` comes from the server
+         *     so the screen and the rules agree on the date (Maceió).
+         */
+        ActionPageOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            type: components["schemas"]["ActionType"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            format: components["schemas"]["ActionFormat"];
+            /** City Ibge Code */
+            city_ibge_code: number | null;
+            /** City Label */
+            city_label: string | null;
+            visibility: components["schemas"]["ActionVisibility"];
+            /** Registration Url */
+            registration_url: string | null;
+            /** Starts At Time */
+            starts_at_time: string | null;
+            /** Ends At Time */
+            ends_at_time: string | null;
+            /** Address */
+            address: string | null;
+            /** Description */
+            description: string | null;
+            /** Registrations Open */
+            registrations_open: boolean;
+            /** Topics */
+            topics: components["schemas"]["Topic"][];
+            /** Audiences */
+            audiences: components["schemas"]["StudyStage"][];
+            status: components["schemas"]["ActionStatus"];
+            /** City Name */
+            city_name: string | null;
+            /**
+             * Created On
+             * Format: date
+             */
+            created_on: string;
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Registered Count */
+            registered_count: number;
+            /** Registrations Closed By Coordinator */
+            registrations_closed_by_coordinator: boolean;
+            /** Can Reopen */
+            can_reopen: boolean;
+            /** Can Delete */
+            can_delete: boolean;
+        };
+        /**
          * ActionStatus
          * @description Where an action is in its life (RN-37).
          *
@@ -878,6 +1371,12 @@ export interface components {
          * @enum {string}
          */
         ActionVisibility: "open" | "closed";
+        /**
+         * Activity
+         * @description Pergunta 4: "Desde a última vez, você…" (várias escolhas).
+         * @enum {string}
+         */
+        Activity: "online_course" | "event" | "self_study" | "project" | "none_yet";
         /**
          * ActivityOut
          * @description O detalhe de uma atividade do filé (A06·4a, RF-F10.08). O front lê em camelCase.
@@ -941,6 +1440,108 @@ export interface components {
             concludedFile: components["schemas"]["ComparedOut"];
         };
         /**
+         * AgendaDatesOut
+         * @description As datas de hoje em diante, da mais próxima para a mais distante (RF-F4.11b).
+         */
+        AgendaDatesOut: {
+            /** Upcoming */
+            upcoming: components["schemas"]["UpcomingItemOut"][];
+        };
+        /**
+         * AttendanceActionOut
+         * @description The header of the action page (K11): what the other versions also show.
+         */
+        AttendanceActionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            type: components["schemas"]["ActionType"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Starts At Time */
+            starts_at_time: string | null;
+            /** Ends At Time */
+            ends_at_time: string | null;
+            format: components["schemas"]["ActionFormat"];
+            /** City Name */
+            city_name: string | null;
+            visibility: components["schemas"]["ActionVisibility"];
+            /**
+             * Created On
+             * Format: date
+             */
+            created_on: string;
+        };
+        /**
+         * AttendanceGirlOut
+         * @description One registered girl of the action, as the lists of the page show her.
+         *
+         *     `id` is the registration (the participation), never the girl's record: the
+         *     page only needs to tell the rows apart.
+         */
+        AttendanceGirlOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            study_stage: components["schemas"]["StudyStage"] | null;
+            /** Saved Present */
+            saved_present: boolean;
+            /** Present */
+            present: boolean;
+        };
+        /**
+         * AttendancePageOut
+         * @description Everything the action page needs around the attendance (C3, #135).
+         *
+         *     `today` is the date in Maceió time, the same the status uses (RN-37), so the
+         *     page never decides "the day of the event has come" with the browser's clock.
+         */
+        AttendancePageOut: {
+            action: components["schemas"]["AttendanceActionOut"];
+            status: components["schemas"]["ActionStatus"];
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Registrations Open */
+            registrations_open: boolean;
+            /** Can Delete */
+            can_delete: boolean;
+            /** Registered Count */
+            registered_count: number;
+            /** Saved Count */
+            saved_count: number;
+            /** Last Registered On */
+            last_registered_on: string | null;
+            /** Concluded On */
+            concluded_on: string | null;
+            /** Present Count */
+            present_count: number;
+            /** Invites To Send */
+            invites_to_send: number;
+            /** Invites Sent */
+            invites_sent: number;
+            /** Evaluations Sent */
+            evaluations_sent: number;
+            /** Columns */
+            columns: string[];
+            /** Girls */
+            girls: components["schemas"]["AttendanceGirlOut"][];
+        };
+        /**
          * BandCountOut
          * @description Uma faixa do Descobrir e quantas sugestões ela tem (A06·1, RF-F10.03).
          *
@@ -962,6 +1563,35 @@ export interface components {
             fileTotal: number;
             /** Items */
             items: components["schemas"]["SuggestionCardOut"][];
+        };
+        /** Body_import_read_route_api_actions__action_id__registrations_import_read_post */
+        Body_import_read_route_api_actions__action_id__registrations_import_read_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_import_review_route_api_actions__action_id__registrations_import_review_post */
+        Body_import_review_route_api_actions__action_id__registrations_import_review_post: {
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping: string;
+        };
+        /** Body_import_route_api_actions__action_id__registrations_import_post */
+        Body_import_route_api_actions__action_id__registrations_import_post: {
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping: string;
+            /**
+             * Corrections
+             * @default []
+             */
+            corrections: string;
+            /**
+             * Skip
+             * @default []
+             */
+            skip: string;
         };
         /**
          * Choice
@@ -1008,11 +1638,40 @@ export interface components {
             noShows: number;
         };
         /**
+         * ComputingView
+         * @description Pergunta 1: "Hoje, computação pra você é…".
+         * @enum {string}
+         */
+        ComputingView: "want_to_follow" | "like_but_unsure" | "less_interested" | "not_for_me";
+        /**
+         * ConcludeIn
+         * @description "Concluir presença" (#348): the registrations marked as present.
+         */
+        ConcludeIn: {
+            /** Present Ids */
+            present_ids: number[];
+        };
+        /**
+         * CourseCode
+         * @description O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis.
+         * @enum {string}
+         */
+        CourseCode: "sistemas_informacao" | "ciencia_computacao" | "engenharia_computacao" | "redes" | "outro";
+        /**
          * CourseLevel
          * @description Nível do curso em que ela entrou ou foi aprovada (RF-F6.02).
          * @enum {string}
          */
         CourseLevel: "tecnico" | "graduacao";
+        /**
+         * CourseStatus
+         * @description Pergunta 3: "Você entrou num curso da área?" (RF-F6.02).
+         *
+         *     Os dois primeiros valores são os mesmos de `CourseLevel` (ingresso).
+         *     "Tô tentando entrar" não conta como ingresso (RN-22).
+         * @enum {string}
+         */
+        CourseStatus: "tecnico" | "graduacao" | "trying" | "not_yet";
         /**
          * CuratedType
          * @description Tipos dos itens da curadoria. As ações dos grupos usam `ActionType`.
@@ -1021,6 +1680,32 @@ export interface components {
          * @enum {string}
          */
         CuratedType: "video" | "quiz" | "article" | "tutorial" | "mini_project" | "course" | "personal_project" | "community" | "playlist" | "game" | "olympiad" | "club" | "cohort_course" | "hackathon" | "internship" | "other";
+        /**
+         * CurrentCourseOut
+         * @description O curso em que ela está hoje, para a pergunta "Continua nesse curso?".
+         */
+        CurrentCourseOut: {
+            level: components["schemas"]["CourseLevel"];
+            /** Course */
+            course: string;
+        };
+        /**
+         * CurrentFollowupOut
+         * @description A rodada aberta hoje para a menina da sessão (A18, #293).
+         */
+        CurrentFollowupOut: {
+            round: components["schemas"]["FollowupRound"];
+            /**
+             * Lastday
+             * Format: date
+             */
+            lastDay: string;
+            /** Firstname */
+            firstName: string;
+            /** Answered */
+            answered: boolean;
+            currentCourse?: components["schemas"]["CurrentCourseOut"] | null;
+        };
         /**
          * DiscoverOut
          * @description A tela Descobrir (A06·1, #86). O front lê em camelCase (DiscoverData).
@@ -1048,6 +1733,24 @@ export interface components {
          * @enum {string}
          */
         EffortBand: "primeiros-passos" | "uma-tarde" | "no-meu-ritmo" | "role-com-a-galera" | "grande-desafio";
+        /**
+         * EmailCheckIn
+         * @description The e-mail goes in the body, never in the URL, so it stays out of access logs.
+         */
+        EmailCheckIn: {
+            /** Email */
+            email: string;
+        };
+        /**
+         * EmailCheckOut
+         * @description Whether the e-mail is in the NISE, and which actions of the group she took part in.
+         */
+        EmailCheckOut: {
+            /** Exists */
+            exists: boolean;
+            /** Group Actions */
+            group_actions: components["schemas"]["GroupActionOut"][];
+        };
         /**
          * EmailSignupIn
          * @description Cadastro por e-mail e senha (A02, #51).
@@ -1083,6 +1786,10 @@ export interface components {
             items: components["schemas"]["EnrollmentRowOut"][];
             /** Total */
             total: number;
+            /** Waiting */
+            waiting: components["schemas"]["WaitingGirlOut"][];
+            /** Waitingtotal */
+            waitingTotal: number;
             /** Page */
             page: number;
             /** Pagesize */
@@ -1111,6 +1818,98 @@ export interface components {
             registeredAt: string;
             origin: components["schemas"]["AdmissionOrigin"];
         };
+        /**
+         * EnrollmentSummaryOut
+         * @description O resumo do topo da tela Ingressantes (#316, RF-F5.21).
+         *
+         *     Mostra os números mesmo com menos de 5 meninas (RN-06 não vale aqui, D-75).
+         */
+        EnrollmentSummaryOut: {
+            /** Total */
+            total: number;
+            /** Percent */
+            percent: number;
+            graduacao: components["schemas"]["LevelSummaryOut"];
+            tecnico: components["schemas"]["LevelSummaryOut"];
+            recent: components["schemas"]["RecentFoundOut"] | null;
+        };
+        /**
+         * EventOut
+         * @description O detalhe de um evento do filé (A06·4b, #178, RF-F10.13). O front lê em camelCase.
+         *
+         *     Os campos seguem `EventDetail` em frontend/lib/evento.ts. As contas de dias
+         *     são feitas aqui, no fuso de Maceió, para o front não depender do relógio do
+         *     celular.
+         */
+        EventOut: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["EventStatus"];
+            type: components["schemas"]["EventType"];
+            /** Typelabel */
+            typeLabel: string;
+            /** Topic */
+            topic: string | null;
+            band: components["schemas"]["EffortBand"];
+            /** Title */
+            title: string;
+            /** Group */
+            group: string | null;
+            /** Organizer */
+            organizer: string;
+            /**
+             * Startson
+             * Format: date
+             */
+            startsOn: string;
+            /**
+             * Endson
+             * Format: date
+             */
+            endsOn: string;
+            /** City */
+            city: string | null;
+            /** Deadline */
+            deadline: string | null;
+            /** Daysleft */
+            daysLeft: number | null;
+            /** Registrationsopen */
+            registrationsOpen: boolean;
+            /** Daysuntilstart */
+            daysUntilStart: number;
+            /** Afterevent */
+            afterEvent: boolean;
+            /** Waitingattendance */
+            waitingAttendance: boolean;
+            /** Reminder */
+            reminder: boolean;
+            /** Cost */
+            cost: string | null;
+            /** Stage */
+            stage: string | null;
+            /** Prerequisites */
+            prerequisites: string[];
+            /** Registrationurl */
+            registrationUrl: string | null;
+        };
+        /**
+         * EventStatus
+         * @description Onde o evento está no filé dela, como a A06·4b lê (frontend/lib/evento.ts).
+         *
+         *     O banco guarda a inscrição como `FileStatus.SIGNED_UP`; a tela chama de
+         *     "in_progress" ("Inscrita"), o mesmo modelo das atividades (tabela da #118).
+         * @enum {string}
+         */
+        EventStatus: "next" | "in_progress" | "concluded";
+        /**
+         * EventType
+         * @description Os tipos que a A06·4b conhece: os de ação (ActionType, RF-F17.01).
+         *
+         *     Um evento da curadoria que não é hackathon vira "outro", que a tela chama de
+         *     "Evento". O nome do tipo de verdade vai em `type_label`.
+         * @enum {string}
+         */
+        EventType: "oficina" | "palestra" | "minicurso" | "hackathon" | "visita" | "acolhimento" | "outro";
         /**
          * FeedbackIn
          * @description O "O que achou?" e o "Quer sugestões parecidas?" de uma atividade concluída.
@@ -1200,6 +1999,64 @@ export interface components {
             section: components["schemas"]["FileSection"];
         };
         /**
+         * FollowupIn
+         * @description As respostas da A18 (RF-F4.13, RF-F4.08).
+         *
+         *     Toda pergunta é opcional, mas pelo menos uma precisa de resposta: sem
+         *     nenhuma, a tela não deixa enviar, e "Agora não" não chama o back.
+         *     Códigos fora das listas são recusados, e campos desconhecidos também.
+         */
+        FollowupIn: {
+            round: components["schemas"]["FollowupRound"];
+            computingView?: components["schemas"]["ComputingView"] | null;
+            futureSelf?: components["schemas"]["FutureSelf"] | null;
+            /**
+             * Activities
+             * @default []
+             */
+            activities: components["schemas"]["Activity"][];
+            /**
+             * Helps
+             * @default []
+             */
+            helps: components["schemas"]["HelpWanted"][];
+            courseStatus?: components["schemas"]["CourseStatus"] | null;
+            stillEnrolled?: components["schemas"]["StillEnrolled"] | null;
+            course?: components["schemas"]["CourseCode"] | null;
+            /** Othercourse */
+            otherCourse?: string | null;
+            /** Institution */
+            institution?: string | null;
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * FollowupOptionsOut
+         * @description As opções das perguntas fechadas da A18, na ordem do Figma.
+         */
+        FollowupOptionsOut: {
+            /** Computingviews */
+            computingViews: components["schemas"]["OptionOut"][];
+            /** Futureselves */
+            futureSelves: components["schemas"]["OptionOut"][];
+            /** Activities */
+            activities: components["schemas"]["OptionOut"][];
+            /** Helps */
+            helps: components["schemas"]["OptionOut"][];
+            /** Coursestatuses */
+            courseStatuses: components["schemas"]["OptionOut"][];
+            /** Courses */
+            courses: components["schemas"]["OptionOut"][];
+            /** Stillenrolled */
+            stillEnrolled: components["schemas"]["OptionOut"][];
+        };
+        /**
+         * FollowupRound
+         * @description A rodada do questionário: quantos meses depois de criar a conta.
+         * @enum {string}
+         */
+        FollowupRound: "three_months" | "six_months" | "twelve_months" | "eighteen_months";
+        /**
          * ForgotPasswordIn
          * @description O e-mail da conta que esqueceu a senha (A16, #331).
          */
@@ -1207,6 +2064,12 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * FutureSelf
+         * @description Pergunta 2: "Daqui a uns anos, você se vê estudando ou trabalhando…".
+         * @enum {string}
+         */
+        FutureSelf: "sure" | "maybe" | "probably_not";
         /**
          * GoogleSignupCompleteIn
          * @description O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).
@@ -1227,6 +2090,16 @@ export interface components {
              */
             withoutInvite: boolean;
         };
+        /** GroupActionOut */
+        GroupActionOut: {
+            /** Name */
+            name: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
         /**
          * GroupOrigin
          * @description Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01).
@@ -1246,12 +2119,95 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * HelpWanted
+         * @description Pergunta 5: "O que te ajudaria agora?" (várias escolhas).
+         * @enum {string}
+         */
+        HelpWanted: "mentoring" | "online_courses" | "internship" | "events" | "other";
+        /**
          * HomeOut
          * @description A primeira tela de quem já entrou, para a A01 mandá-la adiante.
          */
         HomeOut: {
             /** Nextpath */
             nextPath: string;
+        };
+        /** ImportOut */
+        ImportOut: {
+            /** Imported */
+            imported: number;
+            /** Already In Action */
+            already_in_action: number;
+            /** Registered Count */
+            registered_count: number;
+        };
+        /** ImportReadOut */
+        ImportReadOut: {
+            /** File Name */
+            file_name: string;
+            /** Line Count */
+            line_count: number;
+            /** Columns */
+            columns: string[];
+            /** First Line */
+            first_line: {
+                [key: string]: string;
+            };
+            suggested: components["schemas"]["MappingBody"];
+        };
+        /** ImportRepeatedOut */
+        ImportRepeatedOut: {
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Count */
+            count: number;
+        };
+        /** ImportReviewOut */
+        ImportReviewOut: {
+            /** File Name */
+            file_name: string;
+            /** Line Count */
+            line_count: number;
+            /** Ready */
+            ready: components["schemas"]["ImportRowOut"][];
+            /** To Review */
+            to_review: components["schemas"]["ImportReviewRowOut"][];
+            /** Repeated */
+            repeated: components["schemas"]["ImportRepeatedOut"][];
+            /** Already In Action */
+            already_in_action: number;
+            /** New Count */
+            new_count: number;
+        };
+        /** ImportReviewRowOut */
+        ImportReviewRowOut: {
+            /** Line */
+            line: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "incomplete_email" | "missing_email" | "missing_name";
+        };
+        /** ImportRowOut */
+        ImportRowOut: {
+            /** Line */
+            line: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Whatsapp */
+            whatsapp: string | null;
+            study_stage: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year: string | null;
         };
         /**
          * InterestOptionsOut
@@ -1334,6 +2290,31 @@ export interface components {
             /** Items */
             items: components["schemas"]["LaterItemOut"][];
         };
+        /**
+         * LevelSummaryOut
+         * @description Quantas ingressaram num nível e em quais instituições.
+         */
+        LevelSummaryOut: {
+            /** Count */
+            count: number;
+            /** Institutions */
+            institutions: string[];
+        };
+        /**
+         * ListSearchOut
+         * @description O card "Busca nas listas de ingressantes" (#317, RF-F5.23).
+         *
+         *     Só fontes e datas, iguais para todas as coordenadoras: a busca não é por
+         *     grupo. Nenhum nome, número de achadas ou lista de quem foi achada (RN-24).
+         */
+        ListSearchOut: {
+            /** Sources */
+            sources: string[];
+            /** Lastsearchat */
+            lastSearchAt: string | null;
+            /** Nextsearchon */
+            nextSearchOn: string | null;
+        };
         /** LoginIn */
         LoginIn: {
             /**
@@ -1343,6 +2324,22 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * MappingBody
+         * @description Column of the file for each field of the NISE; null = "Não usar".
+         */
+        MappingBody: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Whatsapp */
+            whatsapp?: string | null;
+            /** Study Stage */
+            study_stage?: string | null;
+            /** School Year */
+            school_year?: string | null;
         };
         /**
          * MatchAnswerIn
@@ -1392,6 +2389,18 @@ export interface components {
          * @enum {string}
          */
         MatchResult: "enrolled" | "approved" | "dismissed";
+        /**
+         * OpenFollowupOut
+         * @description O questionário "Como está seu caminho?" aberto e sem resposta (A18).
+         */
+        OpenFollowupOut: {
+            round: components["schemas"]["FollowupRound"];
+            /**
+             * Lastday
+             * Format: date
+             */
+            lastDay: string;
+        };
         /**
          * OpportunityEmailsIn
          * @description A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).
@@ -1454,6 +2463,36 @@ export interface components {
          */
         Period: "6m" | "12m" | "all";
         /**
+         * ProfileCourseIn
+         * @description O curso que ela registra pelo perfil (A10b, RF-F6.04, RF-F6.02).
+         *
+         *     As mesmas escolhas da pergunta 3 da A18: técnico e graduação pedem o curso
+         *     ("Outro curso" pede o nome); "Tô tentando entrar" e "Ainda não" não levam
+         *     dados de curso. Campos desconhecidos são recusados.
+         */
+        ProfileCourseIn: {
+            courseStatus: components["schemas"]["CourseStatus"];
+            course?: components["schemas"]["CourseCode"] | null;
+            /** Othercourse */
+            otherCourse?: string | null;
+            /** Institution */
+            institution?: string | null;
+        };
+        /**
+         * ProfileCourseOut
+         * @description O curso atual dela no perfil (A10, #298) e o nome para a A10b.
+         *
+         *     `level` e `course` vêm vazios quando ela não tem curso registrado. O nome
+         *     do curso é o da lista ou o que ela digitou: vai só para ela.
+         */
+        ProfileCourseOut: {
+            /** Firstname */
+            firstName: string;
+            level?: components["schemas"]["CourseLevel"] | null;
+            /** Course */
+            course?: string | null;
+        };
+        /**
          * ProfileOut
          * @description O perfil da menina da sessão, do jeito que o app lê.
          *
@@ -1479,6 +2518,94 @@ export interface components {
             score: number;
             /** Comment */
             comment?: string | null;
+        };
+        /**
+         * RecentFoundOut
+         * @description As ingressantes que a última busca achou e que confirmaram (RF-F5.22).
+         */
+        RecentFoundOut: {
+            /**
+             * Searchedat
+             * Format: date-time
+             */
+            searchedAt: string;
+            /** Girls */
+            girls: components["schemas"]["RecentGirlOut"][];
+        };
+        /**
+         * RecentGirlOut
+         * @description Uma menina de "Mais recentes": o primeiro nome, o curso e a instituição.
+         */
+        RecentGirlOut: {
+            /** Firstname */
+            firstName: string;
+            /** Course */
+            course: string;
+            /** Institution */
+            institution: string | null;
+        };
+        /** RegistrationAddedOut */
+        RegistrationAddedOut: {
+            registration: components["schemas"]["RegistrationOut"];
+            /** Already Registered */
+            already_registered: boolean;
+            /** Record Existed */
+            record_existed: boolean;
+        };
+        /**
+         * RegistrationIn
+         * @description Add a girl by hand (RF-F1.09): name and e-mail required, the rest optional.
+         */
+        RegistrationIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Whatsapp */
+            whatsapp?: string | null;
+            study_stage?: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year?: string | null;
+        };
+        /**
+         * RegistrationListOut
+         * @description A page of the girls, the matches in `total`, and the columns with data.
+         */
+        RegistrationListOut: {
+            /** Items */
+            items: components["schemas"]["RegistrationOut"][];
+            /** Total */
+            total: number;
+            /** Columns */
+            columns: ("whatsapp" | "study_stage" | "school_year")[];
+        };
+        /**
+         * RegistrationOut
+         * @description One girl in an action. `id` is the registration's, not the record's.
+         */
+        RegistrationOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Whatsapp */
+            whatsapp: string | null;
+            study_stage: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year: string | null;
+        };
+        /**
+         * ReminderIn
+         * @description Liga ou desliga o "Me lembra um dia antes" (#186).
+         */
+        ReminderIn: {
+            /** On */
+            on: boolean;
         };
         /**
          * ResetPasswordIn
@@ -1512,6 +2639,16 @@ export interface components {
          * @enum {string}
          */
         Role: "girl" | "coordinator" | "nise_team";
+        /**
+         * SavedMarksIn
+         * @description "Salvar e continuar depois" (#340): the registrations marked as present.
+         *
+         *     It replaces what was saved before, so a girl left out is unmarked.
+         */
+        SavedMarksIn: {
+            /** Present Ids */
+            present_ids: number[];
+        };
         /**
          * SelfOrigin
          * @description Ela chegou sozinha (M2): os grupos só veem números gerais (RN-04).
@@ -1575,6 +2712,12 @@ export interface components {
             status: components["schemas"]["FileSection"];
         };
         /**
+         * StillEnrolled
+         * @description Pergunta 3 para quem já registrou um curso: "Continua nesse curso?" (#299).
+         * @enum {string}
+         */
+        StillEnrolled: "yes" | "changed" | "stopped";
+        /**
          * StudyStage
          * @enum {string}
          */
@@ -1632,18 +2775,42 @@ export interface components {
          * ToAnswerOut
          * @description O que a seção "Pra responder" da agenda (A14) mostra.
          *
-         *     Por enquanto só o indício de lista oficial (RF-F31.10). As avaliações e os
-         *     questionários da M5 (#129) entram aqui quando existirem.
+         *     Nada aqui nomeia outra pessoa, curso ou instituição (RNF-F31.02): só o
+         *     sim ou não do indício, as ações que ela mesma foi e a rodada aberta.
          */
         ToAnswerOut: {
             /** List Match */
             list_match: boolean;
+            /** Ratings */
+            ratings: components["schemas"]["PendingRatingOut"][];
+            followup: components["schemas"]["OpenFollowupOut"] | null;
         };
         /**
          * Topic
          * @enum {string}
          */
         Topic: "programacao" | "robotica" | "ia" | "dados" | "ciberseguranca" | "jogos" | "sites" | "design";
+        /**
+         * UpcomingItemOut
+         * @description Uma data da agenda: lembrete da equipe ou rodada de questionário.
+         */
+        UpcomingItemOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "date" | "followup";
+            /**
+             * On
+             * Format: date
+             */
+            on: string;
+            /** Title */
+            title: string | null;
+            /** Details */
+            details: string | null;
+            round: components["schemas"]["FollowupRound"] | null;
+        };
         /** UserOut */
         UserOut: {
             /** Id */
@@ -1666,6 +2833,46 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WaitingGirlOut
+         * @description Uma menina com indício sem resposta, na última linha da lista (#318).
+         *
+         *     Só o nome curto. Nem lista, curso, instituição ou id do indício vão: só a
+         *     menina vê os detalhes (RN-21, RNF-F31.02).
+         */
+        WaitingGirlOut: {
+            /** Girlname */
+            girlName: string;
+        };
+        /**
+         * WalkInIn
+         * @description "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03, RF-F1.09).
+         *
+         *     Name and e-mail are required; the study level is optional. WhatsApp and
+         *     "Série" come with the registration of C2 (#232, #235).
+         */
+        WalkInIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            study_stage?: components["schemas"]["StudyStage"] | null;
+        };
+        /**
+         * WalkInOut
+         * @description The girl as she now is in the action's list.
+         *
+         *     `already_registered` says that the e-mail was already registered in this
+         *     action: nobody was duplicated (#346).
+         */
+        WalkInOut: {
+            girl: components["schemas"]["AttendanceGirlOut"];
+            /** Already Registered */
+            already_registered: boolean;
         };
     };
     responses: never;
@@ -2168,6 +3375,47 @@ export interface operations {
             };
         };
     };
+    get_action_page_route_api_actions__action_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_action_route_api_actions__action_id__put: {
         parameters: {
             query?: never;
@@ -2240,6 +3488,359 @@ export interface operations {
                 content?: never;
             };
             /** @description A presença já foi registrada, a ação não pode ser excluída */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_registrations_route_api_actions__action_id__registrations_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationListOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_registration_route_api_actions__action_id__registrations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationAddedOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_read_route_api_actions__action_id__registrations_import_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_read_route_api_actions__action_id__registrations_import_read_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReadOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "unsupported_type" | "unreadable_file" | "empty_file" | "too_large" | "missing_columns" | "invalid_request"}, or {"error": "invalid_corrections", "lines": [...]} on the import */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    import_review_route_api_actions__action_id__registrations_import_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_review_route_api_actions__action_id__registrations_import_review_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReviewOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "unsupported_type" | "unreadable_file" | "empty_file" | "too_large" | "missing_columns" | "invalid_request"}, or {"error": "invalid_corrections", "lines": [...]} on the import */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    import_route_api_actions__action_id__registrations_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_route_api_actions__action_id__registrations_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "unsupported_type" | "unreadable_file" | "empty_file" | "too_large" | "missing_columns" | "invalid_request"}, or {"error": "invalid_corrections", "lines": [...]} on the import */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    email_check_route_api_actions__action_id__registrations_email_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCheckOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_registrations_route_api_actions__action_id__registrations_close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_registrations_route_api_actions__action_id__registrations_reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionPageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O dia do evento chegou: {"error": "event_day_reached"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2718,6 +4319,100 @@ export interface operations {
             };
         };
     };
+    profile_course_api_profile_course_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileCourseOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_course_api_profile_course_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileCourseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     discover_api_discover_get: {
         parameters: {
             query?: never;
@@ -2995,7 +4690,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no "Não é pra mim"): só um item sem escolha ou no Ver depois aceita uma escolha: {"error": "already_chosen"} */
+            /** @description O item já tem outra escolha dela que não se troca por aqui (no filé, concluído, inscrita ou no "Não é pra mim"): só um item sem escolha, no Ver depois ou um evento do "Não deu" que a curadoria adiou aceita uma escolha: {"error": "already_chosen"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3050,7 +4745,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Uma atividade concluída não sai do filé: {"error": "concluded_cannot_be_removed"}. Um evento em que ela se inscreveu também não: {"error": "signed_up_cannot_be_removed"} */
+            /** @description Uma atividade ou um evento concluído não sai do filé: {"error": "concluded_cannot_be_removed"} */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3334,6 +5029,787 @@ export interface operations {
             };
         };
     };
+    dates_api_agenda_dates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaDatesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attendance_page_api_actions__action_id__attendance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_attendance_marks_api_actions__action_id__attendance_marks_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedMarksIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_walk_in_girl_api_actions__action_id__attendance_girls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalkInIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkInOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    conclude_api_actions__action_id__attendance_conclude_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConcludeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    mark_present_api_actions__action_id__attendance_present__participation_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                participation_id: number;
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendancePageOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    event_detail_api_events__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_up_api_events__item_id__sign_up_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi concluído: {"error": "event_concluded"}. O último dia do evento já passou: {"error": "event_over"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {"error": "event_cancelled"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_sign_up_api_events__item_id__sign_up_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi concluído: {"error": "event_concluded"}. O último dia do evento já passou: {"error": "event_over"}. Na marca, o evento de fora foi cancelado (desativado pela curadoria): {"error": "event_cancelled"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    went_api_events__item_id__went_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    did_not_go_api_events__item_id__did_not_go_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_did_not_go_route_api_events__item_id__did_not_go_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só um evento de fora, depois da data e com ela inscrita, pergunta "Você foi?" (um evento de grupo da NISE espera a presença, #194): {"error": "event_not_asked"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reminder_api_events__item_id__reminder_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"}. O item não é um evento do filé dela (sem escolha, no Ver depois, no "Não é pra mim", fora do filé pelo "Não deu", a não ser no Desfazer dele, ou uma atividade): {"error": "item_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ao ligar: o evento não está inscrita, a véspera já passou ou é hoje, ou o evento de fora foi cancelado pela curadoria. Desligar vale sempre: {"error": "reminder_not_available"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_followup_api_followup_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentFollowupOut"] | null;
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    followup_options_api_followup_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowupOptionsOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_followup_api_followup_answers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nenhuma rodada aberta, ou a rodada já fechou: {"error": "no_open_round"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ela já respondeu essa rodada: {"error": "already_answered"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resposta inválida. Também quando a pergunta 3 enviada não é a que ela vê (tem curso registrado ou não): {"error": "invalid_course_answer"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     group_enrollments_api_coordinator_enrollments_get: {
         parameters: {
             query?: {
@@ -3366,6 +5842,91 @@ export interface operations {
             };
             /** @description Coordenadora em mais de um grupo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    group_enrollment_summary_api_coordinator_enrollments_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentSummaryOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_search_api_coordinator_list_search_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSearchOut"];
+                };
+            };
+            /** @description Não é coordenadora */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

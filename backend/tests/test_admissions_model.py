@@ -115,8 +115,11 @@ def test_marca_de_indicio_apagado_guarda_so_menina_e_chamada() -> None:
 def test_ingresso_tem_data_e_origem_obrigatorias() -> None:
     # RF-F6.03
     colunas = TABLES["enrollments"].c
-    for nome in ("enrolled_on", "origin", "level", "course", "institution"):
+    for nome in ("enrolled_on", "origin", "level", "course"):
         assert not colunas[nome].nullable, nome
+    # "Onde?" é opcional (RF-F6.02); `left_on` só vale para quem parou (RF-F6.06).
+    assert colunas["institution"].nullable
+    assert colunas["left_on"].nullable
 
 
 def test_aprovacao_fica_separada_do_ingresso() -> None:

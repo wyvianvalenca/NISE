@@ -60,6 +60,10 @@ class AppSettings(BaseSettings):
     ifal_max_pdf_bytes: int = 15 * 1024 * 1024
     # Intervalo mínimo entre duas requisições do robô (RNF-F31.05).
     list_search_interval_seconds: float = 2.0
+    # De quantos em quantos meses a equipe roda a busca (D-72: trimestral,
+    # semestral ou bimestral, perto do Sisu). A data da "próxima busca" da tela
+    # Ingressantes é a da última somada a este intervalo (#317).
+    list_search_every_months: int = 3
     # Segredo das rotas chamadas pelo agendador da hospedagem. Vazio recusa tudo.
     cron_secret: str = ""
 
