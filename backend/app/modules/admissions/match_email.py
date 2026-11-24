@@ -20,13 +20,13 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal, Protocol
+from typing import Protocol
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.email import EmailNotConfiguredError, SmtpConnection
+from app.core.email import EmailNotConfiguredError, SmtpConnection, send_outcome
 from app.modules.admissions.models import ListMatch, MatchEmail
 from app.modules.consents.service import EmailKind, can_send_email
 from app.modules.girls.models import Girl
@@ -108,42 +108,6 @@ def _still_wanted(match: ListMatch, user: User, now: datetime) -> bool:
     if match.answered_at is not None or match.expires_at <= now:
         return False
     return can_send_email(user, EmailKind.OPPORTUNITIES)
-
-
-# O que fazer com um erro do envio de um e-mail:
-# - "drop": o problema é daquele e-mail (endereço recusado de vez, 5xx): ele é
-#   descartado e a rotina segue, para não travar a fila atrás dele.
-# - "retry": nada saiu e o problema é do servidor ou da conta (4xx temporário,
-#   cota do Gmail, remetente recusado): a rotina para e o e-mail volta à fila.
-# - "unknown": a conexão caiu no meio, e o servidor pode ter aceitado o e-mail.
-#   A rotina para e o e-mail fica como tentado: na dúvida, não reenvia
-#   (RNF-F4.01).
-_Outcome = Literal["drop", "retry", "unknown"]
-
-
-def _outcome(error: Exception) -> _Outcome:
-    if isinstance(error, smtplib.SMTPRecipientsRefused):
-        codes = [code for code, _ in error.recipients.values()]
-        return "drop" if codes and all(code >= 500 for code in codes) else "retry"
-    if isinstance(error, smtplib.SMTPSenderRefused):
-        # O remetente é o mesmo em todos os e-mails: é configuração.
-        return "retry"
-    if isinstance(error, smtplib.SMTPResponseException):
-        return "drop" if 500 <= error.smtp_code < 600 else "retry"
-    if isinstance(error, smtplib.SMTPNotSupportedError):
-        # No envio (a conexão já passou do STARTTLS e do login), é o endereço
-        # dela que pede algo que o servidor não tem, como SMTPUTF8.
-        return "drop"
-    if isinstance(error, smtplib.SMTPServerDisconnected):
-        return "unknown"
-    if isinstance(error, smtplib.SMTPException):
-        return "retry"
-    if isinstance(error, OSError):
-        return "unknown"
-    # ValueError de um endereço inválido, UnicodeEncodeError e qualquer outro
-    # erro do e-mail em si: sem descartar, ele ficaria primeiro na fila e
-    # travaria todas as rodadas seguintes.
-    return "drop"
 
 
 async def _close(connection: Sender) -> None:
@@ -249,7 +213,7 @@ async def send_match_emails(
             # Qualquer erro: um endereço inválido (ValueError) ou outro erro do
             # e-mail em si não pode travar a fila nem virar 500 (revisão do #287).
             except Exception as error:  # noqa: BLE001
-                outcome = _outcome(error)
+                outcome = send_outcome(error)
                 # A mensagem do erro pode trazer o endereço: só o tipo vai ao log.
                 logger.warning(
                     "E-mail de indício não enviado (%s): %s",

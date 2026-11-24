@@ -173,26 +173,39 @@ async def test_id_de_item_invalido_responde_404(item: str) -> None:
 # --- O que não sai do filé (tabela de status da #78) --------------------------
 
 
-@pytest.mark.parametrize(
-    ("status", "erro"),
-    [
-        (FileStatus.CONCLUDED, "concluded_cannot_be_removed"),
-        # O "Tirar do filé" de eventos (M6) decide isso quando chegar.
-        (FileStatus.SIGNED_UP, "signed_up_cannot_be_removed"),
-    ],
-)
-async def test_concluida_e_inscrita_nao_saem_do_file(
-    status: FileStatus, erro: str
-) -> None:
-    escolha = linha(status)
+async def test_concluida_nao_sai_do_file() -> None:
+    escolha = linha(FileStatus.CONCLUDED)
     sessao_falsa = sessao_do_desfazer(menina(), escolha)
 
     response = await desfazer(sessao_falsa)
 
     assert response.status_code == 409
-    assert response.json() == {"error": erro}
+    assert response.json() == {"error": "concluded_cannot_be_removed"}
     sessao_falsa.delete.assert_not_called()
     sessao_falsa.commit.assert_not_called()
+
+
+async def test_tirar_do_file_um_evento_em_que_ela_se_inscreveu() -> None:
+    # "Não vou mais" virou "Tirar do filé" na A06·4b (#184, D-39).
+    escolha = FileEntry(id=41, girl_id=3, action_id=7, status=FileStatus.SIGNED_UP)
+    sessao_falsa = sessao_do_desfazer(menina(), escolha)
+
+    response = await desfazer(sessao_falsa, item="acao-7")
+
+    assert response.status_code == 200
+    sessao_falsa.delete.assert_awaited_once_with(escolha)
+    sessao_falsa.commit.assert_awaited_once()
+
+
+async def test_apagar_um_nao_deu_deixa_o_evento_ser_sugerido_de_novo() -> None:
+    # O "Não deu" (#190) já está fora do filé; apagar a linha não prende nada.
+    escolha = linha(FileStatus.DID_NOT_GO)
+    sessao_falsa = sessao_do_desfazer(menina(), escolha)
+
+    response = await desfazer(sessao_falsa)
+
+    assert response.status_code == 200
+    sessao_falsa.delete.assert_awaited_once_with(escolha)
 
 
 async def test_tirar_do_file_uma_atividade_em_andamento_apaga_a_escolha() -> None:
