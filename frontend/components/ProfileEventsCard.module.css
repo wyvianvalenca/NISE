@@ -1,0 +1,23 @@
+/* Uma linha por evento (Figma: A10, Card / Seu grupo, linha de evento, 603:782):
+   o nome à esquerda, flexível, e a data à direita, com 8px entre eles. Sem
+   divisor: quem separa as linhas é o gap do cartão. */
+.event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.eventName {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.eventDate {
+  color: var(--nise-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
