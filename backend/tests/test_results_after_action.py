@@ -22,7 +22,10 @@ from app.modules.actions.models import (
     Participation,
 )
 from app.modules.actions.service import ACTION_TIMEZONE, today_in_maceio
+from app.modules.catalog.models import ItemOrigin
 from app.modules.girl_file.models import FileEntry, FileStatus
+from app.modules.girl_file.schemas import Choice
+from app.modules.girl_file.service import find_entry, save_choice
 from app.modules.girls.models import Girl, Topic
 from app.modules.groups.models import Group, GroupCoordinator
 from app.modules.results.service import Period, add_months, period_start
@@ -121,19 +124,40 @@ class Cenario:
         guardado_em: datetime,
         status: FileStatus = FileStatus.NEXT,
         concluido_em: date | None = None,
-    ) -> None:
-        """Um item no filé dela. O item é um evento fora dos números do card."""
+    ) -> Action:
+        """Um item no filé dela. O item é um evento fora dos números do card.
+
+        Num status do filé, o item entrou nele na hora em que foi guardado.
+        """
         item = await self.acao(grupo, dias_atras(1000), presenca_salva=False)
-        self.sessao.add(
-            FileEntry(
-                girl_id=menina.id,
-                action_id=item.id,
-                status=status,
-                concluded_on=concluido_em,
-                created_at=guardado_em,
-            )
+        linha = FileEntry(
+            girl_id=menina.id,
+            action_id=item.id,
+            status=status,
+            concluded_on=concluido_em,
+            created_at=guardado_em,
         )
+        if linha.filed_at is not None:
+            linha.filed_at = guardado_em
+        self.sessao.add(linha)
         await self.sessao.flush()
+        return item
+
+    async def quer_fazer(self, menina: Girl, item: Action) -> None:
+        """O "+ Quero fazer" do Ver depois, agora, pelo mesmo caminho da rota."""
+        linha = await find_entry(
+            self.sessao, menina.id, ItemOrigin.GROUP_ACTION, item.id, for_update=True
+        )
+        assert linha is not None
+        assert await save_choice(
+            self.sessao,
+            menina.id,
+            ItemOrigin.GROUP_ACTION,
+            item.id,
+            Choice.QUERO_FAZER,
+            None,
+            linha,
+        )
 
 
 async def pedir(
@@ -432,6 +456,75 @@ async def test_ver_depois_e_nao_e_pra_mim_nao_estao_no_file(
     corpo = numeros(await pedir(db_session, katia))
 
     assert corpo["startedFile"] == {"participants": 1, "noShows": 0}
+
+
+async def test_item_do_ver_depois_que_ela_quis_fazer_depois_da_acao_conta(
+    db_session: AsyncSession,
+) -> None:
+    # Ela mandou o item para o "Ver depois" antes da ação e tocou "+ Quero
+    # fazer" depois dela. A linha é a mesma, de antes da ação, mas o item só
+    # entrou no filé agora: é novo no filé (RF-F5.31, D-93).
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    acao = await cenario.acao(grupo, dias_atras(7))
+    ana = await cenario.menina()
+    await cenario.inscrita(ana, acao, True)
+    item = await cenario.no_file(ana, grupo, as_(10, dias_atras(100)), FileStatus.LATER)
+
+    antes = numeros(await pedir(db_session, katia))
+    await cenario.quer_fazer(ana, item)
+    depois = numeros(await pedir(db_session, katia))
+
+    assert antes["startedFile"] == {"participants": 0, "noShows": 0}
+    assert depois["startedFile"] == {"participants": 1, "noShows": 0}
+
+
+async def test_item_do_ver_depois_que_ela_quis_fazer_fora_da_janela_nao_conta(
+    db_session: AsyncSession,
+) -> None:
+    # A ação foi há mais de 3 meses: o questionário de 3 meses já chegou
+    # quando ela tirou o item do "Ver depois".
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    acao = await cenario.acao(grupo, dias_atras(200))
+    ana = await cenario.menina()
+    await cenario.inscrita(ana, acao, True)
+    item = await cenario.no_file(ana, grupo, as_(10, dias_atras(300)), FileStatus.LATER)
+
+    await cenario.quer_fazer(ana, item)
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert corpo["participants"] == 1
+    assert corpo["startedFile"] == {"participants": 0, "noShows": 0}
+
+
+async def test_a_propria_acao_no_file_nao_conta(db_session: AsyncSession) -> None:
+    # A inscrição na ação e a presença nela também entram no filé (SIGNED_UP e
+    # CONCLUDED). Contar a própria ação poria toda menina dela no card.
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    dia = dias_atras(60)
+    acao = await cenario.acao(grupo, dia)
+    ana = await cenario.menina()
+    await cenario.inscrita(ana, acao, True)
+    linha = FileEntry(
+        girl_id=ana.id,
+        action_id=acao.id,
+        status=FileStatus.CONCLUDED,
+        concluded_on=dia,
+    )
+    linha.filed_at = as_(10, dia)
+    db_session.add(linha)
+    await db_session.flush()
+
+    corpo = numeros(await pedir(db_session, katia))
+
+    assert corpo["participants"] == 1
+    assert corpo["startedFile"] == {"participants": 0, "noShows": 0}
+    assert corpo["concludedFile"] == {"participants": 0, "noShows": 0}
 
 
 # --- Filtros (RF-F5.06, D-94) --------------------------------------------------

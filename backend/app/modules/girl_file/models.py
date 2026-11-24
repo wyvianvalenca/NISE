@@ -1,8 +1,8 @@
 import enum
-from datetime import date
+from datetime import UTC, date, datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, UniqueConstraint, text
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
@@ -30,6 +30,16 @@ class FileStatus(enum.Enum):
     # "Não deu" de um evento de fora depois da data (#190): saiu do filé, mas a
     # linha fica para o "Desfazer" saber que ela estava inscrita.
     DID_NOT_GO = "did_not_go"
+
+
+# O que conta na pílula "Meu filé": tudo o que entrou no filé. O "Ver depois"
+# e o "Não é pra mim" ficam de fora.
+IN_FILE: list[FileStatus] = [
+    FileStatus.NEXT,
+    FileStatus.IN_PROGRESS,
+    FileStatus.CONCLUDED,
+    FileStatus.SIGNED_UP,
+]
 
 
 class DismissReason(enum.Enum):
@@ -95,6 +105,11 @@ class FileEntry(TimestampMixin, Base):
             "status = 'SIGNED_UP' OR reminder = false",
             name="ck_file_entries_reminder_only_when_signed_up",
         ),
+        CheckConstraint(
+            "status NOT IN ('NEXT', 'IN_PROGRESS', 'CONCLUDED', 'SIGNED_UP')"
+            " OR filed_at IS NOT NULL",
+            name="ck_file_entries_filed_at_when_in_file",
+        ),
     )
 
     girl_id: Mapped[int] = mapped_column(
@@ -125,3 +140,27 @@ class FileEntry(TimestampMixin, Base):
     # evento (as restrições de único acima), então ela recebe um lembrete por
     # data do evento (RNF-F4.01); se o evento muda de dia, sai outro.
     reminder_sent_for: Mapped[date | None] = mapped_column()
+    # Quando o item entrou no filé (IN_FILE) pela primeira vez: na hora em que
+    # a linha é criada já no filé, ou quando sai do "Ver depois" para ele (o
+    # "+ Quero fazer"). Vazio enquanto o item nunca entrou no filé. O
+    # "Começaram o filé" da aba Resultados conta por aqui (RF-F5.31, D-93):
+    # `created_at` não serve, porque o "Quero fazer" do Ver depois só troca o
+    # status da linha que já existia.
+    #
+    # Sair do filé e voltar (o "Não deu" e o "Desfazer" dele) não muda a data:
+    # é o mesmo item, não um novo. Tirar do filé apaga a linha, e guardar de
+    # novo cria outra, com a data nova.
+    filed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    @validates("status")
+    def _marks_filed_at(self, key: str, status: FileStatus) -> FileStatus:
+        """Guarda `filed_at` sempre que o status muda para um do filé.
+
+        O SQLAlchemy chama isto em todo `entry.status = ...` e em
+        `FileEntry(status=...)`, então nenhum caminho que mexe no status
+        esquece a data. O banco também confere
+        (ck_file_entries_filed_at_when_in_file).
+        """
+        if status in IN_FILE and self.filed_at is None:
+            self.filed_at = datetime.now(UTC)
+        return status

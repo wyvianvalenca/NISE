@@ -23,6 +23,7 @@ from app.modules.catalog.utils import (
 )
 from app.modules.cities.models import City
 from app.modules.girl_file.models import (
+    IN_FILE,
     DismissReason,
     FileEntry,
     FileStatus,
@@ -74,15 +75,6 @@ REMOVABLE: frozenset[FileStatus] = frozenset(
         FileStatus.DID_NOT_GO,
     }
 )
-
-# O que conta na pílula "Meu filé": tudo o que entrou no filé. O "Ver depois"
-# e o "Não é pra mim" ficam de fora.
-IN_FILE: list[FileStatus] = [
-    FileStatus.NEXT,
-    FileStatus.IN_PROGRESS,
-    FileStatus.CONCLUDED,
-    FileStatus.SIGNED_UP,
-]
 
 
 def new_entry(

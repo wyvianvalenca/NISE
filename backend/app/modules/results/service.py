@@ -8,8 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionTopic, ActionType, Participation
 from app.modules.actions.service import ACTION_TIMEZONE
-from app.modules.girl_file.models import FileEntry
-from app.modules.girl_file.service import IN_FILE
+from app.modules.girl_file.models import IN_FILE, FileEntry
 from app.modules.girls.models import Topic
 
 # O filé conta até o questionário de 3 meses (RF-F5.31, D-93).
@@ -101,7 +100,10 @@ async def after_action(
       marcou um item como concluído, do dia em que a primeira ação dela no
       filtro começou até 3 meses depois, quando chega o questionário de 3
       meses (RF-F5.31, D-93). Conta qualquer item que está no filé, também os
-      que o sistema guardou sozinho, como a inscrição num evento.
+      que o sistema guardou sozinho, como a inscrição num evento. O item é
+      novo a partir de quando entrou no filé (`FileEntry.filed_at`), também
+      quando ela o tira do "Ver depois". A própria ação de referência não
+      conta.
     """
     since = period_start(filters.period, today)
 
@@ -182,7 +184,8 @@ async def _file_after_action(
     entries = await session.execute(
         select(
             FileEntry.girl_id,
-            FileEntry.created_at,
+            FileEntry.action_id,
+            FileEntry.filed_at,
             FileEntry.concluded_on,
         ).where(
             # Só as concluídas têm `concluded_on`, e elas estão no filé.
@@ -193,12 +196,19 @@ async def _file_after_action(
 
     started: set[int] = set()
     concluded: set[int] = set()
-    for girl_id, created_at, concluded_on in entries:
-        start = references[girl_id].starts_on
+    for girl_id, action_id, filed_at, concluded_on in entries:
+        reference = references[girl_id]
+        # A própria ação não conta: a inscrição nela (SIGNED_UP) e a presença
+        # (CONCLUDED) também entram no filé, e aí toda menina da ação contaria.
+        if action_id == reference.action_id:
+            continue
+        start = reference.starts_on
         end = add_months(start, FILE_WINDOW_MONTHS)  # o dia do questionário fica fora
 
-        saved_on = created_at.astimezone(ACTION_TIMEZONE).date()
-        if start <= saved_on < end:
+        # A restrição ck_file_entries_filed_at_when_in_file garante a data.
+        assert filed_at is not None
+        filed_on = filed_at.astimezone(ACTION_TIMEZONE).date()
+        if start <= filed_on < end:
             started.add(girl_id)
         if concluded_on is not None and start <= concluded_on < end:
             concluded.add(girl_id)
