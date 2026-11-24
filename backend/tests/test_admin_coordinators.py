@@ -57,12 +57,14 @@ async def cenario(sessao: AsyncSession) -> None:
             CoordinatorInvite(
                 name="Carla Ficticia",
                 email="carla@exemplo.com",
+                token_hash="hash-carla",
                 group_id=rendeiras.id,
                 expires_at=AGORA + timedelta(days=3),
             ),
             CoordinatorInvite(
                 name="Dani Ficticia",
                 email="dani@exemplo.com",
+                token_hash="hash-dani",
                 group_id=marias.id,
                 expires_at=AGORA - timedelta(days=2),
             ),
@@ -151,6 +153,7 @@ async def test_convite_aceito_ou_cancelado_nao_aparece(
             CoordinatorInvite(
                 name=nome,
                 email=f"{nome.split()[0].lower()}@exemplo.com",
+                token_hash=f"hash-{nome.split()[0].lower()}",
                 group_id=rendeiras.id,
                 expires_at=AGORA + timedelta(days=1),
                 **{campo: AGORA},

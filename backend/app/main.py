@@ -10,11 +10,16 @@ from app.modules.consents.exceptions import (
     TermsNotAcceptedError,
     terms_not_accepted_handler,
 )
+from app.modules.groups.coordinator_invites import (
+    CoordinatorInviteError,
+    coordinator_invite_error_handler,
+)
 from app.routes import router
 
 app = FastAPI()
 
 app.add_exception_handler(ActionValidationError, action_validation_handler)
+app.add_exception_handler(CoordinatorInviteError, coordinator_invite_error_handler)
 app.add_exception_handler(InvalidCityError, invalid_city_handler)
 app.add_exception_handler(SignupError, signup_error_handler)
 app.add_exception_handler(TermsNotAcceptedError, terms_not_accepted_handler)
