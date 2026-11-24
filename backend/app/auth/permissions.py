@@ -52,13 +52,37 @@ async def get_current_user(
 
     user = await session.get(User, user_id)
 
-    if user is None:
+    # Conta excluída (RF-F7.09, #394): o cookie antigo, de qualquer aba ou
+    # aparelho, deixa de valer.
+    if user is None or user.deleted_at is not None:
         raise unauthorized
 
     return user
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+async def get_session_user_id(
+    token: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
+) -> int:
+    """Só o id da sessão, sem olhar a conta no banco.
+
+    Serve à exclusão de conta (#394): uma segunda chamada, de outra aba, já vem
+    com a conta excluída e precisa responder 204, não 401.
+    """
+    user_id = decode_access_token(token) if token else None
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Não autenticada",
+        )
+
+    return user_id
+
+
+SessionUserIdDep = Annotated[int, Depends(get_session_user_id)]
 
 
 async def get_pending_signup(
