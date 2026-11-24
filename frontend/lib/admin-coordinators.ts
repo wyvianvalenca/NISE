@@ -1,11 +1,12 @@
 import { comparableText } from "@/lib/coord-action-labels";
+import type { components } from "./api/schema";
+
+type CoordinatorListResponse = components["schemas"]["CoordinatorListOut"];
 
 /**
  * AD02 "Coordenadoras" (RF-S2.24): the coordinators as the NISE team sees them.
  *
- * The shapes follow GET /api/admin/coordinators (CoordinatorListOut). For now
- * the screen reads SAMPLE_COORDINATORS; the integration layer swaps
- * `getAdminCoordinators` for the real call.
+ * The shapes follow GET /api/admin/coordinators (CoordinatorListOut).
  */
 
 export type CoordinatorStatus = "active" | "invite_sent" | "invite_expired" | "deactivated";
@@ -95,16 +96,24 @@ export function coordinatorDateLabel(row: CoordinatorRow): string {
   return `${DATE_PREFIX[row.status]} ${dayAndMonth(row.date)}`;
 }
 
-/** Fictional rows in the four situations, until the API is plugged in. */
-const SAMPLE_COORDINATORS: CoordinatorRow[] = [
-  { id: 1, name: "Ana Souza", group_name: "Rendeiras do Código", status: "active", date: "2026-09-12T15:00:00Z" },
-  { id: 2, name: "Beatriz Lima", group_name: "Meninas Programadoras", status: "active", date: "2026-08-03T15:00:00Z" },
-  { id: 3, name: "Carla Mendes", group_name: "Robótica Delas", status: "invite_sent", date: "2026-11-25T15:00:00Z" },
-  { id: 4, name: "Daniela Rocha", group_name: "Futuras Cientistas", status: "invite_expired", date: "2026-11-18T15:00:00Z" },
-  { id: 5, name: "Elisa Duarte", group_name: "Código e Café", status: "deactivated", date: "2026-11-02T15:00:00Z" },
-];
+/** Why the list did not load: no session, not NISE team (403) or anything else. */
+export class AdminCoordinatorsError extends Error {
+  constructor(readonly reason: "unauthenticated" | "forbidden" | "failed") {
+    super(`admin coordinators ${reason}`);
+    this.name = "AdminCoordinatorsError";
+  }
+}
 
-/** The coordinators list. SAMPLE DATA: replaced by GET /api/admin/coordinators in the integration. */
-export async function getAdminCoordinators(): Promise<CoordinatorList> {
-  return { items: SAMPLE_COORDINATORS, counts: countCoordinators(SAMPLE_COORDINATORS) };
+/**
+ * The coordinators list: `GET /api/admin/coordinators`. The server decides who
+ * may ask (NISE team only, RNF-G.03) and answers the whole list with the counts;
+ * the screen filters and searches it. Rejects with `AdminCoordinatorsError`.
+ */
+export async function getAdminCoordinators(signal?: AbortSignal): Promise<CoordinatorList> {
+  const response = await fetch("/api/admin/coordinators", { signal });
+  if (response.status === 401) throw new AdminCoordinatorsError("unauthenticated");
+  if (response.status === 403) throw new AdminCoordinatorsError("forbidden");
+  if (!response.ok) throw new AdminCoordinatorsError("failed");
+  const data = (await response.json()) as CoordinatorListResponse;
+  return { items: data.items, counts: data.counts };
 }

@@ -1122,6 +1122,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/coordinators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coordinators */
+        get: operations["coordinators_api_admin_coordinators_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1669,6 +1686,48 @@ export interface components {
             /** Present Ids */
             present_ids: number[];
         };
+        /** CoordinatorCountsOut */
+        CoordinatorCountsOut: {
+            /** All */
+            all: number;
+            /** Active */
+            active: number;
+            /** Invites */
+            invites: number;
+            /** Deactivated */
+            deactivated: number;
+        };
+        /**
+         * CoordinatorFilter
+         * @enum {string}
+         */
+        CoordinatorFilter: "all" | "active" | "invites" | "deactivated";
+        /** CoordinatorListOut */
+        CoordinatorListOut: {
+            /** Items */
+            items: components["schemas"]["CoordinatorRowOut"][];
+            counts: components["schemas"]["CoordinatorCountsOut"];
+        };
+        /** CoordinatorRowOut */
+        CoordinatorRowOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Group Name */
+            group_name: string;
+            status: components["schemas"]["CoordinatorStatus"];
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+        };
+        /**
+         * CoordinatorStatus
+         * @enum {string}
+         */
+        CoordinatorStatus: "active" | "invite_sent" | "invite_expired" | "deactivated";
         /**
          * CourseCode
          * @description O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis.
@@ -6077,6 +6136,48 @@ export interface operations {
             };
             /** @description Coordenadora em mais de um grupo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coordinators_api_admin_coordinators_get: {
+        parameters: {
+            query?: {
+                filter?: components["schemas"]["CoordinatorFilter"];
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorListOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

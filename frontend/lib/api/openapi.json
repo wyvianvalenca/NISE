@@ -5377,6 +5377,95 @@
         }
       }
     },
+    "/api/admin/coordinators": {
+      "get": {
+        "tags": [
+          "API",
+          "Admin"
+        ],
+        "summary": "Coordinators",
+        "operationId": "coordinators_api_admin_coordinators_get",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CoordinatorFilter",
+              "default": "all"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoordinatorListOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é da equipe NISE"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -6735,6 +6824,107 @@
         ],
         "title": "ConcludeIn",
         "description": "\"Concluir presença\" (#348): the registrations marked as present."
+      },
+      "CoordinatorCountsOut": {
+        "properties": {
+          "all": {
+            "type": "integer",
+            "title": "All"
+          },
+          "active": {
+            "type": "integer",
+            "title": "Active"
+          },
+          "invites": {
+            "type": "integer",
+            "title": "Invites"
+          },
+          "deactivated": {
+            "type": "integer",
+            "title": "Deactivated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "all",
+          "active",
+          "invites",
+          "deactivated"
+        ],
+        "title": "CoordinatorCountsOut"
+      },
+      "CoordinatorFilter": {
+        "type": "string",
+        "enum": [
+          "all",
+          "active",
+          "invites",
+          "deactivated"
+        ],
+        "title": "CoordinatorFilter"
+      },
+      "CoordinatorListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CoordinatorRowOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CoordinatorCountsOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "counts"
+        ],
+        "title": "CoordinatorListOut"
+      },
+      "CoordinatorRowOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "group_name": {
+            "type": "string",
+            "title": "Group Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoordinatorStatus"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "group_name",
+          "status",
+          "date"
+        ],
+        "title": "CoordinatorRowOut"
+      },
+      "CoordinatorStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "invite_sent",
+          "invite_expired",
+          "deactivated"
+        ],
+        "title": "CoordinatorStatus"
       },
       "CourseCode": {
         "type": "string",
