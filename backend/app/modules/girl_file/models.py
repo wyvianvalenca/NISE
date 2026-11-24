@@ -154,12 +154,12 @@ class FileEntry(TimestampMixin, Base):
 
     @validates("status")
     def _marks_filed_at(self, key: str, status: FileStatus) -> FileStatus:
-        """Guarda `filed_at` sempre que o status muda para um do filé.
+        """Guarda `filed_at` na primeira vez que o status muda para um do filé.
 
         O SQLAlchemy chama isto em todo `entry.status = ...` e em
         `FileEntry(status=...)`, então nenhum caminho que mexe no status
-        esquece a data. O banco também confere
-        (ck_file_entries_filed_at_when_in_file).
+        esquece a data. Um `update(FileEntry)` direto não passa por aqui: o
+        banco recusa se faltar a data (ck_file_entries_filed_at_when_in_file).
         """
         if status in IN_FILE and self.filed_at is None:
             self.filed_at = datetime.now(UTC)
