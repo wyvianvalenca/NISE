@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signedIn } from "./session";
 
 /**
  * K02, the form that registers an action (#212).
@@ -14,6 +15,7 @@ const CITIES = [
 ];
 
 test.beforeEach(async ({ page }) => {
+  await signedIn(page);
   await page.route("**/api/cities**", (route) => {
     const search = new URL(route.request().url()).searchParams.get("search") ?? "";
     const plain = (text: string) =>

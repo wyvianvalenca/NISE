@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signedIn } from "./session";
 
 /**
  * K02 filled in, to edit an action (#222).
@@ -11,6 +12,7 @@ import { expect, test, type Page } from "@playwright/test";
 const CITIES = [{ id: "2704302", name: "Maceió, AL" }];
 
 test.beforeEach(async ({ page }) => {
+  await signedIn(page);
   await page.route("**/api/cities**", (route) => route.fulfill({ json: CITIES }));
 });
 
