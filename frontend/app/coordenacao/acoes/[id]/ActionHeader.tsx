@@ -35,7 +35,8 @@ function whereLabel(action: ActionPage): string {
 /**
  * Top of the action page (K11): back link, status, name, the meta line and the
  * buttons "Editar ação" and "Excluir ação" (D-47: both stay in the header).
- * "Excluir ação" is hidden once the attendance is saved (RF-F30.12).
+ * "Excluir ação" is hidden once the attendance is saved (RF-F30.12), and both
+ * buttons are hidden on the concluded page.
  */
 export function ActionHeader({ action }: { action: ActionPage }) {
   const router = useRouter();
@@ -83,10 +84,13 @@ export function ActionHeader({ action }: { action: ActionPage }) {
           </div>
         </div>
         <div className={styles.buttons}>
-          <Link href={`/coordenacao/acoes/${action.id}/editar`} className={styles.edit}>
-            <Icon name="edit" />
-            Editar ação
-          </Link>
+          {/* The concluded page has no "Editar ação" (Figma K11 concluída, #348). */}
+          {action.status !== "concluded" && (
+            <Link href={`/coordenacao/acoes/${action.id}/editar`} className={styles.edit}>
+              <Icon name="edit" />
+              Editar ação
+            </Link>
+          )}
           {action.canDelete && (
             <Button variant="secondary" onClick={() => setConfirming(true)}>
               <Icon name="trash" />

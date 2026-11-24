@@ -18,16 +18,16 @@ function rowOf(page: Page, name: string) {
   return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
-test("shows the intro line and the Nova ação button as an unavailable link", async ({ page }) => {
+test("shows the intro line and the Nova ação button leading to the form", async ({ page }) => {
   await page.goto(URL);
 
   await expect(page.getByRole("heading", { level: 1, name: "Ações" })).toBeVisible();
   await expect(
     page.getByText("Cada ação passa por 3 etapas até ser concluída: inscrições, evento e presença."),
   ).toBeVisible();
-  const newAction = page.getByRole("link", { name: "Nova ação", disabled: true });
+  const newAction = page.getByRole("link", { name: "Nova ação" });
   await expect(newAction).toBeVisible();
-  await expect(newAction).not.toHaveAttribute("href", /.*/);
+  await expect(newAction).toHaveAttribute("href", "/coordenacao/acoes/nova");
 });
 
 test("shows the status chips with their counts in the order of the flow", async ({ page }) => {
@@ -228,8 +228,8 @@ test("the row leads to the action page; the buttons of later screens go nowhere"
 }) => {
   await page.goto(URL);
 
-  // Only the action name of each visible row (7) and the two inscritas buttons are links.
-  await expect(page.locator("main a[href]")).toHaveCount(7 + 4);
+  // The links are the action name of each visible row (7), the inscritas buttons (4) and "Nova ação".
+  await expect(page.locator("main a[href]")).toHaveCount(7 + 4 + 1);
   await expect(
     rowOf(page, "Introdução à robótica").getByRole("link", { name: "Introdução à robótica" }),
   ).toHaveAttribute("href", "/coordenacao/acoes/1");

@@ -30,3 +30,9 @@ class UnknownRegistrationError(AttendanceError):
     """An id that is not a registration of this action."""
 
     code = "unknown_registration"
+
+
+class EmptyListError(AttendanceError):
+    """The imported list has no line with an e-mail."""
+
+    code = "empty_file"

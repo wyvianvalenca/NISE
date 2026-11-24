@@ -102,7 +102,7 @@ test("se a sessão acabou, volta para a página inicial", async ({ page }) => {
 
   await page.getByRole("button", { name: "Sim, quero receber" }).click();
 
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
 });
 
 test("com o cadastro do Google incompleto, volta para completar", async ({ page }) => {

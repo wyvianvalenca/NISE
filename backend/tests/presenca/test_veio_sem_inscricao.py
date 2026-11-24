@@ -42,7 +42,9 @@ async def test_cria_o_registro_e_inscreve_na_acao(
         json={
             "name": "  Larissa Fictícia ",
             "email": " Larissa.Ficticia@Exemplo.COM ",
+            "whatsapp": "82999990000",
             "study_stage": "medio",
+            "school_year": "2º ano",
         },
     )
 
@@ -52,6 +54,8 @@ async def test_cria_o_registro_e_inscreve_na_acao(
     assert body["girl"]["name"] == "Larissa Fictícia"
     assert body["girl"]["email"] == "larissa.ficticia@exemplo.com"
     assert body["girl"]["study_stage"] == "medio"
+    assert body["girl"]["whatsapp"] == "82999990000"
+    assert body["girl"]["school_year"] == "2º ano"
     # Registered, but not marked by the server: the page marks her.
     assert body["girl"]["saved_present"] is False
     assert body["girl"]["present"] is False
@@ -107,6 +111,27 @@ async def test_quem_ja_tem_conta_continua_com_um_registro_so(
     await banco.refresh(girl)
     assert girl.name == "Nome Dela"
     assert girl.study_stage is StudyStage.GRADUACAO
+    # In this action she shows with what was typed in it (C2, #232, RN-01).
+    assert body["girl"]["name"] == "Nome Digitado"
+    assert body["girl"]["study_stage"] == "medio"
+
+
+async def test_quem_veio_sem_inscricao_aparece_nas_inscritas_da_c2(
+    banco: AsyncSession, api: Api
+) -> None:
+    group, coordinator = await make_group(banco)
+    action = await make_action(banco, group)
+
+    await api(coordinator).post(
+        URL.format(action.id),
+        json={"name": "Larissa Fictícia", "email": "larissa@exemplo.com"},
+    )
+
+    listed = (
+        await api(coordinator).get(f"/api/actions/{action.id}/registrations")
+    ).json()
+    assert listed["total"] == 1
+    assert listed["items"][0]["name"] == "Larissa Fictícia"
 
 
 async def test_menina_de_outro_grupo_e_ligada_sem_novo_registro(
