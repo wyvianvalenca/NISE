@@ -6,6 +6,7 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { Icon } from "@/components/Icon";
 import { Tabs } from "@/components/Tabs";
 import type { AttendanceGirl, AttendancePage } from "@/lib/coord-attendance";
+import { shownEmail } from "@/lib/email";
 import styles from "./AttendanceResult.module.css";
 
 /** How many girls show before "Ver todas as N" (RF-F1.14). */
@@ -29,7 +30,7 @@ function tableColumns(
   };
   return [
     { key: "name", header: "Nome", render: (row) => row.name, emphasis: true },
-    { key: "email", header: "E-mail", render: (row) => row.email },
+    { key: "email", header: "E-mail", render: (row) => shownEmail(row.email) },
     ...columns.map((column) => optional[column]),
     ...(markButton
       ? [{ key: "mark", header: "Ação", render: markButton, align: "right" as const }]

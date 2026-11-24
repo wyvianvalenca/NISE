@@ -12,6 +12,7 @@ import {
   type RegistrationColumn,
   type RegistrationList,
 } from "@/lib/coord-action-page";
+import { shownEmail } from "@/lib/email";
 import styles from "./RegistrationsCard.module.css";
 
 /** How many girls show before "Ver todas as N" (RF-F1.14). */
@@ -45,7 +46,7 @@ const OPTIONAL: Record<RegistrationColumn, Column<Registration>> = {
 function tableColumns(columns: RegistrationColumn[]): Column<Registration>[] {
   return [
     { key: "name", header: "Nome", render: (row) => row.name, emphasis: true },
-    { key: "email", header: "E-mail", render: (row) => row.email },
+    { key: "email", header: "E-mail", render: (row) => shownEmail(row.email) },
     ...columns.map((column) => OPTIONAL[column]),
   ];
 }
