@@ -114,6 +114,13 @@ export function InterestsForm({
         ))}
       </div>
 
+      {/* O aviso geral fica acima do botão, à vista: embaixo do "Voltar" ele sai da tela no celular. */}
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+
       <div className={styles.actions}>
         <Button
           className={styles.fullWidth}
@@ -125,11 +132,6 @@ export function InterestsForm({
         </Button>
         {children}
       </div>
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
