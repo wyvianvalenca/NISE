@@ -211,6 +211,22 @@ async def test_excluir_apaga_so_inscricao_em_acao_que_comeca_depois_de_hoje() ->
     assert "actions.starts_on > '2026-11-24'" in apaga
 
 
+# C15: a rota passa a data de hoje em Maceió ao serviço (e não outra data).
+async def test_a_rota_usa_a_data_de_hoje_em_maceio_na_inscricao_futura(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.modules.girls.routes.today_in_maceio", lambda: date(2026, 11, 24)
+    )
+    sessao_falsa = sessao_da_exclusao(alana())
+
+    status, _ = await excluir(sessao_falsa)
+
+    assert status == 204
+    apaga = sql_com_valores(sessao_falsa.execute.call_args_list[6].args[0])
+    assert "actions.starts_on > '2026-11-24'" in apaga
+
+
 # C3, C4: o id da menina vem da sessão; com a usuária 2 (menina 8) tudo muda junto.
 async def test_excluir_da_usuaria_2_usa_a_menina_8_e_o_usuario_2() -> None:
     sessao_falsa = sessao_da_exclusao(alana(2), girl_id=8)
