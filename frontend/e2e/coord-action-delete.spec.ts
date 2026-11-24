@@ -52,6 +52,29 @@ test("the menu offers Excluir ação only while attendance is not registered", a
   }
 });
 
+test("the menu offers Editar ação before Excluir ação, and none of them for a concluded action", async ({ page }) => {
+  await page.goto(URL);
+
+  await more(page, "Python do zero").click();
+  await expect(page.getByRole("menuitem")).toHaveText(["Editar ação", "Excluir ação"]);
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Ver as outras 3" }).click();
+  await more(page, "Arduino na escola").click();
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
+});
+
+test("Editar ação opens the form of that action filled in", async ({ page }) => {
+  await page.route("**/api/cities**", (route) => route.fulfill({ json: [{ id: "2704302", name: "Maceió, AL" }] }));
+  await page.goto(URL);
+
+  await more(page, "Introdução à robótica").click();
+  await page.getByRole("menuitem", { name: "Editar ação" }).click();
+
+  await expect(page).toHaveURL("/coordenacao/acoes/1/editar");
+  await expect(page.getByLabel("Nome da ação")).toHaveValue("Introdução à robótica");
+});
+
 test("the modal asks with the name of the action and the two buttons", async ({ page }) => {
   await page.goto(URL);
 
@@ -157,6 +180,8 @@ test("it works by keyboard alone: Enter opens the menu, Arrow keys move, Enter o
 
   await more(page, "Visita ao Polo de TI").focus();
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Editar ação" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "Excluir ação" })).toBeFocused();
 
   await page.keyboard.press("Enter");
