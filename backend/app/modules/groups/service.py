@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.groups.exceptions import ExpiredInviteError, InvalidInviteError
-from app.modules.groups.models import Group, Invite
+from app.modules.groups.models import Group, GroupCoordinator, Invite
 from app.modules.groups.utils import new_invite_code
+from app.users.models import Role, User
 
 
 async def get_valid_invite(
@@ -49,3 +50,22 @@ async def create_invite(
     await session.commit()
 
     return invite
+
+
+async def get_coordinator_group(session: AsyncSession, user: User) -> Group | None:
+    """The group shown in a coordinator's top menu, or None.
+
+    Only coordinators have one. With several groups the lowest id wins, so the
+    answer does not change between calls; the menu only shows the name, and the
+    routes that write data never read the group from here (RN-14).
+    """
+    if user.role is not Role.COORDINATOR:
+        return None
+
+    return await session.scalar(
+        select(Group)
+        .join(GroupCoordinator, GroupCoordinator.group_id == Group.id)
+        .where(GroupCoordinator.user_id == user.id)
+        .order_by(Group.id)
+        .limit(1)
+    )
