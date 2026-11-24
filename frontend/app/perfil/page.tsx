@@ -93,7 +93,11 @@ export default function ProfilePage() {
   return (
     <div className={styles.page}>
       <AppHeader>
-        <button type="button" className={styles.back} onClick={() => router.back()}>
+        <button type="button" className={styles.back} onClick={() => {
+            // Aberto direto (favorito, link), não há histórico do app.
+            if (window.history.length > 1) router.back();
+            else router.replace("/file");
+          }}>
           <Icon name="left" />
           Voltar
         </button>

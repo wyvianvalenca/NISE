@@ -6,7 +6,7 @@
 // O que já está no filé fica. "Voltar" não envia nada.
 
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { InterestsForm, type InitialInterests } from "@/components/InterestsForm";
 import { LoadFailed } from "@/components/LoadFailed";
@@ -21,13 +21,15 @@ import {
 } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
-type Loaded = { options: InterestOptions; initial: InitialInterests };
+// version muda a cada busca: é a key do formulário, que só lê "initial" ao montar.
+type Loaded = { options: InterestOptions; initial: InitialInterests; version: number };
 
 export default function EditInterestsPage() {
   const router = useRouter();
   const [loaded, setLoaded] = useState<Loaded | "error" | undefined>();
   // Muda a cada nova busca, para o efeito abaixo rodar de novo.
   const [attempt, setAttempt] = useState(0);
+  const versions = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,9 @@ export default function EditInterestsPage() {
       .then(([options, details]) => {
         if (options.ok && details.ok) {
           // O perfil traz {code, label}: o formulário marca pelo código.
+          versions.current += 1;
           setLoaded({
+            version: versions.current,
             options: options.options,
             initial: {
               topics: details.profile.topics.map((topic) => topic.code),
@@ -47,11 +51,15 @@ export default function EditInterestsPage() {
           });
           return;
         }
-        const failure = options.ok ? details : options;
-        if (failure.ok) return;
-        if (failure.reason === "failed") setLoaded("error");
-        // Login vencido ou termos novos: "Tentar novamente" não resolveria.
-        else router.replace(accessPath(failure.reason));
+        // Login vencido ou termos novos, em qualquer das duas: "Tentar
+        // novamente" não resolveria.
+        for (const result of [options, details]) {
+          if (!result.ok && result.reason !== "failed") {
+            router.replace(accessPath(result.reason));
+            return;
+          }
+        }
+        setLoaded("error");
       })
       .catch(() => {
         // Sem rede. Se ela só saiu da página, não há o que mostrar.
@@ -110,6 +118,7 @@ export default function EditInterestsPage() {
           <Loading />
         ) : (
           <InterestsForm
+            key={loaded.version}
             options={loaded.options}
             initial={loaded.initial}
             title="Seus interesses"

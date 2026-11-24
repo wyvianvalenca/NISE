@@ -138,6 +138,12 @@ test("Voltar leva ao perfil sem enviar nada", async ({ page }) => {
   const card = page.getByRole("region", { name: "O que te interessa" });
   await expect(card.getByText("Programação", { exact: true })).toBeVisible();
   await expect(card.getByText("Momento de estudo: Ensino médio")).toBeVisible();
+
+  // Reabrir o "Editar" mostra o que está salvo, não o que ela descartou.
+  await card.getByRole("link", { name: "Editar" }).click();
+  await expect(choice(page, "Dados")).toHaveAttribute("aria-pressed", "false");
+  await expect(choice(page, "Ensino fundamental")).toHaveAttribute("aria-pressed", "false");
+  await expect(choice(page, "Ensino médio")).toHaveAttribute("aria-pressed", "true");
 });
 
 test("sem tema e sem ver de tudo, o Salvar fica desabilitado", async ({ page }) => {
