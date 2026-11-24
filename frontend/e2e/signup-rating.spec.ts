@@ -157,7 +157,7 @@ test("sem sessão, volta para a página inicial", async ({ page }) => {
   await mockRatingsApi(page, { pending: 401 });
   await page.goto("/cadastro/avaliacao");
 
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
 });
 
 test("com o cadastro do Google incompleto, volta para a A02b", async ({ page }) => {
@@ -184,5 +184,5 @@ test("se a sessão cai antes do envio, volta para a página inicial", async ({ p
   await page.getByRole("radio", { name: /^4 · / }).check();
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
 
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
 });

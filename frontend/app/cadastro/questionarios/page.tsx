@@ -47,7 +47,7 @@ export default function QuestionnairesPage() {
       </div>
       <h1 className={styles.titleLoose}>Você vai receber questionários por e-mail</h1>
       <p className={styles.lead}>
-        Como a avaliação de uma oficina e pesquisas sobre sua trajetória, depois de 3 e de 6 meses.
+        Como a avaliação de uma oficina e pesquisas sobre sua trajetória, depois de 3, 6, 12 e 18 meses.
       </p>
 
       <div className={styles.block}>

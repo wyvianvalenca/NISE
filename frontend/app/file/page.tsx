@@ -17,6 +17,7 @@ import { Icon } from "@/components/Icon";
 import { LoadFailed } from "@/components/LoadFailed";
 import { UndoTimerToast } from "@/components/UndoTimerToast";
 import { AGENDA_PATH, getToAnswer, pendingCount } from "@/lib/agenda";
+import { FILE_PATHS, REVIEW_PARAM } from "@/lib/file-intro";
 import { eventPath, takeDidNotGo, undoDidNotGo, type DidNotGo } from "@/lib/evento";
 import {
   NO_CHANGES,
@@ -238,7 +239,7 @@ function File({ data, changes, onSettled, onRemoved }: FileProps) {
     <>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>Seu filé</h1>
-        <Link href="/por-que-file" className={styles.help} aria-label="O que é o filé?">
+        <Link href={`${FILE_PATHS.intro}?${REVIEW_PARAM}=1`} className={styles.help} aria-label="O que é o filé?">
           <Icon name="question" />
         </Link>
       </div>
