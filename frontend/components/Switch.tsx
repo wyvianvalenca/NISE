@@ -13,8 +13,9 @@ type SwitchProps = {
 };
 
 /**
- * Interruptor de ligar e desligar (Figma: Toggle / Ligado). O estado também
- * aparece em texto, para não depender só da cor (RNF-G.02).
+ * Interruptor de ligar e desligar (Figma: Toggle / Ligado). O estado aparece
+ * também na posição da bolinha (direita = ligado), não só na cor (RNF-G.02), e
+ * o leitor de tela lê `aria-checked`.
  */
 export function Switch({ checked, onChange, labelledBy, busy = false }: SwitchProps) {
   function handleClick() {
@@ -34,9 +35,6 @@ export function Switch({ checked, onChange, labelledBy, busy = false }: SwitchPr
     >
       <span className={`${styles.track} ${checked ? styles.on : ""}`} aria-hidden="true">
         <span className={styles.knob} />
-      </span>
-      <span className={styles.state} aria-hidden="true">
-        {checked ? "Ligado" : "Desligado"}
       </span>
     </button>
   );
