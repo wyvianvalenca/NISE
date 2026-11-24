@@ -214,6 +214,38 @@ async def test_evento_de_grupo_da_nise_vem_com_o_grupo_e_sem_prazo() -> None:
     assert dados["registrationUrl"] == "https://forms.exemplo.com/oficina"
 
 
+async def test_evento_de_grupo_traz_o_primeiro_nome_da_menina_da_sessao() -> None:
+    # O caminho "acao-": o nome é o da menina logada, não o do grupo.
+    sessao_falsa = sessao_do_evento(menina(), da_oficina())
+
+    response = await abrir(sessao_falsa, ACAO)
+
+    assert response.status_code == 200
+    assert response.json()["firstName"] == "Alana"
+
+
+@pytest.mark.parametrize(
+    ("nome", "esperado"),
+    [
+        ("Alana", "Alana"),
+        ("", ""),
+        ("   ", ""),
+    ],
+)
+async def test_nome_de_uma_palavra_ou_vazio_nao_quebra_a_rota(
+    nome: str, esperado: str
+) -> None:
+    # Nome vazio devolve "" e a tela cai no "Você conseguiu!" (concluido/page.tsx).
+    registro = menina()
+    registro.name = nome
+    sessao_falsa = sessao_do_evento(registro, do_hackathon())
+
+    response = await abrir(sessao_falsa)
+
+    assert response.status_code == 200
+    assert response.json()["firstName"] == esperado
+
+
 async def test_ultimo_dia_de_inscricao_conta_zero_dias_e_continua_aberto() -> None:
     sessao_falsa = sessao_do_evento(menina(), do_hackathon(registration_deadline=HOJE))
 
