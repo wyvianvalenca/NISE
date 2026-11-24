@@ -2,11 +2,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.modules.actions.models import Action, Participation
 from app.modules.cities.models import City
 from app.modules.consents.schemas import GroupOrigin, SelfOrigin
 from app.modules.consents.service import get_origin_group_name
 from app.modules.girls.models import Girl, GirlTopic
-from app.modules.girls.schemas import InterestsIn, OptionOut, ProfileDetailsOut
+from app.modules.girls.schemas import (
+    InterestsIn,
+    OptionOut,
+    ProfileDetailsOut,
+    ProfileEventOut,
+    ProfileEventsOut,
+)
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS
 from app.users.models import OAuthAccount, Provider, User
 from app.users.service import normalize_email
@@ -74,6 +81,39 @@ async def mark_file_intro_seen(session: AsyncSession, user_id: int) -> bool:
         await session.commit()
 
     return True
+
+
+# O cartão do perfil mostra só os 5 eventos mais recentes, sem "Ver todos".
+PROFILE_EVENTS_LIMIT = 5
+
+
+async def get_attended_events(
+    session: AsyncSession, user: User, limit: int = PROFILE_EVENTS_LIMIT
+) -> ProfileEventsOut | None:
+    """Os eventos de que a menina da conta logada participou (RF-F2.03).
+
+    Conta só quem teve a presença marcada, de todos os grupos, do mais recente
+    para o mais antigo. Devolve None quando a conta não tem registro de menina.
+    """
+    girl_id = await session.scalar(select(Girl.id).where(Girl.user_id == user.id))
+    if girl_id is None:
+        return None
+
+    # O dono vem da sessão: girl_id foi achado por Girl.user_id, nunca por um id
+    # vindo do front.
+    # Não filtra por grupo: a menina pode ter ido a ações de vários.
+    consulta = (
+        select(Action.name, Action.starts_on)
+        .join(Participation, Participation.action_id == Action.id)
+        .where(Participation.girl_id == girl_id, Participation.attended_at.is_not(None))
+        .order_by(Action.starts_on.desc(), Action.id.desc())
+        .limit(limit)
+    )
+    linhas = (await session.execute(consulta)).all()
+
+    return ProfileEventsOut(
+        events=[ProfileEventOut(name=nome, date=dia) for nome, dia in linhas]
+    )
 
 
 async def get_profile_details(

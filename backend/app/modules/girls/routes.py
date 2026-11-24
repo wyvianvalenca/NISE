@@ -17,9 +17,11 @@ from app.modules.girls.schemas import (
     ProfileCourseIn,
     ProfileCourseOut,
     ProfileDetailsOut,
+    ProfileEventsOut,
     ProfileOut,
 )
 from app.modules.girls.service import (
+    get_attended_events,
     get_girl_of_user,
     get_profile_details,
     mark_file_intro_seen,
@@ -171,6 +173,25 @@ async def profile_details(
         return profile_not_found()
 
     return details
+
+
+# "Eventos de que você participou" no perfil (A10, #391, RF-F2.03): até 5, os
+# mais recentes, de todos os grupos. Sem id na URL: ela só lê os próprios
+# eventos, os da sessão (RNF-G.03).
+@router.get(
+    "/events",
+    response_model=ProfileEventsOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def profile_events(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ProfileEventsOut | JSONResponse:
+    events = await get_attended_events(session, user)
+
+    if events is None:
+        return profile_not_found()
+
+    return events
 
 
 # "Seu caminho" no perfil (A10, #298): o curso em que ela está hoje e o nome

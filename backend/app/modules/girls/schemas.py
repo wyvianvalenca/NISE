@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated, Self
 
 from pydantic import (
@@ -123,6 +124,23 @@ class ProfileCourseOut(BaseModel):
     first_name: str
     level: CourseLevel | None = None
     course: str | None = None
+
+
+class ProfileEventOut(BaseModel):
+    """Um evento de que ela participou: o nome e o dia em que começou."""
+
+    name: str
+    date: date
+
+
+class ProfileEventsOut(BaseModel):
+    """Os eventos do cartão "Eventos de que você participou" (RF-F2.03).
+
+    Só nome e data. Sem id de ação, de grupo ou de menina, e sem a hora da
+    presença.
+    """
+
+    events: list[ProfileEventOut]
 
 
 class ProfileCourseIn(BaseModel):
