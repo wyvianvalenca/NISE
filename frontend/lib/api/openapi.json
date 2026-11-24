@@ -2398,6 +2398,53 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Delete Profile",
+        "operationId": "delete_profile_api_profile_delete",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sem sessão válida"
+          },
+          "403": {
+            "description": "Só menina exclui a própria conta; sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/profile/file-intro-seen": {

@@ -555,7 +555,8 @@ export interface paths {
         get: operations["profile_api_profile_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Profile */
+        delete: operations["delete_profile_api_profile_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4394,6 +4395,49 @@ export interface operations {
             };
             /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_profile_api_profile_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem sessão válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Só menina exclui a própria conta; sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

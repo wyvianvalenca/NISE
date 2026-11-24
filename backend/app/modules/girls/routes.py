@@ -1,15 +1,18 @@
 from typing import Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.responses import JSONResponse
 
+from app.auth.permissions import SessionUserIdDep, clear_session_cookie
 from app.db.engine import AsyncSessionDep
 from app.modules.admissions.declaration import course_name
 from app.modules.admissions.service import (
     add_self_declared_enrollment,
     current_enrollment,
 )
+from app.modules.consents.exceptions import TermsNotAcceptedError
 from app.modules.consents.permissions import AcceptedGirlDep
+from app.modules.girls.deletion import DeletionResult, delete_account
 from app.modules.girls.schemas import (
     InterestOptionsOut,
     InterestsIn,
@@ -264,3 +267,46 @@ async def register_course(
     await session.commit()
 
     return None
+
+
+# "Excluir minha conta e meus dados" na A10 (RF-F7.09, #394, D-113): sem senha
+# nem Google, só o modal de confirmação no front. Anonimiza a conta e os dados
+# dela no lugar e encerra a sessão (ver girls/deletion.py).
+#
+# Sem id na URL nem no corpo: ela só exclui a própria conta, a da sessão
+# (RNF-G.03). Uma segunda chamada, de outra aba, também responde 204 e não grava
+# nada; por isso a rota lê só o id do cookie, e não a usuária. A exclusão não
+# loga nada (RNF-G.02).
+@router.delete(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Sem sessão válida"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": (
+                "Só menina exclui a própria conta; sem o aceite dos termos: "
+                '{"error": "terms_not_accepted"}'
+            )
+        },
+    },
+)
+async def delete_profile(
+    user_id: SessionUserIdDep, session: AsyncSessionDep, response: Response
+) -> None:
+    result = await delete_account(session, user_id, today_in_maceio())
+
+    if result is DeletionResult.NO_ACCOUNT:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticada"
+        )
+
+    if result is DeletionResult.NOT_A_GIRL:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão"
+        )
+
+    if result is DeletionResult.TERMS_NOT_ACCEPTED:
+        raise TermsNotAcceptedError
+
+    # DELETED e ALREADY_DELETED: a sessão acaba neste navegador.
+    clear_session_cookie(response)
