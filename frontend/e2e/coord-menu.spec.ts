@@ -52,6 +52,36 @@ test("shows the group and the initial of the coordinator of the session", async 
   await expect(header.getByLabel("Sua conta")).toHaveText("K");
 });
 
+test("reaches Ações by keyboard with a visible focus", async ({ page }) => {
+  await page.goto(URL);
+  await expect(page.getByRole("banner").getByText("Rendeiras do Código")).toBeVisible();
+
+  const link = page.getByRole("link", { name: "Ações" });
+  for (let i = 0; i < 5 && !(await link.evaluate((el) => el === document.activeElement)); i++) {
+    await page.keyboard.press("Tab");
+  }
+
+  await expect(link).toBeFocused();
+  const outline = await link.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { style: style.outlineStyle, offset: parseFloat(style.outlineOffset) };
+  });
+  expect(outline.style).not.toBe("none");
+  expect(outline.offset).toBeLessThan(0);
+});
+
+test("has no horizontal scroll at 1366 px", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto(URL);
+  await expect(page.getByRole("banner").getByText("Rendeiras do Código")).toBeVisible();
+  await expect(page.getByRole("banner").getByLabel("Sua conta")).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBe(0);
+});
+
 test("shows the group of another coordinator, not a fixed one", async ({ page }) => {
   await mockMe(page, {
     ...COORDINATOR,
