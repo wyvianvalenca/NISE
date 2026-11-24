@@ -4,11 +4,11 @@ import { FIGMA_ITEMS, mockFileApi } from "./file-api";
 
 // #179 · A06·4b Evento, versão "Próxima aventura", lida de GET /api/events/{id} (#181).
 
-const HACKATHON = "hackathon-meninas-na-tecnologia";
-const OFICINA = "oficina-de-robotica-rendeiras";
-const MINICURSO = "minicurso-de-sites";
-const OPEN_ACTION = "acao-sem-prazo";
-const CLOSED_ACTION = "acao-fechada-sem-link";
+const HACKATHON = "curadoria-21";
+const OFICINA = "acao-22";
+const MINICURSO = "curadoria-23";
+const OPEN_ACTION = "acao-28";
+const CLOSED_ACTION = "acao-29";
 
 // Com hoje em 15/out/2025, o hackathon cai em 8 e 9/nov (sábado e domingo), como no Figma.
 const TODAY = "2025-10-15";
@@ -124,10 +124,19 @@ test("\"Já me inscrevi\" e \"Tirar do filé\" estão disponíveis (#182)", asyn
 
 test("um evento que não está no filé dela não abre", async ({ page }) => {
   await mockEventApi(page);
-  await page.goto("/file/evento/evento-de-outra-menina");
+  await page.goto("/file/evento/curadoria-99");
 
   await expect(page.getByText("Esse evento não está no seu filé.")).toBeVisible();
 });
+
+for (const invalid of ["evento-de-outra-menina", "acao-07", "curadoria-2147483648"]) {
+  test(`um id fora do formato do catálogo (${invalid}) não abre`, async ({ page }) => {
+    await mockEventApi(page);
+    await page.goto(`/file/evento/${invalid}`);
+
+    await expect(page.getByText("Esse evento não está no seu filé.")).toBeVisible();
+  });
+}
 
 test("mostra \"Carregando…\" enquanto o evento chega", async ({ page }) => {
   await mockEventApi(page, { delayMs: 600 });

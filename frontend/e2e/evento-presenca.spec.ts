@@ -4,7 +4,7 @@ import { mockEventApi, type EventApiOptions } from "./evento-api";
 // #195 · A06·4b de um evento de grupo da NISE depois da data: "Esperando a lista de presença".
 // A presença é da coordenadora (#135); aqui ela entra pelo estado de evento-api.ts.
 
-const GROUP_EVENT = "oficina-de-jogos-rendeiras";
+const GROUP_EVENT = "acao-27";
 const PATH = `/file/evento/${GROUP_EVENT}`;
 
 // Com hoje em 13/nov/2025, a oficina foi no sábado, 8/nov.

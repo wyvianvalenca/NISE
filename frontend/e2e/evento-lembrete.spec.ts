@@ -4,8 +4,8 @@ import { mockEventApi, type EventApiOptions } from "./evento-api";
 // #187 · "Me lembra um dia antes" na versão "Inscrita" da A06·4b.
 // O envio do e-mail é do back (#188); aqui só a escolha, salva por PUT /api/events/{id}/reminder.
 
-const HACKATHON = "hackathon-meninas-na-tecnologia";
-const TOMORROW = "visita-ao-laboratorio-de-robotica";
+const HACKATHON = "curadoria-21";
+const TOMORROW = "curadoria-26";
 const PATH = `/file/evento/${HACKATHON}`;
 
 // Com hoje em 15/out/2025, o hackathon começa em 8/nov: o lembrete é no dia 7.

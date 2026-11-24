@@ -34,10 +34,16 @@ type MockEvent = {
   registrationUrl: string | null;
 };
 
-// O hackathon tem o mesmo id do item do filé (#115). Os outros só abrem pelo endereço.
+/**
+ * Os ids seguem o formato do catálogo do back: "curadoria-<n>" para o que vem da
+ * curadoria e "acao-<n>" para ação de grupo da NISE. Os números ficam de 21 em diante
+ * para não colidir com os de `file-api.ts` (curadoria-1 a curadoria-4). O hackathon
+ * (curadoria-21) é o item do filé que casa com o evento (#115), nos specs que montam
+ * o filé; os outros só abrem pelo endereço.
+ */
 const EVENTS: MockEvent[] = [
   {
-    id: "hackathon-meninas-na-tecnologia",
+    id: "curadoria-21",
     status: "next",
     type: "hackathon",
     typeLabel: "Hackathon",
@@ -56,7 +62,7 @@ const EVENTS: MockEvent[] = [
     registrationUrl: "https://example.com/eventos/hackathon-meninas-na-tecnologia",
   },
   {
-    id: "oficina-de-robotica-rendeiras",
+    id: "acao-22",
     status: "next",
     type: "oficina",
     typeLabel: "Oficina",
@@ -75,7 +81,7 @@ const EVENTS: MockEvent[] = [
     registrationUrl: "https://example.com/eventos/oficina-de-robotica",
   },
   {
-    id: "minicurso-de-sites",
+    id: "curadoria-23",
     status: "next",
     type: "minicurso",
     typeLabel: "Minicurso",
@@ -95,7 +101,7 @@ const EVENTS: MockEvent[] = [
   },
   // Evento de fora que já passou, com ela inscrita: pergunta "Você foi?" (#190).
   {
-    id: "hackathon-cidades-inteligentes",
+    id: "curadoria-24",
     status: "in_progress",
     type: "hackathon",
     typeLabel: "Hackathon",
@@ -115,7 +121,7 @@ const EVENTS: MockEvent[] = [
   },
   // Evento de fora em que ela foi: versão "Concluído".
   {
-    id: "palestra-mulheres-na-computacao",
+    id: "curadoria-25",
     status: "concluded",
     type: "palestra",
     typeLabel: "Palestra",
@@ -135,7 +141,7 @@ const EVENTS: MockEvent[] = [
   },
   // Evento que começa amanhã: a versão "Inscrita" não oferece o lembrete (#186).
   {
-    id: "visita-ao-laboratorio-de-robotica",
+    id: "curadoria-26",
     status: "in_progress",
     type: "visita",
     typeLabel: "Visita",
@@ -155,7 +161,7 @@ const EVENTS: MockEvent[] = [
   },
   // Evento de grupo da NISE que já passou, com ela inscrita: espera a lista de presença (#194).
   {
-    id: "oficina-de-jogos-rendeiras",
+    id: "acao-27",
     status: "in_progress",
     type: "oficina",
     typeLabel: "Oficina",
@@ -176,7 +182,7 @@ const EVENTS: MockEvent[] = [
   },
   // Ação de grupo sem prazo, de inscrições abertas e sem tema: os campos nulos do back.
   {
-    id: "acao-sem-prazo",
+    id: "acao-28",
     status: "next",
     type: "palestra",
     typeLabel: "Palestra",
@@ -197,7 +203,7 @@ const EVENTS: MockEvent[] = [
   },
   // Ação fechada (só convidadas): sem prazo e sem link de inscrição.
   {
-    id: "acao-fechada-sem-link",
+    id: "acao-29",
     status: "next",
     type: "oficina",
     typeLabel: "Oficina",
@@ -248,7 +254,7 @@ export type EventApi = Required<Pick<EventApiOptions, "delayMs" | "failUpdates" 
   removed: string[];
   /** A coordenadora salva a presença (#135): ela fica presente (concluído) ou ausente (sai do filé). */
   markAttendance: (id: string, present: boolean) => void;
-  /** Os pedidos de cada rota que mudam algo, na ordem: "PUT sign-up hackathon-…". */
+  /** Os pedidos de cada rota que mudam algo, na ordem: "PUT sign-up curadoria-21". */
   calls: string[];
 };
 
@@ -261,6 +267,17 @@ function maceioToday(): string {
 
 function plusDays(isoDay: string, days: number): string {
   return new Date(Date.parse(isoDay) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * O mesmo teste do `parse_item_id` do back: sem zero à esquerda, só dígitos ASCII e
+ * número até o int4 do banco. Qualquer outro id responde 404 `item_not_found`.
+ */
+const ITEM_ID = /^(curadoria|acao)-[1-9][0-9]*$/;
+const MAX_ID = 2_147_483_647;
+
+function validItemId(id: string): boolean {
+  return ITEM_ID.test(id) && Number(id.slice(id.indexOf("-") + 1)) <= MAX_ID;
 }
 
 /**
@@ -347,8 +364,11 @@ export async function mockEventApi(page: Page, options: EventApiOptions = {}): P
     const request = route.request();
     const [, id, action] = new URL(request.url()).pathname.replace(/^\/api\/events\//, "/").split("/");
     const method = request.method();
-    const event = find(decodeURIComponent(id));
+    const decoded = decodeURIComponent(id);
+    const event = find(decoded);
     await wait();
+
+    if (!validItemId(decoded)) return notFound(route);
 
     if (method === "GET" && action === undefined) {
       if (api.failLoad) return failNow(route);

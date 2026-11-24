@@ -4,8 +4,8 @@ import { mockEventApi, type EventApiOptions } from "./evento-api";
 // #183 · A09 "Conseguiu se inscrever?" e a versão "Inscrita" da A06·4b.
 // As rotas de evento são simuladas por evento-api.ts.
 
-const HACKATHON = "hackathon-meninas-na-tecnologia";
-const OFICINA = "oficina-de-robotica-rendeiras";
+const HACKATHON = "curadoria-21";
+const OFICINA = "acao-22";
 const EVENT_PATH = `/file/evento/${HACKATHON}`;
 const CHECK_PATH = `${EVENT_PATH}/inscricao`;
 

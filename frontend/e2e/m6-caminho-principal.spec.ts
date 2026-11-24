@@ -20,10 +20,10 @@ import { fileResponse, type MockFileItem } from "./file-api";
 type EventStatus = "next" | "in_progress" | "concluded";
 
 /** The four events of the test base, with the ids of evento-api.ts. */
-const OUTSIDE = "hackathon-meninas-na-tecnologia";
-const GROUP = "oficina-de-robotica-rendeiras";
-const OUTSIDE_PAST = "hackathon-cidades-inteligentes";
-const GROUP_PAST = "oficina-de-jogos-rendeiras";
+const OUTSIDE = "curadoria-21";
+const GROUP = "acao-22";
+const OUTSIDE_PAST = "curadoria-24";
+const GROUP_PAST = "acao-27";
 
 // With today on 15/oct/2025, the outside event is on 8 and 9/nov and its sign-up ends on 30/oct.
 const TODAY = "2025-10-15";

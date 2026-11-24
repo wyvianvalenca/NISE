@@ -5,9 +5,9 @@ import { mockFileApi } from "./file-api";
 // #191 · A06·4b depois da data de um evento de fora: "Você foi?" e "Concluído".
 // As rotas são simuladas por evento-api.ts.
 
-const PAST = "hackathon-cidades-inteligentes";
-const DONE = "palestra-mulheres-na-computacao";
-const UPCOMING = "hackathon-meninas-na-tecnologia";
+const PAST = "curadoria-24";
+const DONE = "curadoria-25";
+const UPCOMING = "curadoria-21";
 const PAST_PATH = `/file/evento/${PAST}`;
 
 // Com hoje em 16/nov/2025, o hackathon que passou foi em 8 e 9/nov (sábado e domingo).
