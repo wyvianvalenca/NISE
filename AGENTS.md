@@ -15,7 +15,7 @@ Parte da equipe programa sem agentes para aprender. Escreva código simples e le
 - Banco: PostgreSQL (Supabase em produção). Pooler em modo transação: `statement_cache_size=0` no asyncpg.
 - Hospedagem: Vercel, projeto único; FastAPI responde em `/api`.
 - Login: Google e e-mail/senha; JWT em cookie `httpOnly` (nunca `localStorage`).
-- Sem telas administrativas: curadoria, datas e duplicadas são scripts em `backend/scripts/`.
+- Telas de administração só para convidar coordenadoras e criar grupos (RF-S2.20, RF-S2.23 a RF-S2.30). Curadoria, datas e duplicadas não têm tela: são scripts em `backend/scripts/`.
 
 ## Comandos
 

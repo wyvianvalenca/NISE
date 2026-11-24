@@ -22,7 +22,7 @@ Guia para quem desenvolve no repositório. Agentes de IA seguem o [AGENTS.md](AG
 | Hospedagem | Vercel, um projeto só (Next.js + FastAPI em `/api`) |
 | Ambiente local | Docker |
 
-Telas internas (curadoria do filé, datas importantes, possíveis duplicadas) **não existem**: são feitas por scripts versionados no repositório.
+A única tela interna é a de administração da equipe NISE, para convidar coordenadoras e criar grupos (RF-S2.23 a RF-S2.30). Curadoria do filé, datas importantes e possíveis duplicadas **não têm tela**: são feitas por scripts versionados no repositório.
 
 ## 2. Estrutura do repositório
 
