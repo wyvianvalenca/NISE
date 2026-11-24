@@ -114,7 +114,8 @@ export default function ProfilePage() {
                 city={loaded.details.city}
                 hasPassword={loaded.details.hasPassword}
                 google={loaded.details.google}
-                onChangePasswordHref={PROFILE_PATHS.password}
+                // O botão "Mudar senha" volta com a #395 (passar PROFILE_PATHS.password aqui):
+                // até lá, /perfil/senha daria 404.
               />
               <ProfileInterestsCard
                 topics={loaded.details.topics.map((topic) => topic.label)}

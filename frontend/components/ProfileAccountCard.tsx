@@ -10,8 +10,11 @@ type ProfileAccountCardProps = {
   city: string | null;
   hasPassword: boolean;
   google: boolean;
-  /** Para onde "Mudar senha" leva. */
-  onChangePasswordHref: string;
+  /**
+   * Para onde "Mudar senha" leva. Sem isto o botão não aparece: a tela de nova senha do perfil
+   * é da #395 e ainda não existe (o botão levaria a um 404).
+   */
+  onChangePasswordHref?: string;
 };
 
 /**
@@ -58,9 +61,11 @@ export function ProfileAccountCard({
                 <p className={styles.label}>Senha</p>
                 <p className={styles.text}>Você entra com e-mail e senha.</p>
               </div>
-              <Link href={onChangePasswordHref} className={styles.action}>
-                Mudar senha
-              </Link>
+              {onChangePasswordHref && (
+                <Link href={onChangePasswordHref} className={styles.action}>
+                  Mudar senha
+                </Link>
+              )}
             </div>
           </>
         )}

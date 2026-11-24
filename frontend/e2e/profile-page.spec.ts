@@ -14,7 +14,10 @@ function overflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
 
-test("conta com e-mail e senha: dados, cidade e Mudar senha", async ({ page }) => {
+// O botão "Mudar senha" é da #395 e fica escondido até a tela existir (senão levaria a um 404).
+test("conta com e-mail e senha: dados, cidade e a linha Senha, sem o botão Mudar senha", async ({
+  page,
+}) => {
   await mockProfileCourseApi(page);
   await page.goto(PROFILE);
 
@@ -26,10 +29,7 @@ test("conta com e-mail e senha: dados, cidade e Mudar senha", async ({ page }) =
   await expect(page.getByText("alana@exemplo.com")).toBeVisible();
   await expect(page.getByText("Maceió, AL")).toBeVisible();
   await expect(page.getByText("Você entra com e-mail e senha.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Mudar senha" })).toHaveAttribute(
-    "href",
-    "/perfil/senha",
-  );
+  await expect(page.getByRole("link", { name: "Mudar senha" })).toHaveCount(0);
   await expect(page.getByAltText("Conta Google")).toHaveCount(0);
 });
 
@@ -43,12 +43,13 @@ test("conta Google sem senha: logo do Google e sem Mudar senha", async ({ page }
   await expect(page.getByText("Você entra com e-mail e senha.")).toHaveCount(0);
 });
 
-test("conta mista mostra o logo do Google e o Mudar senha", async ({ page }) => {
+test("conta mista mostra o logo do Google e a linha Senha, sem o botão Mudar senha", async ({ page }) => {
   await mockProfileCourseApi(page, { details: { google: true } });
   await page.goto(PROFILE);
 
   await expect(page.getByAltText("Conta Google")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Mudar senha" })).toBeVisible();
+  await expect(page.getByText("Você entra com e-mail e senha.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mudar senha" })).toHaveCount(0);
 });
 
 test("interesses aparecem como chips só de leitura, com Editar", async ({ page }) => {
@@ -313,7 +314,7 @@ test("falha ao carregar mostra o aviso e Tentar novamente recarrega", async ({ p
   await expect(page.getByText("Alana Ficticia", { exact: true })).toBeVisible();
 });
 
-test("o Tab passa por Voltar, Mudar senha, Editar, o interruptor, os links, Sair e Excluir, com foco visível", async ({
+test("o Tab passa por Voltar, Editar, o interruptor, os links, Sair e Excluir, com foco visível", async ({
   page,
 }) => {
   // RNF-G.01, RNF-G.02.
@@ -327,7 +328,6 @@ test("o Tab passa por Voltar, Mudar senha, Editar, o interruptor, os links, Sair
 
   const order = [
     page.getByRole("button", { name: /Voltar/ }),
-    page.getByRole("link", { name: "Mudar senha" }),
     page.getByRole("link", { name: "Editar" }),
     page.getByRole("button", { name: "Registrar ingresso" }),
     page.getByRole("switch", { name: "Oportunidades" }),
