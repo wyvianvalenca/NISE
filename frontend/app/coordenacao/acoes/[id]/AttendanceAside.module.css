@@ -1,0 +1,57 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  border-radius: var(--radius-16);
+  background: var(--nise-tealSoft);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: var(--nise-surface);
+  color: var(--nise-teal);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.text {
+  margin-bottom: 16px;
+  color: var(--nise-muted);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* The button fills the card, like in the Figma. */
+.card > button {
+  width: 100%;
+}
+
+.note {
+  padding: 0 4px;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-weight: 500;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--nise-muted);
+  font-size: 15px;
+  line-height: 1.4;
+}

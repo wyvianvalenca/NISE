@@ -25,6 +25,8 @@ type CardProps = {
   onImport?: () => void;
   /** "Adicionar inscrita" (#235 opens its drawer here). */
   onAdd?: () => void;
+  /** Only reads: no import and no add (the concluded page, where people are added by the attendance). */
+  readOnly?: boolean;
   /** Changing it fetches the list again (after an import or an added girl). */
   reloadToken?: number;
 };
@@ -58,7 +60,7 @@ function shortLink(url: string): string {
  * and the girls. The count of the title is the action's, so a search does not
  * change it. The list shows the first six and "Ver todas as N" loads the rest.
  */
-export function RegistrationsCard({ action, onImport, onAdd, reloadToken = 0 }: CardProps) {
+export function RegistrationsCard({ action, onImport, onAdd, readOnly = false, reloadToken = 0 }: CardProps) {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [list, setList] = useState<RegistrationList | null>(null);
@@ -121,7 +123,7 @@ export function RegistrationsCard({ action, onImport, onAdd, reloadToken = 0 }: 
             {action.registeredCount}
           </span>
         </h2>
-        {hasGirls && (
+        {hasGirls && !readOnly && (
           <div className={styles.actions}>
             <button type="button" className={styles.textButton} onClick={onImport}>
               <Icon name="upload" />
@@ -160,17 +162,22 @@ export function RegistrationsCard({ action, onImport, onAdd, reloadToken = 0 }: 
       {!hasGirls ? (
         <div className={styles.empty}>
           <h3 className={styles.emptyTitle}>Nenhuma inscrita ainda</h3>
-          <p className={styles.emptyText}>
-            Quando as respostas chegarem no formulário, baixe a planilha e importe aqui. Dá pra
-            importar de novo depois.
-          </p>
-          <div className={styles.emptyButtons}>
-            <Button onClick={onImport}>Importar inscritas</Button>
-            <Button variant="secondary" onClick={onAdd} className={styles.add}>
-              <Icon name="user-plus" />
-              Adicionar inscrita
-            </Button>
-          </div>
+          {/* Read only (concluded action): there are no buttons, so nothing to say about importing. */}
+          {!readOnly && (
+            <p className={styles.emptyText}>
+              Quando as respostas chegarem no formulário, baixe a planilha e importe aqui. Dá pra
+              importar de novo depois.
+            </p>
+          )}
+          {!readOnly && (
+            <div className={styles.emptyButtons}>
+              <Button onClick={onImport}>Importar inscritas</Button>
+              <Button variant="secondary" onClick={onAdd} className={styles.add}>
+                <Icon name="user-plus" />
+                Adicionar inscrita
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <>

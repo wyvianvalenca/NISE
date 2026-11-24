@@ -11,6 +11,7 @@ import {
 } from "@/lib/coord-action-labels";
 import type { ActionStatus, CoordAction } from "@/lib/coord-actions";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PendingLink } from "./PendingLink";
 import { RowMenu } from "./RowMenu";
 import styles from "./ActionRow.module.css";
@@ -59,17 +60,21 @@ type ActionRowProps = {
 
 /**
  * One row of the list (Figma: Ação / ...). An action waiting for attendance is
- * highlighted with the reminder line. "Excluir ação" is in the "..." menu only
- * while attendance is not registered (RF-F30.12, RN-15); the editing item comes
- * with its own story.
+ * highlighted with the reminder line. The "..." menu offers "Editar ação" until
+ * the action is concluded, like the action page does (Figma K11 concluída has no
+ * edit), and "Excluir ação" only while attendance is not registered (RF-F30.12,
+ * RN-15).
  */
 export function ActionRow({ action, onDelete }: ActionRowProps) {
   const date = dateTileParts(action.startsOn);
   const needsAttendance = action.status === "awaiting_attendance";
-  const menuItems =
-    action.presentCount === null
-      ? [{ label: "Excluir ação", onSelect: () => onDelete(action) }]
-      : [];
+  const router = useRouter();
+  const menuItems = [
+    ...(action.status === "concluded"
+      ? []
+      : [{ label: "Editar ação", onSelect: () => router.push(`/coordenacao/acoes/${action.id}/editar`) }]),
+    ...(action.presentCount === null ? [{ label: "Excluir ação", onSelect: () => onDelete(action) }] : []),
+  ];
 
   return (
     <li className={needsAttendance ? `${styles.row} ${styles.attention}` : styles.row}>

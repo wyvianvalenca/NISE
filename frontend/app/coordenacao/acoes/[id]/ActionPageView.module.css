@@ -38,3 +38,12 @@
 .aside:empty {
   display: none;
 }
+
+.message {
+  margin-top: 16px;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-weight: 500;
+}

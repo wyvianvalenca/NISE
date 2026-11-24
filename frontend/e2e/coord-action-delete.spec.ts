@@ -1,15 +1,21 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockActionsListApi } from "./actions-list-api";
+import { mockActionsListApi, type ActionsListApi } from "./actions-list-api";
 
-// #226 · "Excluir ação" in the "..." menu of K10. The list is GET /api/actions,
-// mocked in actions-list-api.ts; `?fail` and `?delay=<ms>` are the test bench of
-// the temporary delete function in lib/coord-actions.ts.
+// #226 · "Excluir ação" in the "..." menu of K10. The list is GET /api/actions and
+// the deletion DELETE /api/actions/{id}, both mocked in actions-list-api.ts.
 
 const URL = "/coordenacao/acoes";
 
+let api: ActionsListApi;
+
 test.beforeEach(async ({ page }) => {
-  await mockActionsListApi(page);
+  api = await mockActionsListApi(page);
 });
+
+/** Mocks the list again with a slow DELETE; the later route wins. */
+async function slowDelete(page: Page) {
+  api = await mockActionsListApi(page, { deleteDelayMs: 1500 });
+}
 
 function more(page: Page, name: string) {
   return page.getByRole("button", { name: `Mais opções de ${name}`, exact: true });
@@ -44,6 +50,29 @@ test("the menu offers Excluir ação only while attendance is not registered", a
     await more(page, name).click();
     await expect(page.getByRole("menuitem")).toHaveCount(0);
   }
+});
+
+test("the menu offers Editar ação before Excluir ação, and none of them for a concluded action", async ({ page }) => {
+  await page.goto(URL);
+
+  await more(page, "Python do zero").click();
+  await expect(page.getByRole("menuitem")).toHaveText(["Editar ação", "Excluir ação"]);
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Ver as outras 3" }).click();
+  await more(page, "Arduino na escola").click();
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
+});
+
+test("Editar ação opens the form of that action filled in", async ({ page }) => {
+  await page.route("**/api/cities**", (route) => route.fulfill({ json: [{ id: "2704302", name: "Maceió, AL" }] }));
+  await page.goto(URL);
+
+  await more(page, "Introdução à robótica").click();
+  await page.getByRole("menuitem", { name: "Editar ação" }).click();
+
+  await expect(page).toHaveURL("/coordenacao/acoes/1/editar");
+  await expect(page.getByLabel("Nome da ação")).toHaveValue("Introdução à robótica");
 });
 
 test("the modal asks with the name of the action and the two buttons", async ({ page }) => {
@@ -151,6 +180,8 @@ test("it works by keyboard alone: Enter opens the menu, Arrow keys move, Enter o
 
   await more(page, "Visita ao Polo de TI").focus();
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Editar ação" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "Excluir ação" })).toBeFocused();
 
   await page.keyboard.press("Enter");
@@ -164,7 +195,8 @@ test("it works by keyboard alone: Enter opens the menu, Arrow keys move, Enter o
 });
 
 test("while it deletes, the button waits and cannot be pressed twice", async ({ page }) => {
-  await page.goto(`${URL}?delay=1500`);
+  await slowDelete(page);
+  await page.goto(URL);
 
   const dialog = await openModal(page, "Python do zero");
   await dialog.getByRole("button", { name: "Excluir ação" }).click();
@@ -178,7 +210,8 @@ test("while it deletes, the button waits and cannot be pressed twice", async ({ 
 test("while it deletes, Cancelar, Esc and the veil do not close the modal, and the deletion is not undone", async ({
   page,
 }) => {
-  await page.goto(`${URL}?delay=1500`);
+  await slowDelete(page);
+  await page.goto(URL);
 
   const dialog = await openModal(page, "Python do zero");
   await dialog.getByRole("button", { name: "Excluir ação" }).click();
@@ -210,12 +243,14 @@ test("after deleting, the focus goes to the title of the page", async ({ page })
 });
 
 test("when the deletion fails the action stays and a notice shows", async ({ page }) => {
-  await page.goto(`${URL}?fail`);
+  api.deleteStatus = 500;
+  await page.goto(URL);
 
   const dialog = await openModal(page, "Python do zero");
   await dialog.getByRole("button", { name: "Excluir ação" }).click();
 
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Não foi possível excluir a ação.");
+  expect(api.deleted).toEqual([]);
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Todas/ })).toContainText("10");
@@ -223,6 +258,35 @@ test("when the deletion fails the action stays and a notice shows", async ({ pag
   await more(page, "Python do zero").click();
   await page.getByRole("menuitem", { name: "Excluir ação" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+});
+
+test("when the server refuses with 409 the action stays and the notice says attendance exists", async ({ page }) => {
+  await page.route("**/api/actions/14", (route) =>
+    route.request().method() === "DELETE"
+      ? route.fulfill({ status: 409, json: { detail: "Presença registrada" } })
+      : route.fallback(),
+  );
+  await page.goto(URL);
+
+  const dialog = await openModal(page, "Python do zero");
+  await dialog.getByRole("button", { name: "Excluir ação" }).click();
+
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("já tem presença registrada");
+  await expect(page.getByRole("main").getByRole("alert")).not.toContainText("Tente de novo");
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toBeVisible();
+});
+
+test("a deleted action is gone from the server too: DELETE is called with its id", async ({ page }) => {
+  await page.goto(URL);
+
+  const dialog = await openModal(page, "Python do zero");
+  await dialog.getByRole("button", { name: "Excluir ação" }).click();
+  await expect(dialog).toBeHidden();
+
+  expect(api.deleted).toEqual([14]);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 3, name: "Python do zero" })).toHaveCount(0);
 });
 
 test("the modal fits at 1366 px and the menu opens over the last row", async ({ page }) => {

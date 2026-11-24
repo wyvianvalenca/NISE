@@ -58,13 +58,11 @@ class SmtpConnection:
     e-mail. Use com `with`, ou chame `close()` no fim.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, timeout: float = SMTP_TIMEOUT_SECONDS) -> None:
         if not email_is_configured():
             raise EmailNotConfiguredError
 
-        smtp = smtplib.SMTP(
-            settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS
-        )
+        smtp = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=timeout)
         try:
             smtp.starttls(context=ssl.create_default_context())
             smtp.login(settings.smtp_user, settings.smtp_password)

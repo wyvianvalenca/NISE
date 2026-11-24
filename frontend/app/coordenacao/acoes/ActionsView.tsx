@@ -12,13 +12,17 @@ import styles from "./ActionsList.module.css";
  * Loads the group's actions and draws the list. While it waits there is a
  * loading line; if it fails there is a message with "Tentar novamente".
  * The notice "Ação salva." reads `?salva=<action id>`, which is how the form
- * (#212) leads back here after saving.
+ * (#212) leads back here after saving. Next keeps a screen it left alive, so
+ * the list is asked for again each time it is shown and `ActionsList`, which
+ * copies what it is given into its own state, is keyed by the load.
  */
 export function ActionsView() {
   /** null: loading. */
   const [list, setList] = useState<CoordActionList | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  /** Counts the loads, so `ActionsList` starts over from the new data instead of its old state. */
+  const [loads, setLoads] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -26,6 +30,7 @@ export function ActionsView() {
       (loaded) => {
         setFailed(false);
         setList(loaded);
+        setLoads((count) => count + 1);
       },
       () => {
         if (!controller.signal.aborted) setFailed(true);
@@ -59,7 +64,7 @@ export function ActionsView() {
       <Suspense>
         <SavedNotice actions={list.actions} />
       </Suspense>
-      <ActionsList actions={list.actions} counts={list.counts} />
+      <ActionsList key={loads} actions={list.actions} counts={list.counts} />
     </>
   );
 }

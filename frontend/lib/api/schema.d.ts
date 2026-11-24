@@ -899,6 +899,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/actions/{action_id}/attendance/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Attendance List */
+        post: operations["import_attendance_list_api_actions__action_id__attendance_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/{item_id}": {
         parameters: {
             query?: never;
@@ -1495,7 +1512,11 @@ export interface components {
             name: string;
             /** Email */
             email: string;
+            /** Whatsapp */
+            whatsapp: string | null;
             study_stage: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year: string | null;
             /** Saved Present */
             saved_present: boolean;
             /** Present */
@@ -2210,6 +2231,33 @@ export interface components {
             school_year: string | null;
         };
         /**
+         * ImportedListIn
+         * @description "Importar lista de presença" (#349, RF-F3.02): the e-mail of each line.
+         *
+         *     The page reads the spreadsheet and sends only the cell of the e-mail column.
+         *     The server never receives or keeps the file.
+         */
+        ImportedListIn: {
+            /** Emails */
+            emails: string[];
+        };
+        /**
+         * ImportedListOut
+         * @description Who the list marks. Nothing was saved: the page marks them (RF-F3.04).
+         *
+         *     `present_ids` are the registrations whose e-mail is in the list, once each.
+         *     `not_found_count` is the lines that match no registration (or have no
+         *     e-mail), only counted: which ones are not told (RN-27).
+         */
+        ImportedListOut: {
+            /** Present Ids */
+            present_ids: number[];
+            /** Line Count */
+            line_count: number;
+            /** Not Found Count */
+            not_found_count: number;
+        };
+        /**
          * InterestOptionsOut
          * @description As listas de temas e de etapas de estudo da A05 (RF-F10.01).
          */
@@ -2849,8 +2897,8 @@ export interface components {
          * WalkInIn
          * @description "Veio sem inscrição? Adicionar participante" (#346, RF-F3.03, RF-F1.09).
          *
-         *     Name and e-mail are required; the study level is optional. WhatsApp and
-         *     "Série" come with the registration of C2 (#232, #235).
+         *     The same fields and validation as "Adicionar inscrita" of C2 (#235): name and
+         *     e-mail are required; WhatsApp, study level and school year are optional.
          */
         WalkInIn: {
             /** Name */
@@ -2860,7 +2908,11 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** Whatsapp */
+            whatsapp?: string | null;
             study_stage?: components["schemas"]["StudyStage"] | null;
+            /** School Year */
+            school_year?: string | null;
         };
         /**
          * WalkInOut
@@ -5291,6 +5343,56 @@ export interface operations {
                 content?: never;
             };
             /** @description Um id que não é inscrição desta ação: {"error": "unknown_registration"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    import_attendance_list_api_actions__action_id__attendance_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportedListIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportedListOut"];
+                };
+            };
+            /** @description Ação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fora do momento: {"error": "too_early"} antes do dia do evento, {"error": "already_concluded"} para marcar ou salvar depois de concluir, {"error": "not_concluded"} para marcar uma por uma antes */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Lista sem nenhuma linha com e-mail: {"error": "empty_file"} */
             422: {
                 headers: {
                     [name: string]: unknown;
