@@ -152,8 +152,11 @@ function NextBody({ event, onOpenSignUp, onMarkSignedUp, onRemove, saving }: Eve
 
       <DetailChips event={event} />
 
-      {/* RN-19: a inscrição acontece fora da NISE, e a NISE não envia os dados dela. */}
-      <Notice>A inscrição é feita no site dos organizadores. Seus dados da NISE não são enviados.</Notice>
+      {/* RN-19: a inscrição acontece fora da NISE, e a NISE não envia os dados dela. Sem link
+          (ação fechada, só por convite), não há site para onde mandá-la. */}
+      {event.registrationUrl && (
+        <Notice>A inscrição é feita no site dos organizadores. Seus dados da NISE não são enviados.</Notice>
+      )}
 
       <div className={`${shared.actions} ${styles.actions}`}>
         {/* A ação fechada do grupo não tem link: a inscrição é por convite. */}

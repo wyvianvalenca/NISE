@@ -153,6 +153,17 @@ test.describe("A09", () => {
     await expect(button(page, "Sim, me inscrevi")).toBeEnabled();
   });
 
+  test("se o evento não carrega na A09, oferece \"Tentar de novo\" e abre quando a conexão volta", async ({ page }) => {
+    const api = await mock(page, { failLoad: true });
+    await page.goto(CHECK_PATH);
+
+    await expect(page.getByRole("alert").filter({ hasText: /./ })).toHaveText("Não deu pra carregar o evento.");
+    api.failLoad = false;
+    await button(page, "Tentar de novo").click();
+
+    await expect(page.getByRole("heading", { level: 1, name: "Conseguiu se inscrever?" })).toBeVisible();
+  });
+
   test("um evento já marcado não pergunta de novo: abre o evento", async ({ page }) => {
     await mock(page, { status: { [HACKATHON]: "in_progress" } });
     await page.goto(CHECK_PATH);

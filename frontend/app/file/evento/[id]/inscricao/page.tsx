@@ -46,7 +46,7 @@ function Loading() {
 function SignUpCheckLoader() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { result, redirecting } = useEvent(id);
+  const { result, redirecting, retry } = useEvent(id);
   const event = result?.ok ? result.data : result ? null : undefined;
 
   // A pergunta só faz sentido para um evento que ainda é "Próxima aventura".
@@ -67,17 +67,34 @@ function SignUpCheckLoader() {
         {event === undefined || answered || redirecting ? (
           <Loading />
         ) : event === null ? (
-          <p className={`${shared.status} ${styles.loading}`}>
-            {result?.ok === false && result.reason === "not_found"
-              ? "Esse evento não está no seu filé."
-              : "Não deu pra carregar o evento."}
-          </p>
+          result?.ok === false && result.reason === "not_found" ? (
+            <p className={`${shared.status} ${styles.loading}`}>Esse evento não está no seu filé.</p>
+          ) : (
+            <div className={eventStyles.loadFailed}>
+              <p className={`${shared.status} ${styles.loading}`} role="alert">
+                Não deu pra carregar o evento.
+              </p>
+              <Button variant="secondary" size="sm" onClick={retry}>
+                Tentar de novo
+              </Button>
+            </div>
+          )
         ) : (
           <SignUpCheck event={event} />
         )}
       </div>
     </>
   );
+}
+
+/**
+ * O texto de baixo do prazo na A09. Com inscrições abertas e dias sobrando, é o mesmo "Faltam
+ * N dias" de `deadlineText` mais o aviso de que dá tempo de voltar depois; nos outros casos, o
+ * que `deadlineText` já disse.
+ */
+function deadlineHint(event: EventDetail, base: string | undefined): string | undefined {
+  if (!event.registrationsOpen || event.daysLeft === null || event.daysLeft <= 0) return base;
+  return `${base ?? daysLeftText(event.daysLeft)}, dá tempo de voltar depois`;
 }
 
 function SignUpCheck({ event }: { event: EventDetail }) {
@@ -87,10 +104,7 @@ function SignUpCheck({ event }: { event: EventDetail }) {
 
   const site = event.group ? `das ${event.group}` : "dos organizadores";
   const deadline = deadlineText(event, true);
-  const deadlineSub =
-    event.registrationsOpen && event.daysLeft !== null && event.daysLeft > 0
-      ? `${daysLeftText(event.daysLeft)}, dá tempo de voltar depois`
-      : deadline.sub;
+  const deadlineSub = deadlineHint(event, deadline.sub);
 
   async function confirm() {
     setSaving(true);

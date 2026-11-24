@@ -91,6 +91,7 @@ test("uma ação fechada, sem prazo e sem link, não oferece \"Ir para inscriç�
 
   await expect(summary(page).getByRole("listitem").last()).toHaveText("As inscrições já fecharam");
   await expect(signUpLink(page)).toHaveCount(0);
+  await expect(page.getByText("A inscrição é feita no site dos organizadores")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Já me inscrevi" })).toBeEnabled();
 });
 

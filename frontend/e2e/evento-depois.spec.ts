@@ -111,6 +111,26 @@ test("se desfazer falha, avisa e deixa tentar de novo", async ({ page }) => {
   await expect(toast(page).getByRole("button", { name: "Tentar de novo" })).toBeVisible();
 });
 
+test("se desfazer volta 401, leva ao início em vez de só dizer que não deu", async ({ page }) => {
+  const api = await open(page, PAST_PATH, { failUndo: true });
+  api.failure = { status: 401, body: { detail: "Not authenticated" } };
+  await button(page, "Não deu").click();
+
+  await toast(page).getByRole("button", { name: "Desfazer" }).click();
+
+  await expect(page).toHaveURL("/");
+});
+
+test("se desfazer volta 409, o aviso some em vez de oferecer outra tentativa", async ({ page }) => {
+  const api = await open(page, PAST_PATH, { failUndo: true });
+  api.failure = { status: 409, body: { error: "event_not_asked" } };
+  await button(page, "Não deu").click();
+
+  await toast(page).getByRole("button", { name: "Desfazer" }).click();
+
+  await expect(toast(page)).toHaveCount(0);
+});
+
 test("o aviso do filé some sozinho, e não volta ao recarregar", async ({ page }) => {
   await page.clock.install();
   await open(page, PAST_PATH);
