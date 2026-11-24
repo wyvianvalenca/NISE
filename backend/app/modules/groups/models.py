@@ -58,3 +58,27 @@ class Invite(Base):
 
     # Assíncrono: carregue com selectinload(Invite.group).
     group: Mapped[Group] = relationship()
+
+
+class CoordinatorInvite(Base):
+    """Convite de uma coordenadora para um grupo, enviado pela equipe NISE (D-115).
+
+    Vale 7 dias e só uma vez (aceito em `accepted_at`). A lista do admin mostra
+    o convite como "Convite enviado" até `expires_at` e como "Convite expirou"
+    depois. Convite aceito vira a coordenadora (GroupCoordinator) e cancelado
+    some da lista. Quem cria, reenvia e cancela é a story #453.
+    """
+
+    __tablename__ = "coordinator_invites"
+
+    name: Mapped[str] = mapped_column()
+    email: Mapped[str] = mapped_column(index=True)
+    group_id: Mapped[int] = mapped_column(
+        ForeignKey("groups.id", ondelete="CASCADE"), index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Assíncrono: carregue com selectinload(CoordinatorInvite.group).
+    group: Mapped[Group] = relationship()

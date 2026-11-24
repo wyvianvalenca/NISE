@@ -204,6 +204,7 @@ async def authenticate_user(session: AsyncSession, data: LoginIn) -> User | None
 
 # Para onde cada uma vai depois de entrar (A15, #330).
 COORDINATOR_HOME = "/coordenacao/acoes"
+ADMIN_HOME = "/admin/coordenadoras"
 # A porta do filé: na primeira vez explica o que é (A06·0), depois leva ao
 # Descobrir.
 GIRL_HOME = "/por-que-file"
@@ -221,8 +222,8 @@ async def home_path(session: AsyncSession, user: User) -> str:
             return TERMS_PATH
         return GIRL_HOME
 
-    # A equipe NISE não tem telas: a curadoria é feita por scripts.
-    return "/"
+    # A equipe NISE cai na lista de coordenadoras do admin (#447, RF-S2.23).
+    return ADMIN_HOME
 
 
 async def _invalidate_open_tokens(
