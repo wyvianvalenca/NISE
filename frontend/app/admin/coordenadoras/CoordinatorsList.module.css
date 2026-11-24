@@ -1,0 +1,149 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--nise-ink);
+}
+
+.subtitle {
+  color: var(--nise-muted);
+  font-size: 15px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The chosen chip keeps ink text for contrast, as in K10. */
+.chips .chip[aria-pressed="true"],
+.chips .chip[aria-pressed="true"] span {
+  color: var(--nise-ink);
+}
+
+.chip:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
+}
+
+.rows {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.row + .row {
+  border-top: 1px solid var(--nise-track);
+}
+
+.initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.info {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.group {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.situation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status {
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-track);
+  color: var(--nise-ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.active {
+  background: var(--nise-tealSoft);
+}
+
+.invite_expired {
+  background: var(--nise-pinkTint);
+}
+
+.date {
+  min-width: 140px;
+  color: var(--nise-muted);
+  font-size: 14px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.empty {
+  margin-top: 40px;
+  color: var(--nise-muted);
+  font-size: 15px;
+  text-align: center;
+}
+
+.loadFailed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
+.note {
+  margin-top: 16px;
+  color: var(--nise-muted);
+  font-size: 14px;
+}
