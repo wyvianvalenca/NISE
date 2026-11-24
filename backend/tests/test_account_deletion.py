@@ -19,7 +19,10 @@ from app.auth.permissions import SESSION_COOKIE, SIGNED_IN_HINT_COOKIE
 from app.auth.utils import create_access_token
 from app.db.base import Base
 from app.main import app
+from app.modules.admissions.search import _girls_by_name
+from app.modules.admissions.utils import short_name
 from app.modules.girls.deletion import DeletionResult, delete_account
+from app.modules.girls.models import ANONYMIZED_NAME
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com, sql_do_postgres
 
@@ -599,3 +602,26 @@ def test_tabela_mantida_nao_guarda_dado_da_menina() -> None:
             for chave in coluna.foreign_keys:
                 if chave.target_fullname == "girls.id":
                     assert nome in MANTER_COM_FK_PARA_GIRLS
+
+
+# C4 (nome em C8): "Registro anonimizado" aparece inteiro; os outros continuam.
+def test_nome_curto_mantem_o_rotulo_anonimizado_inteiro() -> None:
+    assert ANONYMIZED_NAME == "Registro anonimizado"
+    assert short_name("Registro anonimizado") == "Registro anonimizado"
+    assert short_name("Ana Lima Souza") == "Ana S."
+    assert short_name("Ana") == "Ana"
+
+
+# C13: a busca de indícios do F31 não lê contas excluídas.
+async def test_busca_por_nome_nao_le_conta_excluida() -> None:
+    sessao_falsa = AsyncMock()
+    sessao_falsa.execute.return_value = [(7, "Alana Ficticia")]
+
+    por_nome = await _girls_by_name(sessao_falsa)
+
+    assert por_nome == {"alana ficticia": [7]}
+    sql = sql_com_valores(sessao_falsa.execute.call_args.args[0])
+    assert sql == (
+        "SELECT girls.id, girls.name FROM girls JOIN users ON users.id = "
+        "girls.user_id WHERE girls.user_id IS NOT NULL AND users.deleted_at IS NULL"
+    )
