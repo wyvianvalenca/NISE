@@ -5,12 +5,20 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
+from app.modules.cities.models import City
 
 
 class Group(TimestampMixin, Base):
     __tablename__ = "groups"
+    __table_args__ = (UniqueConstraint("name", "city_id"),)
 
-    name: Mapped[str] = mapped_column(unique=True)
+    name: Mapped[str] = mapped_column()
+    # Município do IBGE (RN-17). Vazio nos grupos antigos, criados por script.
+    # Não há dois grupos com o mesmo nome e a mesma cidade (D-120).
+    city_id: Mapped[int | None] = mapped_column(ForeignKey("cities.id"), index=True)
+
+    # Assíncrono: carregue com selectinload(Group.city).
+    city: Mapped[City | None] = relationship()
 
 
 class GroupCoordinator(Base):
@@ -73,6 +81,9 @@ class CoordinatorInvite(Base):
 
     name: Mapped[str] = mapped_column()
     email: Mapped[str] = mapped_column(index=True)
+    # SHA-256 do link enviado (RNF-S2.02). O link em si nunca é gravado: quem
+    # lê o banco não consegue abrir o convite de ninguém.
+    token_hash: Mapped[str] = mapped_column(unique=True)
     group_id: Mapped[int] = mapped_column(
         ForeignKey("groups.id", ondelete="CASCADE"), index=True
     )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
 import { SearchField } from "@/components/SearchField";
 import {
@@ -11,6 +12,7 @@ import {
   type CoordinatorFilter,
   type CoordinatorRow,
 } from "@/lib/admin-coordinators";
+import { InviteDrawer } from "./InviteDrawer";
 import styles from "./CoordinatorsList.module.css";
 
 const FILTERS: { key: CoordinatorFilter; label: string }[] = [
@@ -22,6 +24,8 @@ const FILTERS: { key: CoordinatorFilter; label: string }[] = [
 
 type CoordinatorsListProps = {
   coordinators: CoordinatorRow[];
+  /** An invite was sent: the list is fetched again to show it. */
+  onInvited: () => void;
 };
 
 /**
@@ -29,9 +33,10 @@ type CoordinatorsListProps = {
  * list, the search by coordinator or group name, and one row per coordinator.
  * The page shows no data about girls (RN-41).
  */
-export function CoordinatorsList({ coordinators }: CoordinatorsListProps) {
+export function CoordinatorsList({ coordinators, onInvited }: CoordinatorsListProps) {
   const [filter, setFilter] = useState<CoordinatorFilter>("all");
   const [query, setQuery] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   const counts = countCoordinators(coordinators);
   const rows = filterCoordinators(coordinators, filter, query);
@@ -41,6 +46,9 @@ export function CoordinatorsList({ coordinators }: CoordinatorsListProps) {
       <div className={styles.heading}>
         <h1 className={styles.title}>Coordenadoras</h1>
         <p className={styles.subtitle}>Quem coordena cada grupo e quem ainda precisa de atenção.</p>
+        <Button className={styles.invite} onClick={() => setInviting(true)}>
+          + Convidar coordenadora
+        </Button>
       </div>
       <div className={styles.filters}>
         <div className={styles.chips}>
@@ -90,6 +98,7 @@ export function CoordinatorsList({ coordinators }: CoordinatorsListProps) {
       <p className={styles.note}>
         Cada convite vale 7 dias, funciona uma vez só e só pro e-mail convidado.
       </p>
+      {inviting && <InviteDrawer onInvited={onInvited} onClose={() => setInviting(false)} />}
     </>
   );
 }

@@ -1139,6 +1139,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups */
+        get: operations["groups_api_admin_groups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/coordinators/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite Coordinator */
+        post: operations["invite_coordinator_api_admin_coordinators_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1702,6 +1736,41 @@ export interface components {
          * @enum {string}
          */
         CoordinatorFilter: "all" | "active" | "invites" | "deactivated";
+        /**
+         * CoordinatorInviteIn
+         * @description O painel "Convidar coordenadora" (AD03): ela e um grupo, novo ou não.
+         */
+        CoordinatorInviteIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Group Id */
+            group_id?: number | null;
+            new_group?: components["schemas"]["NewGroupIn"] | null;
+        };
+        /**
+         * CoordinatorInviteOut
+         * @description O painel "Convite enviado" (AD04).
+         */
+        CoordinatorInviteOut: {
+            /** First Name */
+            first_name: string;
+            /** Email */
+            email: string;
+            /** Group Name */
+            group_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Email Sent */
+            email_sent: boolean;
+        };
         /** CoordinatorListOut */
         CoordinatorListOut: {
             /** Items */
@@ -2190,6 +2259,15 @@ export interface components {
             /** Groupname */
             groupName: string;
         };
+        /** GroupOut */
+        GroupOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** City */
+            city: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2493,6 +2571,13 @@ export interface components {
          * @enum {string}
          */
         MatchResult: "enrolled" | "approved" | "dismissed";
+        /** NewGroupIn */
+        NewGroupIn: {
+            /** Name */
+            name: string;
+            /** City Id */
+            city_id: number;
+        };
         /**
          * OpenFollowupOut
          * @description O questionário "Como está seu caminho?" aberto e sem resposta (A18).
@@ -6178,6 +6263,102 @@ export interface operations {
             };
             /** @description Não é da equipe NISE */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    groups_api_admin_groups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupOut"][];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_coordinator_api_admin_coordinators_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorInviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorInviteOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description group_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description email_has_account, invite_pending ou group_exists */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -5466,6 +5466,164 @@
         }
       }
     },
+    "/api/admin/groups": {
+      "get": {
+        "tags": [
+          "API",
+          "Admin"
+        ],
+        "summary": "Groups",
+        "operationId": "groups_api_admin_groups_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupOut"
+                  },
+                  "title": "Response Groups Api Admin Groups Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é da equipe NISE"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/coordinators/invites": {
+      "post": {
+        "tags": [
+          "API",
+          "Admin"
+        ],
+        "summary": "Invite Coordinator",
+        "operationId": "invite_coordinator_api_admin_coordinators_invites_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoordinatorInviteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoordinatorInviteOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é da equipe NISE"
+          },
+          "404": {
+            "description": "group_not_found"
+          },
+          "409": {
+            "description": "email_has_account, invite_pending ou group_exists"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -6863,6 +7021,84 @@
         ],
         "title": "CoordinatorFilter"
       },
+      "CoordinatorInviteIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "new_group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewGroupIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "CoordinatorInviteIn",
+        "description": "O painel \"Convidar coordenadora\" (AD03): ela e um grupo, novo ou não."
+      },
+      "CoordinatorInviteOut": {
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "group_name": {
+            "type": "string",
+            "title": "Group Name"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "email_sent": {
+            "type": "boolean",
+            "title": "Email Sent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_name",
+          "email",
+          "group_name",
+          "expires_at",
+          "email_sent"
+        ],
+        "title": "CoordinatorInviteOut",
+        "description": "O painel \"Convite enviado\" (AD04)."
+      },
       "CoordinatorListOut": {
         "properties": {
           "items": {
@@ -7997,6 +8233,36 @@
         "title": "GroupOrigin",
         "description": "Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01)."
       },
+      "GroupOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "city"
+        ],
+        "title": "GroupOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -8722,6 +8988,26 @@
           "dismissed"
         ],
         "title": "MatchResult"
+      },
+      "NewGroupIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "city_id": {
+            "type": "integer",
+            "title": "City Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "city_id"
+        ],
+        "title": "NewGroupIn"
       },
       "OpenFollowupOut": {
         "properties": {
