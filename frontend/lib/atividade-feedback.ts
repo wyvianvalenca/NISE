@@ -56,3 +56,26 @@ export async function sendActivityFeedback(activityId: string, feedback: Activit
     throw new Error("Não foi possível enviar a avaliação.");
   }
 }
+
+// O aviso "Valeu! Sua resposta foi enviada." aparece no filé, para onde ela vai depois
+// do "Enviar" (#171). "Pular" não deixa aviso: nada foi guardado.
+const FEEDBACK_SENT_KEY = "nise-avaliacao-enviada";
+
+export function rememberFeedbackSent() {
+  try {
+    sessionStorage.setItem(FEEDBACK_SENT_KEY, "1");
+  } catch {
+    // Sem sessionStorage o aviso não aparece; a resposta já foi guardada.
+  }
+}
+
+/** Diz se ela acabou de enviar uma avaliação e esquece, para o aviso aparecer uma vez só. */
+export function takeFeedbackSent(): boolean {
+  try {
+    const sent = sessionStorage.getItem(FEEDBACK_SENT_KEY) !== null;
+    sessionStorage.removeItem(FEEDBACK_SENT_KEY);
+    return sent;
+  } catch {
+    return false;
+  }
+}

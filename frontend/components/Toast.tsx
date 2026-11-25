@@ -5,8 +5,8 @@ import styles from "./Toast.module.css";
 type ToastProps = {
   /** Texto do aviso; use <strong> na parte principal ("Ação salva."). */
   children: ReactNode;
-  /** Ícone à esquerda; o padrão é o check. */
-  icon?: IconName;
+  /** Ícone à esquerda; o padrão é o check. Com null, o aviso é só o texto. */
+  icon?: IconName | null;
   /**
    * Ação opcional à direita, como "Desfazer". Com `busy`, o botão continua focável,
    * mas avisa que está ocupado; quem usa ignora os cliques nesse meio-tempo.
@@ -21,7 +21,7 @@ type ToastProps = {
 export function Toast({ children, icon = "check", action }: ToastProps) {
   return (
     <div role="status" className={styles.toast}>
-      <Icon name={icon} className={styles.icon} />
+      {icon && <Icon name={icon} className={styles.icon} />}
       <p className={styles.text}>{children}</p>
       {action && (
         <button
