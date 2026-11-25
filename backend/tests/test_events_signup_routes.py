@@ -282,6 +282,7 @@ def evento(item: object) -> FileEvent:
         action=item if isinstance(item, Action) else None,
         group=None,
         city=None,
+        first_name="Alana",
     )
 
 

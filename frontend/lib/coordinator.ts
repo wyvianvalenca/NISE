@@ -1,28 +1,57 @@
-/**
- * The signed-in coordinator, as the coordinator screens need it.
- *
- * TEMPORARY: there is no coordinator login yet, so this is a fixed mock. It is
- * replaced by the real session when RF-S2.18 to RF-S2.21 land. When that
- * happens, only this file changes: the screens keep asking for the group name
- * and the initial.
- */
+"use client";
 
+import { useEffect, useState } from "react";
+import type { components } from "./api/schema";
+
+type Me = components["schemas"]["MeOut"];
+
+/** The signed-in coordinator, as the coordinator screens need it. */
 export type Coordinator = {
-  /** Name of the group she coordinates, shown in the top menu. */
-  groupName: string;
-  /** First letter of her name, shown in the account circle. */
-  initial: string;
+  /** Her full name, shown at the top of the account menu. */
+  name: string;
+  /** Name of the group she coordinates, or null when she has none. */
+  groupName: string | null;
 };
 
-const MOCK_COORDINATOR: Coordinator = {
-  groupName: "Rendeiras do Código",
-  initial: "K",
-};
+export type CoordinatorResult =
+  | { ok: true; coordinator: Coordinator }
+  | { ok: false; reason: "signed_out" | "forbidden" | "failed" };
 
 /**
- * The coordinator of the current session (mock for now). Async because the
- * real session will be read from the server, so callers already await it.
+ * Reads the coordinator of the current session from `GET /api/auth/me`.
+ *
+ * It runs in the browser, like every other call of the coordinator screens, so
+ * the session cookie goes with it and the e2e tests can mock the route. A
+ * session that is not a coordinator's is "forbidden": the data routes already
+ * refuse it, this only keeps a girl's name out of the coordinator header.
  */
-export async function getCoordinator(): Promise<Coordinator> {
-  return MOCK_COORDINATOR;
+export async function getCoordinator(signal?: AbortSignal): Promise<CoordinatorResult> {
+  try {
+    const response = await fetch("/api/auth/me", { signal });
+
+    if (response.status === 401) return { ok: false, reason: "signed_out" };
+    if (!response.ok) return { ok: false, reason: "failed" };
+
+    const me = (await response.json()) as Me;
+    if (me.role !== "coordinator") return { ok: false, reason: "forbidden" };
+
+    return { ok: true, coordinator: { name: me.name, groupName: me.group?.name ?? null } };
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
+}
+
+/** The coordinator of the session. `null` while it loads. */
+export function useCoordinator(): CoordinatorResult | null {
+  const [result, setResult] = useState<CoordinatorResult | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getCoordinator(controller.signal).then((next) => {
+      if (!controller.signal.aborted) setResult(next);
+    });
+    return () => controller.abort();
+  }, []);
+
+  return result;
 }

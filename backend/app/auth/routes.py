@@ -49,6 +49,7 @@ from app.auth.schemas import (
     GoogleSignupCompleteIn,
     HomeOut,
     LoginIn,
+    MeOut,
     PendingSignupOut,
     ResetPasswordIn,
     ResetTokenIn,
@@ -77,6 +78,7 @@ from app.modules.groups.coordinator_signup import (
     accept_coordinator_invite,
     get_open_invite,
 )
+from app.modules.groups.service import get_coordinator_group
 from app.users.models import User
 from app.users.schemas import UserOut
 from app.users.service import normalize_email
@@ -91,9 +93,13 @@ GOOGLE_ERROR_URL = "/entrar?erro=google"
 COORDINATOR_INVITE_URL = "/convite/coordenadora"
 
 
-@router.get("/me", response_model=UserOut)
-async def me(user: CurrentUserDep) -> User:
-    return user
+@router.get("/me", response_model=MeOut)
+async def me(user: CurrentUserDep, session: AsyncSessionDep) -> MeOut:
+    group = await get_coordinator_group(session, user)
+    return MeOut.model_validate(
+        {**UserOut.model_validate(user).model_dump(), "group": group},
+        from_attributes=True,
+    )
 
 
 # A tela para onde vai quem já entrou: a A01 e o login usam a mesma regra

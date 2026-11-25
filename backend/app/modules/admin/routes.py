@@ -11,7 +11,7 @@ from app.modules.admin.schemas import (
     CoordinatorInviteOut,
     CoordinatorListOut,
     GroupCardOut,
-    GroupOut,
+    GroupOptionOut,
     NewGroupIn,
 )
 from app.modules.admin.service import list_coordinators, list_group_cards
@@ -51,12 +51,12 @@ async def coordinators(
 # AD03 Convidar coordenadora · os grupos que a equipe pode escolher (#453).
 @router.get(
     "/groups",
-    response_model=list[GroupOut],
+    response_model=list[GroupOptionOut],
     responses={status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"}},
 )
-async def groups(_team: NiseTeamDep, session: AsyncSessionDep) -> list[GroupOut]:
+async def groups(_team: NiseTeamDep, session: AsyncSessionDep) -> list[GroupOptionOut]:
     return [
-        GroupOut(
+        GroupOptionOut(
             id=group.id,
             name=group.name,
             city=f"{group.city.name}, {group.city.state}" if group.city else None,

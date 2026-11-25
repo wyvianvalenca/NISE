@@ -53,7 +53,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserOut"
+                  "$ref": "#/components/schemas/MeOut"
                 }
               }
             }
@@ -5668,7 +5668,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/GroupOut"
+                    "$ref": "#/components/schemas/GroupOptionOut"
                   },
                   "title": "Response Groups Api Admin Groups Get"
                 }
@@ -6864,16 +6864,24 @@
           },
           "returned": {
             "$ref": "#/components/schemas/ComparedOut"
+          },
+          "startedFile": {
+            "$ref": "#/components/schemas/ComparedOut"
+          },
+          "concludedFile": {
+            "$ref": "#/components/schemas/ComparedOut"
           }
         },
         "type": "object",
         "required": [
           "participants",
           "noShows",
-          "returned"
+          "returned",
+          "startedFile",
+          "concludedFile"
         ],
         "title": "AfterActionOut",
-        "description": "O card \"Logo depois da ação\" (RF-F5.09). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado, e `returned` é quantas de cada lado voltaram a\noutra ação. O front calcula a porcentagem."
+        "description": "O card \"Logo depois da ação\" (RF-F5.09, RF-F5.31). O front lê em camelCase.\n\nSó totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`\nsão o \"de M\" de cada lado. `returned`, `started_file` e `concluded_file`\nsão quantas de cada lado voltaram a outra ação, começaram o filé e\nconcluíram algo nele. O front calcula a porcentagem."
       },
       "AgendaDatesOut": {
         "properties": {
@@ -8177,6 +8185,10 @@
               }
             ],
             "title": "Registrationurl"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
           }
         },
         "type": "object",
@@ -8203,7 +8215,8 @@
           "cost",
           "stage",
           "prerequisites",
-          "registrationUrl"
+          "registrationUrl",
+          "firstName"
         ],
         "title": "EventOut",
         "description": "O detalhe de um evento do filé (A06·4b, #178, RF-F10.13). O front lê em camelCase.\n\nOs campos seguem `EventDetail` em frontend/lib/evento.ts. As contas de dias\nsão feitas aqui, no fuso de Maceió, para o front não depender do relógio do\ncelular."
@@ -8744,6 +8757,37 @@
         "title": "GroupCardOut",
         "description": "Um cartão da aba Grupos (AD06, RF-S2.29): só nome, cidade e contagens.\n\nAs meninas são as que têm o grupo como origem (RN-32); a equipe nunca vê\nquais são (RN-41)."
       },
+      "GroupOptionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "city"
+        ],
+        "title": "GroupOptionOut",
+        "description": "Um grupo no seletor \"Grupo que já existe\" do convite (AD03): nome e cidade."
+      },
       "GroupOrigin": {
         "properties": {
           "kind": {
@@ -8773,26 +8817,15 @@
           "name": {
             "type": "string",
             "title": "Name"
-          },
-          "city": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "name",
-          "city"
+          "name"
         ],
-        "title": "GroupOut"
+        "title": "GroupOut",
+        "description": "A group as the signed-in coordinator's top menu needs it."
       },
       "HTTPValidationError": {
         "properties": {
@@ -9519,6 +9552,44 @@
           "dismissed"
         ],
         "title": "MatchResult"
+      },
+      "MeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GroupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ],
+        "title": "MeOut",
+        "description": "The signed-in account, with the group of a coordinator (H3).\n\nOnly `GET /auth/me` carries `group`: sign-up and login answer with\n`UserOut` data, so they do not pay a group lookup. It is null for a girl and\nfor a coordinator with no group. A coordinator of several groups gets the\none with the lowest id until a story lets her choose."
       },
       "NewGroupIn": {
         "properties": {
@@ -10476,33 +10547,6 @@
         ],
         "title": "UpcomingItemOut",
         "description": "Uma data da agenda: lembrete da equipe ou rodada de questionário."
-      },
-      "UserOut": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "email": {
-            "type": "string",
-            "title": "Email"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "role": {
-            "$ref": "#/components/schemas/Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "email",
-          "name",
-          "role"
-        ],
-        "title": "UserOut"
       },
       "ValidationError": {
         "properties": {

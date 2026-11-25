@@ -18,7 +18,7 @@ import {
 } from "@/lib/ingressantes-api";
 import styles from "./page.module.css";
 
-export function Summary({ groupName }: { groupName: string }) {
+export function Summary({ groupName }: { groupName: string | null }) {
   const [result, setResult] = useState<EnrollmentSummaryResult | null>(null);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ function SummaryContent({
   groupName,
 }: {
   summary: EnrollmentSummary;
-  groupName: string;
+  groupName: string | null;
 }) {
   const { total, percent, graduacao, tecnico, recent } = summary;
   const one = total === 1;
@@ -66,11 +66,17 @@ function SummaryContent({
     <>
       {/* "do grupo" para qualquer nome de grupo (pergunta 2 da #316, como no #315). */}
       <h2 className={styles.summaryTitle}>
-        {total} {one ? "menina" : "meninas"} do grupo <strong>{groupName}</strong>{" "}
+        {total} {one ? "menina" : "meninas"} do grupo{" "}
+        {groupName && (
+          <>
+            <strong>{groupName}</strong>{" "}
+          </>
+        )}
         {one ? "entrou" : "entraram"} na área
       </h2>
       <p className={styles.searchText}>
-        {one ? "Ela passou" : "Elas passaram"} pelas ações do grupo {groupName} e agora{" "}
+        {one ? "Ela passou" : "Elas passaram"} pelas ações do grupo
+        {groupName ? ` ${groupName}` : ""} e agora{" "}
         {one ? "estuda" : "estudam"} computação em Alagoas.
       </p>
       <ul className={styles.numbers}>

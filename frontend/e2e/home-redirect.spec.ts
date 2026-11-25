@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signedIn } from "./session";
 
 /**
  * A01 sends whoever is already signed in to her first screen. GET
@@ -45,6 +46,7 @@ test("com o aviso de sessão, espera no carregamento e vai para a própria tela"
   page,
 }) => {
   await withHint(page);
+  await signedIn(page);
   await mockHome(page, {
     json: { nextPath: "/coordenacao/acoes" },
     delayMs: 1000,
@@ -103,6 +105,7 @@ test("servidor lento: mostra a A01 depois do limite e ainda leva à tela dela", 
   page,
 }) => {
   await withHint(page);
+  await signedIn(page);
   await mockHome(page, {
     json: { nextPath: "/coordenacao/acoes" },
     delayMs: 3500,

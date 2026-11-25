@@ -20,7 +20,7 @@ from app.modules.events.service import (
     undo_signed_up,
 )
 from app.modules.girls.service import get_girl_of_user
-from app.modules.girls.utils import today_in_maceio
+from app.modules.girls.utils import first_name, today_in_maceio
 from app.users.models import User
 
 # Fica em /api/events, fora de /api/file, para não disputar o caminho com
@@ -87,6 +87,7 @@ async def event_of_session(
         session,
         girl.id,
         *parsed,
+        first_name=first_name(girl.name),
         for_update=for_update,
         include_did_not_go=include_did_not_go,
     )

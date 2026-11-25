@@ -1,7 +1,7 @@
 import { errorCode } from "@/lib/signup-api";
 import type { components } from "./api/schema";
 
-type GroupsResponse = components["schemas"]["GroupOut"][];
+type GroupsResponse = components["schemas"]["GroupOptionOut"][];
 type InviteBody = components["schemas"]["CoordinatorInviteIn"];
 type InviteResponse = components["schemas"]["CoordinatorInviteOut"];
 

@@ -88,7 +88,9 @@ class CoordinatorInviteOut(BaseModel):
     email_sent: bool
 
 
-class GroupOut(BaseModel):
+class GroupOptionOut(BaseModel):
+    """Um grupo no seletor "Grupo que já existe" do convite (AD03): nome e cidade."""
+
     id: int
     name: str
     city: str | None
