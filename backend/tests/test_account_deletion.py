@@ -482,11 +482,15 @@ DESTINO: dict[str, dict[str, object]] = {
         "acao": ESVAZIAR,
         # user_id fica ligado (C8 conta quem tem conta); origin_group_id é de C8.
         # study_stage fica: o card "Elas entraram na área?" (C5) separa por ela.
+        # As respostas da A05a (#303) ficam como as do questionário
+        # (followup_answers): são opções fechadas, o "antes" da comparação.
         "fica": {
             "id",
             "user_id",
             "origin_group_id",
             "study_stage",
+            "signup_computing_view",
+            "signup_future_self",
             "created_at",
             "updated_at",
         },

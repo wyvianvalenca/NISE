@@ -12,6 +12,8 @@ export const SIGNUP_PATHS = {
   opportunities: "/cadastro/oportunidades",
   questionnaires: "/cadastro/questionarios",
   rating: "/cadastro/avaliacao",
+  // A05a "Antes de começar" (#303): depois da avaliação, antes dos interesses.
+  startingPoint: "/cadastro/antes-de-comecar",
   interests: "/cadastro/interesses",
   // "Por que filé?" (A06·0), a porta do filé: na primeira vez explica, depois
   // manda direto para o Descobrir (#83).

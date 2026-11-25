@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.utils import create_access_token
 from app.main import app
 from app.modules.actions.models import ActionType
-from app.modules.followup.models import FollowupAnswer, FollowupRound, FutureSelf
+from app.modules.followup.models import (
+    ComputingView,
+    FollowupAnswer,
+    FollowupRound,
+    FutureSelf,
+)
 from app.modules.girls.models import Girl
 from app.users.models import Role, User
 from tests.helpers import chamar_rota
@@ -165,9 +170,36 @@ async def test_quem_pulou_a_pergunta_nao_entra_no_n(db_session: AsyncSession) ->
     assert ponto(por_grupo["one"], "twelve_months") == (1, 1)
 
 
-async def test_cadastro_ainda_nao_tem_respostas(db_session: AsyncSession) -> None:
-    # Dependência: o cadastro não guarda a pergunta 2 (RF-F10.26 é Should), então
-    # o marco "Cadastro" fica com 0 respostas em vez de inventar um valor.
+async def test_marco_cadastro_usa_a_pergunta_2_da_a05a(
+    db_session: AsyncSession,
+) -> None:
+    # O marco "Cadastro" é a pergunta 2 da A05a "Antes de começar" (#303).
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    acao = await cenario.acao(grupo, dias_atras(30))
+    ana = await cenario.menina()
+    bia = await cenario.menina()
+    carla = await cenario.menina()
+    for menina in (ana, bia, carla):
+        await cenario.inscrita(menina, acao, True)
+    ana.signup_future_self = FutureSelf.SURE
+    bia.signup_future_self = FutureSelf.MAYBE
+    # Carla só respondeu a pergunta 1 no cadastro: fica fora do n.
+    carla.signup_computing_view = ComputingView.WANT_TO_FOLLOW
+    await responde(cenario, ana, R18, FutureSelf.SURE)
+
+    por_grupo = linhas(await pedir(db_session, katia))
+
+    assert ponto(por_grupo["one"], "signup") == (2, 1)
+    assert ponto(por_grupo["one"], "eighteen_months") == (1, 1)
+
+
+async def test_quem_pulou_o_cadastro_nao_entra_no_marco(
+    db_session: AsyncSession,
+) -> None:
+    # Pular a A05a (#303) não grava nada: o marco fica com 0 respostas em vez
+    # de inventar um valor.
     cenario = Cenario(db_session)
     grupo = await cenario.grupo("Rendeiras do Código")
     katia = await cenario.coordenadora(grupo)

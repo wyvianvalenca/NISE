@@ -82,3 +82,15 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* Um chip por linha, na largura toda (A05a, pergunta 1). O texto pode quebrar
+   em telas estreitas. */
+.stacked {
+  flex-direction: column;
+}
+
+.stacked .chip {
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+}

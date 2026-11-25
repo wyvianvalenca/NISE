@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
+from app.modules.followup.models import ComputingView, FutureSelf
 
 
 # Os valores são os códigos que a A05 envia e que GET /api/profile/interest-options
@@ -94,6 +95,12 @@ class Girl(TimestampMixin, Base):
     # A faixa que ela abriu por último no Descobrir, para a tag "da última vez"
     # (A06·1, #86). Vazia se ela nunca abriu nenhuma.
     last_band: Mapped[EffortBand | None] = mapped_column()
+    # "Antes de começar" (A05a, RF-F10.26, #303): as perguntas 1 e 2 do
+    # questionário de acompanhamento (#293), respondidas no cadastro. São o
+    # "antes" da comparação (D-64), por isso usam as mesmas opções. Vazias
+    # quando ela pulou, respondeu só a outra ou criou a conta antes da A05a.
+    signup_computing_view: Mapped[ComputingView | None] = mapped_column()
+    signup_future_self: Mapped[FutureSelf | None] = mapped_column()
 
     # Assíncrono: carregue com selectinload(Girl.topics).
     topics: Mapped[list["GirlTopic"]] = relationship(cascade="all, delete-orphan")

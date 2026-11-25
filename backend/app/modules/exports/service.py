@@ -497,11 +497,23 @@ def concluded_cell(action: Action, participation: Participation, today: date) ->
 async def interest_by_girl(
     session: AsyncSession, girl_ids: set[int]
 ) -> dict[int, dict[str, str]]:
-    """A resposta de cada marco (3, 6, 12 e 18 meses) por menina (D-103).
+    """A resposta de cada marco (cadastro, 3, 6, 12 e 18 meses) por menina (D-103).
 
-    O marco "cadastro" ainda não tem onde ser guardado (#303): sai vazio.
+    O marco "cadastro" é a pergunta 1 da A05a "Antes de começar" (#303). Quem
+    pulou, ou criou a conta antes dela, sai com a coluna vazia.
     """
     found: dict[int, dict[str, str]] = {}
+    at_signup = await session.execute(
+        select(Girl.id, Girl.signup_computing_view).where(
+            Girl.id.in_(girl_ids), Girl.signup_computing_view.is_not(None)
+        )
+    )
+    for girl_id, view in at_signup:
+        if view is not None:
+            found.setdefault(girl_id, {})["interest_signup"] = COMPUTING_VIEW_LABELS[
+                view
+            ]
+
     query = select(FollowupAnswer).where(
         FollowupAnswer.girl_id.in_(girl_ids), FollowupAnswer.computing_view.is_not(None)
     )

@@ -1,18 +1,22 @@
 """Resultados · "Como o interesse evolui" e "Quem mudou de situação" (C5, #368).
 
 Rodam no Postgres de teste (`db_session`). Dados fictícios. Cada teste diz o
-critério de aceite da #368 que cobre. A pergunta no cadastro (change #303) ainda
-não existe: os testes do cadastro entram pela função `signup_views`.
+critério de aceite da #368 que cobre. A resposta do cadastro é a da A05a
+(change #303), gravada no registro da menina.
 """
 
 from typing import Any
 
-import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.utils import create_access_token
 from app.main import app
-from app.modules.followup.models import ComputingView, FollowupAnswer, FollowupRound
+from app.modules.followup.models import (
+    ComputingView,
+    FollowupAnswer,
+    FollowupRound,
+    FutureSelf,
+)
 from app.modules.girls.models import Girl, Topic
 from app.modules.groups.models import Group
 from app.modules.results import service
@@ -63,15 +67,13 @@ async def responde(
     await sessao.flush()
 
 
-def cadastro(
-    monkeypatch: pytest.MonkeyPatch, por_menina: dict[int, ComputingView]
+async def cadastro(
+    sessao: AsyncSession, por_menina: list[tuple[Girl, ComputingView]]
 ) -> None:
-    async def falso(
-        sessao: AsyncSession, meninas: set[int]
-    ) -> dict[int, ComputingView]:
-        return {m: v for m, v in por_menina.items() if m in meninas}
-
-    monkeypatch.setattr(service, "signup_views", falso)
+    """Grava a pergunta 1 da A05a "Antes de começar" (#303) de cada menina."""
+    for menina, visao in por_menina:
+        menina.signup_computing_view = visao
+    await sessao.flush()
 
 
 async def grupo_com(
@@ -173,10 +175,10 @@ async def test_barras_por_marco_com_as_quatro_opcoes_e_quantas_responderam(
 
 
 async def test_marco_cadastro_conta_quem_respondeu_no_cadastro(
-    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    db_session: AsyncSession,
 ) -> None:
     _, _, katia, meninas = await grupo_com(db_session, 3)
-    cadastro(monkeypatch, {meninas[0].id: QUERO, meninas[1].id: GOSTO})
+    await cadastro(db_session, [(meninas[0], QUERO), (meninas[1], GOSTO)])
 
     corpo = corpo_de(await pedir(db_session, katia))
 
@@ -185,12 +187,13 @@ async def test_marco_cadastro_conta_quem_respondeu_no_cadastro(
     assert corpo["signup"]["counts"]["like_but_unsure"] == 1
 
 
-async def test_sem_a_pergunta_no_cadastro_o_marco_vem_com_zero(
+async def test_quem_pulou_o_cadastro_fica_fora_do_marco_e_da_comparacao(
     db_session: AsyncSession,
 ) -> None:
-    # Pergunta em aberto 4: sem a pergunta no cadastro (#303), zero respostas
-    # e ninguém na comparação, sem erro.
+    # RF-F5.04: quem pulou a A05a (#303), ou só respondeu a pergunta 2, não
+    # conta no marco "Cadastro" e fica fora da comparação, sem erro.
     _, _, katia, [menina] = await grupo_com(db_session, 1)
+    menina.signup_future_self = FutureSelf.SURE
     await responde(db_session, menina, R3, QUERO)
 
     corpo = corpo_de(await pedir(db_session, katia))
@@ -260,12 +263,12 @@ async def test_sem_ninguem_responde_zero_e_nao_erro(db_session: AsyncSession) ->
 
 
 async def test_responde_so_totais_sem_menina_nem_comentario(
-    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    db_session: AsyncSession,
 ) -> None:
     # Critério: nenhuma tela mostra o que uma menina respondeu (RN-11, RN-50).
     _, _, katia, [menina] = await grupo_com(db_session, 1)
     await responde(db_session, menina, R3, QUERO, comentario="segredo fictício")
-    cadastro(monkeypatch, {menina.id: GOSTO})
+    await cadastro(db_session, [(menina, GOSTO)])
 
     response = await pedir(db_session, katia)
 
@@ -364,14 +367,13 @@ def test_lista_de_mudancas_tem_no_maximo_cinco_linhas() -> None:
 
 
 async def test_rota_com_cadastro_devolve_quem_mudou(
-    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    db_session: AsyncSession,
 ) -> None:
     # Critérios: card diz quantas têm as duas respostas; Subiu/Manteve/Caiu e
     # "Mudanças mais comuns" como "7 · Gosto, mas não sei → Quero seguir".
     _, _, katia, meninas = await grupo_com(db_session, 4)
-    cadastro(
-        monkeypatch,
-        {meninas[0].id: GOSTO, meninas[1].id: GOSTO, meninas[2].id: QUERO},
+    await cadastro(
+        db_session, [(meninas[0], GOSTO), (meninas[1], GOSTO), (meninas[2], QUERO)]
     )
     await responde(db_session, meninas[0], R3, QUERO)
     await responde(db_session, meninas[1], R3, QUERO)

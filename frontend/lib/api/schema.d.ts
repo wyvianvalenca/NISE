@@ -595,6 +595,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/profile/starting-point": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Starting Point */
+        get: operations["starting_point_api_profile_starting_point_get"];
+        put?: never;
+        /** Answer Starting Point */
+        post: operations["answer_starting_point_api_profile_starting_point_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/profile": {
         parameters: {
             query?: never;
@@ -3640,6 +3658,34 @@ export interface components {
          */
         SimilarChoice: "mais-avancado" | "mesmo-nivel" | "outro-tema" | "por-enquanto-nao";
         /**
+         * StartingPointIn
+         * @description As respostas da A05a. Cada pergunta é opcional, mas pelo menos uma vem:
+         *     "Pular" não chama o back. Códigos fora das listas e campos desconhecidos
+         *     são recusados.
+         */
+        StartingPointIn: {
+            computingView?: components["schemas"]["ComputingView"] | null;
+            futureSelf?: components["schemas"]["FutureSelf"] | null;
+        };
+        /**
+         * StartingPointOut
+         * @description O que a A05a "Antes de começar" mostra (RF-F10.26, #303).
+         *
+         *     `open` é False quando ela já respondeu ou já passou dos interesses (A05):
+         *     a tela então segue direto para a A05. As opções são as das perguntas 1 e 2
+         *     do questionário (#293), na mesma ordem.
+         */
+        StartingPointOut: {
+            /** Firstname */
+            firstName: string;
+            /** Open */
+            open: boolean;
+            /** Computingviews */
+            computingViews: components["schemas"]["OptionOut"][];
+            /** Futureselves */
+            futureSelves: components["schemas"]["OptionOut"][];
+        };
+        /**
          * StatusIn
          * @description A seção para onde ela quer levar a atividade.
          *
@@ -5284,6 +5330,107 @@ export interface operations {
             };
             /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    starting_point_api_profile_starting_point_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartingPointOut"];
+                };
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_starting_point_api_profile_starting_point_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartingPointIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem o aceite dos termos: {"error": "terms_not_accepted"} */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem registro de menina: {"error": "profile_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ela já respondeu: {"error": "already_answered"}. Ela já passou dos interesses (A05): {"error": "signup_finished"} */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2,13 +2,16 @@ import { expect, test, type Page } from "@playwright/test";
 import { mockInterestsApi } from "./interests-api";
 import { mockOpportunitiesApi } from "./opportunities-api";
 import { mockRatingsApi, ROBOTICS } from "./ratings-api";
+import { mockStartingPointApi } from "./starting-point-api";
 import { mockTermsApi } from "./terms-api";
 
 // #58 · A03 E aí, curtiu a oficina? As rotas dos termos (#91), da preferência
-// (#145), da avaliação (#149) e dos interesses (#147) são simuladas.
+// (#145), da avaliação (#149), da A05a (#303) e dos interesses (#147) são simuladas.
 
-// Vários testes terminam na A05, que busca as listas logo que abre.
+// Vários testes terminam na A05a "Antes de começar" (#303), que busca as
+// perguntas logo que abre e pode seguir para a A05, que busca as listas.
 test.beforeEach(async ({ page }) => {
+  await mockStartingPointApi(page);
   await mockInterestsApi(page);
 });
 
@@ -52,14 +55,14 @@ test("a nota escolhida aparece com o texto e libera o envio", async ({ page }) =
   await expect(send).toBeEnabled();
 });
 
-test("avaliar sem comentário envia a nota ligada à ação e segue para os interesses", async ({ page }) => {
+test("avaliar sem comentário envia a nota ligada à ação e segue para a A05a", async ({ page }) => {
   const sentRatings = await mockRatingsApi(page);
   await finishConsent(page);
 
   await page.getByRole("radio", { name: /^5 · / }).check();
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
   expect(sentRatings).toEqual([{ actionId: 7, score: 5, comment: null }]);
 });
 
@@ -71,7 +74,7 @@ test("o comentário é opcional e vai junto com a nota", async ({ page }) => {
   await page.getByLabel(/Quer contar mais/).fill("Montar o robô foi o melhor momento.");
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
   expect(sentRatings).toEqual([{ actionId: 7, score: 3, comment: "Montar o robô foi o melhor momento." }]);
 });
 
@@ -81,15 +84,15 @@ test("Agora não pula a avaliação sem enviar nada", async ({ page }) => {
 
   await page.getByRole("button", { name: "Agora não" }).click();
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
   expect(sentRatings).toEqual([]);
 });
 
-test("no M2 não há avaliação: dos termos vai direto para os interesses", async ({ page }) => {
+test("no M2 não há avaliação: dos termos vai direto para a A05a", async ({ page }) => {
   await mockRatingsApi(page, { pending: null });
   await finishConsent(page);
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
 });
 
 test("quem já avaliou não vê a tela de novo", async ({ page }) => {
@@ -97,21 +100,21 @@ test("quem já avaliou não vê a tela de novo", async ({ page }) => {
   await finishConsent(page);
   await page.getByRole("radio", { name: /^4 · / }).check();
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
 
   await page.goto("/cadastro/avaliacao");
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
 });
 
-test("avaliação já enviada em outra aba segue para os interesses", async ({ page }) => {
+test("avaliação já enviada em outra aba segue para a A05a", async ({ page }) => {
   await mockRatingsApi(page, { submit: "already_rated" });
   await page.goto("/cadastro/avaliacao");
 
   await page.getByRole("radio", { name: /^4 · / }).check();
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
 });
 
 test("se o envio falha, avisa e deixa tentar de novo", async ({ page }) => {
@@ -129,7 +132,7 @@ test("se o envio falha, avisa e deixa tentar de novo", async ({ page }) => {
   // A rota mais nova vale: agora o envio dá certo.
   const sentRatings = await mockRatingsApi(page);
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
   expect(sentRatings).toEqual([{ actionId: 7, score: 4, comment: null }]);
 });
 
@@ -144,13 +147,13 @@ test("se a oficina não carrega, deixa tentar de novo ou seguir", async ({ page 
   await expect(page.getByText("Introdução à robótica")).toBeVisible();
 });
 
-test("se a oficina não carrega, Agora não segue para os interesses", async ({ page }) => {
+test("se a oficina não carrega, Agora não segue para a A05a", async ({ page }) => {
   await mockRatingsApi(page, { pending: 500 });
   await page.goto("/cadastro/avaliacao");
 
   await page.getByRole("button", { name: "Agora não" }).click();
 
-  await expect(page).toHaveURL(/\/cadastro\/interesses$/);
+  await expect(page).toHaveURL(/\/cadastro\/antes-de-comecar$/);
 });
 
 test("sem sessão, volta para a página inicial", async ({ page }) => {

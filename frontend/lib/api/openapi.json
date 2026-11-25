@@ -2490,6 +2490,154 @@
         }
       }
     },
+    "/api/profile/starting-point": {
+      "get": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Starting Point",
+        "operationId": "starting_point_api_profile_starting_point_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartingPointOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Profile"
+        ],
+        "summary": "Answer Starting Point",
+        "operationId": "answer_starting_point_api_profile_starting_point_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartingPointIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Sem o aceite dos termos: {\"error\": \"terms_not_accepted\"}"
+          },
+          "404": {
+            "description": "A conta não tem registro de menina: {\"error\": \"profile_not_found\"}"
+          },
+          "409": {
+            "description": "Ela já respondeu: {\"error\": \"already_answered\"}. Ela já passou dos interesses (A05): {\"error\": \"signup_finished\"}"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/profile": {
       "get": {
         "tags": [
@@ -12327,6 +12475,69 @@
         ],
         "title": "SimilarChoice",
         "description": "Resposta do \"Quer sugestões parecidas?\" da atividade concluída (A06·5, RF-F10.09).\n\nOs valores são os mesmos de `SIMILAR_OPTIONS` no front\n(frontend/lib/atividade-feedback.ts). Como cada um muda as próximas\nsugestões está em app/modules/suggestions/service.py (#80)."
+      },
+      "StartingPointIn": {
+        "properties": {
+          "computingView": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComputingView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "futureSelf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FutureSelf"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StartingPointIn",
+        "description": "As respostas da A05a. Cada pergunta é opcional, mas pelo menos uma vem:\n\"Pular\" não chama o back. Códigos fora das listas e campos desconhecidos\nsão recusados."
+      },
+      "StartingPointOut": {
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
+          },
+          "open": {
+            "type": "boolean",
+            "title": "Open"
+          },
+          "computingViews": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Computingviews"
+          },
+          "futureSelves": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Futureselves"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstName",
+          "open",
+          "computingViews",
+          "futureSelves"
+        ],
+        "title": "StartingPointOut",
+        "description": "O que a A05a \"Antes de começar\" mostra (RF-F10.26, #303).\n\n`open` é False quando ela já respondeu ou já passou dos interesses (A05):\na tela então segue direto para a A05. As opções são as das perguntas 1 e 2\ndo questionário (#293), na mesma ordem."
       },
       "StatusIn": {
         "properties": {
