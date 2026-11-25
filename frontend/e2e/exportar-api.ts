@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { signedIn } from "./session";
 import type { CutOptions, ExportedFile, HistoryItem, Preview, Summary } from "../lib/exportar";
 
 // Simula as rotas de /api/coordinator/exports (#375) para os testes não
@@ -141,6 +142,8 @@ export async function mockExportApi(
   };
   const history = [...(options.history ?? OLD_HISTORY)];
 
+  // proxy.ts (#452) sends whoever has no session cookie away from /coordenacao/*.
+  await signedIn(page);
   await page.route("**/api/coordinator/exports/options", (route) => route.fulfill({ json: OPTIONS }));
   await page.route("**/api/coordinator/exports/summary*", (route) => {
     const url = new URL(route.request().url());
