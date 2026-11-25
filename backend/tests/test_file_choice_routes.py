@@ -5,7 +5,7 @@ As rotas rodam com uma sessão falsa. Os dados são fictícios; os códigos IBGE
 de Maceió e Arapiraca são só números.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,13 +18,14 @@ from app.main import app
 from app.modules.actions.models import Action, ActionFormat, ActionVisibility
 from app.modules.catalog.models import CuratedItem
 from app.modules.girl_file.models import (
+    IN_FILE,
     DismissReason,
     FileEntry,
     FileStatus,
     SimilarChoice,
 )
 from app.modules.girl_file.schemas import Choice
-from app.modules.girl_file.service import CHOICE_STATUS, IN_FILE
+from app.modules.girl_file.service import CHOICE_STATUS
 from app.modules.girls.models import EffortBand, Girl, Topic
 from app.users.models import Role, User
 from tests.helpers import chamar_rota, sessao_com, sql_do_postgres
@@ -93,6 +94,7 @@ async def test_quero_fazer_poe_o_item_no_file_e_devolve_o_total() -> None:
     assert gravada.action_id is None
     assert gravada.status is FileStatus.NEXT
     assert gravada.dismiss_reason is None
+    assert gravada.filed_at is not None  # entrou no filé agora (RF-F5.31)
     sessao_falsa.commit.assert_awaited_once()
 
 
@@ -104,6 +106,8 @@ async def test_talvez_depois_vai_para_o_ver_depois() -> None:
     assert response.status_code == 200
     assert response.json() == {"fileTotal": 5}
     assert linha_gravada(sessao_falsa).status is FileStatus.LATER
+    # O Ver depois ainda não é o filé.
+    assert linha_gravada(sessao_falsa).filed_at is None
 
 
 async def test_nao_e_pra_mim_guarda_o_motivo() -> None:
@@ -222,6 +226,28 @@ async def test_do_ver_depois_a_escolha_troca_a_mesma_linha() -> None:
     sessao_falsa.commit.assert_awaited_once()
 
 
+async def test_quero_fazer_do_ver_depois_guarda_quando_entrou_no_file() -> None:
+    # O "Começaram o filé" da aba Resultados conta pelo dia em que o item
+    # entrou no filé, não pelo dia em que a linha foi criada no Ver depois
+    # (RF-F5.31, D-93).
+    linha = FileEntry(
+        id=40,
+        girl_id=3,
+        curated_item_id=12,
+        status=FileStatus.LATER,
+        created_at=datetime(2026, 1, 10, tzinfo=UTC),
+    )
+    assert linha.filed_at is None
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha)
+    antes = datetime.now(UTC)
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 200
+    assert linha.filed_at is not None
+    assert antes <= linha.filed_at <= datetime.now(UTC)
+
+
 @pytest.mark.parametrize(
     ("status", "campos"),
     [
@@ -256,6 +282,43 @@ async def test_nao_troca_a_escolha_de_um_item_no_file_ou_dispensado(
         assert getattr(linha, campo) == valor
     sessao_falsa.add.assert_not_called()
     sessao_falsa.commit.assert_not_called()
+
+
+async def test_escolher_de_novo_um_evento_do_nao_deu_que_foi_adiado() -> None:
+    # O evento voltou às sugestões porque a curadoria o adiou (#190).
+    # Ele já esteve no filé (a inscrição de antes do "Não deu").
+    linha = FileEntry(
+        id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
+    )
+    linha.filed_at = datetime(2026, 1, 10, tzinfo=UTC)
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
+    antes = datetime.now(UTC)
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 200
+    assert linha.status is FileStatus.NEXT
+    # É um item novo no filé: a data é a de agora (RF-F5.31, D-93).
+    assert linha.filed_at is not None
+    assert antes <= linha.filed_at <= datetime.now(UTC)
+    sessao_falsa.add.assert_not_called()
+    sessao_falsa.commit.assert_awaited_once()
+
+
+async def test_ver_depois_de_um_evento_do_nao_deu_apaga_a_data_do_file() -> None:
+    # Fora do filé de novo, o item não tem data; o "Quero fazer" depois guarda
+    # a nova (RF-F5.31, D-93).
+    linha = FileEntry(
+        id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
+    )
+    linha.filed_at = datetime(2026, 1, 10, tzinfo=UTC)
+    sessao_falsa = sessao_da_escolha(menina(), item_visivel(), linha=linha, total=4)
+
+    response = await escolher(sessao_falsa, {"choice": "talvez-depois"})
+
+    assert response.status_code == 200
+    assert linha.status is FileStatus.LATER
+    assert linha.filed_at is None
 
 
 async def test_repetir_a_mesma_escolha_vale_sem_mudar_nada() -> None:
@@ -347,6 +410,22 @@ async def test_item_com_idade_minima_acima_da_dela_responde_404() -> None:
     assert response.status_code == 404
     assert response.json() == {"error": "item_not_found"}
     sessao_falsa.add.assert_not_called()
+
+
+async def test_evento_do_nao_deu_adiado_que_saiu_do_perfil_responde_404() -> None:
+    # Adiado, ele volta como um item novo: a curadoria pode ter mudado o público.
+    linha = FileEntry(
+        id=41, girl_id=3, curated_item_id=12, status=FileStatus.DID_NOT_GO
+    )
+    sessao_falsa = sessao_da_escolha(
+        menina(), curado(12, EffortBand.UMA_TARDE, min_age=18), linha=linha
+    )
+
+    response = await escolher(sessao_falsa, {"choice": "quero-fazer"})
+
+    assert response.status_code == 404
+    assert linha.status is FileStatus.DID_NOT_GO
+    sessao_falsa.commit.assert_not_called()
 
 
 async def test_item_de_outro_tema_responde_404() -> None:

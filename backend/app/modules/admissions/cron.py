@@ -27,6 +27,8 @@ from app.modules.admissions.search import (
     run_ifal_round,
 )
 from app.modules.admissions.service import delete_expired_matches
+from app.modules.events.reminder_email import send_event_reminders
+from app.modules.exports.service import purge_old_files
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,12 @@ async def expire_matches(session: AsyncSessionDep) -> dict[str, int]:
     return {"deleted": await delete_expired_matches(session)}
 
 
+@router.get("/purge-exports", dependencies=[CronDep])
+async def purge_exports(session: AsyncSessionDep) -> dict[str, int]:
+    """Apaga o texto das exportações com mais de 24 horas (F24, #375)."""
+    return {"purged": await purge_old_files(session)}
+
+
 @router.get("/match-emails", dependencies=[CronDep])
 async def match_emails(session: AsyncSessionDep) -> dict[str, int]:
     """Envia os e-mails da fila que avisam dos indícios (RF-F31.11, #275).
@@ -128,5 +136,23 @@ async def match_emails(session: AsyncSessionDep) -> dict[str, int]:
     if result.stopped:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, "O envio parou; o resto fica na fila"
+        )
+    return {"sent": result.sent, "dropped": result.dropped}
+
+
+@router.get("/event-reminders", dependencies=[CronDep])
+async def event_reminders(session: AsyncSessionDep) -> dict[str, int]:
+    """Envia os lembretes "Me lembra um dia antes" dos eventos de amanhã (RF-F4.12, #188).
+
+    Roda uma vez por dia, de manhã em Maceió, e envia em lotes de 50 até não
+    haver mais nada ou acabar o tempo (40 s). Responde só contagens. Se o envio
+    parar (SMTP fora do ar ou não configurado, ou sobrou lembrete quando o tempo
+    acabou), responde 502 para a falha aparecer no painel de cron; o que não
+    saiu pode ser repetido no mesmo dia.
+    """
+    result = await send_event_reminders(session)
+    if result.stopped:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "O envio parou; repita a rotina hoje"
         )
     return {"sent": result.sent, "dropped": result.dropped}

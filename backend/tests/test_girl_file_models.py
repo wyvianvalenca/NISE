@@ -1,18 +1,26 @@
 """Filé da menina (#79): o estado de cada item. Dados fictícios."""
 
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy import UniqueConstraint
 
 from app.db.base import Base
 from app.modules.catalog.models import ItemOrigin
-from app.modules.girl_file.models import DismissReason, FileStatus, SimilarChoice
+from app.modules.girl_file.models import (
+    IN_FILE,
+    DismissReason,
+    FileStatus,
+    SimilarChoice,
+)
 from app.modules.girl_file.service import entry_item_id, new_entry
 
 TABLE = Base.metadata.tables["file_entries"]
 
 
 def test_guarda_todos_os_estados_do_file() -> None:
-    # Quero fazer, em andamento, concluído, inscrita, ver depois e não é pra mim.
+    # Quero fazer, em andamento, concluído, inscrita, ver depois, não é pra mim
+    # e o "Não deu" de um evento (#190).
     assert {status.value for status in FileStatus} == {
         "next",
         "in_progress",
@@ -20,6 +28,7 @@ def test_guarda_todos_os_estados_do_file() -> None:
         "signed_up",
         "later",
         "dismissed",
+        "did_not_go",
     }
 
 
@@ -67,6 +76,61 @@ def test_dia_da_conclusao_so_numa_atividade_concluida() -> None:
 
     assert checks["ck_file_entries_concluded_on_only_when_concluded"] == (
         "status = 'CONCLUDED' OR concluded_on IS NULL"
+    )
+
+
+# --- Quando o item entrou no filé (RF-F5.31, D-93) -----------------------------
+
+
+@pytest.mark.parametrize("status", IN_FILE)
+def test_criar_ja_no_file_guarda_quando_entrou(status: FileStatus) -> None:
+    entry = new_entry(3, ItemOrigin.GROUP_ACTION, 7, status)
+
+    assert entry.filed_at is not None
+
+
+@pytest.mark.parametrize("status", [FileStatus.LATER, FileStatus.DISMISSED])
+def test_ver_depois_e_nao_e_pra_mim_nao_entraram_no_file(status: FileStatus) -> None:
+    entry = new_entry(3, ItemOrigin.CURATED, 12, status)
+
+    assert entry.filed_at is None
+
+
+def test_sair_do_ver_depois_para_o_file_guarda_quando_entrou() -> None:
+    entry = new_entry(3, ItemOrigin.CURATED, 12, FileStatus.LATER)
+    antes = datetime.now(UTC)
+
+    entry.status = FileStatus.NEXT
+
+    assert entry.filed_at is not None
+    assert antes <= entry.filed_at <= datetime.now(UTC)
+
+
+def test_andar_dentro_do_file_ou_sair_e_voltar_nao_muda_a_data() -> None:
+    # Próxima, em andamento, concluída: o item é o mesmo. O "Não deu" e o
+    # "Desfazer" dele também não fazem dele um item novo.
+    entrou = datetime(2026, 1, 10, tzinfo=UTC)
+    entry = new_entry(3, ItemOrigin.GROUP_ACTION, 7, FileStatus.SIGNED_UP)
+    entry.filed_at = entrou
+
+    for status in (
+        FileStatus.DID_NOT_GO,
+        FileStatus.SIGNED_UP,
+        FileStatus.CONCLUDED,
+    ):
+        entry.status = status
+        assert entry.filed_at == entrou
+
+
+def test_o_banco_exige_a_data_de_quem_esta_no_file() -> None:
+    checks = {
+        getattr(constraint, "name", None): str(getattr(constraint, "sqltext", ""))
+        for constraint in TABLE.constraints
+    }
+
+    assert checks["ck_file_entries_filed_at_when_in_file"] == (
+        "status NOT IN ('NEXT', 'IN_PROGRESS', 'CONCLUDED', 'SIGNED_UP')"
+        " OR filed_at IS NOT NULL"
     )
 
 
@@ -119,6 +183,7 @@ def test_restricoes_do_banco() -> None:
 
     assert "ck_file_entries_one_source" in constraints
     assert "ck_file_entries_reason_only_when_dismissed" in constraints
+    assert "ck_file_entries_reminder_only_when_signed_up" in constraints
     unique_columns = {
         tuple(column.name for column in constraint.columns)
         for constraint in TABLE.constraints
@@ -144,4 +209,7 @@ def test_nenhum_dado_pessoal_nem_link_no_file() -> None:
         "rating",
         "similar_choice",
         "concluded_on",
+        "reminder",
+        "reminder_sent_for",
+        "filed_at",
     }

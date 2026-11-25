@@ -1,0 +1,30 @@
+.bar {
+  padding: 16px 20px;
+  border-radius: var(--radius-8);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  font-size: 14px;
+}
+
+.number {
+  margin-right: 4px;
+  color: var(--nise-pinkLight);
+  font-size: 22px;
+}
+
+.loading {
+  margin: 0;
+  font-size: 14px;
+}

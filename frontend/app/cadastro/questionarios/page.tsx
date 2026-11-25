@@ -25,7 +25,8 @@ export default function QuestionnairesPage() {
     try {
       await confirmQuestionnaireNotice();
       // Segue para a avaliação do evento (M1). Quando não há o que avaliar (M2), a
-      // própria A03 manda para os interesses, sem precisar perguntar ao back duas vezes.
+      // própria A03 manda para a A05a "Antes de começar" (#303), sem precisar
+      // perguntar ao back duas vezes.
       router.push(SIGNUP_PATHS.rating);
     } catch {
       setError("Não deu pra salvar. Tente de novo.");
@@ -47,7 +48,7 @@ export default function QuestionnairesPage() {
       </div>
       <h1 className={styles.titleLoose}>Você vai receber questionários por e-mail</h1>
       <p className={styles.lead}>
-        Como a avaliação de uma oficina e pesquisas sobre sua trajetória, depois de 3 e de 6 meses.
+        Como a avaliação de uma oficina e pesquisas sobre sua trajetória, depois de 3, 6, 12 e 18 meses.
       </p>
 
       <div className={styles.block}>

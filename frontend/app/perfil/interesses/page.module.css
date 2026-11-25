@@ -1,0 +1,39 @@
+/* A05 em modo edição · moldura igual à da A10b: cabeçalho e uma coluna central,
+   estreita também no computador. */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}
+
+/* "Voltar": botão com cara de link, como na A10b. */
+.back {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.back:focus-visible {
+  outline: 2px solid var(--nise-teal);
+  outline-offset: 2px;
+}

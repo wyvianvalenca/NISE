@@ -19,10 +19,9 @@ from app.modules.catalog.models import (
     CuratedType,
     ItemKind,
 )
-from app.modules.girl_file.models import FileEntry, FileStatus
+from app.modules.girl_file.models import IN_FILE, FileEntry, FileStatus
 from app.modules.girl_file.schemas import FileSection
 from app.modules.girl_file.service import (
-    IN_FILE,
     SECTION_OF,
     details_line,
     main_theme,

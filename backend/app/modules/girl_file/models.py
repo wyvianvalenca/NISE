@@ -1,8 +1,8 @@
 import enum
-from datetime import date
+from datetime import UTC, date, datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, UniqueConstraint, text
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
@@ -14,7 +14,8 @@ class FileStatus(enum.Enum):
     "Quero fazer" põe o item em NEXT. Uma atividade anda de NEXT para
     IN_PROGRESS e de IN_PROGRESS para CONCLUDED, nessa ordem (#119). Um evento
     vira SIGNED_UP quando ela confirma a inscrição (RF-F10.14). LATER é o "Ver
-    depois" e DISMISSED é o "Não é pra mim", que guarda o motivo.
+    depois" e DISMISSED é o "Não é pra mim", que guarda o motivo. DID_NOT_GO
+    é o "Não deu" de um evento de fora que já passou (#190).
 
     "Tirar do filé", "Remover" e "Desfazer" apagam a linha: o item volta a
     poder ser sugerido.
@@ -26,6 +27,19 @@ class FileStatus(enum.Enum):
     SIGNED_UP = "signed_up"
     LATER = "later"
     DISMISSED = "dismissed"
+    # "Não deu" de um evento de fora depois da data (#190): saiu do filé, mas a
+    # linha fica para o "Desfazer" saber que ela estava inscrita.
+    DID_NOT_GO = "did_not_go"
+
+
+# O que conta na pílula "Meu filé": tudo o que entrou no filé. O "Ver depois"
+# e o "Não é pra mim" ficam de fora.
+IN_FILE: list[FileStatus] = [
+    FileStatus.NEXT,
+    FileStatus.IN_PROGRESS,
+    FileStatus.CONCLUDED,
+    FileStatus.SIGNED_UP,
+]
 
 
 class DismissReason(enum.Enum):
@@ -87,6 +101,15 @@ class FileEntry(TimestampMixin, Base):
             "status = 'CONCLUDED' OR concluded_on IS NULL",
             name="ck_file_entries_concluded_on_only_when_concluded",
         ),
+        CheckConstraint(
+            "status = 'SIGNED_UP' OR reminder = false",
+            name="ck_file_entries_reminder_only_when_signed_up",
+        ),
+        CheckConstraint(
+            "status NOT IN ('NEXT', 'IN_PROGRESS', 'CONCLUDED', 'SIGNED_UP')"
+            " OR filed_at IS NOT NULL",
+            name="ck_file_entries_filed_at_when_in_file",
+        ),
     )
 
     girl_id: Mapped[int] = mapped_column(
@@ -110,3 +133,36 @@ class FileEntry(TimestampMixin, Base):
     # O dia em que ela tocou "Marcar como concluída" (A06·4a, #119), no fuso de
     # Maceió. Só numa atividade concluída.
     concluded_on: Mapped[date | None] = mapped_column()
+    # "Me lembra um dia antes" de um evento em que ela se inscreveu (#186). Só
+    # numa inscrição: desfazer, tirar do filé ou concluir desliga o lembrete.
+    reminder: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # A data do evento para a qual o lembrete saiu. Uma linha por menina e
+    # evento (as restrições de único acima), então ela recebe um lembrete por
+    # data do evento (RNF-F4.01); se o evento muda de dia, sai outro.
+    reminder_sent_for: Mapped[date | None] = mapped_column()
+    # Quando o item entrou no filé (IN_FILE): na hora em que a linha é criada
+    # já no filé, ou quando sai do "Ver depois" para ele (o "+ Quero fazer").
+    # Vazio enquanto o item nunca entrou no filé. O "Começaram o filé" da aba
+    # Resultados conta por aqui (RF-F5.31, D-93): `created_at` não serve,
+    # porque o "Quero fazer" do Ver depois só troca o status da linha que já
+    # existia.
+    #
+    # Sair do filé e voltar (o "Não deu" e o "Desfazer" dele) não muda a data:
+    # é o mesmo item, não um novo. Tirar do filé apaga a linha, e guardar de
+    # novo cria outra, com a data nova. Escolher de novo o evento do "Não deu"
+    # que a curadoria adiou também faz dele um item novo: `save_choice` apaga
+    # a data antiga.
+    filed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    @validates("status")
+    def _marks_filed_at(self, key: str, status: FileStatus) -> FileStatus:
+        """Guarda `filed_at` quando o status muda para um do filé sem data.
+
+        O SQLAlchemy chama isto em todo `entry.status = ...` e em
+        `FileEntry(status=...)`, então nenhum caminho que mexe no status
+        esquece a data. Um `update(FileEntry)` direto não passa por aqui: o
+        banco recusa se faltar a data (ck_file_entries_filed_at_when_in_file).
+        """
+        if status in IN_FILE and self.filed_at is None:
+            self.filed_at = datetime.now(UTC)
+        return status

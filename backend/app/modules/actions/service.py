@@ -24,11 +24,13 @@ from app.modules.actions.schemas import (
     ActionListItemOut,
     ActionListOut,
     ActionOut,
+    ActionPageOut,
     ActionStatusCountsOut,
 )
 from app.modules.cities.models import City
 from app.modules.cities.service import ensure_city_exists
 from app.modules.cities.utils import city_label, normalize_search
+from app.modules.registrations.service import can_reopen, registrations_are_open
 
 # "The day of the event has come" is decided in Maceió time, as in the age rule
 # (RN-03), so an action does not change status at 21:00 local time because the
@@ -163,6 +165,38 @@ def action_to_out(
         audiences=[row.stage for row in action.audiences],
         status=compute_status(action, registered_count, today),
     )
+
+
+def action_to_page_out(
+    action: Action, city: City | None, registered_count: int, today: date
+) -> ActionPageOut:
+    """The action page (K11, #233); `registrations_open` is the effective one."""
+    base = action_to_out(action, city, registered_count, today)
+    return ActionPageOut(
+        **base.model_dump(exclude={"registrations_open"}),
+        registrations_open=registrations_are_open(action, today),
+        city_name=city.name if city is not None else None,
+        created_on=action.created_at.astimezone(ACTION_TIMEZONE).date(),
+        today=today,
+        registered_count=registered_count,
+        registrations_closed_by_coordinator=not action.registrations_open,
+        can_reopen=can_reopen(action, today),
+        can_delete=action.attendance_registered_at is None,
+    )
+
+
+async def load_action_page(
+    session: AsyncSession, action: Action, today: date
+) -> ActionPageOut:
+    """The page of an action (K11, #233); also what closing/reopening answers."""
+    city = (
+        await session.get(City, action.city_ibge_code)
+        if action.city_ibge_code is not None
+        else None
+    )
+    registered = await count_registered(session, action.id)
+
+    return action_to_page_out(action, city, registered, today)
 
 
 async def create_action(

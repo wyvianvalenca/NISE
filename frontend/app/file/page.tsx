@@ -15,8 +15,11 @@ import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
 import { LoadFailed } from "@/components/LoadFailed";
+import { Toast } from "@/components/Toast";
 import { UndoTimerToast } from "@/components/UndoTimerToast";
 import { AGENDA_PATH, getToAnswer, pendingCount } from "@/lib/agenda";
+import { takeFeedbackSent } from "@/lib/atividade-feedback";
+import { FILE_PATHS, REVIEW_PARAM } from "@/lib/file-intro";
 import { eventPath, takeDidNotGo, undoDidNotGo, type DidNotGo } from "@/lib/evento";
 import {
   NO_CHANGES,
@@ -31,6 +34,7 @@ import {
 } from "@/lib/file";
 import { SIGNUP_PATHS } from "@/lib/signup";
 import { WITHOUT_SESSION } from "@/lib/signup-api";
+import { redirectFor as eventRedirectFor } from "./evento/[id]/useEvent";
 import styles from "./page.module.css";
 
 function withoutId(ids: ReadonlySet<string>, id: string): ReadonlySet<string> {
@@ -167,8 +171,47 @@ export default function FilePage() {
         </main>
       </div>
 
+      <FeedbackSentToast />
       <BottomNav active="file" />
       <DidNotGoToast />
+    </div>
+  );
+}
+
+/** Quanto tempo o "Valeu!" fica na tela, em ms. */
+const FEEDBACK_SENT_MS = 4000;
+
+/**
+ * Aviso "Valeu! Sua resposta foi enviada." depois do "Enviar" da avaliação de uma atividade
+ * concluída (A06·5, #171; Figma: Toast / Resposta enviada, no A06·3). Fica logo acima da
+ * barra inferior e some sozinho. "Pular" não guarda nada, então não deixa aviso.
+ */
+function FeedbackSentToast() {
+  const [open, setOpen] = useState(false);
+
+  // Lido depois da montagem, como o aviso do "Não deu": no servidor não há sessionStorage.
+  useEffect(() => {
+    let current = true;
+    Promise.resolve().then(() => {
+      // Só lê (e esquece) se este efeito ainda vale: no modo estrito o React monta duas vezes.
+      if (current && takeFeedbackSent()) setOpen(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => setOpen(false), FEEDBACK_SENT_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className={styles.sentNotice}>
+      <Toast icon={null}>Valeu! Sua resposta foi enviada.</Toast>
     </div>
   );
 }
@@ -176,6 +219,9 @@ export default function FilePage() {
 /**
  * Aviso depois do "Não deu" de um evento de fora (#190): o evento saiu do filé, e o
  * "Desfazer" o traz de volta para a pergunta "Você foi?". Some sozinho ou quando ela sai da tela.
+ * Se o "Desfazer" é recusado, segue o mesmo caminho das outras ações de evento: sem sessão ou
+ * sem os termos, vai para a tela certa; se o evento mudou de estado (409) ou já não existe
+ * (404), não há o que desfazer e o aviso some.
  */
 function DidNotGoToast() {
   const router = useRouter();
@@ -203,12 +249,15 @@ function DidNotGoToast() {
   async function undo() {
     if (!notice || status === "undoing") return;
     setStatus("undoing");
-    try {
-      await undoDidNotGo(notice.id);
+    const result = await undoDidNotGo(notice.id);
+    if (result.ok) {
       router.push(eventPath(notice.id));
-    } catch {
-      setStatus("error");
+      return;
     }
+    const redirect = eventRedirectFor(result.reason);
+    if (redirect) router.replace(redirect);
+    else if (result.reason === "conflict" || result.reason === "not_found") close();
+    else setStatus("error");
   }
 
   return (
@@ -238,7 +287,7 @@ function File({ data, changes, onSettled, onRemoved }: FileProps) {
     <>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>Seu filé</h1>
-        <Link href="/por-que-file" className={styles.help} aria-label="O que é o filé?">
+        <Link href={`${FILE_PATHS.intro}?${REVIEW_PARAM}=1`} className={styles.help} aria-label="O que é o filé?">
           <Icon name="question" />
         </Link>
       </div>

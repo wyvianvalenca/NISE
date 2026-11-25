@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { TermsBackLink } from "@/components/TermsBackLink";
 import { TERMS_VERSION } from "@/lib/signup-api";
 import styles from "./page.module.css";
 
@@ -14,6 +16,10 @@ export default function FullTermsPage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
+        {/* useSearchParams precisa de Suspense para a página continuar estática. */}
+        <Suspense>
+          <TermsBackLink />
+        </Suspense>
         <h1 className={styles.title}>Termos de uso e Política de privacidade</h1>
         <p className={styles.version}>Versão {TERMS_VERSION}</p>
         <p className={styles.draft} role="note">

@@ -1,0 +1,70 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.summary {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.none {
+  padding: 16px 4px;
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.more {
+  align-self: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--nise-teal);
+}
+
+.walkIn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.walkIn:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}
+
+.note {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+.done {
+  color: var(--nise-teal);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+  font-weight: 500;
+}

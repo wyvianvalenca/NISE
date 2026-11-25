@@ -23,6 +23,10 @@ GOOGLE_STATE_COOKIE = "nise_google_state"
 GOOGLE_VERIFIER_COOKIE = "nise_google_verifier"
 # Código do convite com que ela foi ao Google (RN-29). Fica junto do state.
 GOOGLE_INVITE_COOKIE = "nise_google_convite"
+# Convite de coordenadora com que ela foi ao Google, e a versão dos termos que
+# ela aceitou ao clicar (CV02, #455, RN-40).
+GOOGLE_COORDINATOR_INVITE_COOKIE = "nise_google_convite_coord"
+GOOGLE_TERMS_COOKIE = "nise_google_termos"
 GOOGLE_COOKIE_PATH = "/api/auth/google"
 
 GOOGLE_COOKIE_MAX_AGE = 10 * 60
@@ -52,13 +56,37 @@ async def get_current_user(
 
     user = await session.get(User, user_id)
 
-    if user is None:
+    # Conta excluída (RF-F7.09, #394): o cookie antigo, de qualquer aba ou
+    # aparelho, deixa de valer.
+    if user is None or user.deleted_at is not None:
         raise unauthorized
 
     return user
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+async def get_session_user_id(
+    token: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
+) -> int:
+    """Só o id da sessão, sem olhar a conta no banco.
+
+    Serve à exclusão de conta (#394): uma segunda chamada, de outra aba, já vem
+    com a conta excluída e precisa responder 204, não 401.
+    """
+    user_id = decode_access_token(token) if token else None
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Não autenticada",
+        )
+
+    return user_id
+
+
+SessionUserIdDep = Annotated[int, Depends(get_session_user_id)]
 
 
 async def get_pending_signup(
@@ -144,11 +172,19 @@ def clear_pending_signup_cookie(response: Response) -> None:
 
 
 def set_google_oauth_cookies(
-    response: Response, state: str, code_verifier: str, invite: str | None = None
+    response: Response,
+    state: str,
+    code_verifier: str,
+    invite: str | None = None,
+    coordinator_invite: str | None = None,
+    terms_version: str | None = None,
 ) -> None:
     cookies = [(GOOGLE_STATE_COOKIE, state), (GOOGLE_VERIFIER_COOKIE, code_verifier)]
     if invite is not None:
         cookies.append((GOOGLE_INVITE_COOKIE, invite))
+    if coordinator_invite is not None:
+        cookies.append((GOOGLE_COORDINATOR_INVITE_COOKIE, coordinator_invite))
+        cookies.append((GOOGLE_TERMS_COOKIE, terms_version or ""))
 
     for key, value in cookies:
         response.set_cookie(
@@ -164,6 +200,9 @@ def set_google_oauth_cookies(
     # Sem convite agora, um que sobrou de uma tentativa anterior não vale.
     if invite is None:
         _delete_google_cookie(response, GOOGLE_INVITE_COOKIE)
+    if coordinator_invite is None:
+        _delete_google_cookie(response, GOOGLE_COORDINATOR_INVITE_COOKIE)
+        _delete_google_cookie(response, GOOGLE_TERMS_COOKIE)
 
 
 def _delete_google_cookie(response: Response, key: str) -> None:
@@ -177,7 +216,13 @@ def _delete_google_cookie(response: Response, key: str) -> None:
 
 
 def clear_google_oauth_cookies(response: Response) -> None:
-    for key in (GOOGLE_STATE_COOKIE, GOOGLE_VERIFIER_COOKIE, GOOGLE_INVITE_COOKIE):
+    for key in (
+        GOOGLE_STATE_COOKIE,
+        GOOGLE_VERIFIER_COOKIE,
+        GOOGLE_INVITE_COOKIE,
+        GOOGLE_COORDINATOR_INVITE_COOKIE,
+        GOOGLE_TERMS_COOKIE,
+    ):
         _delete_google_cookie(response, key)
 
 

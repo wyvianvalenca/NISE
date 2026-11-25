@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated, Self
 
 from pydantic import (
@@ -17,7 +18,13 @@ from app.modules.admissions.declaration import (
     level_of,
 )
 from app.modules.admissions.models import CourseLevel
-from app.modules.followup.models import CourseCode, CourseStatus
+from app.modules.consents.schemas import GroupOrigin, SelfOrigin
+from app.modules.followup.models import (
+    ComputingView,
+    CourseCode,
+    CourseStatus,
+    FutureSelf,
+)
 from app.modules.girls.models import StudyStage, Topic
 
 
@@ -86,6 +93,64 @@ class ProfileOut(BaseModel):
 _CAMEL_CASE = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
+class StartingPointOut(BaseModel):
+    """O que a A05a "Antes de começar" mostra (RF-F10.26, #303).
+
+    `open` é False quando ela já respondeu ou já passou dos interesses (A05):
+    a tela então segue direto para a A05. As opções são as das perguntas 1 e 2
+    do questionário (#293), na mesma ordem.
+    """
+
+    model_config = _CAMEL_CASE
+
+    first_name: str
+    open: bool
+    computing_views: list[OptionOut]
+    future_selves: list[OptionOut]
+
+
+class StartingPointIn(BaseModel):
+    """As respostas da A05a. Cada pergunta é opcional, mas pelo menos uma vem:
+    "Pular" não chama o back. Códigos fora das listas e campos desconhecidos
+    são recusados.
+    """
+
+    model_config = ConfigDict(**_CAMEL_CASE, extra="forbid")
+
+    computing_view: ComputingView | None = None
+    future_self: FutureSelf | None = None
+
+    @model_validator(mode="after")
+    def at_least_one(self) -> Self:
+        if self.computing_view is None and self.future_self is None:
+            raise ValueError("Responda pelo menos uma pergunta")
+        return self
+
+
+class ProfileDetailsOut(BaseModel):
+    """O que a A10 mostra do perfil dela (RF-F7.11, RF-F7.12, RF-S2.09).
+
+    Só o que a tela exibe. Sem data de nascimento, hash de senha, ids nem o
+    identificador da conta Google. Tudo vai só para ela.
+    """
+
+    model_config = _CAMEL_CASE
+
+    name: str
+    email: str
+    # "Maceió, AL"; vazio se o registro não tem cidade.
+    city: str | None
+    # Quem tem senha vê "Mudar senha"; quem tem Google vê o cartão do Google.
+    # Conta mista (os dois) mostra os dois (P6 do épico #130).
+    has_password: bool
+    google: bool
+    topics: list[OptionOut]
+    all_topics: bool
+    study_stage: OptionOut | None
+    origin: Annotated[GroupOrigin | SelfOrigin, Field(discriminator="kind")]
+    opportunity_emails: bool
+
+
 class ProfileCourseOut(BaseModel):
     """O curso atual dela no perfil (A10, #298) e o nome para a A10b.
 
@@ -98,6 +163,23 @@ class ProfileCourseOut(BaseModel):
     first_name: str
     level: CourseLevel | None = None
     course: str | None = None
+
+
+class ProfileEventOut(BaseModel):
+    """Um evento de que ela participou: o nome e o dia em que começou."""
+
+    name: str
+    date: date
+
+
+class ProfileEventsOut(BaseModel):
+    """Os eventos do cartão "Eventos de que você participou" (RF-F2.03).
+
+    Só nome e data. Sem id de ação, de grupo ou de menina, e sem a hora da
+    presença.
+    """
+
+    events: list[ProfileEventOut]
 
 
 class ProfileCourseIn(BaseModel):

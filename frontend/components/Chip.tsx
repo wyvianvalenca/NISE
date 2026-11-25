@@ -39,15 +39,19 @@ export function Chip({
 
 type ChipGroupProps = {
   label: string;
+  /** Um chip por linha, na largura toda, como a pergunta 1 da A05a. */
+  stacked?: boolean;
   children: ReactNode;
 };
 
 /** Rótulo + lista de chips (Figma: Grupo / Tipo). */
-export function ChipGroup({ label, children }: ChipGroupProps) {
+export function ChipGroup({ label, stacked = false, children }: ChipGroupProps) {
   return (
     <fieldset className={styles.group}>
       <legend className={styles.legend}>{label}</legend>
-      <div className={styles.options}>{children}</div>
+      <div className={[styles.options, stacked && styles.stacked].filter(Boolean).join(" ")}>
+        {children}
+      </div>
     </fieldset>
   );
 }

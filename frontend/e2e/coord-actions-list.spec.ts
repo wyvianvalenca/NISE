@@ -1,8 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockActionPageApi } from "./action-page-api";
+import { mockActionsListApi } from "./actions-list-api";
 
-// #216 · K10 Ações. Uses the test data of lib/coord-actions.ts.
+// #216 · K10 Ações. The list comes from GET /api/actions, mocked in actions-list-api.ts.
 
 const URL = "/coordenacao/acoes";
+
+test.beforeEach(async ({ page }) => {
+  await mockActionsListApi(page);
+});
 
 function filters(page: Page) {
   return page.locator("button[aria-pressed]");
@@ -12,16 +18,16 @@ function rowOf(page: Page, name: string) {
   return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
-test("shows the intro line and the Nova ação button as an unavailable link", async ({ page }) => {
+test("shows the intro line and the Nova ação button leading to the form", async ({ page }) => {
   await page.goto(URL);
 
   await expect(page.getByRole("heading", { level: 1, name: "Ações" })).toBeVisible();
   await expect(
     page.getByText("Cada ação passa por 3 etapas até ser concluída: inscrições, evento e presença."),
   ).toBeVisible();
-  const newAction = page.getByRole("link", { name: "Nova ação", disabled: true });
+  const newAction = page.getByRole("link", { name: "Nova ação" });
   await expect(newAction).toBeVisible();
-  await expect(newAction).not.toHaveAttribute("href", /.*/);
+  await expect(newAction).toHaveAttribute("href", "/coordenacao/acoes/nova");
 });
 
 test("shows the status chips with their counts in the order of the flow", async ({ page }) => {
@@ -121,11 +127,17 @@ test("each status shows its own button and girls line", async ({ page }) => {
   await page.goto(URL);
 
   const waiting = rowOf(page, "Introdução à robótica");
-  await expect(waiting.getByRole("link", { name: "Importar inscritas", disabled: true })).toBeVisible();
+  await expect(waiting.getByRole("link", { name: "Importar inscritas" })).toHaveAttribute(
+    "href",
+    "/coordenacao/acoes/1",
+  );
   await expect(waiting.getByText("Sem inscritas ainda")).toBeVisible();
 
   const event = rowOf(page, "Scratch: crie seu primeiro jogo");
-  await expect(event.getByRole("link", { name: "Ver inscritas", disabled: true })).toBeVisible();
+  await expect(event.getByRole("link", { name: "Ver inscritas" })).toHaveAttribute(
+    "href",
+    "/coordenacao/acoes/17",
+  );
   await expect(event.getByText("26 inscritas")).toBeVisible();
 
   const attendance = rowOf(page, "Visita ao Polo de TI");
@@ -144,7 +156,7 @@ test("a row shows date, type, format, city and visibility", async ({ page }) => 
   const robotics = rowOf(page, "Introdução à robótica");
   await expect(robotics).toContainText("24outsáb");
   await expect(robotics).toContainText("Oficina");
-  await expect(robotics).toContainText("Presencial · Maceió");
+  await expect(robotics).toContainText("Presencial · Maceió, AL");
   await expect(robotics).toContainText("Aberta");
 
   const python = rowOf(page, "Python do zero");
@@ -211,10 +223,16 @@ test("every row has a ... button named after its action", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Mais opções de Python do zero" })).toBeVisible();
 });
 
-test("the row buttons have no href and go nowhere", async ({ page }) => {
+test("the row leads to the action page; the buttons of later screens go nowhere", async ({
+  page,
+}) => {
   await page.goto(URL);
 
-  await expect(page.locator("main a[href]")).toHaveCount(0);
+  // The links are the action name of each visible row (7), the inscritas buttons (4) and "Nova ação".
+  await expect(page.locator("main a[href]")).toHaveCount(7 + 4 + 1);
+  await expect(
+    rowOf(page, "Introdução à robótica").getByRole("link", { name: "Introdução à robótica" }),
+  ).toHaveAttribute("href", "/coordenacao/acoes/1");
   const button = page.getByRole("link", { name: "Marcar presença", disabled: true });
   await expect(button).toHaveAttribute("aria-disabled", "true");
   await button.click({ force: true });
@@ -222,31 +240,31 @@ test("the row buttons have no href and go nowhere", async ({ page }) => {
 });
 
 test("shows the saved notice with the city when the form leads back", async ({ page }) => {
-  await page.goto(`${URL}?salva=introducao-a-robotica`);
+  await page.goto(`${URL}?salva=1`);
 
   const notice = page.getByRole("status");
-  await expect(notice).toContainText("Ação salva. Já aparece nas sugestões das meninas de Maceió.");
+  await expect(notice).toContainText("Ação salva. Já aparece nas sugestões das meninas de Maceió, AL.");
 
   await notice.getByRole("button", { name: "Fechar" }).click();
   await expect(notice).toHaveCount(0);
 });
 
 test("the saved notice names Arapiraca for an action there", async ({ page }) => {
-  await page.goto(`${URL}?salva=scratch-primeiro-jogo`);
+  await page.goto(`${URL}?salva=17`);
 
-  await expect(page.getByRole("status")).toContainText("meninas de Arapiraca");
+  await expect(page.getByRole("status")).toContainText("meninas de Arapiraca, AL");
 });
 
 test("the saved notice does not show without the parameter or with an unknown id", async ({ page }) => {
   await page.goto(URL);
   await expect(page.getByText("Ação salva.")).toHaveCount(0);
 
-  await page.goto(`${URL}?salva=nao-existe`);
+  await page.goto(`${URL}?salva=999`);
   await expect(page.getByText("Ação salva.")).toHaveCount(0);
 });
 
 test("the saved notice for an open online action says it goes to all the girls", async ({ page }) => {
-  await page.goto(`${URL}?salva=python-do-zero`);
+  await page.goto(`${URL}?salva=14`);
 
   const notice = page.getByRole("status");
   await expect(notice).toContainText("Ação salva. Já aparece nas sugestões de todas as meninas.");
@@ -255,7 +273,7 @@ test("the saved notice for an open online action says it goes to all the girls",
 
 test("the saved notice for a closed action does not say it shows in the suggestions", async ({ page }) => {
   // Both are in person, but a closed action is only for the girls invited (the form says so).
-  for (const id of ["hackathon-meninas-no-codigo", "visita-ao-polo-de-ti"]) {
+  for (const id of [12, 15]) {
     await page.goto(`${URL}?salva=${id}`);
 
     const notice = page.getByRole("status");
@@ -306,4 +324,43 @@ test("the chosen chip keeps ink text over tealSoft for contrast", async ({ page 
 
   const color = await filters(page).first().evaluate((el) => getComputedStyle(el).color);
   expect(color).toBe("rgb(10, 59, 72)");
+});
+
+test("shows the loading line while the list comes", async ({ page }) => {
+  await mockActionsListApi(page, { delayMs: 800 });
+  await page.goto(URL);
+
+  await expect(page.getByText("Carregando as ações…")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Ações" })).toBeVisible();
+  await expect(page.getByText("Carregando as ações…")).toHaveCount(0);
+});
+
+test("a failed list says so and Tentar novamente asks again", async ({ page }) => {
+  const api = await mockActionsListApi(page, { failing: true });
+  await page.goto(URL);
+
+  await expect(page.getByText("Não foi possível carregar as ações.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3 })).toHaveCount(0);
+
+  const before = api.requests;
+  api.failing = false;
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Ações" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3 })).toHaveCount(7);
+  expect(api.requests).toBe(before + 1);
+});
+
+test("the action name and Importar inscritas lead to the action page", async ({ page }) => {
+  await mockActionPageApi(page);
+  await page.goto(URL);
+
+  await rowOf(page, "Introdução à robótica").getByRole("link", { name: "Importar inscritas" }).click();
+  await expect(page).toHaveURL(/\/coordenacao\/acoes\/1$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Introdução à robótica" })).toBeVisible();
+
+  await page.goBack();
+  await rowOf(page, "Introdução à robótica").getByRole("link", { name: "Introdução à robótica" }).click();
+  await expect(page).toHaveURL(/\/coordenacao\/acoes\/1$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Introdução à robótica" })).toBeVisible();
 });

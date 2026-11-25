@@ -7,16 +7,19 @@ type AccountCardProps = {
   email: string;
   /** Mostra o logo do Google quando a conta veio de lá. */
   provider?: "google";
+  /** Linha a mais abaixo do e-mail, como "Maceió, AL" no perfil (A10). */
+  detail?: string;
 };
 
 /** Conta com que a menina está entrando (Figma: Card / Conta Google, tela A02b). */
-export function AccountCard({ name, email, provider }: AccountCardProps) {
+export function AccountCard({ name, email, provider, detail }: AccountCardProps) {
   return (
     <div className={styles.card}>
       <Avatar name={name} />
       <div className={styles.texts}>
         <p className={styles.name}>{name}</p>
         <p className={styles.email}>{email}</p>
+        {detail && <p className={styles.email}>{detail}</p>}
       </div>
       {provider === "google" && (
         <Image src="/icons/google.svg" alt="Conta Google" width={20} height={20} unoptimized />

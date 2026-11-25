@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="NISE">
+  <title>NISE</title>
+  <rect width="32" height="32" rx="6.4" fill="#0A3B48"/>
+  <g shape-rendering="crispEdges">
+    <rect x="14.500" y="5.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="14.500" y="8.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="11.500" y="11.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="14.500" y="11.500" width="3.000" height="3.000" fill="#F4C6D4"/>
+    <rect x="17.500" y="11.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="5.500" y="14.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="8.500" y="14.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="20.500" y="14.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="23.500" y="14.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="11.500" y="17.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="14.500" y="17.500" width="3.000" height="3.000" fill="#F4C6D4"/>
+    <rect x="17.500" y="17.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="14.500" y="20.500" width="3.000" height="3.000" fill="#D9487A"/>
+    <rect x="14.500" y="23.500" width="3.000" height="3.000" fill="#D9487A"/>
+  </g>
+</svg>

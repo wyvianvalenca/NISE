@@ -7,12 +7,20 @@ import { useId, useState } from "react";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
 import { RatingScale } from "./RatingScale";
-import { sendActivityFeedback, SIMILAR_OPTIONS, type SimilarChoice } from "@/lib/atividade-feedback";
+import {
+  rememberFeedbackSent,
+  sendActivityFeedback,
+  SIMILAR_OPTIONS,
+  type SimilarChoice,
+} from "@/lib/atividade-feedback";
 import styles from "./ActivityFeedback.module.css";
 
 type ActivityFeedbackProps = {
   activityId: string;
-  /** Chamado depois de "Pular" ou de um envio que deu certo. Ela volta para o filé. */
+  /**
+   * Chamado depois de "Pular" ou de um envio que deu certo. Ela volta para o filé, que
+   * mostra "Valeu! Sua resposta foi enviada." só depois do envio (#171).
+   */
   onDone: () => void;
 };
 
@@ -34,6 +42,7 @@ export function ActivityFeedback({ activityId, onDone }: ActivityFeedbackProps) 
     setError(null);
     try {
       await sendActivityFeedback(activityId, { score, similar });
+      rememberFeedbackSent();
       onDone();
     } catch (caught) {
       // A mensagem é sempre a mesma; o detalhe (às vezes técnico) fica só no console.

@@ -1,0 +1,57 @@
+/* O balão se alinha à linha do título, para não passar da borda do card. */
+.titleRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wrapper {
+  display: inline-flex;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-pill);
+  background: var(--nise-surface);
+  color: var(--nise-muted);
+  cursor: pointer;
+}
+
+.button:hover,
+.button[aria-expanded="true"] {
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+/* O texto abre embaixo do "?", por cima do card. */
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+  max-width: min(400px, 100%);
+  padding: 12px 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: 12px;
+  background: var(--nise-surface);
+  box-shadow: 0 6px 20px rgb(10 59 72 / 15%);
+  color: var(--nise-ink);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.panel[hidden] {
+  display: none;
+}

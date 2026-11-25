@@ -31,6 +31,7 @@ test("avisa que os questionários chegam por e-mail e que responder é opcional"
   await openStep3(page);
 
   await expect(page.getByText("Etapa 3 de 3")).toBeVisible();
+  await expect(page.getByText(/depois de 3, 6, 12 e 18 meses\./)).toBeVisible();
   await expect(page.getByText("O aviso chega por e-mail")).toBeVisible();
   await expect(page.getByText("Responder é sempre opcional")).toBeVisible();
 });

@@ -4,7 +4,7 @@ export type TabItem<K extends string> = {
   key: K;
   label: string;
   /** Número pequeno ao lado, ex.: "Presentes 17". */
-  count?: number;
+  count?: number | string;
 };
 
 type TabsProps<K extends string> = {

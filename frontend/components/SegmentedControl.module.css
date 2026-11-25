@@ -30,3 +30,35 @@
 .option:focus-visible {
   outline-offset: -3px;
 }
+
+/* Pílula: cada opção do tamanho do texto, a escolhida em verde. */
+.pill {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.pill .option {
+  flex: 0 1 auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--nise-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pill .option:hover {
+  background: var(--nise-tealSoft);
+}
+
+.pill .option[aria-checked="true"] {
+  background: var(--nise-teal);
+  color: var(--nise-onPrimary);
+  font-weight: 700;
+}

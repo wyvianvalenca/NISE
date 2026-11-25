@@ -10,6 +10,8 @@ import {
   typeLabel,
 } from "@/lib/coord-action-labels";
 import type { ActionStatus, CoordAction } from "@/lib/coord-actions";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PendingLink } from "./PendingLink";
 import { RowMenu } from "./RowMenu";
 import styles from "./ActionRow.module.css";
@@ -26,17 +28,18 @@ const PROGRESS: Record<ActionStatus, number> = {
  * The button of each status (RN-37). The status itself comes ready from the
  * back-end; the screen only picks the label.
  */
-function StatusButtons({ status }: { status: ActionStatus }) {
+function StatusButtons({ status, id }: { status: ActionStatus; id: number }) {
+  const href = `/coordenacao/acoes/${id}`;
   switch (status) {
     case "awaiting_registrations":
       return (
-        <PendingLink variant="secondary">
+        <PendingLink variant="secondary" href={href}>
           <Icon name="upload" size={16} />
           Importar inscritas
         </PendingLink>
       );
     case "awaiting_event":
-      return <PendingLink variant="secondary">Ver inscritas</PendingLink>;
+      return <PendingLink variant="secondary" href={href}>Ver inscritas</PendingLink>;
     case "awaiting_attendance":
       return <PendingLink variant="primary">Marcar presença</PendingLink>;
     case "concluded":
@@ -57,17 +60,21 @@ type ActionRowProps = {
 
 /**
  * One row of the list (Figma: Ação / ...). An action waiting for attendance is
- * highlighted with the reminder line. "Excluir ação" is in the "..." menu only
- * while attendance is not registered (RF-F30.12, RN-15); the editing item comes
- * with its own story.
+ * highlighted with the reminder line. The "..." menu offers "Editar ação" until
+ * the action is concluded, like the action page does (Figma K11 concluída has no
+ * edit), and "Excluir ação" only while attendance is not registered (RF-F30.12,
+ * RN-15).
  */
 export function ActionRow({ action, onDelete }: ActionRowProps) {
   const date = dateTileParts(action.startsOn);
   const needsAttendance = action.status === "awaiting_attendance";
-  const menuItems =
-    action.attendanceRegisteredAt === null
-      ? [{ label: "Excluir ação", onSelect: () => onDelete(action) }]
-      : [];
+  const router = useRouter();
+  const menuItems = [
+    ...(action.status === "concluded"
+      ? []
+      : [{ label: "Editar ação", onSelect: () => router.push(`/coordenacao/acoes/${action.id}/editar`) }]),
+    ...(action.presentCount === null ? [{ label: "Excluir ação", onSelect: () => onDelete(action) }] : []),
+  ];
 
   return (
     <li className={needsAttendance ? `${styles.row} ${styles.attention}` : styles.row}>
@@ -82,7 +89,11 @@ export function ActionRow({ action, onDelete }: ActionRowProps) {
         <span className={styles.weekday}>{date.weekday}</span>
       </div>
       <div className={styles.info}>
-        <h3 className={styles.name}>{action.name}</h3>
+        <h3 className={styles.name}>
+          <Link href={`/coordenacao/acoes/${action.id}`} className={styles.nameLink}>
+            {action.name}
+          </Link>
+        </h3>
         <div className={styles.details}>
           <Tag variant="surface">{typeLabel(action.type)}</Tag>
           <MetaItem icon="pin">{formatLabel(action)}</MetaItem>
@@ -101,7 +112,7 @@ export function ActionRow({ action, onDelete }: ActionRowProps) {
         {girlsLabel(action)}
       </p>
       <div className={styles.buttons}>
-        <StatusButtons status={action.status} />
+        <StatusButtons status={action.status} id={action.id} />
       </div>
       <RowMenu actionName={action.name} items={menuItems} />
     </li>

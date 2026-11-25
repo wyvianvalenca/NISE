@@ -10,6 +10,9 @@ import { mockFileApi } from "./file-api";
 const ACTIVITY_ID = "curadoria-1";
 const PAGE = `/file/${ACTIVITY_ID}/concluida`;
 
+// O aviso do filé depois do "Enviar" (#171, Figma: Toast / Resposta enviada).
+const SENT_NOTICE = "Valeu! Sua resposta foi enviada.";
+
 // O que o back guardou, pelo id da atividade.
 let savedFeedback: Awaited<ReturnType<typeof mockFeedbackApi>>;
 
@@ -70,6 +73,28 @@ test("Enviar guarda a nota e a sugestão e leva ao filé", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/file$/);
   expect(savedFeedback).toEqual({ [ACTIVITY_ID]: { rating: 4, similar: "mais-avancado" } });
+  await expect(page.getByRole("status").filter({ hasText: SENT_NOTICE })).toBeVisible();
+});
+
+test("o aviso do envio aparece uma vez só e some sozinho", async ({ page }) => {
+  await page.goto(PAGE);
+
+  await page.getByRole("button", { name: "Outro tema" }).click();
+  await page.getByRole("button", { name: "Enviar" }).click();
+
+  const notice = page.getByRole("status").filter({ hasText: SENT_NOTICE });
+  await expect(notice).toBeVisible();
+  // Fica logo acima da barra inferior, sem cobri-la.
+  const noticeBox = await notice.boundingBox();
+  const navBox = await page.getByRole("navigation", { name: "Navegação principal" }).boundingBox();
+  expect(noticeBox && navBox && noticeBox.y + noticeBox.height <= navBox.y).toBe(true);
+
+  await expect(notice).toHaveCount(0, { timeout: 6000 });
+
+  // Abrir o filé de novo não repete o aviso.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Seu filé" })).toBeVisible();
+  await expect(page.getByText(SENT_NOTICE)).toHaveCount(0);
 });
 
 test("dá para enviar só a nota, sem sugestão", async ({ page }) => {
@@ -89,7 +114,9 @@ test("Pular leva ao filé sem enviar nada, mesmo com algo escolhido", async ({ p
   await page.getByRole("button", { name: "Pular" }).click();
 
   await expect(page).toHaveURL(/\/file$/);
+  await expect(page.getByRole("heading", { name: "Seu filé" })).toBeVisible();
   expect(savedFeedback).toEqual({});
+  await expect(page.getByText(SENT_NOTICE)).toHaveCount(0);
 });
 
 for (const action of ["Enviar", "Pular"]) {
@@ -120,6 +147,11 @@ test("se o envio falhar, avisa e deixa tentar de novo", async ({ page }) => {
   await expect(page.getByRole("main").getByText("Não foi possível enviar a avaliação.")).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`${PAGE}$`));
   await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled();
+
+  // Depois da falha, "Pular" volta ao filé sem o aviso de enviada.
+  await page.getByRole("button", { name: "Pular" }).click();
+  await expect(page.getByRole("heading", { name: "Seu filé" })).toBeVisible();
+  await expect(page.getByText(SENT_NOTICE)).toHaveCount(0);
 });
 
 test("durante o envio mostra Enviando… e bloqueia os dois botões", async ({ page }) => {
