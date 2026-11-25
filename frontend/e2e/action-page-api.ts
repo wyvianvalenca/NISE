@@ -1,4 +1,5 @@
 import type { Page, Route } from "@playwright/test";
+import { signedIn } from "./session";
 
 // Simulates GET /api/actions/{id}, GET /api/actions/{id}/registrations and
 // DELETE /api/actions/{id} (and POST .../registrations/close, #236) of the back-end (#240), so the tests of the action page
@@ -277,6 +278,7 @@ export async function mockActionPageApi(
   page: Page,
   options: Options = {},
 ): Promise<ActionPageApi> {
+  await signedIn(page);
   const { delayMs = 0 } = options;
   const data = stored();
   for (const id of Object.keys(data).map(Number)) {

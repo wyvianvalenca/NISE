@@ -9,6 +9,7 @@ import {
   spreadsheetRefusal,
   type MockRegistration,
 } from "./action-page-api";
+import { signedIn } from "./session";
 
 // Simulates the attendance routes of the back-end (C3, #135), so the tests of
 // the action page after the day of the event do not depend on FastAPI:
@@ -294,6 +295,7 @@ export async function mockAttendanceApi(
   page: Page,
   options: Options = {},
 ): Promise<AttendanceApi> {
+  await signedIn(page);
   const { delayMs = 0 } = options;
   const data: Record<number, Stored> = options.otherGroup ? {} : seed();
   for (const id of options.awaiting ?? []) {

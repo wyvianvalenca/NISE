@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { EMPTY_ACTION_ID } from "./action-page-api";
+import { signedIn } from "./session";
 
 // Simulates GET /api/actions (K10, #215) of the back-end, so the tests of the
 // actions list do not depend on FastAPI. Fictional data. The back-end orders the
@@ -252,6 +253,7 @@ export async function mockActionsListApi(
   page: Page,
   options: Options = {},
 ): Promise<ActionsListApi> {
+  await signedIn(page);
   const api: ActionsListApi = {
     requests: 0,
     failing: options.failing ?? false,

@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import type { AfterAction } from "../lib/resultados-api";
+import { signedIn } from "./session";
 
 // Simula GET /api/coordinator/results/after-action (#367) e a lista de ações
 // do filtro, para os testes não dependerem do FastAPI. Dados fictícios.
@@ -25,6 +26,7 @@ type Options = {
 
 /** Responde as duas rotas e devolve as queries pedidas ao card, em ordem. */
 export async function mockResultsApi(page: Page, options: Options = {}): Promise<URLSearchParams[]> {
+  await signedIn(page);
   const { numbers = () => FIGMA_NUMBERS, status } = options;
   const asked: URLSearchParams[] = [];
 
