@@ -9,7 +9,8 @@ preferência dela) e nunca escreve o endereço nem o texto nos logs: as
 mensagens das exceções do smtplib podem trazer o endereço, então registre só
 o tipo.
 
-- `send_email`: um e-mail avulso (ex.: o link de nova senha).
+- `send_email`: um e-mail avulso (ex.: o link de nova senha). Com `html`, sai
+  também uma versão em HTML (ex.: o convite da coordenadora, com o botão).
 - `SmtpConnection`: uma conexão para vários e-mails seguidos (a fila dos
   indícios). Conecta, faz STARTTLS e login uma vez só, então um erro de
   configuração aparece antes do primeiro envio, e não como erro de um e-mail.
@@ -35,8 +36,14 @@ def email_is_configured() -> bool:
     return bool(settings.smtp_user and settings.smtp_password)
 
 
-def build_message(to: str, subject: str, body: str) -> EmailMessage:
+def build_message(
+    to: str, subject: str, body: str, *, html: str | None = None
+) -> EmailMessage:
     """Monta um e-mail em texto puro.
+
+    Com `html`, o e-mail sai em duas partes (multipart/alternative): o texto
+    puro para quem não lê HTML e o HTML como alternativa. Sem ele, é uma parte
+    só, como sempre foi.
 
     Levanta ValueError se o endereço ou o assunto têm quebra de linha: um
     cabeçalho a mais injetado pelo endereço nunca chega a ser enviado.
@@ -46,6 +53,8 @@ def build_message(to: str, subject: str, body: str) -> EmailMessage:
     message["To"] = to
     message["Subject"] = subject
     message.set_content(body)
+    if html is not None:
+        message.add_alternative(html, subtype="html")
     return message
 
 
@@ -71,13 +80,15 @@ class SmtpConnection:
             raise
         self._smtp = smtp
 
-    def send(self, to: str, subject: str, body: str) -> None:
-        """Envia um e-mail nesta conexão.
+    def send(
+        self, to: str, subject: str, body: str, *, html: str | None = None
+    ) -> None:
+        """Envia um e-mail nesta conexão (com `html`, também a versão em HTML).
 
         Levanta ValueError (endereço inválido, antes de falar com o servidor),
         as exceções do smtplib ou OSError.
         """
-        self._smtp.send_message(build_message(to, subject, body))
+        self._smtp.send_message(build_message(to, subject, body, html=html))
 
     def close(self) -> None:
         """Encerra a conversa. Um erro no QUIT não desfaz o que já foi aceito."""
@@ -100,15 +111,17 @@ class SmtpConnection:
         self.close()
 
 
-def send_email(to: str, subject: str, body: str) -> None:
+def send_email(to: str, subject: str, body: str, *, html: str | None = None) -> None:
     """Envia um e-mail avulso, com uma conexão só para ele.
+
+    Com `html`, vai também a versão em HTML (veja `build_message`).
 
     Levanta EmailNotConfiguredError se a conta não está configurada, ValueError
     se o endereço é inválido, e as exceções do smtplib (SMTPException) ou de
     rede (OSError) se o envio falhar.
     """
     with SmtpConnection() as connection:
-        connection.send(to, subject, body)
+        connection.send(to, subject, body, html=html)
 
 
 # O que fazer com um erro do envio de um e-mail de uma fila (indícios, #275;

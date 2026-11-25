@@ -4,12 +4,14 @@ Rodam com `db_session` (Postgres de teste). Dados fictícios. O envio de e-mail 
 trocado por um falso: nenhum e-mail sai. Cada teste diz o critério que cobre.
 """
 
+import asyncio
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.auth.utils import create_access_token
 from app.main import app
@@ -17,7 +19,12 @@ from app.modules.admin.service import list_coordinators
 from app.modules.cities.models import City
 from app.modules.groups import coordinator_email
 from app.modules.groups.coordinator_email import first_name
-from app.modules.groups.coordinator_invites import hash_invite_token
+from app.modules.groups.coordinator_invites import (
+    CoordinatorInviteError,
+    create_coordinator_invite,
+    hash_invite_token,
+)
+from app.modules.groups.coordinator_signup import get_open_invite
 from app.modules.groups.models import CoordinatorInvite, Group, GroupCoordinator
 from app.users.models import Role, User
 from tests.helpers import chamar_rota
@@ -32,12 +39,16 @@ class EmailFalso:
 
     def __init__(self) -> None:
         self.enviados: list[tuple[str, str, str]] = []
+        self.htmls: list[str | None] = []
         self.falha: Exception | None = None
 
-    def __call__(self, to: str, subject: str, body: str) -> None:
+    def __call__(
+        self, to: str, subject: str, body: str, *, html: str | None = None
+    ) -> None:
         if self.falha is not None:
             raise self.falha
         self.enviados.append((to, subject, body))
+        self.htmls.append(html)
 
 
 @pytest.fixture
@@ -308,6 +319,7 @@ async def test_email_com_convite_esperando_recebe_erro(
 
     assert (codigo, corpo) == (409, {"error": "invite_pending"})
     assert await total(db_session, Group) == 1
+    assert await total(db_session, CoordinatorInvite) == 1
     assert len(email.enviados) == 1
 
     convite = await db_session.scalar(select(CoordinatorInvite))
@@ -318,6 +330,126 @@ async def test_email_com_convite_esperando_recebe_erro(
     codigo, _ = await convidar(db_session, token, corpo_grupo_novo(grupo="Outro grupo"))
 
     assert codigo == 201
+    assert await total(db_session, CoordinatorInvite) == 1
+
+
+# Revisão da #464 (RN-35): convidar de novo um e-mail de convite vencido não
+# cria outra linha. O convite vencido vira o novo (nome, grupo e link novos), o
+# link vencido diz que foi substituído, e um "Reenviar" depois não ressuscita o
+# link antigo: só o último link do e-mail abre o convite.
+async def test_convidar_de_novo_depois_de_vencer_reaproveita_o_convite(
+    db_session: AsyncSession, email: EmailFalso
+) -> None:
+    await cidades(db_session)
+    token = await equipe(db_session)
+    await convidar(db_session, token, corpo_grupo_novo())
+    convite = await db_session.scalar(select(CoordinatorInvite))
+    assert convite is not None
+    convite.expires_at = datetime.now(UTC) - timedelta(days=1)
+    await db_session.flush()
+
+    codigo, corpo = await convidar(
+        db_session,
+        token,
+        corpo_grupo_novo(nome="Carla Nova Ficticia", grupo="Outro grupo"),
+    )
+
+    assert codigo == 201
+    assert corpo["group_name"] == "Outro grupo"
+    convites = (await db_session.scalars(select(CoordinatorInvite))).all()
+    assert [(c.id, c.name) for c in convites] == [(convite.id, "Carla Nova Ficticia")]
+    assert convites[0].expires_at > datetime.now(UTC) + timedelta(days=6)
+    vencido, novo = (
+        texto.split("token=")[1].split()[0] for *_, texto in email.enviados
+    )
+    assert (await get_open_invite(db_session, novo)).group.name == "Outro grupo"
+    with pytest.raises(CoordinatorInviteError) as erro:
+        await get_open_invite(db_session, vencido)
+    assert erro.value.code == "invite_replaced"
+
+    response = await chamar_rota(
+        app,
+        "POST",
+        f"/api/admin/coordinators/invites/{convite.id}/resend",
+        db_session,
+        token=token,
+    )
+
+    assert response.status_code == 200
+    assert await total(db_session, CoordinatorInvite) == 1
+    ultimo = email.enviados[-1][2].split("token=")[1].split()[0]
+    await get_open_invite(db_session, ultimo)
+    for antigo in (vencido, novo):
+        with pytest.raises(CoordinatorInviteError) as erro:
+            await get_open_invite(db_session, antigo)
+        assert erro.value.code == "invite_replaced"
+    lista = await list_coordinators(db_session)
+    assert [(i.name, i.group_name) for i in lista.items] == [
+        ("Carla Nova Ficticia", "Outro grupo")
+    ]
+
+
+# Revisão da #464: cinco convites ao mesmo tempo para o mesmo e-mail, cada um
+# na sua sessão (como cinco requisições), criam um convite só. Os outros
+# recebem "invite_pending" e não deixam grupo para trás. Precisa de commits de
+# verdade, fora da transação do `db_session`; o teste apaga o que criou.
+async def test_convites_simultaneos_para_o_mesmo_email_criam_um_so(
+    test_database: None,
+) -> None:
+    # O conftest aponta o DATABASE_URL para o banco de teste.
+    engine = create_async_engine(
+        os.environ["DATABASE_URL"], connect_args={"statement_cache_size": 0}
+    )
+    sessoes = async_sessionmaker(engine, expire_on_commit=False)
+    cidade = 9900001
+    endereco = "simultanea@exemplo.org"
+    grupos = [f"Grupo Simultaneo {n}" for n in range(5)]
+
+    async def convidar_em_sessao_propria(grupo: str) -> str:
+        async with sessoes() as sessao:
+            try:
+                await create_coordinator_invite(
+                    sessao,
+                    name="Sofia Ficticia",
+                    email=endereco,
+                    new_group_name=grupo,
+                    new_group_city_id=cidade,
+                )
+            except CoordinatorInviteError as erro:
+                return erro.code
+            return "criado"
+
+    try:
+        async with sessoes() as sessao:
+            sessao.add(
+                City(id=cidade, name="Cidade Ficticia", state="AL", search_name="x")
+            )
+            await sessao.commit()
+
+        resultados = await asyncio.gather(
+            *(convidar_em_sessao_propria(g) for g in grupos)
+        )
+
+        assert sorted(resultados) == ["criado"] + ["invite_pending"] * 4
+        async with sessoes() as sessao:
+            convites = await sessao.scalar(
+                select(func.count())
+                .select_from(CoordinatorInvite)
+                .where(CoordinatorInvite.email == endereco)
+            )
+            criados = await sessao.scalar(
+                select(func.count()).select_from(Group).where(Group.name.in_(grupos))
+            )
+        assert (convites, criados) == (1, 1)
+    finally:
+        async with sessoes() as sessao:
+            await sessao.execute(
+                delete(CoordinatorInvite).where(CoordinatorInvite.email == endereco)
+            )
+            await sessao.execute(delete(Group).where(Group.name.in_(grupos)))
+            await sessao.execute(delete(City).where(City.id == cidade))
+            await sessao.commit()
+        await engine.dispose()
 
 
 # Critério (CV00, RF-S2.31): o e-mail leva "Oi, <primeiro nome>!", o nome do
@@ -334,8 +466,13 @@ async def test_email_do_convite(db_session: AsyncSession, email: EmailFalso) -> 
     assert "Rendeiras do Código" in assunto
     assert texto.startswith("Oi, Carla!")
     assert "Rendeiras do Código" in texto
-    assert "Criar minha conta:" in texto
+    assert "Criar minha conta: http" in texto
     assert coordinator_email.format_date(vence) in texto
+    (pagina,) = email.htmls
+    assert pagina is not None
+    assert "Criar minha conta</a>" in pagina
+    assert "<strong>Rendeiras do Código</strong>" in pagina
+    assert coordinator_email.format_date(vence) in pagina
 
 
 # Critério (RN-35, RNF-S2.02): o link de cada convite é diferente e aleatório;

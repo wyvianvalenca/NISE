@@ -140,14 +140,61 @@ export async function createCoordinatorAccount(data: {
   return { ok: false, reason: "failed" };
 }
 
-/** Where "Continuar com o Google" leads (the back-end redirects to Google). */
-export function coordinatorGoogleUrl(
-  token: string,
-  termsVersion: string,
-): string {
-  const query = new URLSearchParams({
-    coordinator_invite: token,
-    terms_version: termsVersion,
+export type StartGoogleResult =
+  | { ok: true; url: string }
+  | { ok: false; reason: "terms_not_accepted" | "terms_outdated" | "failed" }
+  | { ok: false; reason: "invite_invalid"; problem: InviteProblem };
+
+/** Where the invite token waits while she is on Google (it never goes in a URL). */
+const PENDING_TOKEN_KEY = "nise.coordinatorInvite";
+
+/** Keeps the token for the way back from Google, when the URL only has `erro`. */
+export function rememberInviteToken(token: string): void {
+  try {
+    sessionStorage.setItem(PENDING_TOKEN_KEY, token);
+  } catch {
+    // Private mode: the way back shows the error without the invite.
+  }
+}
+
+/** The token kept by `rememberInviteToken`, if any. */
+export function rememberedInviteToken(): string {
+  try {
+    return sessionStorage.getItem(PENDING_TOKEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * "Continuar com o Google" (#455). The token goes in the body of a POST, never
+ * in a URL (they end up in access logs), and the back-end checks the terms
+ * (RN-40) and the invite before answering the Google address to go to.
+ */
+export async function startCoordinatorGoogle(data: {
+  token: string;
+  acceptedTerms: boolean;
+  termsVersion: string;
+}): Promise<StartGoogleResult> {
+  const response = await fetch("/api/auth/google/coordinator-invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
-  return `/api/auth/google/login?${query.toString()}`;
+
+  if (response.ok) {
+    const body = (await response.json()) as components["schemas"]["GoogleStartOut"];
+    return { ok: true, url: body.url };
+  }
+  if (response.status === 422) {
+    const code = await errorCode(response);
+    if (code === "terms_not_accepted" || code === "terms_outdated") {
+      return { ok: false, reason: code };
+    }
+  }
+  if ([404, 409, 410].includes(response.status)) {
+    const problem = inviteProblemFromCode(await errorCode(response));
+    return { ok: false, reason: "invite_invalid", problem: problem ?? "expired" };
+  }
+  return { ok: false, reason: "failed" };
 }

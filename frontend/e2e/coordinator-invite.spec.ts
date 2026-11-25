@@ -122,23 +122,44 @@ test("a name left empty is refused", async ({ page }) => {
   expect(sent).toHaveLength(0);
 });
 
-test("Google needs the box checked and carries the invite", async ({ page }) => {
+test("Google needs the box checked, then sends the invite in the body", async ({ page }) => {
   await mockInviteApi(page);
+  const started: Record<string, unknown>[] = [];
+  await page.route("**/api/auth/google/coordinator-invite", (route) => {
+    started.push(route.request().postDataJSON());
+    return route.fulfill({ json: { url: "/google-ficticio" } });
+  });
+  await page.route("**/google-ficticio", (route) =>
+    route.fulfill({ body: "<h1>Google</h1>", contentType: "text/html" }),
+  );
   await page.goto("/convite/coordenadora?token=abc");
 
-  const google = page.getByRole("link", { name: /Continuar com o Google/ });
-  await expect(google).toHaveAttribute("href", /coordinator_invite=abc/);
-  await expect(google).toHaveAttribute("href", /terms_version=/);
-
+  // A button, not a link: a middle click cannot skip the terms (RN-40).
+  const google = page.getByRole("button", { name: /Continuar com o Google/ });
   await google.click();
   await expect(page.getByText(/Marque que leu e aceita/)).toBeVisible();
+  expect(started).toHaveLength(0);
+
+  await page.getByRole("checkbox").check();
+  await google.click();
+  await expect(page.getByRole("heading", { name: "Google" })).toBeVisible();
+  expect(started).toEqual([{ token: "abc", acceptedTerms: true, termsVersion: expect.any(String) }]);
 });
 
 test("shows the Google error when the account is not the invite's", async ({ page }) => {
+  const checked: Record<string, unknown>[] = [];
   await mockInviteApi(page);
-  await page.goto("/convite/coordenadora?token=abc&erro=google_email_mismatch");
+  await page.route("**/api/auth/coordinator-invite/check", (route) => {
+    checked.push(route.request().postDataJSON());
+    return route.fallback();
+  });
+  // The way back from Google has no token in the URL; the page kept it.
+  await page.addInitScript(() => sessionStorage.setItem("nise.coordinatorInvite", "abc"));
+  await page.goto("/convite/coordenadora?erro=google_email_mismatch");
 
   await expect(page.getByText(/Essa conta Google não é a do convite/)).toBeVisible();
+  await expect(page.getByText("Você foi convidada pra coordenar na NISE")).toBeVisible();
+  expect(checked[0]).toEqual({ token: "abc" });
 });
 
 test("a link that does not exist does not show the form", async ({ page }) => {

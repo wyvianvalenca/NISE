@@ -18,7 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.cities.service import ensure_city_exists
-from app.modules.groups.models import CoordinatorInvite, Group, ReplacedInviteLink
+from app.modules.groups.models import (
+    OPEN_INVITE_INDEX,
+    CoordinatorInvite,
+    Group,
+    ReplacedInviteLink,
+)
 from app.users.service import get_user_by_email, normalize_email
 
 # Prazo fixo do convite (RN-35, D-118).
@@ -82,10 +87,15 @@ async def create_coordinator_invite(
 ) -> CreatedInvite:
     """Cria o convite e, com grupo novo, o grupo, tudo na mesma transação.
 
+    Um e-mail tem no máximo um convite aberto (nem aceito, nem cancelado), e o
+    banco garante isso com um índice único. Se o aberto já venceu, ele vira o
+    convite novo (nome, grupo, link e prazo novos) em vez de nascer outra linha,
+    e o link vencido passa a dizer que foi substituído (RN-35).
+
     Levanta CoordinatorInviteError, sem criar nada:
     - "email_has_account": o e-mail já tem conta, de menina ou de coordenadora;
-    - "invite_pending": o e-mail já tem um convite esperando (a equipe usa
-      "Reenviar", que é outra story);
+    - "invite_pending": o e-mail já tem um convite esperando, ou outro pedido
+      convidou o mesmo e-mail no mesmo instante (a equipe usa "Reenviar");
     - "group_exists": já há um grupo com esse nome nessa cidade (D-120);
     - "group_not_found" (404): o grupo escolhido não existe.
     Cidade fora da lista do IBGE levanta InvalidCityError (RN-17).
@@ -96,15 +106,19 @@ async def create_coordinator_invite(
     if await get_user_by_email(session, email) is not None:
         raise CoordinatorInviteError("email_has_account")
 
-    pending = await session.scalar(
-        select(CoordinatorInvite.id).where(
+    # FOR UPDATE: dois convites ao mesmo tempo para um e-mail com convite
+    # vencido não reaproveitam a mesma linha duas vezes; o segundo espera e vê
+    # o convite já renovado. Sem linha aberta, quem barra o segundo é o índice.
+    current = await session.scalar(
+        select(CoordinatorInvite)
+        .where(
             CoordinatorInvite.email == email,
             CoordinatorInvite.accepted_at.is_(None),
             CoordinatorInvite.cancelled_at.is_(None),
-            CoordinatorInvite.expires_at > now,
         )
+        .with_for_update()
     )
-    if pending is not None:
+    if current is not None and current.expires_at > now:
         raise CoordinatorInviteError("invite_pending")
 
     if group_id is not None:
@@ -119,24 +133,51 @@ async def create_coordinator_invite(
         group = Group(name=new_group_name, city_id=new_group_city_id)
         session.add(group)
 
-    token = new_invite_token()
-    invite = CoordinatorInvite(
-        name=name,
-        email=email,
-        group=group,
-        token_hash=hash_invite_token(token),
-        expires_at=now + timedelta(days=INVITE_VALID_DAYS),
-    )
-    session.add(invite)
+    if current is not None:
+        # O convite vencido vira o novo: continua um convite aberto só.
+        invite = current
+        invite.name = name
+        invite.group = group
+        invite.created_at = now
+        token = _replace_link(session, invite, now)
+    else:
+        token = new_invite_token()
+        invite = CoordinatorInvite(
+            name=name,
+            email=email,
+            group=group,
+            token_hash=hash_invite_token(token),
+            expires_at=now + timedelta(days=INVITE_VALID_DAYS),
+        )
+        session.add(invite)
 
     try:
         await session.commit()
-    except IntegrityError:
-        # Outro convite criou o mesmo grupo no mesmo instante.
+    except IntegrityError as error:
+        # Outro pedido, no mesmo instante, convidou o mesmo e-mail (o índice de
+        # um convite aberto por e-mail) ou criou o mesmo grupo. O rollback
+        # desfaz tudo, o grupo novo também.
         await session.rollback()
+        if OPEN_INVITE_INDEX in str(error.orig):
+            raise CoordinatorInviteError("invite_pending") from None
         raise CoordinatorInviteError("group_exists") from None
 
     return CreatedInvite(invite=invite, group=group, token=token)
+
+
+def _replace_link(
+    session: AsyncSession, invite: CoordinatorInvite, now: datetime
+) -> str:
+    """Dá ao convite um link novo, que vale 7 dias, e devolve esse link.
+
+    O hash antigo fica guardado para a tela dizer que o link foi substituído;
+    só o hash do novo abre o convite (RN-35, RNF-S2.02).
+    """
+    session.add(ReplacedInviteLink(invite_id=invite.id, token_hash=invite.token_hash))
+    token = new_invite_token()
+    invite.token_hash = hash_invite_token(token)
+    invite.expires_at = now + timedelta(days=INVITE_VALID_DAYS)
+    return token
 
 
 async def resend_coordinator_invite(
@@ -169,11 +210,7 @@ async def resend_coordinator_invite(
     if await get_user_by_email(session, invite.email) is not None:
         raise CoordinatorInviteError("email_has_account")
 
-    # O hash antigo fica guardado para a tela dizer que o link foi substituído.
-    session.add(ReplacedInviteLink(invite_id=invite.id, token_hash=invite.token_hash))
-    token = new_invite_token()
-    invite.token_hash = hash_invite_token(token)
-    invite.expires_at = now + timedelta(days=INVITE_VALID_DAYS)
+    token = _replace_link(session, invite, now)
     await session.commit()
 
     return CreatedInvite(invite=invite, group=invite.group, token=token)

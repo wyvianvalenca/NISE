@@ -13,6 +13,13 @@ type GoogleButtonProps = {
   hint?: string;
   /** Lets the page stop the click, for example while the terms are unchecked. */
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /**
+   * Makes it a button with no address (coordinator invite, #455): the page
+   * checks the terms and asks the back-end where to go, so a middle click or
+   * "open in new tab" cannot skip that check.
+   */
+  onPress?: () => void;
+  disabled?: boolean;
 };
 
 /**
@@ -26,13 +33,11 @@ export function GoogleButton({
   href,
   hint,
   onClick,
+  onPress,
+  disabled,
 }: GoogleButtonProps) {
-  return (
-    <a
-      className={styles.button}
-      href={href ?? googleStartUrl({ invite })}
-      onClick={onClick}
-    >
+  const content = (
+    <>
       <Image src="/icons/google.svg" alt="" width={20} height={20} unoptimized />
       {hint ? (
         <span className={styles.texts}>
@@ -42,6 +47,24 @@ export function GoogleButton({
       ) : (
         label
       )}
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <button type="button" className={styles.button} onClick={onPress} disabled={disabled}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <a
+      className={styles.button}
+      href={href ?? googleStartUrl({ invite })}
+      onClick={onClick}
+    >
+      {content}
     </a>
   );
 }

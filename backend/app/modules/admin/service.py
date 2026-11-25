@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,6 +17,14 @@ from app.modules.cities.utils import normalize_search
 from app.modules.girls.models import Girl
 from app.modules.groups.models import CoordinatorInvite, Group, GroupCoordinator
 from app.users.models import Role, User
+
+# Convite aberto de um e-mail que ainda não tem conta. Com conta, ela já está
+# na lista como coordenadora (ou o convite não serve mais): não conta duas vezes.
+OPEN_INVITE = (
+    CoordinatorInvite.accepted_at.is_(None),
+    CoordinatorInvite.cancelled_at.is_(None),
+    ~exists().where(User.email == CoordinatorInvite.email),
+)
 
 INVITE_STATUSES = {CoordinatorStatus.INVITE_SENT, CoordinatorStatus.INVITE_EXPIRED}
 
@@ -37,7 +45,8 @@ async def list_coordinators(
 
     Só traz nome, grupo, situação e data: nenhum dado de menina (RN-41) e
     nenhum e-mail. Os convites cancelados ou aceitos não entram (o aceito já é
-    a coordenadora). A lista é pequena, então filtra e busca aqui.
+    a coordenadora), nem os de e-mail que já tem conta. A lista é pequena,
+    então filtra e busca aqui.
     """
     now = now or datetime.now(UTC)
 
@@ -50,10 +59,7 @@ async def list_coordinators(
     invites = await session.execute(
         select(CoordinatorInvite, Group.name)
         .join(Group, Group.id == CoordinatorInvite.group_id)
-        .where(
-            CoordinatorInvite.accepted_at.is_(None),
-            CoordinatorInvite.cancelled_at.is_(None),
-        )
+        .where(*OPEN_INVITE)
     )
 
     rows: list[CoordinatorRowOut] = []
@@ -138,8 +144,7 @@ async def list_group_cards(
     )
     invites = await counts(
         CoordinatorInvite.group_id,
-        CoordinatorInvite.accepted_at.is_(None),
-        CoordinatorInvite.cancelled_at.is_(None),
+        *OPEN_INVITE,
         CoordinatorInvite.expires_at > now,
     )
     girls = await counts(Girl.origin_group_id, Girl.origin_group_id.is_not(None))

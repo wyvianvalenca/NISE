@@ -5,17 +5,32 @@ critério de aceite que cobre. Como o convite (#453) é uma story posterior, os
 convites daqui são linhas de `CoordinatorInvite` gravadas direto.
 """
 
+import importlib.util
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from types import ModuleType
 
 import pytest
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import ADMIN_HOME, home_path
 from app.auth.utils import create_access_token
 from app.main import app
 from app.modules.admin.schemas import CoordinatorFilter, CoordinatorStatus
-from app.modules.admin.service import list_coordinators
-from app.modules.groups.models import CoordinatorInvite, Group, GroupCoordinator
+from app.modules.admin.service import list_coordinators, list_group_cards
+from app.modules.consents.service import CURRENT_TERMS_VERSION
+from app.modules.groups.coordinator_invites import (
+    create_coordinator_invite,
+    hash_invite_token,
+)
+from app.modules.groups.coordinator_signup import accept_coordinator_invite
+from app.modules.groups.models import (
+    OPEN_INVITE_INDEX,
+    CoordinatorInvite,
+    Group,
+    GroupCoordinator,
+)
 from app.users.models import Role, User
 from tests.helpers import chamar_rota
 
@@ -227,3 +242,173 @@ async def test_equipe_cai_em_coordenadoras(db_session: AsyncSession) -> None:
     equipe = await usuaria(db_session, "Gabi Ficticia", Role.NISE_TEAM)
 
     assert await home_path(db_session, equipe) == ADMIN_HOME == "/admin/coordenadoras"
+
+
+def convite_aberto(
+    grupo_: Group, nome: str, endereco: str, dias: int = 3
+) -> CoordinatorInvite:
+    return CoordinatorInvite(
+        name=nome,
+        email=endereco,
+        token_hash=f"hash-{nome}-{dias}",
+        group_id=grupo_.id,
+        expires_at=AGORA + timedelta(days=dias),
+    )
+
+
+async def sem_o_indice(sessao: AsyncSession) -> None:
+    """Tira o índice de um convite aberto por e-mail, só nesta transação.
+
+    Para simular dados de antes dele (o rollback do `db_session` o devolve).
+    """
+    await sessao.execute(text(f"DROP INDEX {OPEN_INVITE_INDEX}"))
+
+
+def migracao_do_indice() -> ModuleType:
+    versoes = Path(__file__).resolve().parents[1] / "alembic" / "versions"
+    [arquivo] = versoes.glob("*_um_convite_aberto_por_email.py")
+    spec = importlib.util.spec_from_file_location("migracao_do_indice", arquivo)
+    assert spec is not None and spec.loader is not None
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+# Revisão da #464 (#457): depois que ela cria a conta pelo convite, a lista a
+# mostra uma vez só, "Ativa", e o cartão do grupo não a conta como convite
+# esperando.
+async def test_depois_de_aceitar_aparece_uma_vez_so(db_session: AsyncSession) -> None:
+    rendeiras = await grupo(db_session, "Rendeiras do Código")
+    criado = await create_coordinator_invite(
+        db_session,
+        name="Carla Ficticia",
+        email="carla@exemplo.org",
+        group_id=rendeiras.id,
+    )
+
+    await accept_coordinator_invite(
+        db_session,
+        criado.token,
+        name="Carla Ficticia",
+        accepted_terms=True,
+        terms_version=CURRENT_TERMS_VERSION,
+        password="senha-ficticia-123",
+    )
+
+    lista = await list_coordinators(db_session)
+    assert [(i.name, i.status) for i in lista.items] == [
+        ("Carla Ficticia", CoordinatorStatus.ACTIVE)
+    ]
+    assert lista.counts.invites == 0
+    [cartao] = await list_group_cards(db_session)
+    assert (cartao.coordinators, cartao.invites) == (1, 0)
+
+
+# Revisão da #464: um convite aberto de um e-mail que já tem conta (dado de
+# antes do índice) não aparece como convite na lista nem conta no cartão.
+async def test_convite_aberto_de_email_com_conta_nao_aparece(
+    db_session: AsyncSession,
+) -> None:
+    rendeiras = await grupo(db_session, "Rendeiras do Código")
+    ana = await usuaria(db_session, "Ana Ficticia", Role.COORDINATOR)
+    db_session.add(GroupCoordinator(group_id=rendeiras.id, user_id=ana.id))
+    db_session.add(convite_aberto(rendeiras, "Ana Ficticia", "ana@exemplo.com"))
+    await db_session.flush()
+
+    lista = await list_coordinators(db_session, now=AGORA)
+    [cartao] = await list_group_cards(db_session, now=AGORA)
+
+    assert [(i.name, i.status) for i in lista.items] == [
+        ("Ana Ficticia", CoordinatorStatus.ACTIVE)
+    ]
+    assert (cartao.coordinators, cartao.invites) == (1, 0)
+
+
+# Revisão da #464: se sobrou outro convite aberto para o mesmo e-mail (dado de
+# antes do índice), aceitar um fecha o outro na mesma transação.
+async def test_aceitar_fecha_outro_convite_aberto_do_email(
+    db_session: AsyncSession,
+) -> None:
+    rendeiras = await grupo(db_session, "Rendeiras do Código")
+    marias = await grupo(db_session, "Marias da Ciência")
+    await sem_o_indice(db_session)
+    agora = datetime.now(UTC)
+    aceito = CoordinatorInvite(
+        name="Carla Ficticia",
+        email="carla@exemplo.org",
+        token_hash=hash_invite_token("link-ficticio-carla"),
+        group_id=rendeiras.id,
+        expires_at=agora + timedelta(days=3),
+    )
+    outro = CoordinatorInvite(
+        name="Carla Ficticia",
+        email="carla@exemplo.org",
+        token_hash="hash-outro",
+        group_id=marias.id,
+        expires_at=agora - timedelta(days=1),
+    )
+    db_session.add_all([aceito, outro])
+    await db_session.flush()
+
+    await accept_coordinator_invite(
+        db_session,
+        "link-ficticio-carla",
+        name="Carla Ficticia",
+        accepted_terms=True,
+        terms_version=CURRENT_TERMS_VERSION,
+        password="senha-ficticia-123",
+    )
+
+    await db_session.refresh(outro)
+    assert outro.cancelled_at is not None and outro.accepted_at is None
+    assert [i.status for i in (await list_coordinators(db_session)).items] == [
+        CoordinatorStatus.ACTIVE
+    ]
+
+
+# Revisão da #464: antes de criar o índice, a migração fecha os convites
+# abertos que sobram: os de e-mail com conta e, por e-mail, todos menos o de
+# link mais recente (maior `expires_at`). Aceitos e cancelados ficam como estão.
+async def test_migracao_fecha_os_convites_abertos_que_sobram(
+    db_session: AsyncSession,
+) -> None:
+    migracao = migracao_do_indice()
+    rendeiras = await grupo(db_session, "Rendeiras do Código")
+    await usuaria(db_session, "Ana Ficticia", Role.COORDINATOR)
+    await sem_o_indice(db_session)
+    convites = {
+        "ana": convite_aberto(rendeiras, "Ana Ficticia", "ana@exemplo.com"),
+        "carla_velho": convite_aberto(
+            rendeiras, "Carla Ficticia", "carla@exemplo.com", dias=-5
+        ),
+        "carla_reenviado": convite_aberto(
+            rendeiras, "Carla Ficticia", "carla@exemplo.com", dias=6
+        ),
+        "carla_novo": convite_aberto(
+            rendeiras, "Carla Ficticia", "carla@exemplo.com", dias=2
+        ),
+        "dani": convite_aberto(rendeiras, "Dani Ficticia", "dani@exemplo.com"),
+    }
+    db_session.add_all(convites.values())
+    await db_session.flush()
+
+    await db_session.execute(text(migracao.CLOSE_INVITES_WITH_ACCOUNT))
+    await db_session.execute(text(migracao.CLOSE_OLDER_OPEN_INVITES))
+
+    fechados = set(
+        (
+            await db_session.scalars(
+                select(CoordinatorInvite.id).where(
+                    CoordinatorInvite.cancelled_at.is_not(None)
+                )
+            )
+        ).all()
+    )
+    assert fechados == {convites[n].id for n in ("ana", "carla_velho", "carla_novo")}
+    # O que sobrou já cabe no índice.
+    await db_session.execute(
+        text(
+            f"CREATE UNIQUE INDEX {OPEN_INVITE_INDEX} ON coordinator_invites (email) "
+            "WHERE accepted_at IS NULL AND cancelled_at IS NULL"
+        )
+    )

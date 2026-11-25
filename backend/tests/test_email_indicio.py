@@ -690,6 +690,27 @@ def test_endereco_com_quebra_de_linha_e_recusado_antes_do_envio(
         build_message(endereco, "Assunto", "Corpo")
 
 
+def test_sem_html_o_e_mail_segue_em_texto_puro() -> None:
+    mensagem = build_message(ENDERECO, "Assunto", "Corpo")
+
+    assert not mensagem.is_multipart()
+    assert mensagem.get_content_type() == "text/plain"
+    assert mensagem.get_content().strip() == "Corpo"
+
+
+def test_com_html_o_e_mail_leva_texto_e_html() -> None:
+    mensagem = build_message(ENDERECO, "Assunto", "Corpo", html="<p>Corpo</p>")
+
+    assert mensagem.get_content_type() == "multipart/alternative"
+    texto, pagina = mensagem.iter_parts()
+    assert texto.get_content_type() == "text/plain"
+    assert texto.get_content().strip() == "Corpo"
+    assert pagina.get_content_type() == "text/html"
+    assert pagina.get_content().strip() == "<p>Corpo</p>"
+    assert mensagem["To"] == ENDERECO
+    assert mensagem["Subject"] == "Assunto"
+
+
 # --- Rota agendada -------------------------------------------------------------
 
 

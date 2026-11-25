@@ -242,6 +242,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/google/coordinator-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Coordinator Google */
+        post: operations["start_coordinator_google_api_auth_google_coordinator_invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/google/callback": {
         parameters: {
             query?: never;
@@ -1962,6 +1979,21 @@ export interface components {
          */
         CoordinatorFilter: "all" | "active" | "invites" | "deactivated";
         /**
+         * CoordinatorGoogleStartIn
+         * @description O "Continuar com o Google" da CV02 (#455).
+         *
+         *     O link vai no corpo, nunca na URL (ela fica nos logs de acesso), e os termos
+         *     são conferidos antes de sair para o Google.
+         */
+        CoordinatorGoogleStartIn: {
+            /** Token */
+            token: string;
+            /** Acceptedterms */
+            acceptedTerms: boolean;
+            /** Termsversion */
+            termsVersion: string;
+        };
+        /**
          * CoordinatorInviteCheckIn
          * @description O link do convite. Vai no corpo, não na URL da API, para não ficar em logs.
          */
@@ -2644,6 +2676,14 @@ export interface components {
              * @default false
              */
             withoutInvite: boolean;
+        };
+        /**
+         * GoogleStartOut
+         * @description O endereço do Google para onde o navegador vai em seguida.
+         */
+        GoogleStartOut: {
+            /** Url */
+            url: string;
         };
         /** GroupActionOut */
         GroupActionOut: {
@@ -4035,8 +4075,6 @@ export interface operations {
         parameters: {
             query?: {
                 invite?: string | null;
-                coordinator_invite?: string | null;
-                terms_version?: string | null;
             };
             header?: never;
             path?: never;
@@ -4061,6 +4099,58 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    start_coordinator_google_api_auth_google_coordinator_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorGoogleStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleStartOut"];
+                };
+            };
+            /** @description {"error": "invite_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "email_has_account"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "invite_expired"}, {"error": "invite_used"} ou {"error": "invite_replaced"} */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "terms_not_accepted"} ou {"error": "terms_outdated"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

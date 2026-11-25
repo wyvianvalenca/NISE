@@ -72,6 +72,26 @@ class CoordinatorInviteCheckIn(BaseModel):
     token: Annotated[str, StringConstraints(min_length=1, max_length=128)]
 
 
+class CoordinatorGoogleStartIn(BaseModel):
+    """O "Continuar com o Google" da CV02 (#455).
+
+    O link vai no corpo, nunca na URL (ela fica nos logs de acesso), e os termos
+    são conferidos antes de sair para o Google.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    token: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+    accepted_terms: bool
+    terms_version: Annotated[str, StringConstraints(max_length=64)]
+
+
+class GoogleStartOut(BaseModel):
+    """O endereço do Google para onde o navegador vai em seguida."""
+
+    url: str
+
+
 class CoordinatorInviteViewOut(BaseModel):
     """O que a CV02 mostra do convite: o grupo, o e-mail travado e a validade."""
 

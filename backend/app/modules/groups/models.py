@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -68,16 +68,32 @@ class Invite(Base):
     group: Mapped[Group] = relationship()
 
 
+# Um e-mail tem no máximo um convite de coordenadora aberto (nem aceito, nem
+# cancelado), vencido ou não (RN-35, #446). O nome aparece no erro do Postgres
+# quando dois pedidos convidam o mesmo e-mail no mesmo instante.
+OPEN_INVITE_INDEX = "uq_coordinator_invites_open_email"
+
+
 class CoordinatorInvite(Base):
     """Convite de uma coordenadora para um grupo, enviado pela equipe NISE (D-115).
 
     Vale 7 dias e só uma vez (aceito em `accepted_at`). A lista do admin mostra
     o convite como "Convite enviado" até `expires_at` e como "Convite expirou"
     depois. Convite aceito vira a coordenadora (GroupCoordinator) e cancelado
-    some da lista. Quem cria, reenvia e cancela é a story #453.
+    some da lista. Quem cria, reenvia e cancela é a story #453. Cada e-mail tem
+    no máximo um convite aberto (`OPEN_INVITE_INDEX`): convidar de novo depois
+    de vencer reaproveita a mesma linha.
     """
 
     __tablename__ = "coordinator_invites"
+    __table_args__ = (
+        Index(
+            OPEN_INVITE_INDEX,
+            "email",
+            unique=True,
+            postgresql_where=text("accepted_at IS NULL AND cancelled_at IS NULL"),
+        ),
+    )
 
     name: Mapped[str] = mapped_column()
     email: Mapped[str] = mapped_column(index=True)

@@ -60,7 +60,7 @@ def link_do_email(enviado: tuple[str, str, str]) -> str:
 
 def sem_link_nem_data(texto: str) -> str:
     texto = re.sub(r"https?://\S+", "<link>", texto)
-    return re.sub(r"\d{2}/\d{2}/\d{4}", "<data>", texto)
+    return re.sub(r"\d{1,2} de [a-z]{3}\b", "<data>", texto)
 
 
 # Critério: "Reenviar" cria um link novo, válido por 7 dias a partir de agora, e

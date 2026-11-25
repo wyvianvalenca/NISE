@@ -13,7 +13,7 @@ Nada aqui grava nome nem e-mail em log.
 from datetime import UTC, datetime
 
 from fastapi import status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -159,6 +159,19 @@ async def accept_coordinator_invite(
                 )
             )
         invite.accepted_at = now
+        # Nada fica aberto para o e-mail que virou conta. O índice já deixa um
+        # convite aberto só por e-mail; isto fecha algum que tenha sobrado.
+        await session.execute(
+            update(CoordinatorInvite)
+            .where(
+                CoordinatorInvite.email == invite.email,
+                CoordinatorInvite.id != invite.id,
+                CoordinatorInvite.accepted_at.is_(None),
+                CoordinatorInvite.cancelled_at.is_(None),
+            )
+            .values(cancelled_at=now)
+            .execution_options(synchronize_session=False)
+        )
         await session.commit()
     except IntegrityError:
         # O e-mail ou o Google ganharam conta no mesmo instante.

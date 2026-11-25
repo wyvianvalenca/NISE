@@ -406,21 +406,95 @@ async def volta_do_google(
         app.dependency_overrides.clear()
 
 
+GOOGLE_START = "/api/auth/google/coordinator-invite"
+INICIO_GOOGLE = {
+    "token": TOKEN,
+    "acceptedTerms": True,
+    "termsVersion": CURRENT_TERMS_VERSION,
+}
+
+
 # Critério: "Continuar com o Google" guarda o convite e a versão dos termos nos
-# cookies do login, e não no endereço que o Google vê.
-async def test_login_do_google_guarda_o_convite_da_coordenadora_nos_cookies() -> None:
+# cookies do login. O link do convite vai no corpo do POST, nunca numa URL
+# (nem na da API, que fica no log de acesso, nem no endereço do Google).
+async def test_inicio_do_google_guarda_o_convite_nos_cookies(
+    db_session: AsyncSession, google: GoogleFalso
+) -> None:
+    await convite(db_session)
+
+    response = await chamar_rota(
+        app, "POST", GOOGLE_START, db_session, corpo=INICIO_GOOGLE
+    )
+
+    assert response.status_code == 200
+    assert TOKEN not in urllib.parse.unquote(response.json()["url"])
+    cookies = "; ".join(response.headers.get_list("set-cookie"))
+    assert f"{GOOGLE_COORDINATOR_INVITE_COOKIE}={TOKEN}" in cookies
+    assert f"{GOOGLE_TERMS_COOKIE}={CURRENT_TERMS_VERSION}" in cookies
+
+
+# Critério (RN-40): sem a caixa dos termos marcada, ou com termos antigos, não
+# dá para ir ao Google: nada é guardado para o callback aceitar depois.
+@pytest.mark.parametrize(
+    ("corpo", "erro"),
+    [
+        ({"acceptedTerms": False}, "terms_not_accepted"),
+        ({"termsVersion": "0.0-antiga"}, "terms_outdated"),
+    ],
+)
+async def test_inicio_do_google_sem_termos_e_recusado(
+    db_session: AsyncSession,
+    google: GoogleFalso,
+    corpo: dict[str, object],
+    erro: str,
+) -> None:
+    await convite(db_session)
+
+    response = await chamar_rota(
+        app, "POST", GOOGLE_START, db_session, corpo={**INICIO_GOOGLE, **corpo}
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"error": erro}
+    assert GOOGLE_COORDINATOR_INVITE_COOKIE not in response.headers.get(
+        "set-cookie", ""
+    )
+
+
+# Critério: com um link que não funciona, a recusa vem antes de ir ao Google.
+async def test_inicio_do_google_com_link_inexistente_e_recusado(
+    db_session: AsyncSession, google: GoogleFalso
+) -> None:
+    await convite(db_session)
+
+    response = await chamar_rota(
+        app, "POST", GOOGLE_START, db_session, corpo={**INICIO_GOOGLE, "token": "outro"}
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "invite_not_found"}
+    assert GOOGLE_COORDINATOR_INVITE_COOKIE not in response.headers.get(
+        "set-cookie", ""
+    )
+
+
+# Critério (RN-40): o login do Google por link não aceita mais o convite nem a
+# versão dos termos na URL; um clique com o botão do meio não pula os termos.
+async def test_login_do_google_por_link_ignora_o_convite_da_coordenadora() -> None:
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://teste"
     ) as client:
         response = await client.get(
             "/api/auth/google/login",
-            params={"coordinator_invite": TOKEN, "terms_version": "0.1-rascunho"},
+            params={
+                "coordinator_invite": TOKEN,
+                "terms_version": CURRENT_TERMS_VERSION,
+            },
         )
 
     cookies = "; ".join(response.headers.get_list("set-cookie"))
-    assert f"{GOOGLE_COORDINATOR_INVITE_COOKIE}={TOKEN}" in cookies
-    assert f"{GOOGLE_TERMS_COOKIE}=0.1-rascunho" in cookies
-    assert TOKEN not in urllib.parse.unquote(response.headers["location"])
+    assert f"{GOOGLE_COORDINATOR_INVITE_COOKIE}={TOKEN}" not in cookies
+    assert f"{GOOGLE_TERMS_COOKIE}=" not in cookies or "Max-Age=0" in cookies
 
 
 # Critério: com o Google do e-mail do convite, a conta nasce coordenadora do
@@ -471,10 +545,8 @@ async def test_google_com_outro_email_nao_cria_conta(
     assert response.status_code == 302
     destino = urllib.parse.urlsplit(response.headers["location"])
     assert destino.path == "/convite/coordenadora"
-    assert urllib.parse.parse_qs(destino.query) == {
-        "token": [TOKEN],
-        "erro": ["google_email_mismatch"],
-    }
+    # O link do convite não volta na URL (log de acesso); a página o guardou.
+    assert urllib.parse.parse_qs(destino.query) == {"erro": ["google_email_mismatch"]}
     assert SESSION_COOKIE not in response.headers.get("set-cookie", "")
     assert await coordenadoras(db_session) == 0
 

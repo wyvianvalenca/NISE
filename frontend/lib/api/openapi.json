@@ -578,40 +578,6 @@
               ],
               "title": "Invite"
             }
-          },
-          {
-            "name": "coordinator_invite",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 128
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Coordinator Invite"
-            }
-          },
-          {
-            "name": "terms_version",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 64
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Terms Version"
-            }
           }
         ],
         "responses": {
@@ -632,6 +598,50 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/auth/google/coordinator-invite": {
+      "post": {
+        "tags": [
+          "API",
+          "Auth"
+        ],
+        "summary": "Start Coordinator Google",
+        "operationId": "start_coordinator_google_api_auth_google_coordinator_invite_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoordinatorGoogleStartIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleStartOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "{\"error\": \"invite_not_found\"}"
+          },
+          "409": {
+            "description": "{\"error\": \"email_has_account\"}"
+          },
+          "410": {
+            "description": "{\"error\": \"invite_expired\"}, {\"error\": \"invite_used\"} ou {\"error\": \"invite_replaced\"}"
+          },
+          "422": {
+            "description": "{\"error\": \"terms_not_accepted\"} ou {\"error\": \"terms_outdated\"}"
           }
         }
       }
@@ -8260,6 +8270,33 @@
         ],
         "title": "CoordinatorFilter"
       },
+      "CoordinatorGoogleStartIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Token"
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "title": "Acceptedterms"
+          },
+          "termsVersion": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Termsversion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "acceptedTerms",
+          "termsVersion"
+        ],
+        "title": "CoordinatorGoogleStartIn",
+        "description": "O \"Continuar com o Google\" da CV02 (#455).\n\nO link vai no corpo, nunca na URL (ela fica nos logs de acesso), e os termos\nsão conferidos antes de sair para o Google."
+      },
       "CoordinatorInviteCheckIn": {
         "properties": {
           "token": {
@@ -9866,6 +9903,20 @@
         ],
         "title": "GoogleSignupCompleteIn",
         "description": "O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).\n\nNome e e-mail vêm do Google, pelo cookie do cadastro pendente, e não daqui."
+      },
+      "GoogleStartOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "GoogleStartOut",
+        "description": "O endereço do Google para onde o navegador vai em seguida."
       },
       "GroupActionOut": {
         "properties": {

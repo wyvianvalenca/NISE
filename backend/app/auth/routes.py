@@ -41,12 +41,14 @@ from app.auth.permissions import (
 )
 from app.auth.reset_email import send_reset_link
 from app.auth.schemas import (
+    CoordinatorGoogleStartIn,
     CoordinatorInviteCheckIn,
     CoordinatorInviteViewOut,
     CoordinatorSignupIn,
     EmailSignupIn,
     ForgotPasswordIn,
     GoogleSignupCompleteIn,
+    GoogleStartOut,
     HomeOut,
     LoginIn,
     MeOut,
@@ -73,6 +75,7 @@ from app.auth.utils import (
     create_pending_signup_token,
 )
 from app.db.engine import AsyncSessionDep
+from app.modules.consents.service import CURRENT_TERMS_VERSION
 from app.modules.groups.coordinator_invites import CoordinatorInviteError
 from app.modules.groups.coordinator_signup import (
     accept_coordinator_invite,
@@ -371,8 +374,6 @@ async def reset_password_route(
 @router.get("/google/login")
 async def google_login(
     invite: Annotated[str | None, Query(max_length=64)] = None,
-    coordinator_invite: Annotated[str | None, Query(max_length=128)] = None,
-    terms_version: Annotated[str | None, Query(max_length=64)] = None,
 ) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     code_verifier = new_code_verifier()
@@ -380,15 +381,55 @@ async def google_login(
 
     response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
     # O convite fica num cookie e não no state: o Google não precisa saber dele.
-    # Ele só é conferido ao completar o cadastro. O mesmo vale para o convite da
-    # coordenadora (CV02, #455) e a versão dos termos que ela aceitou ao clicar.
+    # Ele só é conferido ao completar o cadastro.
+    set_google_oauth_cookies(response, state, code_verifier, invite or None)
+    return response
+
+
+# "Continuar com o Google" da coordenadora (CV02, #455). É um POST e não um
+# link: o link do convite vai no corpo, fora dos logs de acesso, e os termos
+# (RN-40) e o convite são conferidos aqui, antes de ir ao Google. Só esta rota
+# grava o convite e a versão dos termos nos cookies que o callback lê.
+@router.post(
+    "/google/coordinator-invite",
+    response_model=GoogleStartOut,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": '{"error": "invite_not_found"}'},
+        status.HTTP_409_CONFLICT: {"description": '{"error": "email_has_account"}'},
+        status.HTTP_410_GONE: {
+            "description": '{"error": "invite_expired"}, {"error": "invite_used"} ou '
+            '{"error": "invite_replaced"}'
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": '{"error": "terms_not_accepted"} ou '
+            '{"error": "terms_outdated"}'
+        },
+    },
+)
+async def start_coordinator_google(
+    data: CoordinatorGoogleStartIn, session: AsyncSessionDep
+) -> JSONResponse:
+    if not data.accepted_terms:
+        raise CoordinatorInviteError(
+            "terms_not_accepted", status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
+    if data.terms_version != CURRENT_TERMS_VERSION:
+        raise CoordinatorInviteError(
+            "terms_outdated", status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
+    await get_open_invite(session, data.token)
+
+    state = secrets.token_urlsafe(32)
+    code_verifier = new_code_verifier()
+    url = build_authorization_url(state, make_code_challenge(code_verifier))
+
+    response = JSONResponse(GoogleStartOut(url=url).model_dump())
     set_google_oauth_cookies(
         response,
         state,
         code_verifier,
-        invite or None,
-        coordinator_invite or None,
-        terms_version,
+        coordinator_invite=data.token,
+        terms_version=data.terms_version,
     )
     return response
 
@@ -424,7 +465,8 @@ async def _coordinator_google_callback(
     """Fecha o cadastro da coordenadora com o Google (CV02, #455).
 
     Só a conta Google com o e-mail do convite cria a conta. Qualquer recusa volta
-    para a página do convite com `erro=<código>`; o link já está na URL dela.
+    para a página do convite só com `erro=<código>`: o link do convite não volta
+    na URL (ela fica nos logs); a página o guardou antes de ir ao Google.
     """
     error: str | None = None
     user: User | None = None
@@ -445,7 +487,7 @@ async def _coordinator_google_callback(
             error = exc.code
 
     if user is None:
-        query = urlencode({"token": token, "erro": error})
+        query = urlencode({"erro": error})
         response = RedirectResponse(
             f"{COORDINATOR_INVITE_URL}?{query}", status_code=status.HTTP_302_FOUND
         )

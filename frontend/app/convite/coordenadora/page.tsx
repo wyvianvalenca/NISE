@@ -12,13 +12,15 @@ import { Checkbox } from "@/components/Checkbox";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
 import {
-  coordinatorGoogleUrl,
   createCoordinatorAccount,
   formatValidUntil,
   getCoordinatorInvite,
   GOOGLE_ERRORS,
   inviteProblemFromCode,
   PASSWORD_TOO_SHORT,
+  rememberedInviteToken,
+  rememberInviteToken,
+  startCoordinatorGoogle,
   type CoordinatorInvite,
 } from "@/lib/coordinator-invite";
 import { MINIMUM_PASSWORD_LENGTH, TERMS_VERSION } from "@/lib/signup-api";
@@ -36,10 +38,11 @@ const NETWORK_ERROR = "Não deu pra criar sua conta agora. Tente de novo.";
 const TERMS_ERROR =
   "Marque que leu e aceita os termos de uso e a política de privacidade.";
 
+// The three items of "Com a conta você vai poder", as in CV02 (Figma 2549-938).
 const BENEFITS = [
-  "Cadastrar as ações do seu grupo",
-  "Acompanhar quem se inscreveu e quem foi",
-  "Ver os resultados das ações do grupo",
+  "Cadastrar as ações do grupo",
+  "Ver inscrições e marcar presença",
+  "Acompanhar quem entrou na área",
 ];
 
 /**
@@ -47,14 +50,16 @@ const BENEFITS = [
  *
  * The coordinator arrives from the invite e-mail (`?token=...`). The e-mail is
  * the invite's and cannot be changed; the name comes filled in and can be.
- * The Google callback sends her back here with `&erro=<code>` when it refuses.
+ * The Google callback sends her back here with only `?erro=<code>` when it
+ * refuses: the token never goes in a URL, so it is kept in the session storage
+ * before leaving for Google and read back here.
  * A link that does not work (expired, replaced, missing, used, or its e-mail
  * already has an account) shows CV04, CV05 or CV06 instead (#458).
  */
 function CoordinatorSignup() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const [token] = useState(() => searchParams.get("token") ?? rememberedInviteToken());
   const googleError = GOOGLE_ERRORS[searchParams.get("erro") ?? ""];
 
   const [invite, setInvite] = useState<CoordinatorInvite | null>(null);
@@ -150,11 +155,42 @@ function CoordinatorSignup() {
     }
   }
 
-  // The Google account is picked outside, so the terms must be checked first.
-  function startGoogle(event: React.MouseEvent<HTMLAnchorElement>) {
+  // The Google account is picked outside, so the terms must be checked first,
+  // here and again by the back-end before it answers where to go (RN-40).
+  async function startGoogle() {
     if (!accepted) {
-      event.preventDefault();
       setErrors({ terms: TERMS_ERROR });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const result = await startCoordinatorGoogle({
+        token,
+        acceptedTerms: true,
+        termsVersion: TERMS_VERSION,
+      });
+
+      if (result.ok) {
+        rememberInviteToken(token);
+        window.location.assign(result.url);
+        return;
+      }
+
+      setSending(false);
+      if (result.reason === "terms_not_accepted") {
+        setErrors({ terms: TERMS_ERROR });
+      } else if (result.reason === "terms_outdated") {
+        setErrors({ general: GOOGLE_ERRORS.terms_outdated });
+      } else if (result.reason === "invite_invalid") {
+        setInvite(null);
+        setProblem(result.problem);
+      } else {
+        setErrors({ general: NETWORK_ERROR });
+      }
+    } catch {
+      setSending(false);
+      setErrors({ general: NETWORK_ERROR });
     }
   }
 
@@ -286,8 +322,8 @@ function CoordinatorSignup() {
             <GoogleButton
               label="Continuar com o Google"
               hint={`Use a conta Google de ${invite.email}`}
-              href={coordinatorGoogleUrl(token, TERMS_VERSION)}
-              onClick={startGoogle}
+              onPress={startGoogle}
+              disabled={sending}
             />
           </section>
         </main>
