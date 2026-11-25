@@ -1,0 +1,18 @@
+.main {
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 40px;
+  max-width: 1280px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.subtitle {
+  margin-top: 4px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}

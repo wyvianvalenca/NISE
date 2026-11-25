@@ -1277,6 +1277,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/exports/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Options Route
+         * @description O que a coordenadora escolhe nos seletores do "Recorte" (RF-F24.09).
+         */
+        get: operations["options_route_api_coordinator_exports_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Summary Route
+         * @description Linhas, meninas, sem ação e ações do arquivo desse recorte (RF-F24.33).
+         *
+         *     As meninas sem ação só contam com o pacote "Grupos de comparação" (D-106).
+         */
+        get: operations["summary_route_api_coordinator_exports_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Route
+         * @description Cinco linhas do arquivo que vai sair, para o passo "Revisão" (RF-F24.32).
+         */
+        get: operations["preview_route_api_coordinator_exports_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * History Route
+         * @description O histórico do grupo, com as exportações de todas as coordenadoras (RF-F24.07).
+         */
+        get: operations["history_route_api_coordinator_exports_get"];
+        put?: never;
+        /**
+         * Create Export Route
+         * @description Gera o CSV anônimo do recorte e registra a exportação (RF-F24.34, RN-07).
+         */
+        post: operations["create_export_route_api_coordinator_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/exports/{export_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Route
+         * @description Baixa o CSV, em UTF-8 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34).
+         */
+        get: operations["download_route_api_coordinator_exports__export_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1391,6 +1497,18 @@ export interface components {
             /** Items */
             items: components["schemas"]["ActionListItemOut"][];
             counts: components["schemas"]["ActionStatusCountsOut"];
+        };
+        /** ActionOptionOut */
+        ActionOptionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Startson
+             * Format: date
+             */
+            startsOn: string;
         };
         /**
          * ActionOut
@@ -2209,6 +2327,144 @@ export interface components {
          * @enum {string}
          */
         EventType: "oficina" | "palestra" | "minicurso" | "hackathon" | "visita" | "acolhimento" | "outro";
+        /** ExportColumnOut */
+        ExportColumnOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "code" | "generalized" | "action";
+        };
+        /**
+         * ExportCutOptionsOut
+         * @description O que ela pode escolher no "Recorte": só dados do próprio grupo.
+         */
+        ExportCutOptionsOut: {
+            /** Years */
+            years: number[];
+            /** Actions */
+            actions: components["schemas"]["ActionOptionOut"][];
+            /** Types */
+            types: components["schemas"]["ExportOptionOut"][];
+            /** Tags */
+            tags: components["schemas"]["ExportOptionOut"][];
+            /** Models */
+            models: components["schemas"]["ExportModelOut"][];
+        };
+        /**
+         * ExportHistoryItemOut
+         * @description Uma linha do histórico: quem, quando, o recorte e quantas linhas (RF-F24.07).
+         */
+        ExportHistoryItemOut: {
+            /** Id */
+            id: number;
+            /** Who */
+            who: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Cut */
+            cut: string;
+            /** Rowcount */
+            rowCount: number;
+        };
+        /**
+         * ExportIn
+         * @description O que a coordenadora escolheu: modelo, recorte e pacotes (RF-F24.08 a 10).
+         *
+         *     Campo vazio no recorte é "todos". A Base sempre sai; sem `packages` valem os do
+         *     modelo (sem modelo, "Do meu jeito", D-104) e `packages` vazio é só a Base.
+         */
+        ExportIn: {
+            model?: components["schemas"]["ExportModel"] | null;
+            /** Packages */
+            packages?: components["schemas"]["Package"][] | null;
+            /** Year */
+            year?: number | null;
+            /** Actionid */
+            actionId?: number | null;
+            type?: components["schemas"]["ActionType"] | null;
+            tag?: components["schemas"]["Topic"] | null;
+        };
+        /**
+         * ExportModel
+         * @description Os quatro modelos do primeiro passo (RF-F24.10). Cada um já marca pacotes.
+         * @enum {string}
+         */
+        ExportModel: "accountability" | "research" | "planning" | "my_way";
+        /**
+         * ExportModelOut
+         * @description Um modelo do primeiro passo e os pacotes que ele já liga (RF-F24.10).
+         */
+        ExportModelOut: {
+            value: components["schemas"]["ExportModel"];
+            /** Packages */
+            packages: components["schemas"]["Package"][];
+        };
+        /** ExportOptionOut */
+        ExportOptionOut: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * ExportOut
+         * @description O arquivo pronto (RF-F24.34). O CSV se baixa por `GET .../{id}/file`.
+         */
+        ExportOut: {
+            /** Id */
+            id: number;
+            /** Filename */
+            filename: string;
+            /** Rowcount */
+            rowCount: number;
+            /** Columncount */
+            columnCount: number;
+            /**
+             * Expiresat
+             * Format: date-time
+             */
+            expiresAt: string;
+        };
+        /**
+         * ExportPreviewOut
+         * @description As primeiras linhas do arquivo que vai sair (RF-F24.32).
+         *
+         *     Os códigos são de mentira: o arquivo de verdade sorteia outros.
+         */
+        ExportPreviewOut: {
+            /** Columns */
+            columns: components["schemas"]["ExportColumnOut"][];
+            /** Rows */
+            rows: string[][];
+            /** Noaction */
+            noAction: boolean[];
+            /** Totalrows */
+            totalRows: number;
+        };
+        /**
+         * ExportSummaryOut
+         * @description O resumo da barra escura, em "Recorte" e "Conteúdo" (RF-F24.33).
+         *
+         *     `no_action` é 0 quando as meninas sem ação não entram no arquivo (D-106).
+         */
+        ExportSummaryOut: {
+            /** Rows */
+            rows: number;
+            /** Girls */
+            girls: number;
+            /** Noaction */
+            noAction: number;
+            /** Actions */
+            actions: number;
+        };
         /**
          * FeedbackIn
          * @description O "O que achou?" e o "Quer sugestões parecidas?" de uma atividade concluída.
@@ -2821,6 +3077,12 @@ export interface components {
             /** Label */
             label: string;
         };
+        /**
+         * Package
+         * @description Os pacotes que a coordenadora liga ou desliga (RF-F24.08).
+         * @enum {string}
+         */
+        Package: "groups" | "funnel" | "ratings" | "interest" | "admission" | "other_groups";
         /**
          * PendingRatingOut
          * @description A ação que a menina pode avaliar na A03 (#58).
@@ -6979,6 +7241,293 @@ export interface operations {
             };
             /** @description Não é da equipe NISE */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    options_route_api_coordinator_exports_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportCutOptionsOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_route_api_coordinator_exports_summary_get: {
+        parameters: {
+            query?: {
+                /** @description Pacotes ligados, separados por vírgula. Sem o parâmetro vale "Do meu jeito": só a Base, sem as meninas sem ação. */
+                packages?: string | null;
+                year?: number | null;
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                tag?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportSummaryOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ação de outro grupo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_route_api_coordinator_exports_preview_get: {
+        parameters: {
+            query?: {
+                /** @description Pacotes ligados, separados por vírgula. Sem o parâmetro vale "Do meu jeito": só a Base, sem as meninas sem ação. */
+                packages?: string | null;
+                year?: number | null;
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                tag?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportPreviewOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ação de outro grupo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_route_api_coordinator_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportHistoryItemOut"][];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_export_route_api_coordinator_exports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExportIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ação de outro grupo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_route_api_coordinator_exports__export_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exportação de outro grupo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O link expirou */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

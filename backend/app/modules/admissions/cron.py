@@ -28,6 +28,7 @@ from app.modules.admissions.search import (
 )
 from app.modules.admissions.service import delete_expired_matches
 from app.modules.events.reminder_email import send_event_reminders
+from app.modules.exports.service import purge_old_files
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,12 @@ async def official_lists_round(
 async def expire_matches(session: AsyncSessionDep) -> dict[str, int]:
     """A rotina diária que apaga os indícios sem resposta há 30 dias (RF-F31.06)."""
     return {"deleted": await delete_expired_matches(session)}
+
+
+@router.get("/purge-exports", dependencies=[CronDep])
+async def purge_exports(session: AsyncSessionDep) -> dict[str, int]:
+    """Apaga o texto das exportações com mais de 24 horas (F24, #375)."""
+    return {"purged": await purge_old_files(session)}
 
 
 @router.get("/match-emails", dependencies=[CronDep])

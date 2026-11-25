@@ -596,6 +596,9 @@ DESTINO: dict[str, dict[str, object]] = {
     # menina (NOT_A_GIRL para os outros papéis), então não toca neles.
     "coordinator_invites": {"acao": MANTER},
     "replaced_invite_links": {"acao": MANTER},
+    # Registro da exportação da coordenadora (F24). O CSV é anônimo, com código
+    # sorteado, e o texto some em 24 horas (purge_old_files).
+    "data_exports": {"acao": MANTER},
 }
 
 # Tabelas "manter" que têm uma dessas colunas ou FK para girls, e por quê.

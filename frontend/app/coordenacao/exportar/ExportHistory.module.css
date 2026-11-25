@@ -1,0 +1,51 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--nise-borderStrong);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.muted {
+  margin: 0;
+  font-size: 14px;
+  color: var(--nise-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border: 1px solid var(--nise-borderStrong);
+  border-radius: var(--radius-8);
+}
+
+.who {
+  margin: 0;
+  font-weight: 500;
+  color: var(--nise-ink);
+}
+
+.lines {
+  margin: 0;
+  font-size: 14px;
+  color: var(--nise-ink);
+}
