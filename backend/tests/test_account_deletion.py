@@ -200,7 +200,7 @@ async def test_excluir_roda_os_17_comandos_nesta_ordem_com_o_id_da_menina() -> N
     assert sql[14] == (
         "UPDATE girls SET email='registro-7@anonimizado.invalid', "
         "name='Registro anonimizado', birth_date=NULL, city_ibge_code=NULL, "
-        "study_stage=NULL, all_topics=false, file_intro_seen=false, "
+        "all_topics=false, file_intro_seen=false, "
         "last_band=NULL, updated_at=now() WHERE girls.id = 7"
     )
     assert sql[15] == "DELETE FROM oauth_accounts WHERE oauth_accounts.user_id = 1"
@@ -481,13 +481,20 @@ DESTINO: dict[str, dict[str, object]] = {
     "girls": {
         "acao": ESVAZIAR,
         # user_id fica ligado (C8 conta quem tem conta); origin_group_id é de C8.
-        "fica": {"id", "user_id", "origin_group_id", "created_at", "updated_at"},
+        # study_stage fica: o card "Elas entraram na área?" (C5) separa por ela.
+        "fica": {
+            "id",
+            "user_id",
+            "origin_group_id",
+            "study_stage",
+            "created_at",
+            "updated_at",
+        },
         "esvazia": {
             "name": "Registro anonimizado",
             "email": "registro-<id>@anonimizado.invalid",
             "birth_date": None,
             "city_ibge_code": None,
-            "study_stage": None,
             "all_topics": False,
             "file_intro_seen": False,
             "last_band": None,

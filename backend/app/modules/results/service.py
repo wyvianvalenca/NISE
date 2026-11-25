@@ -18,6 +18,7 @@ from app.modules.followup.models import (
 )
 from app.modules.girl_file.models import IN_FILE, FileEntry
 from app.modules.girls.models import Girl, StudyStage, Topic
+from app.users.models import User
 
 # O filé conta até o questionário de 3 meses (RF-F5.31, D-93).
 FILE_WINDOW_MONTHS = 3
@@ -462,52 +463,87 @@ class EnteredByStage:
     bars: list[EnteredBar]
 
 
+# Quem declarou um destes já entrou na área e conta assim dali em diante.
+ENTERED_COURSE = (CourseStatus.GRADUACAO, CourseStatus.TECNICO)
+
+
+def _status_at(
+    given: dict[FollowupRound, CourseStatus], milestone: FollowupRound
+) -> CourseStatus | None:
+    """A situação da menina no marco: o último curso declarado até ali, ou a resposta dele."""
+    until = ROUND_ORDER[: ROUND_ORDER.index(milestone) + 1]
+    entered = [given[r] for r in until if given.get(r) in ENTERED_COURSE]
+    if entered:
+        return entered[-1]
+    return given.get(milestone)
+
+
 async def entered_the_field(
     session: AsyncSession, group_id: int, filters: ResultsFilters, today: date
 ) -> list[EnteredByStage]:
     """O card "Elas entraram na área?" (RF-F5.34): pergunta 3, por escolaridade e rodada.
 
-    - Entram as meninas inscritas em alguma ação do grupo no filtro (as mesmas
-      ações do card "Logo depois da ação"), tenham vindo ou não.
-    - Cada menina conta uma vez, com a resposta mais recente à pergunta 3
-      (a rodada mais tardia com `course_status`), na barra dessa rodada. A
-      rodada de 3 meses não tem barra no card. Quem já tinha curso registrado
-      (`still_enrolled`) não respondeu a esta pergunta.
+    - Entram só as participantes (com presença) das ações do grupo no filtro,
+      como nos cards "Logo depois da ação" e "Como o interesse evolui".
+    - Cada barra é a foto daquele marco (6, 12 e 18 meses):
+      - quem declarou graduação ou curso técnico numa rodada até esse marco
+        conta como quem entrou, com o último curso declarado até ali, em
+        todas as barras seguintes cujo marco a conta já alcançou, mesmo sem
+        responder de novo e mesmo se depois disse que parou (decisão da equipe
+        na revisão do PR #465);
+      - quem não entrou conta com o que respondeu à pergunta 3 na rodada do
+        marco ("Tentando entrar" ou "Ainda não"); sem resposta, fica fora.
+      Assim, quem declarou o curso aos 3 meses também aparece nas três barras.
     - A escolaridade é a do cadastro. "Já me formei" e quem não a informou
       não entram em nenhuma das três.
     - Só contagens: sem nome de menina, de curso nem de instituição.
     """
-    actions = filtered_actions(group_id, filters, today)
-    answers = await session.execute(
-        select(
-            Girl.id,
-            Girl.study_stage,
-            FollowupAnswer.round,
-            FollowupAnswer.course_status,
-        )
-        .join(FollowupAnswer, FollowupAnswer.girl_id == Girl.id)
-        .where(
-            Girl.id.in_(
-                select(Participation.girl_id).where(
-                    Participation.action_id.in_(actions)
-                )
-            ),
-            FollowupAnswer.course_status.is_not(None),
-        )
-    )
-    latest: dict[int, tuple[StudyStage | None, FollowupRound, CourseStatus]] = {}
-    for girl_id, stage, round_, status in answers:
-        assert status is not None  # filtrado na consulta
-        current = latest.get(girl_id)
-        if current is None or ROUND_ORDER.index(round_) > ROUND_ORDER.index(current[1]):
-            latest[girl_id] = (stage, round_, status)
+    references = await _references(session, group_id, filters, today)
+    girls = {girl for girl, ref in references.items() if ref.attended}
+
+    stage_of: dict[int, StudyStage | None] = {}
+    created_on: dict[int, date] = {}
+    # A pergunta 3 de cada rodada e as rodadas que ela respondeu: depois de
+    # declarar o curso, ela responde "Continua nesse curso?", sem `course_status`.
+    answers: dict[int, dict[FollowupRound, CourseStatus]] = {}
+    answered: dict[int, set[FollowupRound]] = {}
+    if girls:
+        for girl_id, stage, created_at in await session.execute(
+            select(Girl.id, Girl.study_stage, User.created_at)
+            .outerjoin(User, User.id == Girl.user_id)
+            .where(Girl.id.in_(girls))
+        ):
+            stage_of[girl_id] = stage
+            if created_at is not None:
+                created_on[girl_id] = created_at.astimezone(ACTION_TIMEZONE).date()
+        for girl_id, round_, status in await session.execute(
+            select(
+                FollowupAnswer.girl_id,
+                FollowupAnswer.round,
+                FollowupAnswer.course_status,
+            ).where(FollowupAnswer.girl_id.in_(girls))
+        ):
+            answered.setdefault(girl_id, set()).add(round_)
+            if status is not None:
+                answers.setdefault(girl_id, {})[round_] = status
 
     counts: dict[tuple[EnteredStage, FollowupRound], dict[CourseStatus, int]] = {}
-    for stage, round_, status in latest.values():
-        if stage not in _STAGE_OF or round_ not in ENTERED_ROUNDS:
+    for girl_id, given in answers.items():
+        stage = stage_of.get(girl_id)
+        if stage is None or stage not in _STAGE_OF:
             continue
-        by_status = counts.setdefault((_STAGE_OF[stage], round_), {})
-        by_status[status] = by_status.get(status, 0) + 1
+        for round_, months in ENTERED_ROUNDS.items():
+            status = _status_at(given, round_)
+            if status is None:
+                continue
+            # Quem entrou antes conta no marco mesmo sem responder a ele, desde
+            # que a conta já tenha chegado ao marco.
+            created = created_on.get(girl_id)
+            reached = created is not None and add_months(created, months) <= today
+            if round_ not in answered[girl_id] and not reached:
+                continue
+            by_status = counts.setdefault((_STAGE_OF[stage], round_), {})
+            by_status[status] = by_status.get(status, 0) + 1
 
     result: list[EnteredByStage] = []
     for entered_stage in EnteredStage:

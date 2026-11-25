@@ -5,16 +5,23 @@ critério de aceite da #370 que cobre.
 """
 
 from collections.abc import Mapping
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from httpx2 import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.utils import create_access_token
 from app.main import app
-from app.modules.followup.models import CourseStatus, FollowupAnswer, FollowupRound
+from app.modules.followup.models import (
+    CourseStatus,
+    FollowupAnswer,
+    FollowupRound,
+    StillEnrolled,
+)
 from app.modules.girls.models import Girl, StudyStage
 from app.modules.groups.models import Group
+from app.modules.results.service import add_months
 from app.users.models import Role, User
 from tests.helpers import chamar_rota
 from tests.test_results_after_action import HOJE, Cenario
@@ -39,12 +46,29 @@ async def menina_do_grupo(
     etapa: StudyStage | None,
     respostas: Mapping[FollowupRound, CourseStatus | None],
     dias: int = 30,
+    veio: bool = True,
+    conta_ha_meses: int | None = None,
 ) -> Girl:
-    """Uma menina inscrita numa ação do grupo, com a escolaridade e as respostas."""
+    """Uma menina inscrita numa ação do grupo, com a escolaridade e as respostas.
+
+    Com `conta_ha_meses`, ela tem conta criada há tantos meses (as rodadas
+    contam da criação da conta).
+    """
     menina = await cenario.menina()
     menina.study_stage = etapa
+    if conta_ha_meses is not None:
+        criada = add_months(HOJE, -conta_ha_meses)
+        conta = User(
+            email=f"conta-{menina.id}@exemplo.com",
+            name="Menina Ficticia",
+            role=Role.GIRL,
+            created_at=datetime(criada.year, criada.month, criada.day, 15, tzinfo=UTC),
+        )
+        cenario.sessao.add(conta)
+        await cenario.sessao.flush()
+        menina.user_id = conta.id
     acao = await cenario.acao(grupo, HOJE - timedelta(days=dias))
-    await cenario.inscrita(menina, acao, True)
+    await cenario.inscrita(menina, acao, veio)
     for rodada, status in respostas.items():
         cenario.sessao.add(
             FollowupAnswer(girl_id=menina.id, round=rodada, course_status=status)
@@ -115,10 +139,10 @@ async def test_barra_divide_as_respostas_e_mostra_quantas_responderam(
     }
 
 
-async def test_cada_menina_conta_com_a_resposta_mais_recente(
+async def test_cada_barra_e_a_resposta_daquele_marco(
     db_session: AsyncSession,
 ) -> None:
-    # Critério: cada menina conta uma vez, com a resposta mais recente.
+    # Critério: cada barra mostra o que elas responderam naquele marco.
     cenario = Cenario(db_session)
     grupo = await cenario.grupo("Rendeiras do Código")
     katia = await cenario.coordenadora(grupo)
@@ -128,19 +152,80 @@ async def test_cada_menina_conta_com_a_resposta_mais_recente(
         StudyStage.MEDIO,
         {SEIS: CourseStatus.NOT_YET, DOZE: CourseStatus.TRYING},
     )
-    # Resposta mais recente sem a pergunta 3: vale a anterior.
-    await menina_do_grupo(
-        cenario,
-        grupo,
-        StudyStage.MEDIO,
-        {SEIS: CourseStatus.TECNICO, DOZE: None},
-    )
 
     barras = (await card(db_session, katia))["medio"]
 
     assert [b["answered"] for b in barras] == [1, 1, 0]
-    assert barras[0]["tecnico"] == 1
+    assert barras[0]["notYet"] == 1
     assert barras[1]["trying"] == 1
+
+
+async def test_quem_entrou_continua_contando_como_quem_entrou(
+    db_session: AsyncSession,
+) -> None:
+    # Decisão da equipe (revisão do PR #465): quem entrou num curso fica como
+    # quem entrou pelo resto do tempo. Depois de declarar o curso, ela responde
+    # "Continua nesse curso?", sem a pergunta 3; mesmo "parou" não a tira.
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    menina = await menina_do_grupo(
+        cenario,
+        grupo,
+        StudyStage.MEDIO,
+        {SEIS: CourseStatus.TECNICO, DOZE: None, DEZOITO: None},
+    )
+    for resposta in (
+        await db_session.scalars(
+            select(FollowupAnswer).where(FollowupAnswer.girl_id == menina.id)
+        )
+    ).all():
+        if resposta.round == DEZOITO:
+            resposta.still_enrolled = StillEnrolled.STOPPED
+    await db_session.flush()
+
+    barras = (await card(db_session, katia))["medio"]
+
+    assert [b["answered"] for b in barras] == [1, 1, 1]
+    assert [b["tecnico"] for b in barras] == [1, 1, 1]
+
+
+async def test_quem_entrou_aos_3_meses_aparece_nos_marcos_que_a_conta_alcancou(
+    db_session: AsyncSession,
+) -> None:
+    # Decisão da equipe: o curso declarado aos 3 meses vale para as barras
+    # seguintes, mesmo sem ela responder de novo, mas só nos marcos que a conta
+    # já alcançou (conta de 13 meses: 6 e 12, não 18).
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    await menina_do_grupo(
+        cenario,
+        grupo,
+        StudyStage.MEDIO,
+        {FollowupRound.THREE_MONTHS: CourseStatus.GRADUACAO},
+        conta_ha_meses=13,
+    )
+
+    barras = (await card(db_session, katia))["medio"]
+
+    assert [b["graduacao"] for b in barras] == [1, 1, 0]
+    assert [b["answered"] for b in barras] == [1, 1, 0]
+
+
+async def test_so_contam_as_participantes(db_session: AsyncSession) -> None:
+    # Decisão da equipe: como nos outros cards, só quem veio à ação conta;
+    # quem só se inscreveu fica fora.
+    cenario = Cenario(db_session)
+    grupo = await cenario.grupo("Rendeiras do Código")
+    katia = await cenario.coordenadora(grupo)
+    await menina_do_grupo(
+        cenario, grupo, StudyStage.MEDIO, {SEIS: CourseStatus.TRYING}, veio=False
+    )
+
+    barras = (await card(db_session, katia))["medio"]
+
+    assert all(b["answered"] == 0 for b in barras)
 
 
 async def test_escolaridade_do_cadastro_separa_as_etapas(

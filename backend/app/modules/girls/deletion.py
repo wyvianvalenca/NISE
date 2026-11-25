@@ -147,7 +147,9 @@ async def delete_account(
         )
         # `.invalid` (RFC 2606) nunca é de ninguém: nenhum envio, login ou
         # cadastro o usa. O prefixo "registro-" difere do "conta-" de users para
-        # os dois nunca casarem por acaso. O vínculo `user_id` fica.
+        # os dois nunca casarem por acaso. O vínculo `user_id` fica. A etapa
+        # escolar também fica: sozinha não identifica ninguém e o card "Elas
+        # entraram na área?" (C5) separa as meninas por ela (revisão do PR #465).
         await session.execute(
             update(Girl)
             .where(Girl.id == girl_id)
@@ -156,7 +158,6 @@ async def delete_account(
                 email=f"registro-{girl_id}@anonimizado.invalid",
                 birth_date=None,
                 city_ibge_code=None,
-                study_stage=None,
                 all_topics=False,
                 file_intro_seen=False,
                 last_band=None,
