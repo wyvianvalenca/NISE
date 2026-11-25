@@ -226,7 +226,7 @@
             "description": "{\"error\": \"email_has_account\"}"
           },
           "410": {
-            "description": "{\"error\": \"invite_expired\"} ou {\"error\": \"invite_used\"}"
+            "description": "{\"error\": \"invite_expired\"}, {\"error\": \"invite_used\"} ou {\"error\": \"invite_replaced\"}"
           },
           "422": {
             "description": "Validation Error",

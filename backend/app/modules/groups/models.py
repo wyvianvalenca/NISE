@@ -93,3 +93,18 @@ class CoordinatorInvite(Base):
 
     # Assíncrono: carregue com selectinload(CoordinatorInvite.group).
     group: Mapped[Group] = relationship()
+
+
+class ReplacedInviteLink(Base):
+    """Link de convite de coordenadora que um reenvio trocou por um novo (RN-35, #458).
+
+    Só guarda o hash, como o convite: o link antigo não abre nada, mas a tela
+    pode dizer "veja o e-mail mais recente" em vez de tratá-lo como inexistente.
+    """
+
+    __tablename__ = "replaced_invite_links"
+
+    invite_id: Mapped[int] = mapped_column(
+        ForeignKey("coordinator_invites.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(unique=True)

@@ -1,0 +1,28 @@
+/* CV04, CV05 and CV06, computer. Made for 1366 px. */
+
+.box {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}

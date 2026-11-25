@@ -4,6 +4,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { Brand } from "@/components/Brand";
 import { Button } from "@/components/Button";
+import {
+  CoordinatorInviteProblem,
+  type InviteProblem,
+} from "@/components/CoordinatorInviteProblem";
 import { Checkbox } from "@/components/Checkbox";
 import { Field } from "@/components/Field";
 import { GoogleButton } from "@/components/GoogleButton";
@@ -13,6 +17,7 @@ import {
   formatValidUntil,
   getCoordinatorInvite,
   GOOGLE_ERRORS,
+  inviteProblemFromCode,
   PASSWORD_TOO_SHORT,
   type CoordinatorInvite,
 } from "@/lib/coordinator-invite";
@@ -43,8 +48,8 @@ const BENEFITS = [
  * The coordinator arrives from the invite e-mail (`?token=...`). The e-mail is
  * the invite's and cannot be changed; the name comes filled in and can be.
  * The Google callback sends her back here with `&erro=<code>` when it refuses.
- * Screens for an invite that expired, was used or whose e-mail already has an
- * account belong to #458: here a link that does not work only says so.
+ * A link that does not work (expired, replaced, missing, used, or its e-mail
+ * already has an account) shows CV04, CV05 or CV06 instead (#458).
  */
 function CoordinatorSignup() {
   const router = useRouter();
@@ -53,6 +58,9 @@ function CoordinatorSignup() {
   const googleError = GOOGLE_ERRORS[searchParams.get("erro") ?? ""];
 
   const [invite, setInvite] = useState<CoordinatorInvite | null>(null);
+  const [problem, setProblem] = useState<InviteProblem | null>(
+    inviteProblemFromCode(searchParams.get("erro")),
+  );
   const [loaded, setLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -68,8 +76,9 @@ function CoordinatorSignup() {
     getCoordinatorInvite(token)
       .then((found) => {
         if (current) {
-          setInvite(found);
-          setName(found?.name ?? "");
+          setInvite(found.invite ?? null);
+          setProblem((before) => before ?? found.problem ?? null);
+          setName(found.invite?.name ?? "");
           setLoaded(true);
         }
       })
@@ -131,6 +140,7 @@ function CoordinatorSignup() {
       } else if (result.reason === "invite_invalid") {
         // The link stopped working meanwhile (used or expired).
         setInvite(null);
+        setProblem(result.problem ?? "expired");
       } else {
         setErrors({ general: NETWORK_ERROR });
       }
@@ -156,22 +166,15 @@ function CoordinatorSignup() {
 
       {!loaded ? (
         <p className={styles.status}>Abrindo o convite…</p>
-      ) : !invite ? (
-        <main className={styles.status}>
-          {loadFailed ? (
-            <>
-              <h1 className={styles.title}>Não deu pra abrir o convite</h1>
-              <p className={styles.lead}>Recarregue a página e tente de novo.</p>
-            </>
-          ) : (
-            <>
-              <h1 className={styles.title}>Esse link não vale</h1>
-              <p className={styles.lead}>
-                Peça um novo convite para a equipe NISE.
-              </p>
-            </>
-          )}
-        </main>
+      ) : !invite || problem ? (
+        loadFailed ? (
+          <main className={styles.status}>
+            <h1 className={styles.title}>Não deu pra abrir o convite</h1>
+            <p className={styles.lead}>Recarregue a página e tente de novo.</p>
+          </main>
+        ) : (
+          <CoordinatorInviteProblem problem={problem ?? "expired"} />
+        )
       ) : (
         <main className={styles.main}>
           <section className={styles.welcome} aria-labelledby="boas-vindas">

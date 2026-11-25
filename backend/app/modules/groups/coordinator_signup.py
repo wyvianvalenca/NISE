@@ -26,7 +26,11 @@ from app.modules.groups.coordinator_invites import (
     CoordinatorInviteError,
     hash_invite_token,
 )
-from app.modules.groups.models import CoordinatorInvite, GroupCoordinator
+from app.modules.groups.models import (
+    CoordinatorInvite,
+    GroupCoordinator,
+    ReplacedInviteLink,
+)
 from app.users.models import OAuthAccount, Provider, Role, User
 from app.users.service import get_user_by_email, normalize_email
 
@@ -36,12 +40,12 @@ async def _load_invite(
 ) -> CoordinatorInvite:
     """O convite que ainda pode criar conta, ou CoordinatorInviteError.
 
-    - "invite_not_found" (404): link que não existe, ou que a equipe cancelou
-      ao reenviar (RN-35);
+    - "invite_not_found" (404): link que não existe, ou de convite cancelado;
+    - "invite_replaced" (410): um reenvio trocou o link por um mais novo (RN-35);
     - "invite_used" (410): o link já criou uma conta;
     - "invite_expired" (410): passaram os 7 dias;
     - "email_has_account" (409): o e-mail do convite já tem conta.
-    As telas desses três últimos são da story #458.
+    As telas desses casos são da story #458; nenhum corpo traz dado do convite.
     """
     stmt = (
         select(CoordinatorInvite)
@@ -53,6 +57,8 @@ async def _load_invite(
         stmt = stmt.with_for_update(of=CoordinatorInvite)
     invite = await session.scalar(stmt)
 
+    if invite is None and await _was_replaced(session, token):
+        raise CoordinatorInviteError("invite_replaced", status.HTTP_410_GONE)
     if invite is None or invite.cancelled_at is not None:
         raise CoordinatorInviteError("invite_not_found", status.HTTP_404_NOT_FOUND)
     if invite.accepted_at is not None:
@@ -63,6 +69,19 @@ async def _load_invite(
         raise CoordinatorInviteError("email_has_account")
 
     return invite
+
+
+async def _was_replaced(session: AsyncSession, token: str) -> bool:
+    """O link é de um convite que ainda existe e foi reenviado com link novo."""
+    replaced = await session.scalar(
+        select(CoordinatorInvite.id)
+        .join(ReplacedInviteLink, ReplacedInviteLink.invite_id == CoordinatorInvite.id)
+        .where(
+            ReplacedInviteLink.token_hash == hash_invite_token(token),
+            CoordinatorInvite.cancelled_at.is_(None),
+        )
+    )
+    return replaced is not None
 
 
 async def get_open_invite(
