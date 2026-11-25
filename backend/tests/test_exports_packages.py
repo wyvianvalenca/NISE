@@ -20,6 +20,7 @@ from app.modules.exports.service import (
     BASE_COLUMNS,
     PACKAGE_COLUMNS,
     RESEARCH_PACKAGES,
+    ExportCut,
     Package,
     build_table,
     columns_for,
@@ -280,6 +281,36 @@ async def test_area_com_menos_de_cinco_meninas_vira_ti_agrupado(
     assert {r[-1] for r in tabela.rows} == {"TI (agrupado)"}
     assert {r[-2] for r in tabela.rows} == {"graduação"}
     assert "Ciência" not in to_csv(tabela)
+
+
+async def test_ti_agrupado_conta_as_meninas_do_recorte_e_nao_do_grupo(
+    db_session: AsyncSession,
+) -> None:
+    """RF-F24.35: com o recorte numa ação, a área conta só quem está no arquivo."""
+    g = await grupo(db_session)
+    a = await acao(db_session, g, "Ação A")
+    b = await acao(db_session, g, "Ação B")
+    for n in (1, 2):
+        quem = await menina(db_session, n)
+        await inscrever(db_session, quem, a)
+        await ingressar(db_session, quem, "Redes", CourseLevel.TECNICO)
+    for n in (3, 4, 5):
+        quem = await menina(db_session, n)
+        await inscrever(db_session, quem, b)
+        await ingressar(db_session, quem, "Redes", CourseLevel.TECNICO)
+
+    so_a = await build_table(
+        db_session,
+        g.id,
+        HOJE,
+        packages=[Package.ADMISSION],
+        cut=ExportCut(action_id=a.id),
+    )
+    tudo = await build_table(db_session, g.id, HOJE, packages=[Package.ADMISSION])
+
+    # Duas meninas no arquivo: a área some, mesmo com cinco no grupo.
+    assert [r[-1] for r in so_a.rows] == ["TI (agrupado)", "TI (agrupado)"]
+    assert {r[-1] for r in tudo.rows} == {"Redes"}
 
 
 # --- Outros grupos --------------------------------------------------------------------

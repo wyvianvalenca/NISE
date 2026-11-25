@@ -502,19 +502,24 @@ async def interest_by_girl(
 
 
 async def entry_by_girl(
-    session: AsyncSession, group_id: int, girl_ids: set[int], with_no_action: bool
+    session: AsyncSession,
+    group_id: int,
+    cut: ExportCut,
+    girl_ids: set[int],
+    with_no_action: bool,
 ) -> dict[int, tuple[str, str]]:
     """Nível e área do ingresso mais recente de cada menina (nunca a instituição).
 
     Área com menos de 5 meninas no arquivo vira "TI (agrupado)" (RF-F24.35). A
-    contagem usa todas as meninas do grupo, não só as linhas da Revisão.
+    contagem usa as meninas do recorte `cut` (as mesmas das linhas do arquivo),
+    não o grupo todo nem só as linhas da Revisão.
     """
-    in_group = (
+    in_cut = (
         select(Participation.girl_id)
         .join(Action, Action.id == Participation.action_id)
-        .where(Action.group_id == group_id)
+        .where(*cut_filters(group_id, cut))
     )
-    in_file: ColumnElement[bool] = Enrollment.girl_id.in_(in_group)
+    in_file: ColumnElement[bool] = Enrollment.girl_id.in_(in_cut)
     if with_no_action:
         # As meninas sem ação também têm linha no arquivo, então contam na área.
         no_action = select(Girl.id).where(*no_action_filters(group_id))
@@ -608,7 +613,7 @@ async def build_table(
         await interest_by_girl(session, girl_ids) if Package.INTEREST in chosen else {}
     )
     entries = (
-        await entry_by_girl(session, group_id, girl_ids, no_action_enters(chosen))
+        await entry_by_girl(session, group_id, cut, girl_ids, no_action_enters(chosen))
         if Package.ADMISSION in chosen
         else {}
     )
