@@ -37,12 +37,18 @@ from app.modules.actions.models import (
     ActionType,
     Participation,
 )
-from app.modules.admissions.models import CourseLevel, Enrollment
+from app.modules.admissions.models import AdmissionOrigin, CourseLevel, Enrollment
 from app.modules.answers.models import Answer, AnswerStage
 from app.modules.catalog.utils import ACTION_TYPE_LABELS
 from app.modules.cities.models import City
 from app.modules.exports.models import DataExport
-from app.modules.followup.models import ComputingView, FollowupAnswer, FollowupRound
+from app.modules.followup.models import (
+    ComputingView,
+    CourseCode,
+    FollowupAnswer,
+    FollowupRound,
+)
+from app.modules.followup.utils import COURSE_LABELS
 from app.modules.girls.models import Girl, Topic
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, age_on
 from app.modules.groups.models import Group
@@ -196,6 +202,12 @@ PACKAGE_COLUMNS: dict[Package, tuple[Column, ...]] = {
 # Área de ingresso com menos meninas que isso vira "TI (agrupado)" (RF-F24.35).
 MIN_GIRLS_PER_AREA = 5
 GROUPED_AREA = "TI (agrupado)"
+
+# Os cursos da lista do questionário e do perfil. No ingresso que ela declarou,
+# qualquer outro nome é o que ela digitou em "Outro curso": texto livre, que
+# nunca sai (RN-11). Os cursos das listas oficiais vêm da instituição e saem.
+LISTED_COURSES = frozenset(COURSE_LABELS.values())
+OTHER_COURSE = COURSE_LABELS[CourseCode.OUTRO]
 
 # "Hoje, computação pra você é…", como nas opções do questionário (RF-F5.04).
 COMPUTING_VIEW_LABELS: dict[ComputingView, str] = {
@@ -510,6 +522,7 @@ async def entry_by_girl(
 ) -> dict[int, tuple[str, str]]:
     """Nível e área do ingresso mais recente de cada menina (nunca a instituição).
 
+    O curso que ela digitou em "Outro curso" sai como "Outro curso" (RN-11).
     Área com menos de 5 meninas no arquivo vira "TI (agrupado)" (RF-F24.35). A
     contagem usa as meninas do recorte `cut` (as mesmas das linhas do arquivo),
     não o grupo todo nem só as linhas da Revisão.
@@ -532,15 +545,28 @@ async def entry_by_girl(
     latest: dict[int, Enrollment] = {}
     for enrollment in enrollments:
         latest.setdefault(enrollment.girl_id, enrollment)
-    per_area = Counter(e.course for e in latest.values())
+    areas = {girl_id: area_of(e) for girl_id, e in latest.items()}
+    per_area = Counter(areas.values())
     return {
         girl_id: (
             LEVEL_LABELS[e.level],
-            e.course if per_area[e.course] >= MIN_GIRLS_PER_AREA else GROUPED_AREA,
+            area
+            if per_area[(area := areas[girl_id])] >= MIN_GIRLS_PER_AREA
+            else GROUPED_AREA,
         )
         for girl_id, e in latest.items()
         if girl_id in girl_ids
     }
+
+
+def area_of(enrollment: Enrollment) -> str:
+    """A área como sai no arquivo: o curso digitado vira "Outro curso" (RN-11)."""
+    if (
+        enrollment.origin is AdmissionOrigin.SELF_DECLARED
+        and enrollment.course not in LISTED_COURSES
+    ):
+        return OTHER_COURSE
+    return enrollment.course
 
 
 async def other_groups_by_girl(

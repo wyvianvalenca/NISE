@@ -225,7 +225,11 @@ async def test_interesse_tem_uma_coluna_por_marco(db_session: AsyncSession) -> N
 
 
 async def ingressar(
-    sessao: AsyncSession, quem: Girl, curso: str, nivel: CourseLevel
+    sessao: AsyncSession,
+    quem: Girl,
+    curso: str,
+    nivel: CourseLevel,
+    origem: AdmissionOrigin = AdmissionOrigin.SELF_DECLARED,
 ) -> None:
     sessao.add(
         Enrollment(
@@ -234,7 +238,7 @@ async def ingressar(
             course=curso,
             institution="Instituição Ficticia",
             enrolled_on=date(2026, 8, 1),
-            origin=AdmissionOrigin.SELF_DECLARED,
+            origin=origem,
         )
     )
     await sessao.flush()
@@ -249,16 +253,16 @@ async def test_ingresso_traz_se_entrou_nivel_e_area_sem_a_instituicao(
     nao_entrou = await menina(db_session, 2)
     await inscrever(db_session, entrou, a)
     await inscrever(db_session, nao_entrou, a)
-    await ingressar(db_session, entrou, "Redes", CourseLevel.TECNICO)
+    await ingressar(db_session, entrou, "Redes de computadores", CourseLevel.TECNICO)
     for n in range(10, 14):  # com ela, cinco meninas na área: sai por extenso
         outra = await menina(db_session, n)
         await inscrever(db_session, outra, a)
-        await ingressar(db_session, outra, "Redes", CourseLevel.TECNICO)
+        await ingressar(db_session, outra, "Redes de computadores", CourseLevel.TECNICO)
 
     tabela = await build_table(db_session, g.id, HOJE, packages=[Package.ADMISSION])
 
     assert [r[-3:] for r in tabela.rows[:2]] == [
-        ["sim", "técnico", "Redes"],
+        ["sim", "técnico", "Redes de computadores"],
         ["não", "", ""],
     ]
     assert "Instituição" not in to_csv(tabela)
@@ -293,11 +297,11 @@ async def test_ti_agrupado_conta_as_meninas_do_recorte_e_nao_do_grupo(
     for n in (1, 2):
         quem = await menina(db_session, n)
         await inscrever(db_session, quem, a)
-        await ingressar(db_session, quem, "Redes", CourseLevel.TECNICO)
+        await ingressar(db_session, quem, "Redes de computadores", CourseLevel.TECNICO)
     for n in (3, 4, 5):
         quem = await menina(db_session, n)
         await inscrever(db_session, quem, b)
-        await ingressar(db_session, quem, "Redes", CourseLevel.TECNICO)
+        await ingressar(db_session, quem, "Redes de computadores", CourseLevel.TECNICO)
 
     so_a = await build_table(
         db_session,
@@ -310,7 +314,64 @@ async def test_ti_agrupado_conta_as_meninas_do_recorte_e_nao_do_grupo(
 
     # Duas meninas no arquivo: a área some, mesmo com cinco no grupo.
     assert [r[-1] for r in so_a.rows] == ["TI (agrupado)", "TI (agrupado)"]
-    assert {r[-1] for r in tudo.rows} == {"Redes"}
+    assert {r[-1] for r in tudo.rows} == {"Redes de computadores"}
+
+
+async def test_curso_digitado_em_outro_curso_sai_como_outro_curso(
+    db_session: AsyncSession,
+) -> None:
+    """RN-11: o nome que ela digitou é texto livre e nunca sai, nem com 5 iguais."""
+    g = await grupo(db_session)
+    a = await acao(db_session, g)
+    for n in range(1, 6):
+        quem = await menina(db_session, n)
+        await inscrever(db_session, quem, a)
+        await ingressar(
+            db_session, quem, "Ciência de Dados Ficticia", CourseLevel.GRADUACAO
+        )
+
+    tabela = await build_table(db_session, g.id, HOJE, packages=[Package.ADMISSION])
+
+    assert {r[-1] for r in tabela.rows} == {"Outro curso"}
+    assert "Ciência de Dados" not in to_csv(tabela)
+
+
+async def test_cursos_digitados_diferentes_contam_juntos_como_outro_curso(
+    db_session: AsyncSession,
+) -> None:
+    """Cinco nomes digitados, todos diferentes: juntos são cinco em "Outro curso"."""
+    g = await grupo(db_session)
+    a = await acao(db_session, g)
+    for n in range(1, 6):
+        quem = await menina(db_session, n)
+        await inscrever(db_session, quem, a)
+        await ingressar(db_session, quem, f"Curso Ficticio {n}", CourseLevel.TECNICO)
+
+    tabela = await build_table(db_session, g.id, HOJE, packages=[Package.ADMISSION])
+
+    assert {r[-1] for r in tabela.rows} == {"Outro curso"}
+
+
+async def test_curso_da_lista_oficial_sai_com_o_nome_da_instituicao(
+    db_session: AsyncSession,
+) -> None:
+    """O curso de uma lista oficial não é texto livre: sai como a lista escreve."""
+    g = await grupo(db_session)
+    a = await acao(db_session, g)
+    for n in range(1, 6):
+        quem = await menina(db_session, n)
+        await inscrever(db_session, quem, a)
+        await ingressar(
+            db_session,
+            quem,
+            "Tecnologia em Redes de Computadores",
+            CourseLevel.TECNICO,
+            AdmissionOrigin.OFFICIAL_LIST,
+        )
+
+    tabela = await build_table(db_session, g.id, HOJE, packages=[Package.ADMISSION])
+
+    assert {r[-1] for r in tabela.rows} == {"Tecnologia em Redes de Computadores"}
 
 
 # --- Outros grupos --------------------------------------------------------------------
