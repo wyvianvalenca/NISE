@@ -86,6 +86,7 @@ COMENTARIO = "comentario-privado-da-alana"
 COMENTARIO_FOLLOWUP = "conto-mais-sobre-mim-followup"
 INSTITUICAO = "Instituto Ficticio de Maceio"
 GOOGLE_ID = "google-sub-ficticio-9911"
+CURSO_DIGITADO = "curso-digitado-por-ela"
 IDENTIFICA = [
     dado.lower()
     for dado in (
@@ -98,6 +99,7 @@ IDENTIFICA = [
         COMENTARIO_FOLLOWUP,
         INSTITUICAO,
         GOOGLE_ID,
+        CURSO_DIGITADO,
     )
 ]
 
@@ -279,6 +281,18 @@ async def montar(sessao: AsyncSession) -> Cenario:
     await sessao.flush()
     sessao.add(FollowupActivity(answer_id=resposta.id, activity=Activity.ONLINE_COURSE))
     sessao.add(FollowupHelp(answer_id=resposta.id, help=HelpWanted.MENTORING))
+
+    # O curso que ela deixou, com o nome digitado em "Outro curso".
+    sessao.add(
+        Enrollment(
+            girl_id=alana.id,
+            level=CourseLevel.TECNICO,
+            course=CURSO_DIGITADO,
+            enrolled_on=date(2025, 3, 1),
+            left_on=date(2025, 12, 1),
+            origin=AdmissionOrigin.SELF_DECLARED,
+        )
+    )
 
     # Ingresso: Alana e Bia (Cris só entra no denominador do percentual).
     for girl, instituicao in ((alana, INSTITUICAO), (bia, "UFAL")):
@@ -727,13 +741,59 @@ async def test_texto_livre_sai_e_resposta_fechada_fica(
     )
     assert await db_session.scalar(select(FollowupHelp.help)) == HelpWanted.MENTORING
 
-    ingresso = await db_session.scalar(
-        select(Enrollment).where(Enrollment.girl_id == c.alana.id)
+
+# C6: o curso digitado vira "Outro curso" e a ligação com a lista oficial sai.
+async def test_ingressos_ficam_sem_curso_digitado_e_sem_lista_oficial(
+    db_session: AsyncSession,
+) -> None:
+    c = await montar(db_session)
+    lista = await db_session.scalar(
+        select(OfficialList.id).where(OfficialList.institution == "IFAL")
     )
-    assert ingresso is not None
-    assert ingresso.institution is None
-    assert ingresso.course == "Ciência da Computação"
-    assert ingresso.level == CourseLevel.GRADUACAO
+    # Confirmado numa lista, com um curso fora da lista fixa do questionário.
+    for girl in (c.alana, c.bia):
+        db_session.add(
+            Enrollment(
+                girl_id=girl.id,
+                level=CourseLevel.TECNICO,
+                course="Informática",
+                institution="IFAL",
+                enrolled_on=date(2026, 4, 1),
+                origin=AdmissionOrigin.OFFICIAL_LIST,
+                official_list_id=lista,
+            )
+        )
+    await db_session.flush()
+
+    await excluir_pela_rota(db_session, c)
+
+    async def ingressos(girl_id: int) -> list[tuple[Any, ...]]:
+        resultado = await db_session.execute(
+            select(
+                Enrollment.course,
+                Enrollment.institution,
+                Enrollment.official_list_id,
+                Enrollment.origin,
+                Enrollment.level,
+            )
+            .where(Enrollment.girl_id == girl_id)
+            .order_by(Enrollment.enrolled_on)
+        )
+        return [tuple(linha) for linha in resultado]
+
+    declarado = AdmissionOrigin.SELF_DECLARED
+    oficial = AdmissionOrigin.OFFICIAL_LIST
+    tecnico, graduacao = CourseLevel.TECNICO, CourseLevel.GRADUACAO
+    assert await ingressos(c.alana.id) == [
+        ("Outro curso", None, None, declarado, tecnico),
+        ("Ciência da Computação", None, None, declarado, graduacao),
+        ("Informática", None, None, oficial, tecnico),
+    ]
+    # O da Bia continua inteiro.
+    assert await ingressos(c.bia.id) == [
+        ("Ciência da Computação", "UFAL", None, declarado, graduacao),
+        ("Informática", "IFAL", lista, oficial, tecnico),
+    ]
 
 
 # C7: duas vezes anonimiza uma só.

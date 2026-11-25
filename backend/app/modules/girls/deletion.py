@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.models import PasswordResetToken
 from app.modules.actions.models import Action, Participation
 from app.modules.admissions.models import (
+    AdmissionOrigin,
     Approval,
     DismissedMatch,
     Enrollment,
@@ -14,7 +15,8 @@ from app.modules.admissions.models import (
 )
 from app.modules.answers.models import Answer
 from app.modules.attendance.models import AttendanceEmail
-from app.modules.followup.models import FollowupAnswer
+from app.modules.followup.models import CourseCode, FollowupAnswer
+from app.modules.followup.utils import COURSE_LABELS
 from app.modules.girl_file.models import FileEntry
 from app.modules.girls.models import ANONYMIZED_NAME, Girl, GirlTopic
 from app.modules.groups.models import Invite
@@ -98,10 +100,22 @@ async def delete_account(
             .where(FollowupAnswer.girl_id == girl_id)
             .values(comment=None)
         )
+        # A ligação com a lista oficial diz a instituição e a chamada.
         await session.execute(
             update(Enrollment)
             .where(Enrollment.girl_id == girl_id)
-            .values(institution=None)
+            .values(institution=None, official_list_id=None)
+        )
+        # O nome de curso que ela digitou é texto livre. O que veio de uma lista
+        # oficial não foi ela que escreveu, então fica como está.
+        await session.execute(
+            update(Enrollment)
+            .where(
+                Enrollment.girl_id == girl_id,
+                Enrollment.origin == AdmissionOrigin.SELF_DECLARED,
+                Enrollment.course.not_in(list(COURSE_LABELS.values())),
+            )
+            .values(course=COURSE_LABELS[CourseCode.OUTRO])
         )
         # A linha fica (o painel de presença conta os enviados); o que ainda não
         # saiu deixa de ser desejado.
