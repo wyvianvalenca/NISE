@@ -9,16 +9,19 @@ import styles from "./CoordHeader.module.css";
 
 /**
  * Top menu sections (RF-F30.17: Ações, Resultados, Ingressantes and Exportar).
- * Only the ones with an `href` have a screen yet; the rest render as tabs that
- * go nowhere, so nothing leads to a 404. Add the `href` of each one when its
- * screen lands (Exportar: #431).
+ * Only the ones with an `href` have a screen yet; the rest would render as tabs
+ * that go nowhere, so nothing leads to a 404. Add the `href` of each one when
+ * its screen lands (all four have one now).
  */
 const SECTIONS = [
   { key: "acoes", label: "Ações", href: "/coordenacao/acoes" },
   { key: "resultados", label: "Resultados", href: "/coordenacao/resultados" },
   { key: "ingressantes", label: "Ingressantes", href: "/coordenacao/ingressantes" },
-  { key: "exportar", label: "Exportar" },
+  { key: "exportar", label: "Exportar", href: "/coordenacao/exportar" },
 ] as const satisfies readonly { key: string; label: string; href?: string }[];
+
+/** The same list, typed so a section without `href` still compiles. */
+const SECTION_LIST: readonly { key: string; label: string; href?: string }[] = SECTIONS;
 
 export type CoordSection = (typeof SECTIONS)[number]["key"];
 
@@ -45,8 +48,8 @@ export function CoordHeader({ active }: CoordHeaderProps) {
       <div className={styles.left}>
         <Brand />
         <nav aria-label="Seções" className={styles.nav}>
-          {SECTIONS.map((section) =>
-            "href" in section ? (
+          {SECTION_LIST.map((section) =>
+            section.href ? (
               <Link
                 key={section.key}
                 href={section.href}

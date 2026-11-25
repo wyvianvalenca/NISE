@@ -19,13 +19,13 @@ test("shows the four tabs in order with Ações as the current one", async ({ pa
   await expect(nav.getByRole("link", { name: "Ações" })).toHaveAttribute("aria-current", "page");
 });
 
-test("only Ações, Resultados and Ingressantes are links, Exportar goes nowhere", async ({
+test("the four tabs are links to their screens", async ({
   page,
 }) => {
   await page.goto(URL);
 
   const nav = page.getByRole("navigation", { name: "Seções" });
-  await expect(nav.locator("a[href]")).toHaveCount(3);
+  await expect(nav.locator("a[href]")).toHaveCount(4);
   await expect(nav.getByRole("link", { name: "Resultados" })).toHaveAttribute(
     "href",
     "/coordenacao/resultados",
@@ -35,13 +35,12 @@ test("only Ações, Resultados and Ingressantes are links, Exportar goes nowhere
     "/coordenacao/ingressantes",
   );
 
-  await expect(nav.getByText("Relatórios")).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Exportar" })).toHaveAttribute(
+    "href",
+    "/coordenacao/exportar",
+  );
 
-  const tab = nav.getByRole("link", { name: "Exportar", exact: true, disabled: true });
-  await expect(tab).not.toHaveAttribute("href", /.*/);
-  await expect(tab).toHaveAttribute("aria-disabled", "true");
-  await tab.click({ force: true });
-  await expect(page).toHaveURL(new RegExp(`${URL}$`));
+  await expect(nav.getByText("Relatórios")).toHaveCount(0);
 });
 
 test("shows the group and the initial of the coordinator of the session", async ({ page }) => {

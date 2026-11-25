@@ -1,0 +1,410 @@
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step,
+.stepCurrent,
+.stepDone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.stepCurrent {
+  color: var(--nise-ink);
+  font-weight: 700;
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--nise-borderStrong);
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.stepCurrent .stepNumber {
+  border-color: var(--nise-primary);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+}
+
+.stepDone .stepNumber {
+  border-color: var(--nise-teal);
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.stepTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.stepTitle:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 4px;
+}
+
+.muted {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.baseCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+}
+
+.baseTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.never {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.never .chip {
+  background: var(--nise-pinkSoft);
+}
+
+.example {
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--nise-ink);
+}
+
+.table th,
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--nise-divider);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  font-weight: 700;
+}
+
+.code {
+  background: var(--nise-pinkSoft);
+}
+
+/* RF-F24.31: the line of a girl with no action stands out in pink. */
+.table tr.noActionRow td {
+  background: var(--nise-pinkTint);
+  font-weight: 700;
+}
+
+.generalized {
+  background: var(--nise-tealSoft);
+}
+
+.action {
+  background: transparent;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--nise-muted);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--nise-borderStrong);
+  border-radius: 4px;
+}
+
+.problem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.doneTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.filename {
+  margin-top: 8px;
+  font-weight: 500;
+  color: var(--nise-ink);
+  overflow-wrap: anywhere;
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  margin-top: 8px;
+  padding: 0 20px;
+  border-radius: var(--radius-8);
+  background: var(--nise-primary);
+  color: var(--nise-onPrimary);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.download:hover {
+  background: var(--nise-teal);
+}
+
+.download:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.selectors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.package,
+.packageOn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+}
+
+.packageOn {
+  border-color: var(--nise-teal);
+}
+
+.packageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--nise-borderStrong);
+  cursor: pointer;
+}
+
+.switch[aria-checked="true"] {
+  background: var(--nise-teal);
+}
+
+.switch:focus-visible {
+  outline: 3px solid var(--nise-ink);
+  outline-offset: 2px;
+}
+
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--nise-surface);
+  transition: transform 0.15s;
+}
+
+.switch[aria-checked="true"] .knob {
+  transform: translateX(20px);
+}
+
+.summary {
+  padding: 12px 16px;
+  border-radius: var(--radius-8);
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knob {
+    transition: none;
+  }
+}
+
+.modelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.model,
+.modelOn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+  cursor: pointer;
+}
+
+.modelOn {
+  border: 2px solid var(--nise-teal);
+  background: var(--nise-tealSoft);
+}
+
+/* O rádio some, mas cobre o cartão: o clique cai nele, e o teclado e o leitor de
+   tela continuam achando (como no RatingScale). */
+.modelInput {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.model:has(input:focus-visible),
+.modelOn:has(input:focus-visible) {
+  outline: 3px solid var(--nise-ink);
+  outline-offset: 2px;
+}
+
+.modelCheck {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.modelPackages {
+  margin-top: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.modelChip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
+.change {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.change:focus-visible {
+  outline: 3px solid var(--nise-ink);
+  outline-offset: 2px;
+}
