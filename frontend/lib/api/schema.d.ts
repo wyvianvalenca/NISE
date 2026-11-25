@@ -1440,11 +1440,12 @@ export interface components {
         AdmissionOrigin: "self_declared" | "official_list";
         /**
          * AfterActionOut
-         * @description O card "Logo depois da ação" (RF-F5.09). O front lê em camelCase.
+         * @description O card "Logo depois da ação" (RF-F5.09, RF-F5.31). O front lê em camelCase.
          *
          *     Só totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`
-         *     são o "de M" de cada lado, e `returned` é quantas de cada lado voltaram a
-         *     outra ação. O front calcula a porcentagem.
+         *     são o "de M" de cada lado. `returned`, `started_file` e `concluded_file`
+         *     são quantas de cada lado voltaram a outra ação, começaram o filé e
+         *     concluíram algo nele. O front calcula a porcentagem.
          */
         AfterActionOut: {
             /** Participants */
@@ -1452,6 +1453,8 @@ export interface components {
             /** Noshows */
             noShows: number;
             returned: components["schemas"]["ComparedOut"];
+            startedFile: components["schemas"]["ComparedOut"];
+            concludedFile: components["schemas"]["ComparedOut"];
         };
         /**
          * AgendaDatesOut
@@ -1909,6 +1912,8 @@ export interface components {
             prerequisites: string[];
             /** Registrationurl */
             registrationUrl: string | null;
+            /** Firstname */
+            firstName: string;
         };
         /**
          * EventStatus

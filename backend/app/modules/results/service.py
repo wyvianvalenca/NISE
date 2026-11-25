@@ -7,7 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionTopic, ActionType, Participation
+from app.modules.actions.service import ACTION_TIMEZONE
+from app.modules.girl_file.models import IN_FILE, FileEntry
 from app.modules.girls.models import Topic
+
+# O filé conta até o questionário de 3 meses (RF-F5.31, D-93).
+FILE_WINDOW_MONTHS = 3
 
 
 class Period(enum.Enum):
@@ -29,13 +34,22 @@ class ResultsFilters:
 
 
 @dataclass(frozen=True)
-class AfterAction:
-    """Os números do card "Logo depois da ação" (RF-F5.09)."""
+class Compared:
+    """Quantas fizeram algo, entre as participantes e entre as que não compareceram."""
 
     participants: int
     no_shows: int
-    returned_participants: int
-    returned_no_shows: int
+
+
+@dataclass(frozen=True)
+class AfterAction:
+    """Os números do card "Logo depois da ação" (RF-F5.09, RF-F5.31)."""
+
+    participants: int
+    no_shows: int
+    returned: Compared
+    started_file: Compared
+    concluded_file: Compared
 
 
 @dataclass(frozen=True)
@@ -47,9 +61,13 @@ class _Reference:
     action_id: int
 
 
-def months_before(day: date, months: int) -> date:
-    """O mesmo dia, `months` meses antes; 31/08 menos 6 meses é 28/02 ou 29/02."""
-    month_index = day.year * 12 + day.month - 1 - months
+def add_months(day: date, months: int) -> date:
+    """O mesmo dia, `months` meses depois (ou antes, se negativo).
+
+    Quando o mês não tem esse dia, fica o último: 31/08 menos 6 meses é 28/02
+    ou 29/02.
+    """
+    month_index = day.year * 12 + day.month - 1 + months
     year, month0 = divmod(month_index, 12)
     last_day = calendar.monthrange(year, month0 + 1)[1]
     return date(year, month0 + 1, min(day.day, last_day))
@@ -58,16 +76,16 @@ def months_before(day: date, months: int) -> date:
 def period_start(period: Period, today: date) -> date | None:
     """Primeiro dia do período, contado para trás a partir de hoje. `None` é sem início."""
     if period is Period.LAST_6_MONTHS:
-        return months_before(today, 6)
+        return add_months(today, -6)
     if period is Period.LAST_12_MONTHS:
-        return months_before(today, 12)
+        return add_months(today, -12)
     return None
 
 
 async def after_action(
     session: AsyncSession, group_id: int, filters: ResultsFilters, today: date
 ) -> AfterAction:
-    """Quem participou das ações do grupo no filtro e quantas voltaram a outra ação.
+    """Quem participou das ações do grupo no filtro e o que fez logo depois.
 
     - Entram só as ações do grupo com a presença salva (as outras ainda não
       dizem quem veio) e que passam nos filtros. O período olha a data de
@@ -78,6 +96,14 @@ async def after_action(
     - Voltou a outra ação quem tem presença em outra ação, de qualquer grupo
       (D-92), que começou no mesmo dia ou depois da primeira dela no filtro.
       Até hoje, sem janela fixa.
+    - Começou o filé quem guardou um item novo no filé, e concluiu algo quem
+      marcou um item como concluído, do dia em que a primeira ação dela no
+      filtro começou até 3 meses depois, quando chega o questionário de 3
+      meses (RF-F5.31, D-93). Conta qualquer item que está no filé, também os
+      que o sistema guardou sozinho, como a inscrição num evento. O item é
+      novo a partir de quando entrou no filé (`FileEntry.filed_at`), também
+      quando ela o tira do "Ver depois". A própria ação de referência não
+      conta.
     """
     since = period_start(filters.period, today)
 
@@ -114,7 +140,8 @@ async def after_action(
             references[girl_id] = candidate
 
     if not references:
-        return AfterAction(0, 0, 0, 0)
+        nobody = Compared(0, 0)
+        return AfterAction(0, 0, nobody, nobody, nobody)
 
     attended_actions = (
         select(Participation.girl_id, Participation.action_id, Action.starts_on)
@@ -133,15 +160,59 @@ async def after_action(
         if action_id != reference.action_id and starts_on >= reference.starts_on:
             returned.add(girl_id)
 
+    started, concluded = await _file_after_action(session, references)
+
     participants = {girl for girl, ref in references.items() if ref.attended}
     no_shows = references.keys() - participants
+
+    def compared(girls: set[int]) -> Compared:
+        return Compared(len(girls & participants), len(girls & no_shows))
 
     return AfterAction(
         participants=len(participants),
         no_shows=len(no_shows),
-        returned_participants=len(returned & participants),
-        returned_no_shows=len(returned & no_shows),
+        returned=compared(returned),
+        started_file=compared(started),
+        concluded_file=compared(concluded),
     )
+
+
+async def _file_after_action(
+    session: AsyncSession, references: dict[int, _Reference]
+) -> tuple[set[int], set[int]]:
+    """Quem começou o filé e quem concluiu algo nele, na janela de cada menina."""
+    entries = await session.execute(
+        select(
+            FileEntry.girl_id,
+            FileEntry.action_id,
+            FileEntry.filed_at,
+            FileEntry.concluded_on,
+        ).where(
+            # Só as concluídas têm `concluded_on`, e elas estão no filé.
+            FileEntry.girl_id.in_(references.keys()),
+            FileEntry.status.in_(IN_FILE),
+        )
+    )
+
+    started: set[int] = set()
+    concluded: set[int] = set()
+    for girl_id, action_id, filed_at, concluded_on in entries:
+        reference = references[girl_id]
+        # A própria ação não conta: a inscrição nela (SIGNED_UP) e a presença
+        # (CONCLUDED) também entram no filé, e aí toda menina da ação contaria.
+        if action_id == reference.action_id:
+            continue
+        start = reference.starts_on
+        end = add_months(start, FILE_WINDOW_MONTHS)  # o dia do questionário fica fora
+
+        # A restrição ck_file_entries_filed_at_when_in_file garante a data.
+        assert filed_at is not None
+        filed_on = filed_at.astimezone(ACTION_TIMEZONE).date()
+        if start <= filed_on < end:
+            started.add(girl_id)
+        if concluded_on is not None and start <= concluded_on < end:
+            concluded.add(girl_id)
+    return started, concluded
 
 
 def _comes_first(candidate: _Reference, current: _Reference) -> bool:
