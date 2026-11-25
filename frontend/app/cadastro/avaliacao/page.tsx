@@ -34,7 +34,7 @@ export default function RatingPage() {
           setPending(result.pending);
         } else if (result.ok) {
           // Nada para avaliar (M2, ou já avaliou): pula a tela.
-          router.replace(SIGNUP_PATHS.interests);
+          router.replace(SIGNUP_PATHS.startingPoint);
         } else if (result.reason === "terms_not_accepted") {
           // A avaliação vem depois do aceite dos termos (Etapa 1).
           router.replace(SIGNUP_PATHS.terms);
@@ -74,7 +74,7 @@ export default function RatingPage() {
     // Já avaliada (em outra aba, por exemplo) ou sem nada para avaliar: não há o
     // que fazer aqui, e ela segue como se tivesse enviado.
     if (result?.ok || result?.reason === "already_rated" || result?.reason === "nothing_to_rate") {
-      router.push(SIGNUP_PATHS.interests);
+      router.push(SIGNUP_PATHS.startingPoint);
       return;
     }
 
@@ -109,7 +109,7 @@ export default function RatingPage() {
               <button
                 type="button"
                 className={styles.skip}
-                onClick={() => router.push(SIGNUP_PATHS.interests)}
+                onClick={() => router.push(SIGNUP_PATHS.startingPoint)}
               >
                 Agora não
               </button>
@@ -157,7 +157,7 @@ export default function RatingPage() {
           type="button"
           className={styles.skip}
           disabled={saving}
-          onClick={() => router.push(SIGNUP_PATHS.interests)}
+          onClick={() => router.push(SIGNUP_PATHS.startingPoint)}
         >
           Agora não
         </button>

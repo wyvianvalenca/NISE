@@ -25,7 +25,8 @@ export default function QuestionnairesPage() {
     try {
       await confirmQuestionnaireNotice();
       // Segue para a avaliação do evento (M1). Quando não há o que avaliar (M2), a
-      // própria A03 manda para os interesses, sem precisar perguntar ao back duas vezes.
+      // própria A03 manda para a A05a "Antes de começar" (#303), sem precisar
+      // perguntar ao back duas vezes.
       router.push(SIGNUP_PATHS.rating);
     } catch {
       setError("Não deu pra salvar. Tente de novo.");

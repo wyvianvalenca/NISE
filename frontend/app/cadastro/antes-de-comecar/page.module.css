@@ -1,0 +1,52 @@
+/* A05a · Antes de começar. O resto vem de ../cadastro.module.css. */
+
+.questions {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 22px;
+}
+
+/* Medidas do Figma (2013:903): pergunta em 15px bold e chips de 8px × 14px.
+   Assim as três opções da pergunta 2 cabem numa linha em 390px. */
+.questions legend {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.questions .choice {
+  padding: 8px 14px;
+}
+
+.questions .choice[aria-pressed="true"] {
+  padding: 7px 13px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+/* "Pular": botão com cara de link, como o "Agora não" da A03. */
+.skip {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.skip:hover {
+  text-decoration: underline;
+}
+
+.skip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
