@@ -17,7 +17,7 @@ from app.modules.answers.models import Answer
 from app.modules.attendance.models import AttendanceEmail
 from app.modules.followup.models import CourseCode, FollowupAnswer
 from app.modules.followup.utils import COURSE_LABELS
-from app.modules.girl_file.models import FileEntry
+from app.modules.girl_file.models import IN_FILE, FileEntry
 from app.modules.girls.models import ANONYMIZED_NAME, Girl, GirlTopic
 from app.modules.groups.models import Invite
 from app.users.models import OAuthAccount, Role, User
@@ -66,7 +66,12 @@ async def delete_account(
     if girl_id is not None:
         # O que é só dela e nenhum painel lê.
         await session.execute(delete(GirlTopic).where(GirlTopic.girl_id == girl_id))
-        await session.execute(delete(FileEntry).where(FileEntry.girl_id == girl_id))
+        # "Ver depois", "Não é pra mim" e "Não deu" não contam em painel nenhum.
+        await session.execute(
+            delete(FileEntry).where(
+                FileEntry.girl_id == girl_id, FileEntry.status.not_in(IN_FILE)
+            )
+        )
         await session.execute(delete(Invite).where(Invite.girl_id == girl_id))
         # Os e-mails dos indícios saem junto (CASCADE de list_match_id).
         await session.execute(delete(ListMatch).where(ListMatch.girl_id == girl_id))
@@ -99,6 +104,18 @@ async def delete_account(
             update(FollowupAnswer)
             .where(FollowupAnswer.girl_id == girl_id)
             .values(comment=None)
+        )
+        # O que está no filé conta em "Começaram o filé" e "Concluíram algo do
+        # filé" (RF-F5.31): o item, a situação e as datas ficam.
+        await session.execute(
+            update(FileEntry)
+            .where(FileEntry.girl_id == girl_id)
+            .values(
+                rating=None,
+                similar_choice=None,
+                reminder=False,
+                reminder_sent_for=None,
+            )
         )
         # A ligação com a lista oficial diz a instituição e a chamada.
         await session.execute(

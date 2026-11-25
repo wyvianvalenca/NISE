@@ -62,7 +62,12 @@ from app.modules.followup.models import (
     FollowupRound,
     HelpWanted,
 )
-from app.modules.girl_file.models import FileEntry, FileStatus
+from app.modules.girl_file.models import (
+    DismissReason,
+    FileEntry,
+    FileStatus,
+    SimilarChoice,
+)
 from app.modules.girls.deletion import DeletionResult, delete_account
 from app.modules.girls.models import Girl, GirlTopic, StudyStage, Topic
 from app.modules.girls.utils import today_in_maceio
@@ -350,6 +355,17 @@ async def montar(sessao: AsyncSession) -> Cenario:
             reminder=True,
         )
     )
+    # E concluiu no filé o evento de uma ação depois da primeira a que veio.
+    sessao.add(
+        FileEntry(
+            girl_id=alana.id,
+            action_id=passada_2.id,
+            status=FileStatus.CONCLUDED,
+            concluded_on=passada_2.starts_on,
+            rating=5,
+            similar_choice=SimilarChoice.MAIS_AVANCADO,
+        )
+    )
     await sessao.flush()
 
     return Cenario(grupo, passada, passada_2, futura, alana, alana_user, bia, cris)
@@ -427,6 +443,10 @@ async def test_os_numeros_dos_paineis_nao_mudam(db_session: AsyncSession) -> Non
         "graduacao": 2,
         "tecnico": 0,
     }
+
+    # O filé dela conta nos dois cartões (RF-F5.31).
+    assert antes["c5"]["started_file"]["participants"] == 1
+    assert antes["c5"]["concluded_file"]["participants"] == 1
 
     await excluir_pela_rota(db_session, c)
 
@@ -794,6 +814,50 @@ async def test_ingressos_ficam_sem_curso_digitado_e_sem_lista_oficial(
         ("Ciência da Computação", "UFAL", None, declarado, graduacao),
         ("Informática", "IFAL", lista, oficial, tecnico),
     ]
+
+
+# C6: fica o que está no filé, sem nota, preferência nem lembrete; o resto sai.
+async def test_do_file_fica_so_o_que_conta_nos_paineis(
+    db_session: AsyncSession,
+) -> None:
+    c = await montar(db_session)
+    fora_do_file = [
+        (FileStatus.LATER, None),
+        (FileStatus.DISMISSED, DismissReason.SEM_TEMPO_AGORA),
+        (FileStatus.DID_NOT_GO, None),
+    ]
+    for numero, (status, motivo) in enumerate(fora_do_file):
+        outra = await acao(db_session, c.grupo, f"Outra {numero}", 40, False)
+        db_session.add(
+            FileEntry(
+                girl_id=c.alana.id,
+                action_id=outra.id,
+                status=status,
+                dismiss_reason=motivo,
+            )
+        )
+    await db_session.flush()
+
+    await excluir_pela_rota(db_session, c)
+
+    entradas = await db_session.scalars(
+        select(FileEntry)
+        .where(FileEntry.girl_id == c.alana.id)
+        .order_by(FileEntry.action_id)
+    )
+    ficaram = list(entradas)
+    assert [(e.action_id, e.status) for e in ficaram] == [
+        (c.passada_2.id, FileStatus.CONCLUDED),
+        (c.futura.id, FileStatus.SIGNED_UP),
+    ]
+    for entrada in ficaram:
+        assert entrada.filed_at is not None
+        assert entrada.rating is None
+        assert entrada.similar_choice is None
+        assert entrada.dismiss_reason is None
+        assert entrada.reminder is False
+        assert entrada.reminder_sent_for is None
+    assert ficaram[0].concluded_on == c.passada_2.starts_on
 
 
 # C7: duas vezes anonimiza uma só.

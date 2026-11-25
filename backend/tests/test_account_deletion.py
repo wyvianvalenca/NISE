@@ -146,15 +146,19 @@ async def test_excluir_anonimiza_a_usuaria_e_grava_o_pedido() -> None:
 
 
 # C3, C4: filtro de dono e valor de cada comando, no SQL que o banco receberia.
-async def test_excluir_roda_os_16_comandos_nesta_ordem_com_o_id_da_menina() -> None:
+async def test_excluir_roda_os_17_comandos_nesta_ordem_com_o_id_da_menina() -> None:
     sessao_falsa = sessao_da_exclusao(alana())
 
     await excluir(sessao_falsa)
 
     sql = escritas(sessao_falsa)
-    assert len(sql) == 16
+    assert len(sql) == 17
     assert sql[0] == "DELETE FROM girl_topics WHERE girl_topics.girl_id = 7"
-    assert sql[1] == "DELETE FROM file_entries WHERE file_entries.girl_id = 7"
+    assert sql[1] == (
+        "DELETE FROM file_entries WHERE file_entries.girl_id = 7 AND "
+        "(file_entries.status NOT IN ('NEXT', 'IN_PROGRESS', 'CONCLUDED', "
+        "'SIGNED_UP'))"
+    )
     assert sql[2] == "DELETE FROM invites WHERE invites.girl_id = 7"
     assert sql[3] == "DELETE FROM list_matches WHERE list_matches.girl_id = 7"
     assert sql[4] == "DELETE FROM dismissed_matches WHERE dismissed_matches.girl_id = 7"
@@ -174,10 +178,14 @@ async def test_excluir_roda_os_16_comandos_nesta_ordem_com_o_id_da_menina() -> N
         "UPDATE followup_answers SET comment=NULL WHERE followup_answers.girl_id = 7"
     )
     assert sql[10] == (
+        "UPDATE file_entries SET rating=NULL, similar_choice=NULL, reminder=false, "
+        "reminder_sent_for=NULL, updated_at=now() WHERE file_entries.girl_id = 7"
+    )
+    assert sql[11] == (
         "UPDATE enrollments SET institution=NULL, official_list_id=NULL "
         "WHERE enrollments.girl_id = 7"
     )
-    assert sql[11] == (
+    assert sql[12] == (
         "UPDATE enrollments SET course='Outro curso' WHERE enrollments.girl_id = 7 "
         "AND enrollments.origin = 'SELF_DECLARED' AND (enrollments.course NOT IN "
         "('Sistemas de Informação', 'Ciência da Computação', "
@@ -187,16 +195,16 @@ async def test_excluir_roda_os_16_comandos_nesta_ordem_com_o_id_da_menina() -> N
         r"UPDATE attendance_emails SET dropped_at='[^']+' WHERE "
         r"attendance_emails.girl_id = 7 AND attendance_emails.sent_at IS NULL "
         r"AND attendance_emails.dropped_at IS NULL",
-        sql[12],
+        sql[13],
     )
-    assert sql[13] == (
+    assert sql[14] == (
         "UPDATE girls SET email='registro-7@anonimizado.invalid', "
         "name='Registro anonimizado', birth_date=NULL, city_ibge_code=NULL, "
         "study_stage=NULL, all_topics=false, file_intro_seen=false, "
         "last_band=NULL, updated_at=now() WHERE girls.id = 7"
     )
-    assert sql[14] == "DELETE FROM oauth_accounts WHERE oauth_accounts.user_id = 1"
-    assert sql[15] == (
+    assert sql[15] == "DELETE FROM oauth_accounts WHERE oauth_accounts.user_id = 1"
+    assert sql[16] == (
         "DELETE FROM password_reset_tokens WHERE password_reset_tokens.user_id = 1"
     )
 
@@ -234,13 +242,13 @@ async def test_excluir_da_usuaria_2_usa_a_menina_8_e_o_usuario_2() -> None:
     await excluir(sessao_falsa, user_id=2)
 
     sql = escritas(sessao_falsa)
-    assert len(sql) == 16
+    assert len(sql) == 17
     assert not any("= 7" in s or "-7@" in s for s in sql)
     assert sql[0] == "DELETE FROM girl_topics WHERE girl_topics.girl_id = 8"
-    assert "registro-8@anonimizado.invalid" in sql[13]
-    assert sql[13].endswith("WHERE girls.id = 8")
-    assert sql[14].endswith("oauth_accounts.user_id = 2")
-    assert sql[15].endswith("password_reset_tokens.user_id = 2")
+    assert "registro-8@anonimizado.invalid" in sql[14]
+    assert sql[14].endswith("WHERE girls.id = 8")
+    assert sql[15].endswith("oauth_accounts.user_id = 2")
+    assert sql[16].endswith("password_reset_tokens.user_id = 2")
 
 
 async def test_excluir_acha_a_menina_pelo_user_id_da_sessao() -> None:
@@ -295,8 +303,8 @@ async def test_excluir_duas_vezes_anonimiza_uma_so() -> None:
     assert (primeira, segunda) == (204, 204)
     assert "Max-Age=0" in cookies1[SESSION_COOKIE]
     assert "Max-Age=0" in cookies2[SESSION_COOKIE]
-    assert escritas_da_primeira == 16
-    assert len(sessao_falsa.execute.call_args_list) == 16
+    assert escritas_da_primeira == 17
+    assert len(sessao_falsa.execute.call_args_list) == 17
     sessao_falsa.commit.assert_awaited_once()
     assert usuaria.deleted_at == pedido
 
@@ -484,7 +492,28 @@ DESTINO: dict[str, dict[str, object]] = {
         },
     },
     "girl_topics": {"acao": APAGAR},
-    "file_entries": {"acao": APAGAR},
+    # As linhas fora do filé são apagadas antes; as do filé são esvaziadas.
+    "file_entries": {
+        "acao": ESVAZIAR,
+        "fica": {
+            "id",
+            "girl_id",
+            "curated_item_id",
+            "action_id",
+            "status",
+            "filed_at",
+            "concluded_on",
+            "created_at",
+            "updated_at",
+        },
+        "esvazia": {
+            "dismiss_reason": None,
+            "rating": None,
+            "similar_choice": None,
+            "reminder": False,
+            "reminder_sent_for": None,
+        },
+    },
     "answers": {
         "acao": ESVAZIAR,
         "fica": {"id", "girl_id", "action_id", "stage", "score", "created_at"},
