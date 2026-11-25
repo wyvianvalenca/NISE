@@ -60,7 +60,7 @@ class CreatedInvite:
     token: str
 
 
-async def _find_group(session: AsyncSession, name: str, city_id: int) -> Group | None:
+async def find_group(session: AsyncSession, name: str, city_id: int) -> Group | None:
     """O grupo com o mesmo nome (sem ligar para maiúsculas) na mesma cidade."""
     return await session.scalar(
         select(Group).where(
@@ -114,7 +114,7 @@ async def create_coordinator_invite(
     else:
         assert new_group_name is not None and new_group_city_id is not None
         await ensure_city_exists(session, new_group_city_id)
-        if await _find_group(session, new_group_name, new_group_city_id):
+        if await find_group(session, new_group_name, new_group_city_id):
             raise CoordinatorInviteError("group_exists")
         group = Group(name=new_group_name, city_id=new_group_city_id)
         session.add(group)
@@ -175,6 +175,28 @@ async def resend_coordinator_invite(
     await session.commit()
 
     return CreatedInvite(invite=invite, group=invite.group, token=token)
+
+
+async def create_group(session: AsyncSession, *, name: str, city_id: int) -> Group:
+    """Cria um grupo sem convidar ninguém (AD06, RF-S2.30).
+
+    Levanta CoordinatorInviteError("group_exists") se já há um grupo com esse
+    nome nessa cidade (D-120) e InvalidCityError se a cidade não é do IBGE.
+    """
+    await ensure_city_exists(session, city_id)
+    if await find_group(session, name, city_id):
+        raise CoordinatorInviteError("group_exists")
+
+    group = Group(name=name, city_id=city_id)
+    session.add(group)
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Outra requisição criou o mesmo grupo no mesmo instante.
+        await session.rollback()
+        raise CoordinatorInviteError("group_exists") from None
+
+    return group
 
 
 async def list_groups(session: AsyncSession) -> list[Group]:

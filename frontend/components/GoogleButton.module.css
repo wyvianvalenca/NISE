@@ -16,3 +16,15 @@
 .button:hover {
   background: var(--nise-paper);
 }
+
+.texts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.hint {
+  color: var(--nise-muted);
+  font-size: 12px;
+  font-weight: 400;
+}

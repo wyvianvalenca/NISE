@@ -10,15 +10,18 @@ from app.modules.admin.schemas import (
     CoordinatorInviteIn,
     CoordinatorInviteOut,
     CoordinatorListOut,
+    GroupCardOut,
     GroupOut,
+    NewGroupIn,
 )
-from app.modules.admin.service import list_coordinators
+from app.modules.admin.service import list_coordinators, list_group_cards
 from app.modules.groups.coordinator_email import (
     first_name,
     send_coordinator_invite_email,
 )
 from app.modules.groups.coordinator_invites import (
     create_coordinator_invite,
+    create_group,
     list_groups,
     resend_coordinator_invite,
 )
@@ -142,3 +145,35 @@ async def resend_invite(
         expires_at=invite.expires_at,
         email_sent=email_sent,
     )
+
+
+# AD06 Grupos · os cartões (#456, RF-S2.29). Só a equipe NISE (RNF-G.03).
+# Só contagens de meninas, nunca quais são (RN-41).
+@router.get(
+    "/groups/overview",
+    response_model=list[GroupCardOut],
+    responses={status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"}},
+)
+async def groups_overview(
+    _team: NiseTeamDep, session: AsyncSessionDep
+) -> list[GroupCardOut]:
+    return await list_group_cards(session)
+
+
+# AD06 + Novo grupo (#456, RF-S2.30, D-120). Cria só o grupo: nenhum convite e
+# nenhum e-mail. Erros, em {"error": ...}: 409 group_exists; 422 invalid_city.
+@router.post(
+    "/groups",
+    response_model=GroupCardOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"},
+        status.HTTP_409_CONFLICT: {"description": "group_exists"},
+    },
+)
+async def new_group(
+    data: NewGroupIn, _team: NiseTeamDep, session: AsyncSessionDep
+) -> GroupCardOut:
+    group = await create_group(session, name=data.name, city_id=data.city_id)
+    cards = await list_group_cards(session)
+    return next(card for card in cards if card.id == group.id)

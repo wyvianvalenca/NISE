@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
@@ -44,6 +44,40 @@ class GoogleSignupCompleteIn(BaseModel):
     city_id: int
     # True quando a tela avisou que o convite venceu e ela seguiu sem ele.
     without_invite: bool = False
+
+
+class CoordinatorSignupIn(BaseModel):
+    """A coordenadora cria a conta pelo link do convite (CV02, #455).
+
+    O e-mail não vem daqui: é o do convite. Tamanho da senha, aceite e versão
+    dos termos são conferidos no serviço, que devolve um código para o front.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    token: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+    ]
+    # Sem teto, uma senha gigante prenderia o servidor no Argon2.
+    password: Annotated[str, StringConstraints(max_length=128)]
+    accepted_terms: bool
+    terms_version: Annotated[str, StringConstraints(max_length=64)]
+
+
+class CoordinatorInviteCheckIn(BaseModel):
+    """O link do convite. Vai no corpo, não na URL da API, para não ficar em logs."""
+
+    token: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+
+class CoordinatorInviteViewOut(BaseModel):
+    """O que a CV02 mostra do convite: o grupo, o e-mail travado e a validade."""
+
+    name: str
+    email: str
+    group_name: str
+    expires_at: datetime
 
 
 class SignupOut(UserOut):
