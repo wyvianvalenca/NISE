@@ -11,10 +11,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { getEvent, type EventDetail } from "@/lib/evento";
+import { Suspense, useEffect, useRef } from "react";
+import { Button } from "@/components/Button";
 import shared from "../../../[id]/atividade.module.css";
 import celebration from "../../../[id]/concluida/concluida.module.css";
+import { useEvent } from "../useEvent";
 
 const FILE_PATH = "/file";
 
@@ -48,26 +49,27 @@ function Loading() {
 
 function Celebration() {
   const { id } = useParams<{ id: string }>();
-  const [event, setEvent] = useState<EventDetail | null | undefined>(undefined);
+  const { result, redirecting, retry } = useEvent(id);
+  const event = result?.ok ? result.data : null;
   const headingRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => {
-    let current = true;
-    getEvent(id).then((result) => {
-      if (current) setEvent(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [id]);
 
   // Leva o foco ao título quando a tela abre, para o leitor de tela anunciar a conquista.
   useEffect(() => {
     if (event) headingRef.current?.focus();
   }, [event]);
 
-  if (event === undefined) return <Loading />;
-  if (event === null || event.status !== "concluded") {
+  if (!result || redirecting) return <Loading />;
+  if (!result.ok && result.reason !== "not_found") {
+    return (
+      <div role="alert">
+        <p className={shared.status}>Não deu pra carregar o evento.</p>
+        <Button variant="secondary" size="sm" onClick={retry}>
+          Tentar de novo
+        </Button>
+      </div>
+    );
+  }
+  if (!event || event.status !== "concluded") {
     return <p className={shared.status}>Esse evento não está nos concluídos do seu filé.</p>;
   }
   return (

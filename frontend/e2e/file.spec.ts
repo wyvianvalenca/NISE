@@ -4,6 +4,7 @@ import { mockActivityApi } from "./activity-api";
 import { mockDiscoverApi } from "./discover-api";
 import { type MockFileItem, mockFileApi } from "./file-api";
 import { slowAnimations } from "./frames";
+import { mockProfileApi } from "./profile-api";
 import { mockTermsApi } from "./terms-api";
 
 // #115 e #117 · A06·3 Seu filé, pela rota GET /api/file (#116), simulada em file-api.ts.
@@ -46,10 +47,20 @@ test("mostra o título, o texto e os links para o Descobrir e para Por que filé
 
   await expect(page.getByRole("heading", { level: 1, name: "Seu filé" })).toBeVisible();
   await expect(page.getByText("No seu ritmo, sem pressa.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "O que é o filé?" })).toHaveAttribute("href", "/por-que-file");
+  await expect(page.getByRole("link", { name: "O que é o filé?" })).toHaveAttribute("href", "/por-que-file?rever=1");
 
   await page.getByRole("link", { name: "Descobrir mais sugestões" }).click();
   await expect(page).toHaveURL(/\/descobrir$/);
+});
+
+test("o \"?\" abre Por que filé? mesmo para quem já viu a explicação (#428)", async ({ page }) => {
+  await mockProfileApi(page, { seen: true });
+  await page.goto("/file");
+
+  await page.getByRole("link", { name: "O que é o filé?" }).click();
+
+  await expect(page).toHaveURL(/\/por-que-file\?rever=1$/);
+  await expect(page.getByRole("heading", { name: "Por que filé?" })).toBeVisible();
 });
 
 test("as três seções têm contador; Concluídos começa fechada", async ({ page }) => {

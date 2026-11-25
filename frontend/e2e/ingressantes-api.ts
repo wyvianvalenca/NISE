@@ -5,6 +5,7 @@ import type {
   EnrollmentSummary,
   ListSearch,
 } from "../lib/ingressantes-api";
+import { signedIn } from "./session";
 
 // Simula GET /api/coordinator/enrollments (#315) para os testes não dependerem
 // do FastAPI. Dados fictícios.
@@ -79,6 +80,7 @@ type Options = {
  * Devolve as páginas pedidas.
  */
 export async function mockEnrollmentsApi(page: Page, options: Options = {}): Promise<number[]> {
+  await signedIn(page);
   const { rows = FIRST_ROWS, waiting = [], status } = options;
   const asked: number[] = [];
 
@@ -117,6 +119,7 @@ type SearchOptions = {
 
 /** Simula GET /api/coordinator/list-search (#317). Datas e fontes fictícias. */
 export async function mockListSearchApi(page: Page, options: SearchOptions = {}): Promise<void> {
+  await signedIn(page);
   const {
     search = {
       sources: ["UFAL"],
@@ -157,6 +160,7 @@ type SummaryOptions = {
 
 /** Simula GET /api/coordinator/enrollments/summary (#316). Dados fictícios. */
 export async function mockSummaryApi(page: Page, options: SummaryOptions = {}): Promise<void> {
+  await signedIn(page);
   const { summary = FIGMA_SUMMARY, status } = options;
 
   await page.route("**/api/coordinator/enrollments/summary", (route) =>

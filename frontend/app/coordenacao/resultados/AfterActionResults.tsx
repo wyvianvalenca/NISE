@@ -153,11 +153,24 @@ export function AfterActionResults() {
               noShows={result.numbers.noShows}
               didIt={result.numbers.returned}
             />
+            <Indicator
+              title="Começaram o filé"
+              participants={result.numbers.participants}
+              noShows={result.numbers.noShows}
+              didIt={result.numbers.startedFile}
+            />
+            <Indicator
+              title="Concluíram algo do filé"
+              participants={result.numbers.participants}
+              noShows={result.numbers.noShows}
+              didIt={result.numbers.concludedFile}
+            />
           </div>
         )}
 
         <p className={styles.footnote}>
-          “Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE.
+          “Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra se o
+          incentivo continuou logo depois do evento, antes do primeiro questionário.
         </p>
       </section>
     </>

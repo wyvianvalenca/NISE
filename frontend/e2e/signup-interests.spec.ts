@@ -186,7 +186,7 @@ test("se as listas não carregam, deixa tentar de novo", async ({ page }) => {
 test("sem sessão, volta para a página inicial", async ({ page }) => {
   await openInterests(page, { options: 401 });
 
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
 });
 
 test("com o cadastro do Google incompleto, volta para a A02b", async ({ page }) => {
@@ -211,7 +211,7 @@ test("se a sessão cai antes de salvar, volta para a página inicial", async ({ 
   await topic(page, "Ensino médio").click();
   await page.getByRole("button", { name: "Começar meu filé" }).click();
 
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
 });
 
 test("se os termos mudaram antes de salvar, volta para a A04·1", async ({ page }) => {

@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 from pydantic.alias_generators import to_camel
 
+from app.modules.groups.schemas import GroupOut
 from app.users.schemas import UserOut
 
 
@@ -64,6 +65,18 @@ class PendingSignupOut(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class MeOut(UserOut):
+    """The signed-in account, with the group of a coordinator (H3).
+
+    Only `GET /auth/me` carries `group`: sign-up and login answer with
+    `UserOut` data, so they do not pay a group lookup. It is null for a girl and
+    for a coordinator with no group. A coordinator of several groups gets the
+    one with the lowest id until a story lets her choose.
+    """
+
+    group: GroupOut | None = None
 
 
 class SessionOut(UserOut):

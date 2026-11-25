@@ -175,7 +175,7 @@ test("sem sessão, volta para a página inicial sem mostrar os termos", async ({
   await page.goto("/cadastro/termos");
 
   await expect(page.getByText("Carregando…")).toBeVisible();
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
   expect(await page.evaluate(() => sessionStorage.getItem("viu-os-termos"))).toBeNull();
 });
 
@@ -194,5 +194,5 @@ test("se a sessão acaba antes do aceite, volta para a página inicial", async (
 
   await accept(page);
 
-  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(page).toHaveURL("/");
 });
