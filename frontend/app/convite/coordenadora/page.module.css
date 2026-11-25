@@ -1,0 +1,129 @@
+/* CV02 "Crie sua conta", computer (Figma 2549-938). Made for 1366 px. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  height: 68px;
+  padding: 0 48px;
+  border-bottom: 1px solid var(--nise-border);
+}
+
+.main {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 48px 64px;
+}
+
+.status {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 64px 24px;
+  color: var(--nise-muted);
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 32px;
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.lead {
+  margin-top: 12px;
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+.lead strong {
+  color: var(--nise-ink);
+}
+
+.inviteCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+  background: var(--nise-surface);
+}
+
+.group {
+  color: var(--nise-ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.small {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-left: 20px;
+  color: var(--nise-ink);
+  font-size: 16px;
+  list-style: disc;
+}
+
+.formArea {
+  max-width: 440px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--nise-muted);
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--nise-border);
+}
+
+.error {
+  margin-top: 4px;
+  color: var(--nise-pink);
+  font-size: 14px;
+}
+
+.fullWidth {
+  width: 100%;
+  margin-top: 8px;
+}
