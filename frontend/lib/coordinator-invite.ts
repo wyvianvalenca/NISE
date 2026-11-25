@@ -1,4 +1,5 @@
 import type { components } from "./api/schema";
+import type { InviteProblem } from "@/components/CoordinatorInviteProblem";
 import { errorCode, MINIMUM_PASSWORD_LENGTH } from "./signup-api";
 
 type SessionOut = components["schemas"]["SessionOut"];
@@ -19,6 +20,8 @@ export type CreateCoordinatorResult =
         | "terms_outdated"
         | "invite_invalid"
         | "failed";
+      /** Set with `invite_invalid`: the screen for why the link stopped working. */
+      problem?: InviteProblem;
     };
 
 /** Messages for the `erro` code the Google callback puts in the URL. */
@@ -42,17 +45,42 @@ export function formatValidUntil(isoDate: string): string {
   }).format(new Date(isoDate));
 }
 
+/** What the check says about a link: the invite, or why the link does not work. */
+export type InviteCheck =
+  | { invite: CoordinatorInvite; problem?: undefined }
+  | { invite?: undefined; problem: InviteProblem };
+
 /**
- * The invite behind the link, for CV02. `null` means the link does not work
- * (it does not exist, expired, was used or its e-mail has an account): the
- * screens for the last three belong to #458, so here they all say the same.
- * Any other failure throws, so the page does not claim the link is bad.
+ * The screen for an error code of the back-end (`error` in the body, or `erro`
+ * in the URL after Google). A link that does not exist looks like an expired
+ * one, so nobody learns which links were ever issued.
  */
-export async function getCoordinatorInvite(
-  token: string,
-): Promise<CoordinatorInvite | null> {
+export function inviteProblemFromCode(
+  code: string | null | undefined,
+): InviteProblem | null {
+  switch (code) {
+    case "invite_expired":
+    case "invite_not_found":
+      return "expired";
+    case "invite_replaced":
+      return "replaced";
+    case "invite_used":
+      return "used";
+    case "email_has_account":
+      return "has_account";
+    default:
+      return null;
+  }
+}
+
+/**
+ * The invite behind the link, for CV02, or the problem that makes the screens
+ * CV04, CV05 and CV06 (#458) take its place. Any other failure throws, so the
+ * page does not claim the link is bad.
+ */
+export async function getCoordinatorInvite(token: string): Promise<InviteCheck> {
   if (!token) {
-    return null;
+    return { problem: "expired" };
   }
 
   const response = await fetch("/api/auth/coordinator-invite/check", {
@@ -62,10 +90,11 @@ export async function getCoordinatorInvite(
   });
 
   if (response.ok) {
-    return (await response.json()) as CoordinatorInvite;
+    return { invite: (await response.json()) as CoordinatorInvite };
   }
   if ([404, 409, 410].includes(response.status)) {
-    return null;
+    const problem = inviteProblemFromCode(await errorCode(response));
+    return { problem: problem ?? "expired" };
   }
   throw new Error(`coordinator invite check: ${response.status}`);
 }
@@ -104,7 +133,8 @@ export async function createCoordinatorAccount(data: {
     }
   }
   if ([404, 409, 410].includes(response.status)) {
-    return { ok: false, reason: "invite_invalid" };
+    const problem = inviteProblemFromCode(await errorCode(response));
+    return { ok: false, reason: "invite_invalid", problem: problem ?? "expired" };
   }
 
   return { ok: false, reason: "failed" };

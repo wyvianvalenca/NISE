@@ -3370,7 +3370,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description {"error": "invite_expired"} ou {"error": "invite_used"} */
+            /** @description {"error": "invite_expired"}, {"error": "invite_used"} ou {"error": "invite_replaced"} */
             410: {
                 headers: {
                     [name: string]: unknown;

@@ -17,7 +17,7 @@ const INVITE = {
   expires_at: "2026-12-12T15:00:00Z",
 };
 
-type Mocks = { checkStatus?: number; signupStatus?: number; signupError?: string };
+type Mocks = { checkStatus?: number; checkError?: string; signupStatus?: number; signupError?: string };
 
 /** Mocks the check and the sign-up. Returns the bodies sent to the sign-up. */
 async function mockInviteApi(page: Page, mocks: Mocks = {}) {
@@ -26,7 +26,7 @@ async function mockInviteApi(page: Page, mocks: Mocks = {}) {
     const status = mocks.checkStatus ?? 200;
     return route.fulfill({
       status,
-      json: status === 200 ? INVITE : { error: "invite_not_found" },
+      json: status === 200 ? INVITE : { error: mocks.checkError ?? "invite_not_found" },
     });
   });
   await page.route("**/api/auth/signup/coordinator", (route) => {
@@ -145,7 +145,8 @@ test("a link that does not exist does not show the form", async ({ page }) => {
   await mockInviteApi(page, { checkStatus: 404 });
   await page.goto("/convite/coordenadora?token=nada");
 
-  await expect(page.getByText("Esse link não vale")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Esse convite expirou" })).toBeVisible();
+  await expect(page.getByText("Veja o e-mail mais recente")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Criar conta" })).toHaveCount(0);
 });
 
@@ -155,5 +156,39 @@ test("a link used meanwhile stops the sign-up", async ({ page }) => {
 
   await fillAndSend(page);
 
-  await expect(page.getByText("Esse link não vale")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Esse convite já foi usado" })).toBeVisible();
+});
+
+const PROBLEMS = [
+  { status: 410, error: "invite_expired", title: "Esse convite expirou", recovery: false },
+  { status: 410, error: "invite_used", title: "Esse convite já foi usado", recovery: true },
+  { status: 409, error: "email_has_account", title: "Você já tem conta na NISE", recovery: true },
+];
+
+for (const problem of PROBLEMS) {
+  test(`${problem.error} opens its screen without data or form`, async ({ page }) => {
+    await mockInviteApi(page, { checkStatus: problem.status, checkError: problem.error });
+    await page.goto("/convite/coordenadora?token=abc");
+
+    await expect(page.getByRole("heading", { name: problem.title })).toBeVisible();
+    await expect(page.getByText(INVITE.group_name)).toHaveCount(0);
+    await expect(page.getByText(INVITE.email)).toHaveCount(0);
+    await expect(page.locator("input")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Esqueci minha senha" })).toHaveCount(
+      problem.recovery ? 1 : 0,
+    );
+    await expect(page.getByRole("button", { name: "Pedir novo convite" })).toHaveCount(0);
+  });
+}
+
+test("a replaced link says to see the latest e-mail", async ({ page }) => {
+  await mockInviteApi(page, { checkStatus: 410, checkError: "invite_replaced" });
+  await page.goto("/convite/coordenadora?token=abc");
+
+  await expect(page.getByRole("heading", { name: "Esse convite expirou" })).toBeVisible();
+  await expect(page.getByText("Veja o e-mail mais recente da NISE.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Entrar com outra conta" })).toHaveAttribute(
+    "href",
+    "/entrar",
+  );
 });
