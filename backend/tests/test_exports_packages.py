@@ -214,11 +214,27 @@ async def test_interesse_tem_uma_coluna_por_marco(db_session: AsyncSession) -> N
         "interesse_12m",
         "interesse_18m",
     ]
+    # Sem resposta na A05a "Antes de começar" (#303): pulou ou é conta antiga.
     assert valores["interesse_cadastro"] == ""
     assert valores["interesse_3m"] == "Quero seguir"
     assert valores["interesse_6m"] == ""
     assert valores["interesse_18m"] == "Não é pra mim"
     assert "Comentário" not in "".join(valores.values())
+
+
+async def test_interesse_cadastro_vem_da_a05a(db_session: AsyncSession) -> None:
+    # O marco "cadastro" é a pergunta 1 da A05a "Antes de começar" (#303).
+    g = await grupo(db_session)
+    a = await acao(db_session, g)
+    quem = await menina(db_session, 1)
+    await inscrever(db_session, quem, a)
+    quem.signup_computing_view = ComputingView.LIKE_BUT_UNSURE
+    await db_session.flush()
+
+    valores = await linha(db_session, g, [Package.INTEREST])
+
+    assert valores["interesse_cadastro"] == "Gosto, mas não sei"
+    assert valores["interesse_3m"] == ""
 
 
 # --- Ingresso -----------------------------------------------------------------------

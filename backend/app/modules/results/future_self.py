@@ -61,8 +61,9 @@ async def future_self_by_participation(
       ação de qualquer grupo. Entram todas as da NISE, não só as ligadas a este
       grupo, e os filtros não mexem nelas. Só entram como total.
     - O valor de cada marco é "Com certeza" entre as que responderam à pergunta
-      2 naquela rodada. Quem pulou a pergunta não entra no n. O cadastro ainda
-      não guarda essa resposta (RF-F10.26 é Should): fica com 0 respostas.
+      2 naquele marco. Quem pulou a pergunta não entra no n. O marco
+      "Cadastro" é a pergunta 2 da A05a "Antes de começar" (RF-F10.26, #303):
+      quem pulou, ou criou a conta antes dela, também fica fora do n.
     """
     signups = await session.execute(
         select(Participation.girl_id, Participation.attended_at.is_not(None)).where(
@@ -94,8 +95,8 @@ async def future_self_by_participation(
     members[ParticipationGroup.NEVER] = set(alone)
 
     everyone = set().union(*members.values())
-    # Quem respondeu a pergunta 2 em cada rodada, e se disse "Com certeza".
-    said_sure: dict[tuple[int, FollowupRound], bool] = {}
+    # Quem respondeu a pergunta 2 em cada marco, e se disse "Com certeza".
+    said_sure: dict[tuple[int, FutureSelfMilestone], bool] = {}
     if everyone:
         rows = await session.execute(
             select(
@@ -105,23 +106,30 @@ async def future_self_by_participation(
                 FollowupAnswer.future_self.is_not(None),
             )
         )
-        said_sure = {
-            (girl_id, round_): future_self is FutureSelf.SURE
-            for girl_id, round_, future_self in rows
-        }
+        for girl_id, round_, future_self in rows:
+            milestone = FutureSelfMilestone(round_.value)
+            said_sure[girl_id, milestone] = future_self is FutureSelf.SURE
+
+        at_signup = await session.execute(
+            select(Girl.id, Girl.signup_future_self).where(
+                Girl.id.in_(everyone), Girl.signup_future_self.is_not(None)
+            )
+        )
+        for girl_id, future_self in at_signup:
+            said_sure[girl_id, FutureSelfMilestone.SIGNUP] = (
+                future_self is FutureSelf.SURE
+            )
 
     lines: list[FutureSelfLine] = []
     for group in ParticipationGroup:
         girls = members[group]
-        points = [FutureSelfPoint(FutureSelfMilestone.SIGNUP, 0, 0)]
-        for round_ in FollowupRound:
+        points = []
+        for milestone in FutureSelfMilestone:
             answers = [
-                said_sure[girl, round_] for girl in girls if (girl, round_) in said_sure
+                said_sure[girl, milestone]
+                for girl in girls
+                if (girl, milestone) in said_sure
             ]
-            points.append(
-                FutureSelfPoint(
-                    FutureSelfMilestone(round_.value), len(answers), sum(answers)
-                )
-            )
+            points.append(FutureSelfPoint(milestone, len(answers), sum(answers)))
         lines.append(FutureSelfLine(group, len(girls), points))
     return lines

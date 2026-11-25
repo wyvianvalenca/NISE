@@ -319,14 +319,20 @@ class Interest:
 async def signup_views(
     session: AsyncSession, girl_ids: set[int]
 ) -> dict[int, ComputingView]:
-    """O que cada menina respondeu no cadastro.
+    """O que cada menina respondeu à pergunta 1 no cadastro (A05a, #303).
 
-    A pergunta no cadastro ainda não existe (change #303, Should): até lá não
-    há resposta de cadastro de ninguém, o marco "Cadastro" mostra zero
-    respostas e a comparação não tem ponto de partida. Quando o #303 entrar,
-    só esta função muda.
+    Quem pulou, respondeu só a pergunta 2 ou criou a conta antes da A05a não
+    entra: não conta no marco "Cadastro" nem na comparação (RF-F5.04).
     """
-    return {}
+    if not girl_ids:
+        return {}
+
+    rows = await session.execute(
+        select(Girl.id, Girl.signup_computing_view).where(
+            Girl.id.in_(girl_ids), Girl.signup_computing_view.is_not(None)
+        )
+    )
+    return {girl_id: view for girl_id, view in rows if view is not None}
 
 
 def build_interest(
