@@ -2,8 +2,9 @@ import calendar
 import enum
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionTopic, ActionType, Participation
@@ -82,6 +83,26 @@ def period_start(period: Period, today: date) -> date | None:
     return None
 
 
+def filtered_actions(
+    group_id: int, filters: ResultsFilters, today: date
+) -> Select[Any]:
+    """Ids das ações do grupo com a presença salva que passam nos filtros."""
+    since = period_start(filters.period, today)
+
+    actions = select(Action.id).where(
+        Action.group_id == group_id, Action.attendance_registered_at.is_not(None)
+    )
+    if since is not None:
+        actions = actions.where(Action.starts_on >= since)
+    if filters.action_id is not None:
+        actions = actions.where(Action.id == filters.action_id)
+    if filters.type is not None:
+        actions = actions.where(Action.type == filters.type)
+    if filters.topic is not None:
+        actions = actions.where(Action.topics.any(ActionTopic.topic == filters.topic))
+    return actions
+
+
 async def after_action(
     session: AsyncSession, group_id: int, filters: ResultsFilters, today: date
 ) -> AfterAction:
@@ -105,19 +126,7 @@ async def after_action(
       quando ela o tira do "Ver depois". A própria ação de referência não
       conta.
     """
-    since = period_start(filters.period, today)
-
-    actions = select(Action.id).where(
-        Action.group_id == group_id, Action.attendance_registered_at.is_not(None)
-    )
-    if since is not None:
-        actions = actions.where(Action.starts_on >= since)
-    if filters.action_id is not None:
-        actions = actions.where(Action.id == filters.action_id)
-    if filters.type is not None:
-        actions = actions.where(Action.type == filters.type)
-    if filters.topic is not None:
-        actions = actions.where(Action.topics.any(ActionTopic.topic == filters.topic))
+    actions = filtered_actions(group_id, filters, today)
 
     signups = await session.execute(
         select(
