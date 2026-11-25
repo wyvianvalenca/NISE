@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
+import { FutureSelfCard } from "@/components/FutureSelfCard";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
@@ -19,6 +20,7 @@ import {
   percentLabel,
   type ResultsFilters,
 } from "@/lib/resultados-api";
+import { SAMPLE_FUTURE_SELF } from "@/lib/resultados-future-self";
 import styles from "./page.module.css";
 
 const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
@@ -173,6 +175,9 @@ export function AfterActionResults() {
           incentivo continuou logo depois do evento, antes do primeiro questionário.
         </p>
       </section>
+
+      {/* Dados de exemplo até a integração ligar a rota (#369). */}
+      <FutureSelfCard data={SAMPLE_FUTURE_SELF} />
     </>
   );
 }

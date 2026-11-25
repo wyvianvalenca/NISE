@@ -1,0 +1,62 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-16);
+  background: var(--nise-surface);
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.description,
+.footnote {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.footnote {
+  font-size: 13px;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--nise-ink);
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 8px 6px;
+  border-top: 1px solid var(--nise-divider);
+  text-align: left;
+  font-weight: 400;
+}
+
+.table thead th,
+.table tbody th {
+  font-weight: 700;
+}
+
+.caption {
+  margin-bottom: 8px;
+  color: var(--nise-muted);
+  text-align: left;
+}
+
+.n {
+  display: block;
+  color: var(--nise-muted);
+  font-size: 12px;
+}
