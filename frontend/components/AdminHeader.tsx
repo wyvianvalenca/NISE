@@ -3,11 +3,11 @@ import { Brand } from "./Brand";
 import styles from "./AdminHeader.module.css";
 
 /**
- * Sections of the NISE team admin. Only "Coordenadoras" exists in this story;
- * "Grupos" joins the menu with its own story.
+ * Sections of the NISE team admin: "Coordenadoras" and "Grupos".
  */
 const SECTIONS = [
   { key: "coordenadoras", label: "Coordenadoras", href: "/admin/coordenadoras" },
+  { key: "grupos", label: "Grupos", href: "/admin/grupos" },
 ] as const;
 
 export type AdminSection = (typeof SECTIONS)[number]["key"];

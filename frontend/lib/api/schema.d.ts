@@ -1183,7 +1183,8 @@ export interface paths {
         /** Groups */
         get: operations["groups_api_admin_groups_get"];
         put?: never;
-        post?: never;
+        /** New Group */
+        post: operations["new_group_api_admin_groups_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1201,6 +1202,23 @@ export interface paths {
         put?: never;
         /** Invite Coordinator */
         post: operations["invite_coordinator_api_admin_coordinators_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/groups/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups Overview */
+        get: operations["groups_overview_api_admin_groups_overview_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2323,6 +2341,31 @@ export interface components {
              * Format: date
              */
             starts_on: string;
+        };
+        /**
+         * GroupCardOut
+         * @description Um cartão da aba Grupos (AD06, RF-S2.29): só nome, cidade e contagens.
+         *
+         *     As meninas são as que têm o grupo como origem (RN-32); a equipe nunca vê
+         *     quais são (RN-41).
+         */
+        GroupCardOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** City */
+            city: string | null;
+            /** Coordinators */
+            coordinators: number;
+            /** Invites */
+            invites: number;
+            /** Girls */
+            girls: number;
+            /** Actions */
+            actions: number;
+            /** Needs Coordinator */
+            needs_coordinator: boolean;
         };
         /**
          * GroupOrigin
@@ -6485,6 +6528,56 @@ export interface operations {
             };
         };
     };
+    new_group_api_admin_groups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewGroupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupCardOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description group_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     invite_coordinator_api_admin_coordinators_invites_post: {
         parameters: {
             query?: never;
@@ -6526,6 +6619,45 @@ export interface operations {
             };
             /** @description email_has_account, invite_pending ou group_exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    groups_overview_api_admin_groups_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupCardOut"][];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
