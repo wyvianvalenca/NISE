@@ -53,7 +53,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserOut"
+                  "$ref": "#/components/schemas/MeOut"
                 }
               }
             }
@@ -7820,6 +7820,25 @@
         "title": "GroupOrigin",
         "description": "Ela veio pelo convite de um grupo (M1): a liderança dele vê os dados dela (RN-01)."
       },
+      "GroupOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "GroupOut",
+        "description": "A group as the signed-in coordinator's top menu needs it."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -8545,6 +8564,44 @@
           "dismissed"
         ],
         "title": "MatchResult"
+      },
+      "MeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GroupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ],
+        "title": "MeOut",
+        "description": "The signed-in account, with the group of a coordinator (H3).\n\nOnly `GET /auth/me` carries `group`: sign-up and login answer with\n`UserOut` data, so they do not pay a group lookup. It is null for a girl and\nfor a coordinator with no group. A coordinator of several groups gets the\none with the lowest id until a story lets her choose."
       },
       "OpenFollowupOut": {
         "properties": {
@@ -9482,33 +9539,6 @@
         ],
         "title": "UpcomingItemOut",
         "description": "Uma data da agenda: lembrete da equipe ou rodada de questionário."
-      },
-      "UserOut": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "email": {
-            "type": "string",
-            "title": "Email"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "role": {
-            "$ref": "#/components/schemas/Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "email",
-          "name",
-          "role"
-        ],
-        "title": "UserOut"
       },
       "ValidationError": {
         "properties": {

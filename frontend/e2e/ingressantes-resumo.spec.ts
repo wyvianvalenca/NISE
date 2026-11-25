@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockCoordinatorApi } from "./coordinator-api";
 import {
   FIGMA_SUMMARY,
   mockEnrollmentsApi,
@@ -12,6 +13,7 @@ const URL = "/coordenacao/ingressantes";
 const SUMMARY = "Resumo de quem ingressou";
 
 test.beforeEach(async ({ page }) => {
+  await mockCoordinatorApi(page);
   await mockEnrollmentsApi(page);
   await mockListSearchApi(page);
 });

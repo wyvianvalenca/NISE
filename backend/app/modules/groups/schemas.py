@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class InviteOut(BaseModel):
@@ -12,3 +12,12 @@ class InviteOut(BaseModel):
 
     # O front lê em camelCase (Invite.groupName em frontend/lib/signup-api.ts).
     group_name: str = Field(serialization_alias="groupName")
+
+
+class GroupOut(BaseModel):
+    """A group as the signed-in coordinator's top menu needs it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str

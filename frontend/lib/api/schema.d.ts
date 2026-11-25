@@ -2136,6 +2136,16 @@ export interface components {
             /** Groupname */
             groupName: string;
         };
+        /**
+         * GroupOut
+         * @description A group as the signed-in coordinator's top menu needs it.
+         */
+        GroupOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2439,6 +2449,25 @@ export interface components {
          * @enum {string}
          */
         MatchResult: "enrolled" | "approved" | "dismissed";
+        /**
+         * MeOut
+         * @description The signed-in account, with the group of a coordinator (H3).
+         *
+         *     Only `GET /auth/me` carries `group`: sign-up and login answer with
+         *     `UserOut` data, so they do not pay a group lookup. It is null for a girl and
+         *     for a coordinator with no group. A coordinator of several groups gets the
+         *     one with the lowest id until a story lets her choose.
+         */
+        MeOut: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+            role: components["schemas"]["Role"];
+            group?: components["schemas"]["GroupOut"] | null;
+        };
         /**
          * OpenFollowupOut
          * @description O questionário "Como está seu caminho?" aberto e sem resposta (A18).
@@ -2861,16 +2890,6 @@ export interface components {
             details: string | null;
             round: components["schemas"]["FollowupRound"] | null;
         };
-        /** UserOut */
-        UserOut: {
-            /** Id */
-            id: number;
-            /** Email */
-            email: string;
-            /** Name */
-            name: string;
-            role: components["schemas"]["Role"];
-        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -2955,7 +2974,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserOut"];
+                    "application/json": components["schemas"]["MeOut"];
                 };
             };
             /** @description Validation Error */

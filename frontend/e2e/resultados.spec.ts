@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockCoordinatorApi } from "./coordinator-api";
 import { ACTIONS, FIGMA_NUMBERS, mockResultsApi } from "./resultados-api";
 
 // Resultados · "Logo depois da ação" (C5, #367): caminho principal. Dados fictícios.
@@ -6,6 +7,7 @@ import { ACTIONS, FIGMA_NUMBERS, mockResultsApi } from "./resultados-api";
 const URL = "/coordenacao/resultados";
 
 test("opens from the top menu with the title and the subtitle", async ({ page }) => {
+  await mockCoordinatorApi(page);
   await mockResultsApi(page);
   await page.goto("/coordenacao/acoes");
 
