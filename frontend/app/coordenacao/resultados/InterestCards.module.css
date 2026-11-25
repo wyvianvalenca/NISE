@@ -1,0 +1,129 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  font-size: 14px;
+  color: var(--nise-ink);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 130px;
+  align-items: center;
+  gap: 12px;
+  color: var(--nise-ink);
+}
+
+.barLabel {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.answered {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.bar {
+  display: flex;
+  min-height: 32px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--nise-track);
+}
+
+.empty {
+  align-items: center;
+  padding: 0 12px;
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+/* A fatia fina mantém um mínimo para o número aparecer sempre (RN-50). */
+.segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.segmentA {
+  background: var(--nise-teal);
+}
+
+.segmentB {
+  background: #3f6b78;
+}
+
+.segmentC {
+  background: #8a7560;
+}
+
+.segmentD {
+  background: var(--nise-pink);
+}
+
+.up {
+  background: var(--nise-teal);
+}
+
+.kept {
+  background: #8a7560;
+}
+
+.down {
+  background: var(--nise-pink);
+}
+
+.counts,
+.order {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.subtitle {
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  color: var(--nise-ink);
+  font-size: 15px;
+}
+
+@media (max-width: 900px) {
+  .barRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
