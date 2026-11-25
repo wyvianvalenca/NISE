@@ -1,8 +1,9 @@
 from typing import Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.responses import JSONResponse
 
+from app.auth.permissions import SessionUserIdDep, clear_session_cookie
 from app.db.engine import AsyncSessionDep
 from app.modules.admissions.declaration import course_name
 from app.modules.admissions.service import (
@@ -10,16 +11,21 @@ from app.modules.admissions.service import (
     current_enrollment,
 )
 from app.modules.consents.permissions import AcceptedGirlDep
+from app.modules.girls.deletion import DeletionResult, delete_account
 from app.modules.girls.schemas import (
     InterestOptionsOut,
     InterestsIn,
     OptionOut,
     ProfileCourseIn,
     ProfileCourseOut,
+    ProfileDetailsOut,
+    ProfileEventsOut,
     ProfileOut,
 )
 from app.modules.girls.service import (
+    get_attended_events,
     get_girl_of_user,
+    get_profile_details,
     mark_file_intro_seen,
     save_interests,
 )
@@ -150,6 +156,46 @@ async def file_intro_seen(
     return None
 
 
+# A tela de perfil (A10, RF-F7.11, RF-F7.12): conta, interesses, grupo e o que
+# chega no e-mail. É uma rota à parte de GET /api/profile, que a A06·0 lê
+# sempre e não pode trazer dado pessoal.
+#
+# Não há id na URL: ela só lê o próprio perfil, o da sessão (RNF-G.03).
+@router.get(
+    "/details",
+    response_model=ProfileDetailsOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def profile_details(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ProfileDetailsOut | JSONResponse:
+    details = await get_profile_details(session, user)
+
+    if details is None:
+        return profile_not_found()
+
+    return details
+
+
+# "Eventos de que você participou" no perfil (A10, #391, RF-F2.03): até 5, os
+# mais recentes, de todos os grupos. Sem id na URL: ela só lê os próprios
+# eventos, os da sessão (RNF-G.03).
+@router.get(
+    "/events",
+    response_model=ProfileEventsOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def profile_events(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> ProfileEventsOut | JSONResponse:
+    events = await get_attended_events(session, user)
+
+    if events is None:
+        return profile_not_found()
+
+    return events
+
+
 # "Seu caminho" no perfil (A10, #298): o curso em que ela está hoje e o nome
 # para a A10b. Sem id na URL: ela só lê o próprio curso (RNF-G.03).
 @router.get(
@@ -220,3 +266,39 @@ async def register_course(
     await session.commit()
 
     return None
+
+
+# "Excluir minha conta e meus dados" na A10 (RF-F7.09, #394, D-113): sem senha
+# nem Google, só o modal de confirmação no front. Anonimiza a conta e os dados
+# dela no lugar e encerra a sessão (ver girls/deletion.py).
+#
+# Sem id na URL nem no corpo: ela só exclui a própria conta, a da sessão
+# (RNF-G.03). Uma segunda chamada, de outra aba, também responde 204 e não grava
+# nada; por isso a rota lê só o id do cookie, e não a usuária. A exclusão não
+# loga nada (RNF-G.02). Não exige o aceite dos termos atuais: quem recusa a
+# versão nova precisa poder sair (direito de exclusão, LGPD art. 18).
+@router.delete(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Sem sessão válida"},
+        status.HTTP_403_FORBIDDEN: {"description": "Só menina exclui a própria conta"},
+    },
+)
+async def delete_profile(
+    user_id: SessionUserIdDep, session: AsyncSessionDep, response: Response
+) -> None:
+    result = await delete_account(session, user_id, today_in_maceio())
+
+    if result is DeletionResult.NO_ACCOUNT:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticada"
+        )
+
+    if result is DeletionResult.NOT_A_GIRL:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissão"
+        )
+
+    # DELETED e ALREADY_DELETED: a sessão acaba neste navegador.
+    clear_session_cookie(response)

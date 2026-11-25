@@ -1,0 +1,55 @@
+/* O formulário de interesses (A05) tem respiro de 12px entre os blocos, como no Figma. */
+.interests {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 12px;
+}
+
+.title {
+  color: var(--nise-ink);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.lead {
+  color: var(--nise-muted);
+  font-size: 16px;
+}
+
+/* Dois temas por linha. */
+.topics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stageTitle {
+  margin-top: 4px;
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.error {
+  margin-top: 10px;
+  color: var(--nise-pink);
+  font-size: 14px;
+}

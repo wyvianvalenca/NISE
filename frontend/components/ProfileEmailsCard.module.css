@@ -1,0 +1,5 @@
+/* Aviso de que o interruptor não salvou (RF-S2.15). */
+.error {
+  color: var(--nise-pink);
+  font-size: 14px;
+}

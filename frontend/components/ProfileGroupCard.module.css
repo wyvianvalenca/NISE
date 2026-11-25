@@ -1,0 +1,14 @@
+/* Ícone do grupo: iniciais em rosa claro (Figma: A10, Card / Rendeiras do Código, Ícone). */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--nise-pinkSoft);
+  color: var(--nise-pink);
+  font-size: 14px;
+  font-weight: 700;
+}

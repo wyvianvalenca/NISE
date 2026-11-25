@@ -40,6 +40,7 @@ from app.modules.admissions.models import CourseLevel, ListSearchRun, OfficialLi
 from app.modules.admissions.service import create_match
 from app.modules.cities.utils import normalize_search
 from app.modules.girls.models import Girl
+from app.users.models import User
 
 # Os logs só levam contagens e códigos de curso, nunca um nome (RNF-F31.01).
 logger = logging.getLogger(__name__)
@@ -69,8 +70,12 @@ class RoundResult:
 
 async def _girls_by_name(session: AsyncSession) -> dict[str, list[int]]:
     """Nome normalizado → meninas com conta. Homônimas recebem o indício as duas."""
+    # Conta excluída (RF-F7.09, #394): o registro fica anonimizado e não entra na
+    # busca.
     rows = await session.execute(
-        select(Girl.id, Girl.name).where(Girl.user_id.is_not(None))
+        select(Girl.id, Girl.name)
+        .join(User, User.id == Girl.user_id)
+        .where(Girl.user_id.is_not(None), User.deleted_at.is_(None))
     )
     by_name: dict[str, list[int]] = defaultdict(list)
     for girl_id, name in rows:

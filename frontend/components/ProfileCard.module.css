@@ -1,0 +1,182 @@
+/* Casca comum dos cartões da A10 · Perfil (Figma: Card / ..., 603:589).
+   Cada seção tem um título fora do cartão e o cartão logo abaixo. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* O Figma dá 8px a mais acima do título de cada seção. */
+.heading {
+  padding-top: 8px;
+  color: var(--nise-ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Título com um link à direita ("O que te interessa" e "Editar"). */
+.headingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.headingRow .heading {
+  padding-top: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--nise-border);
+  border-radius: 14px; /* Figma: raio 14, entre o de 8 e o de 16 dos tokens */
+  background: var(--nise-surface);
+}
+
+.divider {
+  height: 1px;
+  border: none;
+  background: var(--nise-border);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.texts {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.4;
+}
+
+.name {
+  color: var(--nise-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.label {
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.text {
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+.body {
+  color: var(--nise-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Chip de leitura dos temas: preenchido em teal claro (Figma: Chip / Programação). */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--nise-tealSoft);
+  color: var(--nise-teal);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Ação com contorno (Figma: Action / Mudar senha, Registrar ingresso, Sair da conta).
+   44px de altura no mínimo, o alvo de toque do projeto. */
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--nise-border);
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:hover:not(:disabled) {
+  background: var(--nise-tealSoft);
+}
+
+.action:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}
+
+.action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Linha de link com a seta à direita (Figma: Link target / Termos de uso). */
+.linkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 0;
+  border-radius: var(--radius-8);
+  color: var(--nise-ink);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.linkRow:hover {
+  text-decoration: underline;
+}
+
+.linkRow:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}
+
+.teal {
+  color: var(--nise-teal);
+}
+
+.linkText {
+  flex: 1;
+  min-width: 0;
+}
+
+.chevron {
+  color: var(--nise-muted);
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
