@@ -15,7 +15,7 @@ Parte da equipe programa sem agentes para aprender. Escreva código simples e le
 - Banco: PostgreSQL (Supabase em produção). Pooler em modo transação: `statement_cache_size=0` no asyncpg.
 - Hospedagem: Vercel, projeto único; FastAPI responde em `/api`.
 - Login: Google e e-mail/senha; JWT em cookie `httpOnly` (nunca `localStorage`).
-- Telas de administração só para convidar coordenadoras e criar grupos (RF-S2.20, RF-S2.23 a RF-S2.30). Curadoria, datas e duplicadas não têm tela: são scripts em `backend/scripts/`.
+- Telas de administração só para convidar coordenadoras e criar grupos (RF-S2.20, RF-S2.23 a RF-S2.32). Curadoria, datas e duplicadas não têm tela: são scripts em `backend/scripts/`.
 
 ## Comandos
 
@@ -43,6 +43,7 @@ Rode as verificações antes de dizer que terminou.
 ## Dados e privacidade (inegociável)
 
 - Permissões sempre checadas no servidor; coordenadora só vê o próprio grupo.
+- A administração só vê contagens de meninas por grupo, nunca quais são (RN-41).
 - Nunca envie nome, e-mail, telefone ou data de nascimento à LLM nem os escreva em logs.
 - F31 (ingresso por listas oficiais, cruzamento com aprovados da COPEVE): lista oficial só em memória; nada de terceiros no banco, disco ou logs.
 - Nunca use ou gere dados reais de meninas; testes usam dados fictícios.
