@@ -8,8 +8,9 @@ from app.auth.permissions import SESSION_COOKIE, SIGNED_IN_HINT_COOKIE
 from app.auth.utils import JWT_ALGORITHM, create_access_token, hash_password
 from app.config import settings
 from app.main import app
+from app.modules.groups.models import Group
 from app.users.models import Role, User
-from tests.helpers import chamar_rota, sessao_com, sessao_para_busca
+from tests.helpers import chamar_rota, sessao_com, sessao_para_busca, sql_do_postgres
 
 
 def alana() -> User:
@@ -51,8 +52,43 @@ async def test_me_com_token_valido_devolve_a_usuaria() -> None:
         "email": "alana@exemplo.com",
         "name": "Alana Ficticia",
         "role": "girl",
+        "group": None,
     }
     sessao_falsa.get.assert_awaited_once_with(User, 1)
+    sessao_falsa.scalar.assert_not_awaited()
+
+
+def coordenadora() -> User:
+    conta = alana()
+    conta.role = Role.COORDINATOR
+    return conta
+
+
+async def test_me_da_coordenadora_devolve_o_grupo_dela() -> None:
+    sessao_falsa = sessao_com(coordenadora())
+    sessao_falsa.scalar.return_value = Group(id=7, name="Grupo Ficticio Sete")
+
+    response = await chamar_rota(
+        app, "GET", "/api/auth/me", sessao_falsa, token=create_access_token(1)
+    )
+
+    assert response.status_code == 200
+    assert response.json()["group"] == {"id": 7, "name": "Grupo Ficticio Sete"}
+    consulta = sessao_falsa.scalar.await_args.args[0]
+    assert "group_coordinators.user_id" in sql_do_postgres(consulta)
+    assert 1 in consulta.compile().params.values()
+
+
+async def test_me_de_coordenadora_sem_grupo_devolve_group_nulo() -> None:
+    sessao_falsa = sessao_com(coordenadora())
+    sessao_falsa.scalar.return_value = None
+
+    response = await chamar_rota(
+        app, "GET", "/api/auth/me", sessao_falsa, token=create_access_token(1)
+    )
+
+    assert response.status_code == 200
+    assert response.json()["group"] is None
 
 
 async def test_me_nao_devolve_o_hash_da_senha() -> None:

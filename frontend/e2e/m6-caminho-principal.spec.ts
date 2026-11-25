@@ -1,15 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApi } from "./evento-api";
 import { fileResponse, type MockFileItem } from "./file-api";
 
 /**
  * E2E · M6 event sign-up, main path (#198). Covers #178, #182, #186, #190 and #194.
  *
- * The routes of the back-end (#180, #184, #188, #192, #196) do not exist yet, so the
- * event screens use the test data of lib/evento.ts, and the filé (GET /api/file, #116)
- * is simulated here. The test base links the two, as the back-end will: the items of
- * the filé come from the status that the event screens save (the "banco" of
- * lib/evento.ts, in the sessionStorage of the tab). So what she does on an event shows
- * up in the right section of her filé.
+ * The event routes (GET /api/events/{id}, sign-up, went, did-not-go, reminder) are simulated
+ * by evento-api.ts, and the filé (GET /api/file, #116) here. The test base links the two, as
+ * the back-end does: the items of the filé come from the status that the event routes keep.
+ * So what she does on an event shows up in the right section of her filé.
  *
  * The data is fictional (never real data of a girl): an outside event and a NISE group
  * event in her "Próximas aventuras", and one of each that already happened, with her
@@ -20,11 +19,11 @@ import { fileResponse, type MockFileItem } from "./file-api";
 
 type EventStatus = "next" | "in_progress" | "concluded";
 
-/** The four events of the test base, with the ids of lib/evento.ts. */
-const OUTSIDE = "hackathon-meninas-na-tecnologia";
-const GROUP = "oficina-de-robotica-rendeiras";
-const OUTSIDE_PAST = "hackathon-cidades-inteligentes";
-const GROUP_PAST = "oficina-de-jogos-rendeiras";
+/** The four events of the test base, with the ids of evento-api.ts. */
+const OUTSIDE = "curadoria-21";
+const GROUP = "acao-22";
+const OUTSIDE_PAST = "curadoria-24";
+const GROUP_PAST = "acao-27";
 
 // With today on 15/oct/2025, the outside event is on 8 and 9/nov and its sign-up ends on 30/oct.
 const TODAY = "2025-10-15";
@@ -80,19 +79,11 @@ const FILE_ITEMS: FileItem[] = [
   },
 ];
 
-// The key of the "banco" of lib/evento.ts.
-const STORAGE_KEY = "nise-mock-evento";
-
-async function serve(page: Page): Promise<void> {
+async function serve(page: Page): Promise<EventApi> {
   // Never goes out to the internet: the sign-up site opens as an empty page.
   await page.context().route("https://example.com/**", (route) => route.fulfill({ body: "ok" }));
 
-  await page.addInitScript(
-    ({ today, status }) => {
-      globalThis.__NISE_MOCK_EVENTO__ = { today, status };
-    },
-    { today: TODAY, status: START_STATUS },
-  );
+  const api = await mockEventApi(page, { today: TODAY, status: START_STATUS });
   // The badge of the Next dev tools (only in next dev, never in production) sits over
   // "Tirar do filé" at 360 px and takes the click.
   await page.addInitScript(() => {
@@ -103,15 +94,11 @@ async function serve(page: Page): Promise<void> {
     });
   });
 
-  // GET /api/file (#116) answers from the "banco" of the event screens, read on every
-  // load of the filé: what she did on an event shows up in the right section.
+  // GET /api/file (#116) answers from the state of the event routes, read on every load of
+  // the filé: what she did on an event shows up in the right section.
   await page.route("**/api/file", async (route) => {
-    const saved = await page.evaluate((key) => sessionStorage.getItem(key), STORAGE_KEY);
-    const base = saved
-      ? (JSON.parse(saved) as { status: Record<string, EventStatus>; removed: string[] })
-      : { status: START_STATUS, removed: [] };
-    const items: MockFileItem[] = FILE_ITEMS.filter((item) => !base.removed.includes(item.id)).map((item) => {
-      const status = base.status[item.id] ?? START_STATUS[item.id];
+    const items: MockFileItem[] = FILE_ITEMS.filter((item) => !api.removed.includes(item.id)).map((item) => {
+      const status = api.statusOf(item.id) ?? START_STATUS[item.id];
       return {
         id: item.id,
         kind: "evento",
@@ -127,20 +114,7 @@ async function serve(page: Page): Promise<void> {
     });
     await route.fulfill({ json: fileResponse(items) });
   });
-}
-
-/** The coordinator saves the attendance of the NISE group event (#135): present or absent. */
-async function saveAttendance(page: Page, id: string, present: boolean): Promise<void> {
-  await page.evaluate(
-    ({ id, present, status, key }) => {
-      const saved = sessionStorage.getItem(key);
-      const base = saved ? JSON.parse(saved) : { status, removed: [] };
-      if (present) base.status[id] = "concluded";
-      else base.removed.push(id);
-      sessionStorage.setItem(key, JSON.stringify(base));
-    },
-    { id, present, status: START_STATUS, key: STORAGE_KEY },
-  );
+  return api;
 }
 
 function section(page: Page, name: string) {
@@ -367,7 +341,7 @@ for (const width of [360, 1366]) {
     test("NISE group event: waits for the attendance, and goes to Concluídos when she is present", async ({
       page,
     }) => {
-      await serve(page);
+      const api = await serve(page);
       await openFile(page);
       await page.getByRole("link", { name: "Continuar: Oficina de jogos com Scratch" }).click();
 
@@ -379,7 +353,7 @@ for (const width of [360, 1366]) {
       await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
       await expectNoSideScroll(page);
 
-      await saveAttendance(page, GROUP_PAST, true);
+      api.markAttendance(GROUP_PAST, true);
 
       await page.reload();
       await expect(statusChip(page)).toHaveText("Status: Concluído");
@@ -396,11 +370,11 @@ for (const width of [360, 1366]) {
     });
 
     test("NISE group event: leaves the filé when she is absent", async ({ page }) => {
-      await serve(page);
+      const api = await serve(page);
       await page.goto(`/file/evento/${GROUP_PAST}`);
       await expect(page.getByText("Esperando a lista de presença")).toBeVisible();
 
-      await saveAttendance(page, GROUP_PAST, false);
+      api.markAttendance(GROUP_PAST, false);
 
       await page.reload();
       await expect(page.getByText("Esse evento não está no seu filé.")).toBeVisible();

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockCoordinatorApi } from "./coordinator-api";
 import {
   manyRows,
   mockEnrollmentsApi,
@@ -13,6 +14,7 @@ const URL = "/coordenacao/ingressantes";
 // O card da busca (#317) e o resumo (#316) têm os testes deles em
 // ingressantes-busca.spec.ts e ingressantes-resumo.spec.ts.
 test.beforeEach(async ({ page }) => {
+  await mockCoordinatorApi(page);
   await mockListSearchApi(page);
   await mockSummaryApi(page);
 });

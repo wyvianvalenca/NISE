@@ -1,9 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { mockCoordinatorApi } from "./coordinator-api";
 import { FILE, mockExportApi } from "./exportar-api";
 
 // Exportar dados anônimos (#375): os quatro passos. Dados fictícios.
 
 const URL = "/coordenacao/exportar";
+
+test.beforeEach(async ({ page }) => {
+  await mockCoordinatorApi(page);
+});
 
 async function goToReview(page: import("@playwright/test").Page) {
   await page.goto(URL);

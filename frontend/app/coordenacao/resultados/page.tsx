@@ -1,5 +1,4 @@
 import { CoordHeader } from "@/components/CoordHeader";
-import { getCoordinator } from "@/lib/coordinator";
 import { AfterActionResults } from "./AfterActionResults";
 import styles from "./page.module.css";
 
@@ -8,16 +7,10 @@ import styles from "./page.module.css";
  * os filtros e o card "Logo depois da ação" (#367); os outros cards são as
  * histórias #368 a #372.
  */
-export default async function CoordResultsPage() {
-  const coordinator = await getCoordinator();
-
+export default function CoordResultsPage() {
   return (
     <>
-      <CoordHeader
-        active="resultados"
-        groupName={coordinator.groupName}
-        accountInitial={coordinator.initial}
-      />
+      <CoordHeader active="resultados" />
       <main className={styles.main}>
         <h1 className={styles.title}>Resultados · depois da ação</h1>
         <p className={styles.subtitle}>

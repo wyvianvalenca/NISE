@@ -1,7 +1,7 @@
 "use client";
 
 // A09 · Conseguiu se inscrever? Abre quando ela volta do site de inscrição de um evento.
-// Atende RF-F10.14, RF-S2.15 e RN-19 (issues #182 e #183). Usa os dados de teste de lib/evento.ts.
+// Atende RF-F10.14, RF-S2.15 e RN-19 (issues #182 e #183). Lê e marca pelas rotas de /api/events.
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -12,10 +12,9 @@ import { Icon } from "@/components/Icon";
 import { Notice } from "@/components/Notice";
 import {
   daysLeftText,
+  deadlineText,
   eventPath,
-  formatDate,
   formatEventDays,
-  getEvent,
   markSignedUp,
   SIGNED_UP_PARAM,
   typeIcon,
@@ -24,6 +23,7 @@ import {
 import shared from "../../../[id]/atividade.module.css";
 import eventStyles from "../evento.module.css";
 import styles from "./inscricao.module.css";
+import { redirectFor, useEvent } from "../useEvent";
 
 export default function SignUpCheckPage() {
   return (
@@ -46,17 +46,8 @@ function Loading() {
 function SignUpCheckLoader() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [event, setEvent] = useState<EventDetail | null | undefined>(undefined);
-
-  useEffect(() => {
-    let current = true;
-    getEvent(id).then((result) => {
-      if (current) setEvent(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [id]);
+  const { result, redirecting, retry } = useEvent(id);
+  const event = result?.ok ? result.data : result ? null : undefined;
 
   // A pergunta só faz sentido para um evento que ainda é "Próxima aventura".
   const answered = event && event.status !== "next";
@@ -73,10 +64,21 @@ function SignUpCheckLoader() {
         </Link>
       </header>
       <div className={shared.scroll}>
-        {event === undefined || answered ? (
+        {event === undefined || answered || redirecting ? (
           <Loading />
         ) : event === null ? (
-          <p className={`${shared.status} ${styles.loading}`}>Esse evento não está no seu filé.</p>
+          result?.ok === false && result.reason === "not_found" ? (
+            <p className={`${shared.status} ${styles.loading}`}>Esse evento não está no seu filé.</p>
+          ) : (
+            <div className={eventStyles.loadFailed}>
+              <p className={`${shared.status} ${styles.loading}`} role="alert">
+                Não deu pra carregar o evento.
+              </p>
+              <Button variant="secondary" size="sm" onClick={retry}>
+                Tentar de novo
+              </Button>
+            </div>
+          )
         ) : (
           <SignUpCheck event={event} />
         )}
@@ -85,26 +87,41 @@ function SignUpCheckLoader() {
   );
 }
 
+/**
+ * O texto de baixo do prazo na A09. Com inscrições abertas e dias sobrando, é o mesmo "Faltam
+ * N dias" de `deadlineText` mais o aviso de que dá tempo de voltar depois; nos outros casos, o
+ * que `deadlineText` já disse.
+ */
+function deadlineHint(event: EventDetail, base: string | undefined): string | undefined {
+  if (!event.registrationsOpen || event.daysLeft === null || event.daysLeft <= 0) return base;
+  return `${base ?? daysLeftText(event.daysLeft)}, dá tempo de voltar depois`;
+}
+
 function SignUpCheck({ event }: { event: EventDetail }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
   const site = event.group ? `das ${event.group}` : "dos organizadores";
-  const deadlineSub = !event.registrationsOpen
-    ? "As inscrições já fecharam"
-    : event.daysLeft > 0
-      ? `${daysLeftText(event.daysLeft)}, dá tempo de voltar depois`
-      : daysLeftText(event.daysLeft);
+  const deadline = deadlineText(event, true);
+  const deadlineSub = deadlineHint(event, deadline.sub);
 
   async function confirm() {
     setSaving(true);
     setError(false);
-    try {
-      await markSignedUp(event.id);
+    const result = await markSignedUp(event.id);
+    if (result.ok) {
       // replace: voltar do evento não reabre a pergunta já respondida.
       router.replace(`${eventPath(event.id)}?${SIGNED_UP_PARAM}`);
-    } catch {
+      return;
+    }
+    const redirect = redirectFor(result.reason);
+    if (redirect) {
+      router.replace(redirect);
+    } else if (result.reason === "conflict" || result.reason === "not_found") {
+      // O evento mudou de estado (já passou, saiu do filé): o detalhe mostra o que ele é agora.
+      router.replace(eventPath(event.id));
+    } else {
       // RF-S2.15: o aviso fica aqui mesmo, e ela pode tentar de novo.
       setError(true);
       setSaving(false);
@@ -129,10 +146,8 @@ function SignUpCheck({ event }: { event: EventDetail }) {
         <li className={eventStyles.row}>
           <Icon name="clock" size={18} className={eventStyles.rowIcon} />
           <span className={eventStyles.rowText}>
-            <span className={eventStyles.rowMain}>
-              {event.registrationsOpen ? "Inscrições até" : "Inscrições foram até"} {formatDate(event.deadline, true)}
-            </span>
-            <span className={eventStyles.rowSub}>{deadlineSub}</span>
+            <span className={eventStyles.rowMain}>{deadline.main}</span>
+            {deadlineSub && <span className={eventStyles.rowSub}>{deadlineSub}</span>}
           </span>
         </li>
       </ul>
@@ -153,11 +168,13 @@ function SignUpCheck({ event }: { event: EventDetail }) {
         <LinkButton href={eventPath(event.id)} replace variant="secondary" className={styles.button}>
           Ainda não
         </LinkButton>
-        <a href={event.registrationUrl} target="_blank" rel="noopener noreferrer" className={styles.again}>
-          <Icon name="external" size={16} />
-          Abrir o site de novo
-          <span className={shared.srOnly}> (abre em outra aba)</span>
-        </a>
+        {event.registrationUrl && (
+          <a href={event.registrationUrl} target="_blank" rel="noopener noreferrer" className={styles.again}>
+            <Icon name="external" size={16} />
+            Abrir o site de novo
+            <span className={shared.srOnly}> (abre em outra aba)</span>
+          </a>
+        )}
       </div>
     </main>
   );

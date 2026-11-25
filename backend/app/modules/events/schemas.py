@@ -88,6 +88,9 @@ class EventOut(BaseModel):
     # O link de inscrição, como foi cadastrado. A NISE guarda só o link (RN-19).
     # Vazio numa ação fechada, que não tem link.
     registration_url: str | None = Field(serialization_alias="registrationUrl")
+    # Para o "Você conseguiu, <nome>!" da celebração (A06·5). É o nome dela mesma,
+    # como no `ActivityOut`.
+    first_name: str = Field(serialization_alias="firstName")
 
 
 class ReminderIn(BaseModel):

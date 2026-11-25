@@ -89,19 +89,6 @@ a.navLink:hover {
   white-space: nowrap;
 }
 
-.account {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  background: var(--nise-tealSoft);
-  color: var(--nise-ink);
-  font-size: 15px;
-  font-weight: 700;
-}
-
 @media (max-width: 767px) {
   .header {
     padding: 0 16px;

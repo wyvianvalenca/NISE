@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signedIn } from "./session";
 import { mockActionsListApi, type ActionsListApi } from "./actions-list-api";
 
 /**
@@ -15,6 +16,7 @@ const CITIES = [{ id: "2704302", name: "Maceió, AL" }];
 let api: ActionsListApi;
 
 test.beforeEach(async ({ page }) => {
+  await signedIn(page);
   api = await mockActionsListApi(page);
   await page.route("**/api/cities**", (route) => route.fulfill({ json: CITIES }));
 });

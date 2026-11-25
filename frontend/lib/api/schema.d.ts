@@ -1558,11 +1558,12 @@ export interface components {
         AdmissionOrigin: "self_declared" | "official_list";
         /**
          * AfterActionOut
-         * @description O card "Logo depois da ação" (RF-F5.09). O front lê em camelCase.
+         * @description O card "Logo depois da ação" (RF-F5.09, RF-F5.31). O front lê em camelCase.
          *
          *     Só totais, nunca uma menina (RF-F5.08, RN-50): `participants` e `no_shows`
-         *     são o "de M" de cada lado, e `returned` é quantas de cada lado voltaram a
-         *     outra ação. O front calcula a porcentagem.
+         *     são o "de M" de cada lado. `returned`, `started_file` e `concluded_file`
+         *     são quantas de cada lado voltaram a outra ação, começaram o filé e
+         *     concluíram algo nele. O front calcula a porcentagem.
          */
         AfterActionOut: {
             /** Participants */
@@ -1570,6 +1571,8 @@ export interface components {
             /** Noshows */
             noShows: number;
             returned: components["schemas"]["ComparedOut"];
+            startedFile: components["schemas"]["ComparedOut"];
+            concludedFile: components["schemas"]["ComparedOut"];
         };
         /**
          * AgendaDatesOut
@@ -2027,6 +2030,8 @@ export interface components {
             prerequisites: string[];
             /** Registrationurl */
             registrationUrl: string | null;
+            /** Firstname */
+            firstName: string;
         };
         /**
          * EventStatus
@@ -2380,6 +2385,16 @@ export interface components {
             /** Groupname */
             groupName: string;
         };
+        /**
+         * GroupOut
+         * @description A group as the signed-in coordinator's top menu needs it.
+         */
+        GroupOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2683,6 +2698,25 @@ export interface components {
          * @enum {string}
          */
         MatchResult: "enrolled" | "approved" | "dismissed";
+        /**
+         * MeOut
+         * @description The signed-in account, with the group of a coordinator (H3).
+         *
+         *     Only `GET /auth/me` carries `group`: sign-up and login answer with
+         *     `UserOut` data, so they do not pay a group lookup. It is null for a girl and
+         *     for a coordinator with no group. A coordinator of several groups gets the
+         *     one with the lowest id until a story lets her choose.
+         */
+        MeOut: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+            role: components["schemas"]["Role"];
+            group?: components["schemas"]["GroupOut"] | null;
+        };
         /**
          * OpenFollowupOut
          * @description O questionário "Como está seu caminho?" aberto e sem resposta (A18).
@@ -3101,16 +3135,6 @@ export interface components {
             details: string | null;
             round: components["schemas"]["FollowupRound"] | null;
         };
-        /** UserOut */
-        UserOut: {
-            /** Id */
-            id: number;
-            /** Email */
-            email: string;
-            /** Name */
-            name: string;
-            role: components["schemas"]["Role"];
-        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -3212,7 +3236,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserOut"];
+                    "application/json": components["schemas"]["MeOut"];
                 };
             };
             /** @description Validation Error */

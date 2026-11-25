@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { getCoordinator } from "@/lib/coordinator";
 import { ActionPageView } from "./ActionPageView";
 
 /**
@@ -7,12 +6,10 @@ import { ActionPageView } from "./ActionPageView";
  * the girls registered in it. The id comes from the URL, so the page waits
  * inside a `Suspense`.
  */
-export default async function CoordActionPage() {
-  const coordinator = await getCoordinator();
-
+export default function CoordActionPage() {
   return (
     <Suspense fallback={null}>
-      <ActionPageView groupName={coordinator.groupName} accountInitial={coordinator.initial} />
+      <ActionPageView />
     </Suspense>
   );
 }

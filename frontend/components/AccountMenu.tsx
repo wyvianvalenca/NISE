@@ -10,18 +10,27 @@ import styles from "./AccountMenu.module.css";
 type AccountMenuProps = {
   /** Her name, shown at the top of the menu; the avatar shows its initial. */
   name: string;
+  /** Shows "Ver perfil". The coordinator has no profile screen. */
+  withProfile?: boolean;
+  /** Text of the leave button. */
+  leaveLabel?: string;
 };
 
 /**
  * The girl's avatar in the header of her screens. Tapping it opens a small
- * menu with her name, "Ver perfil" and "Sair".
+ * menu with her name, "Ver perfil" and "Sair". The coordinator's header uses
+ * it too, without the profile and with "Sair da conta" (H3).
  *
  * There is no Figma for the menu yet: it uses the surface, border and radius
  * of the cards. It is a disclosure (a button that shows a panel), not an ARIA
  * menu, so Tab moves through the two options like any other link or button.
  * Esc or a tap outside closes it.
  */
-export function AccountMenu({ name }: AccountMenuProps) {
+export function AccountMenu({
+  name,
+  withProfile = true,
+  leaveLabel = "Sair",
+}: AccountMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -94,9 +103,11 @@ export function AccountMenu({ name }: AccountMenuProps) {
           <p className={styles.name}>{name}</p>
 
           {/* A10 · Perfil (#298). */}
-          <Link href="/perfil" className={styles.item}>
-            Ver perfil
-          </Link>
+          {withProfile && (
+            <Link href="/perfil" className={styles.item}>
+              Ver perfil
+            </Link>
+          )}
           <button
             type="button"
             className={styles.item}
@@ -104,7 +115,7 @@ export function AccountMenu({ name }: AccountMenuProps) {
             disabled={leaving}
             aria-busy={leaving || undefined}
           >
-            {leaving ? "Saindo…" : "Sair"}
+            {leaving ? "Saindo…" : leaveLabel}
           </button>
 
           {error && (

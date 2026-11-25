@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signedIn } from "./session";
 
 /**
  * A16 "Recuperar acesso" and A16b "Crie uma nova senha" (#331).
@@ -108,6 +109,7 @@ test("A16: Voltar leva à A15", async ({ page }) => {
 // A16b
 
 test("A16b: mostra a conta do link, salva a senha e entra", async ({ page }) => {
+  await signedIn(page);
   const enviados = await mockLink(page, LINK_VALIDO);
   await page.goto(`/entrar/nova-senha?token=${TOKEN}`);
 

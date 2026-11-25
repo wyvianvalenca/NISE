@@ -92,8 +92,6 @@ function toggled(marks: ReadonlySet<number>, ids: number[], marked: boolean): Re
   return next;
 }
 
-type ViewProps = { groupName: string; accountInitial: string };
-
 /**
  * Loads the action named in the URL and draws the page.
  *
@@ -106,7 +104,7 @@ type ViewProps = { groupName: string; accountInitial: string };
  * - `onImport` / `onAdd` are given to the card (#234, #235 open their drawers).
  * - the `<aside>` is the right column (RegistrationsSwitch: close/reopen, #236, #237).
  */
-export function ActionPageView({ groupName, accountInitial }: ViewProps) {
+export function ActionPageView() {
   const { id } = useParams<{ id: string }>();
   const actionId = /^\d+$/.test(id) ? Number(id) : null;
   /** undefined: loading. null: does not exist. */
@@ -260,7 +258,7 @@ export function ActionPageView({ groupName, accountInitial }: ViewProps) {
 
   return (
     <>
-      <CoordHeader active="acoes" groupName={groupName} accountInitial={accountInitial} />
+      <CoordHeader active="acoes" />
       <main className={styles.main}>
         {action === undefined || (hasAttendance && attendance === undefined) ? (
           <Loading label="Carregando a ação…" />

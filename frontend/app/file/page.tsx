@@ -32,6 +32,7 @@ import {
 } from "@/lib/file";
 import { SIGNUP_PATHS } from "@/lib/signup";
 import { WITHOUT_SESSION } from "@/lib/signup-api";
+import { redirectFor as eventRedirectFor } from "./evento/[id]/useEvent";
 import styles from "./page.module.css";
 
 function withoutId(ids: ReadonlySet<string>, id: string): ReadonlySet<string> {
@@ -177,6 +178,9 @@ export default function FilePage() {
 /**
  * Aviso depois do "Não deu" de um evento de fora (#190): o evento saiu do filé, e o
  * "Desfazer" o traz de volta para a pergunta "Você foi?". Some sozinho ou quando ela sai da tela.
+ * Se o "Desfazer" é recusado, segue o mesmo caminho das outras ações de evento: sem sessão ou
+ * sem os termos, vai para a tela certa; se o evento mudou de estado (409) ou já não existe
+ * (404), não há o que desfazer e o aviso some.
  */
 function DidNotGoToast() {
   const router = useRouter();
@@ -204,12 +208,15 @@ function DidNotGoToast() {
   async function undo() {
     if (!notice || status === "undoing") return;
     setStatus("undoing");
-    try {
-      await undoDidNotGo(notice.id);
+    const result = await undoDidNotGo(notice.id);
+    if (result.ok) {
       router.push(eventPath(notice.id));
-    } catch {
-      setStatus("error");
+      return;
     }
+    const redirect = eventRedirectFor(result.reason);
+    if (redirect) router.replace(redirect);
+    else if (result.reason === "conflict" || result.reason === "not_found") close();
+    else setStatus("error");
   }
 
   return (
