@@ -5537,6 +5537,86 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "API",
+          "Admin"
+        ],
+        "summary": "New Group",
+        "operationId": "new_group_api_admin_groups_post",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewGroupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupCardOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é da equipe NISE"
+          },
+          "409": {
+            "description": "group_exists"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/coordinators/invites": {
@@ -5610,6 +5690,79 @@
           },
           "409": {
             "description": "email_has_account, invite_pending ou group_exists"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/overview": {
+      "get": {
+        "tags": [
+          "API",
+          "Admin"
+        ],
+        "summary": "Groups Overview",
+        "operationId": "groups_overview_api_admin_groups_overview_get",
+        "parameters": [
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupCardOut"
+                  },
+                  "title": "Response Groups Overview Api Admin Groups Overview Get"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é da equipe NISE"
           },
           "422": {
             "description": "Validation Error",
@@ -8212,6 +8365,62 @@
           "starts_on"
         ],
         "title": "GroupActionOut"
+      },
+      "GroupCardOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "coordinators": {
+            "type": "integer",
+            "title": "Coordinators"
+          },
+          "invites": {
+            "type": "integer",
+            "title": "Invites"
+          },
+          "girls": {
+            "type": "integer",
+            "title": "Girls"
+          },
+          "actions": {
+            "type": "integer",
+            "title": "Actions"
+          },
+          "needs_coordinator": {
+            "type": "boolean",
+            "title": "Needs Coordinator"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "city",
+          "coordinators",
+          "invites",
+          "girls",
+          "actions",
+          "needs_coordinator"
+        ],
+        "title": "GroupCardOut",
+        "description": "Um cartão da aba Grupos (AD06, RF-S2.29): só nome, cidade e contagens.\n\nAs meninas são as que têm o grupo como origem (RN-32); a equipe nunca vê\nquais são (RN-41)."
       },
       "GroupOrigin": {
         "properties": {

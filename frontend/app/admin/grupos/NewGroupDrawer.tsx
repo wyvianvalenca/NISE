@@ -70,7 +70,6 @@ export function NewGroupDrawer({ onCreated, onClose }: NewGroupDrawerProps) {
       const result = await createGroup({
         name: name.trim(),
         cityId: Number(city!.id),
-        cityLabel: cityText.trim(),
       });
       if (result.kind === "created") {
         setCreated(result.group);
