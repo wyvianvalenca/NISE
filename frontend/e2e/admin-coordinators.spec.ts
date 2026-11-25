@@ -49,7 +49,7 @@ test("search finds by coordinator or group name and says when nothing matches", 
   await expect(page.getByText("Nenhuma coordenadora encontrada.")).toBeVisible();
 });
 
-test("shows the invite note and a menu with only Coordenadoras", async ({ page }) => {
+test("shows the invite note and a menu with Coordenadoras and Grupos", async ({ page }) => {
   await page.goto(URL);
 
   await expect(
@@ -57,6 +57,7 @@ test("shows the invite note and a menu with only Coordenadoras", async ({ page }
   ).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Seções" }).getByRole("link")).toHaveText([
     "Coordenadoras",
+    "Grupos",
   ]);
 });
 
@@ -64,7 +65,7 @@ test("a coordinator or a girl is refused and sees no rows (RNF-G.03)", async ({ 
   await mockAdminCoordinatorsApi(page, { status: 403 });
   await page.goto(URL);
 
-  await expect(page.getByRole("alert")).toHaveText("Esta área é só da equipe NISE.");
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("Esta área é só da equipe NISE.");
   await expect(page.getByRole("main").getByRole("listitem")).toHaveCount(0);
   await expect(page.getByText("Ana Souza")).toHaveCount(0);
 });
@@ -73,6 +74,6 @@ test("offers to try again when the list fails to load", async ({ page }) => {
   await mockAdminCoordinatorsApi(page, { status: 500 });
   await page.goto(URL);
 
-  await expect(page.getByRole("alert")).toHaveText("Não foi possível carregar as coordenadoras.");
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("Não foi possível carregar as coordenadoras.");
   await expect(page.getByRole("button", { name: "Tentar novamente" })).toBeVisible();
 });
