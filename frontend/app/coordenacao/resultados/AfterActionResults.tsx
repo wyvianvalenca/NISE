@@ -5,9 +5,11 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
+import { EnteredFieldCard } from "@/components/EnteredFieldCard";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
+import { ENTERED_FIELD_EXAMPLE } from "@/lib/resultados-entraram-exemplo";
 import {
   type ActionOption,
   type AfterActionResult,
@@ -173,6 +175,9 @@ export function AfterActionResults() {
           incentivo continuou logo depois do evento, antes do primeiro questionário.
         </p>
       </section>
+
+      {/* Dados de exemplo até a integração ligar a rota (#370). */}
+      <EnteredFieldCard stages={ENTERED_FIELD_EXAMPLE} />
     </>
   );
 }
