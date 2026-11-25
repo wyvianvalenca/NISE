@@ -39,6 +39,11 @@ class User(Base):
     # a mostrar "Desativada". Vazio para quem está ativa.
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Quando a exclusão da conta foi atendida (RF-F7.09, #394). É o registro do
+    # pedido: tem a data e não identifica ninguém, porque a linha já foi
+    # anonimizada. Conta com isto preenchido não entra mais.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class OAuthAccount(Base):
     __tablename__ = "oauth_accounts"

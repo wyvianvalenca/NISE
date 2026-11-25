@@ -44,6 +44,11 @@ class EffortBand(enum.Enum):
     GRANDE_DESAFIO = "grande-desafio"  # em grupo, mais tempo
 
 
+# O nome que a coordenadora vê no lugar do de quem excluiu a conta (RF-F7.09,
+# #394). Rótulo neutro, sem "exclusão" e sem data (decisão de 24/11/2026).
+ANONYMIZED_NAME = "Registro anonimizado"
+
+
 class Girl(TimestampMixin, Base):
     """Registro da menina e o perfil dela.
 
@@ -59,9 +64,10 @@ class Girl(TimestampMixin, Base):
     email: Mapped[str] = mapped_column(unique=True, index=True)
     name: Mapped[str] = mapped_column()
     # Vazio enquanto ela não tem conta. Quem aceitou os termos não tem a linha
-    # de users apagada (RESTRICT em terms_acceptances, #49): a exclusão de conta
-    # (RF-F7.09) anonimiza a usuária e solta este vínculo à mão, e o registro
-    # volta a ser só o importado. O SET NULL cobre só contas sem aceite.
+    # de users apagada (RESTRICT em terms_acceptances, #49). A exclusão de conta
+    # (RF-F7.09, #394) anonimiza a menina e a usuária no lugar e MANTÉM este
+    # vínculo, porque os ingressantes (C8) contam quem tem conta; a usuária
+    # anonimizada não identifica ninguém. O SET NULL cobre só contas sem aceite.
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), unique=True
     )

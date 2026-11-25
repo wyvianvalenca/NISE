@@ -1,13 +1,19 @@
 from calendar import monthrange
 from datetime import date
 
+from app.modules.girls.models import ANONYMIZED_NAME
+
 
 def short_name(full_name: str) -> str:
     """Primeiro nome e a inicial do último sobrenome: "Ana Lima Souza" → "Ana S.".
 
     É como a menina aparece na lista "Quem ingressou" (#315). Com um nome só,
-    fica só ele.
+    fica só ele. O "Registro anonimizado" (conta excluída, RF-F7.09, #394) aparece
+    inteiro, para não virar "Registro a.".
     """
+    if full_name == ANONYMIZED_NAME:
+        return full_name
+
     parts = full_name.split()
 
     if not parts:

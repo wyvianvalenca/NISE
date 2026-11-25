@@ -1,0 +1,48 @@
+/* Alvo de toque de 44 px (vale mais que o desenho do Figma); a trilha de 40x24 fica dentro. */
+.switch {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--nise-ink);
+  cursor: pointer;
+}
+
+.switch:focus-visible {
+  outline: 3px solid var(--nise-pink);
+  outline-offset: 2px;
+}
+
+.switch[aria-busy="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Desligado: trilha do mesmo token do checkbox vazio, com a bolinha à esquerda. */
+.track {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  width: 40px;
+  height: 24px;
+  padding: 2px;
+  border-radius: 12px;
+  background: var(--nise-borderStrong);
+}
+
+.on {
+  justify-content: flex-end;
+  background: var(--nise-teal);
+}
+
+.knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--nise-onPrimary);
+}

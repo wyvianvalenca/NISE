@@ -1,0 +1,17 @@
+/*
+ * Os dois botões dividem a largura da linha (Figma 711:611: flex 1 nos dois).
+ * Cada um parte de metade da linha menos metade do espaço entre eles. Com
+ * `flex: 1` puro (base 0), o navegador soma o padding e a borda de cada botão
+ * por cima, e o "Cancelar" (borda de 1 px, padding menor) sai 2 px mais estreito.
+ */
+.button {
+  flex: 1 1 calc(50% - 6px);
+  box-sizing: border-box;
+}
+
+/* Sem desenho no Figma: entre o texto e os botões, como o erro do "Sair da conta". */
+.error {
+  margin-top: 10px;
+  color: var(--nise-error);
+  font-size: 14px;
+}

@@ -13,3 +13,12 @@ export const MISSING_DOMAIN_ERROR = "Inclua o domínio, como nome@exemplo.com";
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email.trim());
 }
+
+/**
+ * The e-mail as the coordinator's lists show it. The record of a girl who deleted
+ * her account (RF-F7.09, #394) keeps a placeholder address in the reserved
+ * `.invalid` domain, which belongs to nobody, so the lists show a dash instead.
+ */
+export function shownEmail(email: string): string {
+  return email.trim().toLowerCase().endsWith(".invalid") ? "—" : email;
+}
