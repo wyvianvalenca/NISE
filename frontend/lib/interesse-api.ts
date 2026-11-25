@@ -1,10 +1,11 @@
 /**
- * Abas Resultados · "Como o interesse evolui" e "Quem mudou de situação" (#368).
+ * Resultados · "Como o interesse evolui" e "Quem mudou de situação" (#368).
  *
- * Os tipos têm o formato do `InterestOut` do back (GET /api/coordinator/results/interest).
- * Enquanto a tela não está ligada à rota, `getInterest` devolve dados fictícios; a
- * integração troca esse corpo pela chamada real e os tipos pelos de lib/api/schema.d.ts.
+ * Os tipos vêm do OpenAPI do FastAPI (lib/api/schema.d.ts, `pnpm api:types`).
+ * A rota recebe os mesmos filtros do card "Logo depois da ação".
  */
+import type { components } from "./api/schema";
+import type { ResultsFilters } from "./resultados-api";
 
 /** As quatro respostas de "Hoje, computação pra você é…", da melhor para a pior. */
 export const VIEWS = [
@@ -24,59 +25,34 @@ export const ROUNDS: { value: Round; label: string }[] = [
   { value: "eighteen_months", label: "18 meses" },
 ];
 
-export type Milestone = { answered: number; counts: Record<ComputingView, number> };
-export type Change = { origin: ComputingView; destination: ComputingView; girls: number };
-export type Movement = {
-  withBoth: number;
-  wentUp: number;
-  stayed: number;
-  wentDown: number;
-  commonChanges: Change[];
-};
-export type Interest = {
-  signup: Milestone;
-  rounds: Record<Round, Milestone>;
-  movement: Movement;
-};
+export type Interest = components["schemas"]["InterestOut"];
+export type Milestone = components["schemas"]["MilestoneOut"];
+export type Movement = components["schemas"]["MovementOut"];
+export type Change = components["schemas"]["ChangeOut"];
 
 export type InterestResult =
   | { ok: true; interest: Interest }
   | { ok: false; reason: "signed_out" | "forbidden" | "several_groups" | "failed" };
 
-function milestone(a: number, b: number, c: number, d: number): Milestone {
-  return {
-    answered: a + b + c + d,
-    counts: { want_to_follow: a, like_but_unsure: b, less_interested: c, not_for_me: d },
-  };
-}
+/** Os dados da tela para os filtros. O grupo vem da sessão, nunca daqui. */
+export async function getInterest(
+  filters: ResultsFilters,
+  signal?: AbortSignal,
+): Promise<InterestResult> {
+  const query = new URLSearchParams({ period: filters.period });
+  if (filters.actionId) query.set("action_id", filters.actionId);
+  if (filters.type) query.set("type", filters.type);
+  if (filters.topic) query.set("topic", filters.topic);
 
-/** Dados fictícios no formato da API (nenhuma menina real). */
-export const SAMPLE_INTEREST: Interest = {
-  signup: milestone(18, 14, 5, 3),
-  rounds: {
-    three_months: milestone(20, 12, 5, 3),
-    six_months: milestone(14, 9, 4, 1),
-    twelve_months: milestone(9, 5, 3, 1),
-    eighteen_months: milestone(5, 2, 1, 0),
-  },
-  movement: {
-    withBoth: 28,
-    wentUp: 9,
-    stayed: 14,
-    wentDown: 5,
-    commonChanges: [
-      { origin: "like_but_unsure", destination: "want_to_follow", girls: 7 },
-      { origin: "less_interested", destination: "like_but_unsure", girls: 2 },
-      { origin: "want_to_follow", destination: "like_but_unsure", girls: 2 },
-      { origin: "like_but_unsure", destination: "less_interested", girls: 2 },
-      { origin: "less_interested", destination: "not_for_me", girls: 1 },
-    ],
-  },
-};
+  const response = await fetch(`/api/coordinator/results/interest?${query}`, { signal });
 
-/** Por enquanto, dados de exemplo; a integração liga à rota. */
-export async function getInterest(): Promise<InterestResult> {
-  return { ok: true, interest: SAMPLE_INTEREST };
+  if (response.ok) {
+    return { ok: true, interest: (await response.json()) as Interest };
+  }
+  if (response.status === 401) return { ok: false, reason: "signed_out" };
+  if (response.status === 403) return { ok: false, reason: "forbidden" };
+  if (response.status === 409) return { ok: false, reason: "several_groups" };
+  return { ok: false, reason: "failed" };
 }
 
 /**

@@ -3,7 +3,7 @@
 // Filtros e card "Logo depois da ação" (#367, RF-F5.06, RF-F5.09). Só totais:
 // nenhum nome de menina chega a esta tela (RF-F5.08, RN-50).
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
@@ -28,7 +28,8 @@ const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], s
   failed: "Não foi possível carregar os resultados. Tente novamente.",
 };
 
-export function AfterActionResults() {
+/** `below` desenha os cards seguintes, que usam os mesmos filtros. */
+export function AfterActionResults({ below }: { below?: (filters: ResultsFilters) => ReactNode }) {
   const [filters, setFilters] = useState<ResultsFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionOption[]>([]);
   const [result, setResult] = useState<AfterActionResult | null>(null);
@@ -173,6 +174,8 @@ export function AfterActionResults() {
           incentivo continuou logo depois do evento, antes do primeiro questionário.
         </p>
       </section>
+
+      {below?.(filters)}
     </>
   );
 }

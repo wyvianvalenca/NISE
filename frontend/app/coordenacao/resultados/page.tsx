@@ -1,6 +1,5 @@
 import { CoordHeader } from "@/components/CoordHeader";
-import { AfterActionResults } from "./AfterActionResults";
-import { InterestCards } from "./InterestCards";
+import { ResultsCards } from "./ResultsCards";
 import styles from "./page.module.css";
 
 /**
@@ -18,8 +17,7 @@ export default function CoordResultsPage() {
           Acompanha as meninas das ações do grupo no cadastro e aos 3, 6, 12 e 18 meses. Cada
           marco mostra quantas responderam.
         </p>
-        <AfterActionResults />
-        <InterestCards />
+        <ResultsCards />
       </main>
     </>
   );

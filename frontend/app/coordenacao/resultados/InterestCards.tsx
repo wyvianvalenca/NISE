@@ -15,6 +15,7 @@ import {
   VIEWS,
   viewLabel,
 } from "@/lib/interesse-api";
+import type { ResultsFilters } from "@/lib/resultados-api";
 import styles from "./InterestCards.module.css";
 import pageStyles from "./page.module.css";
 
@@ -22,14 +23,18 @@ const SEGMENT_CLASS = ["segmentA", "segmentB", "segmentC", "segmentD"] as const;
 
 const FAILURE_TEXT = "Não foi possível carregar o interesse das meninas. Tente novamente.";
 
-export function InterestCards() {
+export function InterestCards({ filters }: { filters: ResultsFilters }) {
   const [result, setResult] = useState<InterestResult | null>(null);
 
   useEffect(() => {
-    getInterest()
+    const controller = new AbortController();
+    getInterest(filters, controller.signal)
       .then(setResult)
-      .catch(() => setResult({ ok: false, reason: "failed" }));
-  }, []);
+      .catch(() => {
+        if (!controller.signal.aborted) setResult({ ok: false, reason: "failed" });
+      });
+    return () => controller.abort();
+  }, [filters]);
 
   if (result === null) {
     return (
