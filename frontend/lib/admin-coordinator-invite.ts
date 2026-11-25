@@ -1,10 +1,15 @@
+import { errorCode } from "@/lib/signup-api";
+import type { components } from "./api/schema";
+
+type GroupsResponse = components["schemas"]["GroupOut"][];
+type InviteBody = components["schemas"]["CoordinatorInviteIn"];
+type InviteResponse = components["schemas"]["CoordinatorInviteOut"];
+
 /**
  * AD03 / AD04 "Convidar coordenadora" (RF-S2.20, RF-S2.31).
  *
  * The shapes follow what the back answers (POST /api/admin/coordinators/invites
- * and GET /api/admin/groups). While the screen is not tied to the routes, the
- * two calls below answer with example data; the integration swaps them for
- * `fetch` and keeps these types and the `InviteResult` outcomes.
+ * and GET /api/admin/groups).
  */
 
 export type GroupOption = { id: number; name: string; city: string };
@@ -39,32 +44,60 @@ export type InviteResult =
   | { kind: "sent"; invite: InviteSent }
   | { kind: "problem"; problem: InviteProblem };
 
-const EXAMPLE_GROUPS: GroupOption[] = [
-  { id: 1, name: "Meninas na Computação", city: "Maceió, AL" },
-  { id: 2, name: "Robótica Delas", city: "Arapiraca, AL" },
-];
+const PROBLEM_BY_CODE: Record<string, InviteProblem> = {
+  email_has_account: "email_has_account",
+  invite_pending: "invite_pending",
+  group_exists: "group_exists",
+  group_not_found: "group_not_found",
+  invalid_city: "invalid_city",
+};
 
-/** The groups the team can choose from. Example data until the integration. */
-export async function getAdminGroups(): Promise<GroupOption[]> {
-  return EXAMPLE_GROUPS;
+/** The groups the team can choose from: `GET /api/admin/groups`. Empty if it fails. */
+export async function getAdminGroups(signal?: AbortSignal): Promise<GroupOption[]> {
+  const response = await fetch("/api/admin/groups", { signal });
+  if (!response.ok) return [];
+  const groups = (await response.json()) as GroupsResponse;
+  return groups.map((group) => ({ id: group.id, name: group.name, city: group.city ?? "" }));
 }
 
-/** Sends the invite. Example data until the integration. */
+/**
+ * Sends the invite: `POST /api/admin/coordinators/invites`. The server decides
+ * who may invite (NISE team only, RNF-G.03) and refuses an e-mail that already
+ * has an account, a pending invite or a group with the same name and city.
+ */
 export async function sendCoordinatorInvite(input: InviteInput): Promise<InviteResult> {
-  const week = 7 * 24 * 60 * 60 * 1000;
   const group = input.group;
-  const groupName =
-    group.kind === "new"
-      ? group.name
-      : (EXAMPLE_GROUPS.find((option) => option.id === group.groupId)?.name ?? "");
+  const body: InviteBody = {
+    name: input.name.trim(),
+    email: input.email.trim(),
+    ...(group.kind === "new"
+      ? { new_group: { name: group.name.trim(), city_id: group.cityId } }
+      : { group_id: group.groupId }),
+  };
+  let response: Response;
+  try {
+    response = await fetch("/api/admin/coordinators/invites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { kind: "problem", problem: "failed" };
+  }
+  if (response.status === 403) return { kind: "problem", problem: "forbidden" };
+  if (!response.ok) {
+    const code = await errorCode(response);
+    return { kind: "problem", problem: (code && PROBLEM_BY_CODE[code]) || "failed" };
+  }
+  const data = (await response.json()) as InviteResponse;
   return {
     kind: "sent",
     invite: {
-      firstName: input.name.trim().split(/\s+/)[0],
-      email: input.email,
-      groupName,
-      expiresAt: new Date(Date.now() + week).toISOString(),
-      emailSent: true,
+      firstName: data.first_name,
+      email: data.email,
+      groupName: data.group_name,
+      expiresAt: data.expires_at,
+      emailSent: data.email_sent,
     },
   };
 }
