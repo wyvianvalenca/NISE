@@ -9,14 +9,15 @@ import { EnteredFieldCard } from "@/components/EnteredFieldCard";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
-import { ENTERED_FIELD_EXAMPLE } from "@/lib/resultados-entraram-exemplo";
 import {
   type ActionOption,
   type AfterActionResult,
+  type EnteredFieldResult,
   DEFAULT_FILTERS,
   fraction,
   getActionOptions,
   getAfterAction,
+  getEnteredField,
   PERIODS,
   percentLabel,
   type ResultsFilters,
@@ -34,6 +35,7 @@ export function AfterActionResults() {
   const [filters, setFilters] = useState<ResultsFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionOption[]>([]);
   const [result, setResult] = useState<AfterActionResult | null>(null);
+  const [entered, setEntered] = useState<EnteredFieldResult | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -58,8 +60,22 @@ export function AfterActionResults() {
     return () => controller.abort();
   }, [filters, attempt]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    getEnteredField(filters, controller.signal)
+      .then(setEntered)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          console.error(error instanceof Error ? error.name : "erro");
+          setEntered({ ok: false, reason: "failed" });
+        }
+      });
+    return () => controller.abort();
+  }, [filters, attempt]);
+
   function change(next: Partial<ResultsFilters>) {
     setResult(null);
+    setEntered(null);
     setFilters((current) => ({ ...current, ...next }));
   }
 
@@ -138,6 +154,7 @@ export function AfterActionResults() {
                 size="sm"
                 onClick={() => {
                   setResult(null);
+                  setEntered(null);
                   setAttempt((count) => count + 1);
                 }}
               >
@@ -176,8 +193,13 @@ export function AfterActionResults() {
         </p>
       </section>
 
-      {/* Dados de exemplo até a integração ligar a rota (#370). */}
-      <EnteredFieldCard stages={ENTERED_FIELD_EXAMPLE} />
+      {entered === null && <Loading label="Carregando os resultados…" />}
+      {entered !== null && !entered.ok && (
+        <p role="alert" className={styles.failure}>
+          {FAILURE_TEXT[entered.reason]}
+        </p>
+      )}
+      {entered?.ok && <EnteredFieldCard stages={entered.stages} />}
     </>
   );
 }

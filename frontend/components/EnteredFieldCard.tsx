@@ -5,22 +5,8 @@
 
 import { useState } from "react";
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { fraction, percentLabel } from "@/lib/resultados-api";
+import { type EnteredBar, type EnteredStage, fraction, percentLabel } from "@/lib/resultados-api";
 import styles from "./EnteredFieldCard.module.css";
-
-export type EnteredBar = {
-  months: number;
-  answered: number;
-  graduacao: number;
-  tecnico: number;
-  trying: number;
-  notYet: number;
-};
-
-export type EnteredStage = {
-  stage: "fundamental" | "medio" | "tecnico_ou_graduacao";
-  bars: EnteredBar[];
-};
 
 const STAGES: { value: EnteredStage["stage"]; label: string }[] = [
   { value: "fundamental", label: "Fundamental" },

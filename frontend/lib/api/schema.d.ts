@@ -1157,6 +1157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/results/entered-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entered Field Route */
+        get: operations["entered_field_route_api_coordinator_results_entered_field_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/exports/options": {
         parameters: {
             query?: never;
@@ -2006,6 +2023,41 @@ export interface components {
             graduacao: components["schemas"]["LevelSummaryOut"];
             tecnico: components["schemas"]["LevelSummaryOut"];
             recent: components["schemas"]["RecentFoundOut"] | null;
+        };
+        /**
+         * EnteredBarOut
+         * @description Uma barra do card "Elas entraram na área?": contagens, o front faz a %.
+         */
+        EnteredBarOut: {
+            /** Months */
+            months: number;
+            /** Answered */
+            answered: number;
+            /** Graduacao */
+            graduacao: number;
+            /** Tecnico */
+            tecnico: number;
+            /** Trying */
+            trying: number;
+            /** Notyet */
+            notYet: number;
+        };
+        /**
+         * EnteredFieldOut
+         * @description O card "Elas entraram na área?" (RF-F5.34): as três etapas, 3 barras cada.
+         *
+         *     Só contagens (RN-50), sem nome de menina, de curso nem de instituição.
+         */
+        EnteredFieldOut: {
+            /** Stages */
+            stages: components["schemas"]["EnteredStageOut"][];
+        };
+        /** EnteredStageOut */
+        EnteredStageOut: {
+            /** Stage */
+            stage: string;
+            /** Bars */
+            bars: components["schemas"]["EnteredBarOut"][];
         };
         /**
          * EventOut
@@ -6574,6 +6626,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AfterActionOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entered_field_route_api_coordinator_results_entered_field_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnteredFieldOut"];
                 };
             };
             /** @description Não é coordenadora ou sem grupo */
