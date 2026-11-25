@@ -1,16 +1,24 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
+from app.modules.cities.models import City
 
 
 class Group(TimestampMixin, Base):
     __tablename__ = "groups"
+    __table_args__ = (UniqueConstraint("name", "city_id"),)
 
-    name: Mapped[str] = mapped_column(unique=True)
+    name: Mapped[str] = mapped_column()
+    # Município do IBGE (RN-17). Vazio nos grupos antigos, criados por script.
+    # Não há dois grupos com o mesmo nome e a mesma cidade (D-120).
+    city_id: Mapped[int | None] = mapped_column(ForeignKey("cities.id"), index=True)
+
+    # Assíncrono: carregue com selectinload(Group.city).
+    city: Mapped[City | None] = relationship()
 
 
 class GroupCoordinator(Base):
@@ -58,3 +66,61 @@ class Invite(Base):
 
     # Assíncrono: carregue com selectinload(Invite.group).
     group: Mapped[Group] = relationship()
+
+
+# Um e-mail tem no máximo um convite de coordenadora aberto (nem aceito, nem
+# cancelado), vencido ou não (RN-35, #446). O nome aparece no erro do Postgres
+# quando dois pedidos convidam o mesmo e-mail no mesmo instante.
+OPEN_INVITE_INDEX = "uq_coordinator_invites_open_email"
+
+
+class CoordinatorInvite(Base):
+    """Convite de uma coordenadora para um grupo, enviado pela equipe NISE (D-115).
+
+    Vale 7 dias e só uma vez (aceito em `accepted_at`). A lista do admin mostra
+    o convite como "Convite enviado" até `expires_at` e como "Convite expirou"
+    depois. Convite aceito vira a coordenadora (GroupCoordinator) e cancelado
+    some da lista. Quem cria, reenvia e cancela é a story #453. Cada e-mail tem
+    no máximo um convite aberto (`OPEN_INVITE_INDEX`): convidar de novo depois
+    de vencer reaproveita a mesma linha.
+    """
+
+    __tablename__ = "coordinator_invites"
+    __table_args__ = (
+        Index(
+            OPEN_INVITE_INDEX,
+            "email",
+            unique=True,
+            postgresql_where=text("accepted_at IS NULL AND cancelled_at IS NULL"),
+        ),
+    )
+
+    name: Mapped[str] = mapped_column()
+    email: Mapped[str] = mapped_column(index=True)
+    # SHA-256 do link enviado (RNF-S2.02). O link em si nunca é gravado: quem
+    # lê o banco não consegue abrir o convite de ninguém.
+    token_hash: Mapped[str] = mapped_column(unique=True)
+    group_id: Mapped[int] = mapped_column(
+        ForeignKey("groups.id", ondelete="CASCADE"), index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Assíncrono: carregue com selectinload(CoordinatorInvite.group).
+    group: Mapped[Group] = relationship()
+
+
+class ReplacedInviteLink(Base):
+    """Link de convite de coordenadora que um reenvio trocou por um novo (RN-35, #458).
+
+    Só guarda o hash, como o convite: o link antigo não abre nada, mas a tela
+    pode dizer "veja o e-mail mais recente" em vez de tratá-lo como inexistente.
+    """
+
+    __tablename__ = "replaced_invite_links"
+
+    invite_id: Mapped[int] = mapped_column(
+        ForeignKey("coordinator_invites.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(unique=True)

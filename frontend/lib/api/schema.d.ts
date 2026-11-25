@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/coordinator-invite/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Coordinator Invite */
+        post: operations["check_coordinator_invite_api_auth_coordinator_invite_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/signup/coordinator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup Coordinator */
+        post: operations["signup_coordinator_api_auth_signup_coordinator_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/signup/pending": {
         parameters: {
             query?: never;
@@ -202,6 +236,23 @@ export interface paths {
         get: operations["google_login_api_auth_google_login_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/google/coordinator-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Coordinator Google */
+        post: operations["start_coordinator_google_api_auth_google_coordinator_invite_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1157,6 +1208,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/coordinators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coordinators */
+        get: operations["coordinators_api_admin_coordinators_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups */
+        get: operations["groups_api_admin_groups_get"];
+        put?: never;
+        /** New Group */
+        post: operations["new_group_api_admin_groups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/coordinators/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite Coordinator */
+        post: operations["invite_coordinator_api_admin_coordinators_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/coordinators/invites/{invite_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Invite */
+        post: operations["resend_invite_api_admin_coordinators_invites__invite_id__resend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/groups/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups Overview */
+        get: operations["groups_overview_api_admin_groups_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/exports/options": {
         parameters: {
             query?: never;
@@ -1825,6 +1962,142 @@ export interface components {
             /** Present Ids */
             present_ids: number[];
         };
+        /** CoordinatorCountsOut */
+        CoordinatorCountsOut: {
+            /** All */
+            all: number;
+            /** Active */
+            active: number;
+            /** Invites */
+            invites: number;
+            /** Deactivated */
+            deactivated: number;
+        };
+        /**
+         * CoordinatorFilter
+         * @enum {string}
+         */
+        CoordinatorFilter: "all" | "active" | "invites" | "deactivated";
+        /**
+         * CoordinatorGoogleStartIn
+         * @description O "Continuar com o Google" da CV02 (#455).
+         *
+         *     O link vai no corpo, nunca na URL (ela fica nos logs de acesso), e os termos
+         *     são conferidos antes de sair para o Google.
+         */
+        CoordinatorGoogleStartIn: {
+            /** Token */
+            token: string;
+            /** Acceptedterms */
+            acceptedTerms: boolean;
+            /** Termsversion */
+            termsVersion: string;
+        };
+        /**
+         * CoordinatorInviteCheckIn
+         * @description O link do convite. Vai no corpo, não na URL da API, para não ficar em logs.
+         */
+        CoordinatorInviteCheckIn: {
+            /** Token */
+            token: string;
+        };
+        /**
+         * CoordinatorInviteIn
+         * @description O painel "Convidar coordenadora" (AD03): ela e um grupo, novo ou não.
+         */
+        CoordinatorInviteIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Group Id */
+            group_id?: number | null;
+            new_group?: components["schemas"]["NewGroupIn"] | null;
+        };
+        /**
+         * CoordinatorInviteOut
+         * @description O painel "Convite enviado" (AD04).
+         */
+        CoordinatorInviteOut: {
+            /** First Name */
+            first_name: string;
+            /** Email */
+            email: string;
+            /** Group Name */
+            group_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Email Sent */
+            email_sent: boolean;
+        };
+        /**
+         * CoordinatorInviteViewOut
+         * @description O que a CV02 mostra do convite: o grupo, o e-mail travado e a validade.
+         */
+        CoordinatorInviteViewOut: {
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Group Name */
+            group_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** CoordinatorListOut */
+        CoordinatorListOut: {
+            /** Items */
+            items: components["schemas"]["CoordinatorRowOut"][];
+            counts: components["schemas"]["CoordinatorCountsOut"];
+        };
+        /** CoordinatorRowOut */
+        CoordinatorRowOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Group Name */
+            group_name: string;
+            status: components["schemas"]["CoordinatorStatus"];
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+        };
+        /**
+         * CoordinatorSignupIn
+         * @description A coordenadora cria a conta pelo link do convite (CV02, #455).
+         *
+         *     O e-mail não vem daqui: é o do convite. Tamanho da senha, aceite e versão
+         *     dos termos são conferidos no serviço, que devolve um código para o front.
+         */
+        CoordinatorSignupIn: {
+            /** Token */
+            token: string;
+            /** Name */
+            name: string;
+            /** Password */
+            password: string;
+            /** Acceptedterms */
+            acceptedTerms: boolean;
+            /** Termsversion */
+            termsVersion: string;
+        };
+        /**
+         * CoordinatorStatus
+         * @enum {string}
+         */
+        CoordinatorStatus: "active" | "invite_sent" | "invite_expired" | "deactivated";
         /**
          * CourseCode
          * @description O curso escolhido na pergunta 3: lista fixa, igual para os dois níveis.
@@ -2404,6 +2677,14 @@ export interface components {
              */
             withoutInvite: boolean;
         };
+        /**
+         * GoogleStartOut
+         * @description O endereço do Google para onde o navegador vai em seguida.
+         */
+        GoogleStartOut: {
+            /** Url */
+            url: string;
+        };
         /** GroupActionOut */
         GroupActionOut: {
             /** Name */
@@ -2413,6 +2694,43 @@ export interface components {
              * Format: date
              */
             starts_on: string;
+        };
+        /**
+         * GroupCardOut
+         * @description Um cartão da aba Grupos (AD06, RF-S2.29): só nome, cidade e contagens.
+         *
+         *     As meninas são as que têm o grupo como origem (RN-32); a equipe nunca vê
+         *     quais são (RN-41).
+         */
+        GroupCardOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** City */
+            city: string | null;
+            /** Coordinators */
+            coordinators: number;
+            /** Invites */
+            invites: number;
+            /** Girls */
+            girls: number;
+            /** Actions */
+            actions: number;
+            /** Needs Coordinator */
+            needs_coordinator: boolean;
+        };
+        /**
+         * GroupOptionOut
+         * @description Um grupo no seletor "Grupo que já existe" do convite (AD03): nome e cidade.
+         */
+        GroupOptionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** City */
+            city: string | null;
         };
         /**
          * GroupOrigin
@@ -2758,6 +3076,13 @@ export interface components {
             name: string;
             role: components["schemas"]["Role"];
             group?: components["schemas"]["GroupOut"] | null;
+        };
+        /** NewGroupIn */
+        NewGroupIn: {
+            /** Name */
+            name: string;
+            /** City Id */
+            city_id: number;
         };
         /**
          * OpenFollowupOut
@@ -3425,6 +3750,91 @@ export interface operations {
             };
         };
     };
+    check_coordinator_invite_api_auth_coordinator_invite_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorInviteCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorInviteViewOut"];
+                };
+            };
+            /** @description {"error": "invite_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "email_has_account"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "invite_expired"}, {"error": "invite_used"} ou {"error": "invite_replaced"} */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signup_coordinator_api_auth_signup_coordinator_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorSignupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description {"error": "password_too_short"}, "terms_not_accepted" ou "terms_outdated" */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     pending_signup_api_auth_signup_pending_get: {
         parameters: {
             query?: never;
@@ -3692,6 +4102,58 @@ export interface operations {
             };
         };
     };
+    start_coordinator_google_api_auth_google_coordinator_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorGoogleStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleStartOut"];
+                };
+            };
+            /** @description {"error": "invite_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "email_has_account"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "invite_expired"}, {"error": "invite_used"} ou {"error": "invite_replaced"} */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "terms_not_accepted"} ou {"error": "terms_outdated"} */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     google_callback_api_auth_google_callback_get: {
         parameters: {
             query?: {
@@ -3704,6 +4166,8 @@ export interface operations {
                 nise_google_state?: string | null;
                 nise_google_verifier?: string | null;
                 nise_google_convite?: string | null;
+                nise_google_convite_coord?: string | null;
+                nise_google_termos?: string | null;
             };
         };
         requestBody?: never;
@@ -6585,6 +7049,288 @@ export interface operations {
             };
             /** @description Coordenadora em mais de um grupo */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coordinators_api_admin_coordinators_get: {
+        parameters: {
+            query?: {
+                filter?: components["schemas"]["CoordinatorFilter"];
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorListOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    groups_api_admin_groups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupOptionOut"][];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    new_group_api_admin_groups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewGroupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupCardOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description group_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_coordinator_api_admin_coordinators_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorInviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorInviteOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description group_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description email_has_account, invite_pending ou group_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_invite_api_admin_coordinators_invites__invite_id__resend_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: number;
+            };
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorInviteOut"];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invite_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description email_has_account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    groups_overview_api_admin_groups_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupCardOut"][];
+                };
+            };
+            /** @description Não é da equipe NISE */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

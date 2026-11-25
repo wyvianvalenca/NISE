@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.auth.routes import router as auth_router
 from app.modules.actions.routes import router as actions_router
+from app.modules.admin.routes import router as admin_router
 from app.modules.admissions.coordinator_routes import router as coordinator_router
 from app.modules.admissions.cron import router as cron_router
 from app.modules.admissions.routes import router as admissions_router
@@ -45,6 +46,7 @@ router.include_router(events_router)
 router.include_router(followup_router)
 router.include_router(coordinator_router)
 router.include_router(results_router)
+router.include_router(admin_router)
 router.include_router(exports_router)
 
 

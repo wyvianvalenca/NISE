@@ -1,0 +1,17 @@
+.form,
+.sent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sentTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.text {
+  color: var(--nise-ink);
+  font-size: 15px;
+}
