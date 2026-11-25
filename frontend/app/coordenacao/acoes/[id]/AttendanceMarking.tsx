@@ -9,6 +9,7 @@ import { SearchField } from "@/components/SearchField";
 import { Toast } from "@/components/Toast";
 import { comparableText } from "@/lib/coord-action-labels";
 import type { AttendanceGirl, AttendancePage } from "@/lib/coord-attendance";
+import { shownEmail } from "@/lib/email";
 import styles from "./AttendanceMarking.module.css";
 
 /** How many girls show before "Ver mais N" (#339). */
@@ -124,7 +125,7 @@ export function AttendanceMarking({ attendance, marks, onToggle, onToggleAll, on
                   >
                     <span className={styles.row}>
                       <span className={styles.name}>{girl.name}</span>
-                      <span className={styles.cell}>{girl.email}</span>
+                      <span className={styles.cell}>{shownEmail(girl.email)}</span>
                       {details(girl, attendance.columns).map((value, index) => (
                         <span key={index} className={styles.cell}>
                           {value}

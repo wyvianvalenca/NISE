@@ -1,53 +1,89 @@
 "use client";
 
-// A10 · Perfil, só com "Seu caminho" por enquanto. Mostra o curso que ela
-// registrou, ou convida a registrar (RF-F6.04, RF-F6.05, #298). As outras
-// seções do perfil vêm nas próprias histórias.
+// A10 · Perfil (RF-F7.11, RF-F7.12, RF-S2.09, RF-S2.10, #391): conta, o que
+// interessa a ela, grupo, eventos de que participou (RF-F2.03), caminho,
+// e-mails, termos e sair. Cada seção é um cartão em components/Profile*Card.tsx.
+// Só ela vê o próprio perfil: não há id na URL, e o servidor decide quem pode
+// abrir (RNF-G.03).
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
-import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { Loading } from "@/components/Loading";
 import { LoadFailed } from "@/components/LoadFailed";
+import { ProfileAccountCard } from "@/components/ProfileAccountCard";
+import { ProfileEmailsCard } from "@/components/ProfileEmailsCard";
+import { ProfileEventsCard } from "@/components/ProfileEventsCard";
+import { ProfileGroupCard } from "@/components/ProfileGroupCard";
+import { ProfileInterestsCard } from "@/components/ProfileInterestsCard";
+import { ProfileLeaveCard } from "@/components/ProfileLeaveCard";
+import { ProfilePathCard } from "@/components/ProfilePathCard";
+import { ProfileTermsCard } from "@/components/ProfileTermsCard";
 import { accessPath } from "@/lib/lista-oficial";
+import { type ProfileCourseOut, getProfileCourse } from "@/lib/perfil-curso";
 import {
-  PROFILE_COURSE_PATH,
-  type ProfileCourseOut,
-  getProfileCourse,
-} from "@/lib/perfil-curso";
+  PROFILE_PATHS,
+  type ProfileDetails,
+  type ProfileEvents,
+  getProfileDetails,
+  getProfileEvents,
+} from "@/lib/profile-api";
 import styles from "./page.module.css";
 
-// O nível chega como código (CourseLevel); o nome na tela é o da pergunta 3.
-const LEVEL_LABELS = { tecnico: "Curso técnico", graduacao: "Graduação" } as const;
+type Loaded = {
+  details: ProfileDetails;
+  course: ProfileCourseOut;
+  events: ProfileEvents["events"];
+};
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<ProfileCourseOut | "error" | undefined>();
+  const [loaded, setLoaded] = useState<Loaded | "error" | undefined>();
   // Muda a cada nova busca, para o efeito abaixo rodar de novo.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    getProfileCourse(controller.signal)
-      .then((result) => {
-        if (result.ok) setProfile(result.profile);
-        else if (result.reason === "failed") setProfile("error");
-        // Login vencido ou termos novos: "Tentar novamente" não resolveria.
-        else router.replace(accessPath(result.reason));
+    Promise.all([
+      getProfileDetails(controller.signal),
+      getProfileCourse(controller.signal),
+      // Os eventos são um cartão a mais: se só eles falharem (erro ou sem rede),
+      // o perfil aparece sem o cartão. Login vencido e termos novos seguem abaixo.
+      getProfileEvents(controller.signal).catch(() => ({ ok: false, reason: "failed" }) as const),
+    ])
+      .then(([details, course, events]) => {
+        // Login vencido ou termos novos, em qualquer das três: "Tentar
+        // novamente" não resolveria.
+        for (const result of [details, course, events]) {
+          if (!result.ok && result.reason !== "failed") {
+            router.replace(accessPath(result.reason));
+            return;
+          }
+        }
+        if (details.ok && course.ok) {
+          setLoaded({
+            details: details.profile,
+            course: course.profile,
+            events: events.ok ? events.events : [],
+          });
+        } else {
+          setLoaded("error");
+        }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setProfile("error");
+        // Sem rede. Se ela só saiu da página, não há o que mostrar.
+        if (!controller.signal.aborted) setLoaded("error");
       });
     return () => controller.abort();
   }, [attempt, router]);
 
-  if (profile === "error") {
+  if (loaded === "error") {
     return (
       <LoadFailed
         onRetry={() => {
-          setProfile(undefined);
+          setLoaded(undefined);
           setAttempt((value) => value + 1);
         }}
       />
@@ -56,40 +92,48 @@ export default function ProfilePage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      <AppHeader>
+        <button type="button" className={styles.back} onClick={() => {
+            // Aberto direto (favorito, link), não há histórico do app.
+            if (window.history.length > 1) router.back();
+            else router.replace("/file");
+          }}>
+          <Icon name="left" />
+          Voltar
+        </button>
+      </AppHeader>
 
       <div className={styles.scroll}>
         <main className={styles.main}>
-          <h1 className={styles.title}>Seu perfil</h1>
+          <h1 className={styles.title}>Perfil</h1>
+          <p className={styles.lead}>Sua conta, seu grupo e o que a NISE manda pra você.</p>
 
-          {profile === undefined ? (
+          {loaded === undefined ? (
             <Loading />
           ) : (
-            <section className={styles.section} aria-labelledby="seu-caminho">
-              <h2 id="seu-caminho" className={styles.sectionTitle}>
-                Seu caminho
-              </h2>
-              {profile.course && profile.level ? (
-                <>
-                  <p className={styles.course}>
-                    {LEVEL_LABELS[profile.level]} · {profile.course}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    onClick={() => router.push(PROFILE_COURSE_PATH)}
-                  >
-                    Mudar curso
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className={styles.question}>Entrou num curso da área?</p>
-                  <Button onClick={() => router.push(PROFILE_COURSE_PATH)}>
-                    Registrar ingresso
-                  </Button>
-                </>
-              )}
-            </section>
+            <>
+              <ProfileAccountCard
+                name={loaded.details.name}
+                email={loaded.details.email}
+                city={loaded.details.city}
+                hasPassword={loaded.details.hasPassword}
+                google={loaded.details.google}
+                // O botão "Mudar senha" volta com a #395 (passar PROFILE_PATHS.password aqui):
+                // até lá, /perfil/senha daria 404.
+              />
+              <ProfileInterestsCard
+                topics={loaded.details.topics.map((topic) => topic.label)}
+                allTopics={loaded.details.allTopics}
+                studyStage={loaded.details.studyStage?.label ?? null}
+                editHref={PROFILE_PATHS.interests}
+              />
+              <ProfileGroupCard origin={loaded.details.origin} />
+              <ProfileEventsCard events={loaded.events} />
+              <ProfilePathCard profile={loaded.course} />
+              <ProfileEmailsCard opportunityEmails={loaded.details.opportunityEmails} />
+              <ProfileTermsCard />
+              <ProfileLeaveCard />
+            </>
           )}
         </main>
       </div>

@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { LinkButton } from "@/components/Button";
+import { DeletedAccountNotice } from "@/components/DeletedAccountNotice";
 import { FileIllustration } from "@/components/FileIllustration";
 import { Loading } from "@/components/Loading";
 import { SignedInRedirect } from "@/components/SignedInRedirect";
@@ -12,9 +14,11 @@ import styles from "./page.module.css";
  *
  * It stays on the server: there is no state and no fetching here, and "Criar
  * conta" is navigation, so it is a link and not a button with `router.push`.
- * The only client piece is `SignedInRedirect`, which sends whoever is already
- * signed in to her first screen. While it asks the server, a browser with the
- * session hint sees the loading screen instead of the welcome (see the CSS).
+ * The client pieces are `SignedInRedirect`, which sends whoever is already
+ * signed in to her first screen, and `DeletedAccountNotice`, the notice after
+ * she deleted her account (#394). While `SignedInRedirect` asks the server, a
+ * browser with the session hint sees the loading screen instead of the welcome
+ * (see the CSS).
  */
 export default function Home() {
   return (
@@ -27,6 +31,10 @@ export default function Home() {
       </div>
 
       <div className={styles.welcome}>
+        <Suspense fallback={null}>
+          <DeletedAccountNotice />
+        </Suspense>
+
         <AppHeader>
           <TextLink href="/entrar">Entrar</TextLink>
         </AppHeader>

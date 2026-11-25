@@ -1,0 +1,37 @@
+/* Sair e excluir ficam soltos no fim da página, sem cartão (Figma: A10, Conta). */
+.leave {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.error {
+  color: var(--nise-error);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Ação sem volta: texto no vermelho do "Excluir ação", sem fundo e centralizada. */
+.delete {
+  align-self: center;
+  min-height: 44px;
+  padding: 6px 0;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-error);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.delete:hover {
+  text-decoration: underline;
+}
+
+.delete:focus-visible {
+  outline: 3px solid var(--nise-pink);
+}

@@ -11,7 +11,8 @@
   overflow-y: auto;
 }
 
-/* No computador a tela continua estreita, como no celular do Figma. */
+/* No computador a tela continua estreita, como no celular do Figma.
+   Figma: Main, espaço 16, topo 28 e laterais 24. */
 .main {
   display: flex;
   flex-direction: column;
@@ -19,33 +20,42 @@
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  padding: 28px 24px 32px;
+  padding: 28px 24px 24px;
+}
+
+/* "‹ Voltar" no cabeçalho, à direita da marca (Figma: Link target / Voltar). */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-8);
+  background: none;
+  color: var(--nise-teal);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--nise-pink);
 }
 
 .title {
+  color: var(--nise-ink);
   font-size: 28px;
   font-weight: 700;
+  line-height: 1.4;
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.sectionTitle {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.question {
-  color: var(--nise-ink);
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.course {
-  color: var(--nise-ink);
-  font-size: 16px;
-  font-weight: 700;
+.lead {
+  color: var(--nise-muted);
+  font-size: 15px;
+  line-height: 1.4;
 }
