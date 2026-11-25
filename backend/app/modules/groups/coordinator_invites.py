@@ -139,6 +139,44 @@ async def create_coordinator_invite(
     return CreatedInvite(invite=invite, group=group, token=token)
 
 
+async def resend_coordinator_invite(
+    session: AsyncSession, invite_id: int, now: datetime | None = None
+) -> CreatedInvite:
+    """Troca o link do convite por um novo, que vale 7 dias a partir de agora.
+
+    O link anterior deixa de funcionar: só o hash do novo fica no banco
+    (RN-35, RNF-S2.02). Vale para convite esperando ou expirado, sem limite de
+    reenvios. Levanta CoordinatorInviteError:
+    - "invite_not_found" (404): não existe, já foi aceito ou foi cancelado;
+    - "email_has_account": o e-mail já tem conta agora; nada é trocado.
+    """
+    now = now or datetime.now(UTC)
+
+    # FOR UPDATE: dois "Reenviar" ao mesmo tempo não deixam dois links válidos.
+    invite = await session.scalar(
+        select(CoordinatorInvite)
+        .where(CoordinatorInvite.id == invite_id)
+        .options(selectinload(CoordinatorInvite.group))
+        .with_for_update()
+    )
+    if (
+        invite is None
+        or invite.accepted_at is not None
+        or invite.cancelled_at is not None
+    ):
+        raise CoordinatorInviteError("invite_not_found", status.HTTP_404_NOT_FOUND)
+
+    if await get_user_by_email(session, invite.email) is not None:
+        raise CoordinatorInviteError("email_has_account")
+
+    token = new_invite_token()
+    invite.token_hash = hash_invite_token(token)
+    invite.expires_at = now + timedelta(days=INVITE_VALID_DAYS)
+    await session.commit()
+
+    return CreatedInvite(invite=invite, group=invite.group, token=token)
+
+
 async def create_group(session: AsyncSession, *, name: str, city_id: int) -> Group:
     """Cria um grupo sem convidar ninguém (AD06, RF-S2.30).
 
