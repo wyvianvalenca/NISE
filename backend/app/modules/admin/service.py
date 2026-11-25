@@ -1,16 +1,20 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.modules.actions.models import Action
 from app.modules.admin.schemas import (
     CoordinatorCountsOut,
     CoordinatorFilter,
     CoordinatorListOut,
     CoordinatorRowOut,
     CoordinatorStatus,
+    GroupCardOut,
 )
 from app.modules.cities.utils import normalize_search
+from app.modules.girls.models import Girl
 from app.modules.groups.models import CoordinatorInvite, Group, GroupCoordinator
 from app.users.models import Role, User
 
@@ -105,3 +109,55 @@ async def list_coordinators(
     shown.sort(key=lambda r: (normalize_search(r.name), r.id))
 
     return CoordinatorListOut(items=shown, counts=counts)
+
+
+async def list_group_cards(
+    session: AsyncSession, now: datetime | None = None
+) -> list[GroupCardOut]:
+    """Os grupos da aba Grupos (AD06, RF-S2.29, D-120).
+
+    Os que precisam de coordenadora vêm primeiro, depois os outros, cada bloco
+    por nome. Um convite esperando não tira a etiqueta: só a coordenadora
+    ativa tira. Só traz contagens, nada de menina (RN-41).
+    """
+    now = now or datetime.now(UTC)
+
+    async def counts(group_column, *where) -> dict[int, int]:  # type: ignore[no-untyped-def]
+        rows = await session.execute(
+            select(group_column, func.count()).where(*where).group_by(group_column)
+        )
+        return {group_id: total for group_id, total in rows.all()}
+
+    coordinators = await counts(
+        GroupCoordinator.group_id,
+        GroupCoordinator.user_id.in_(
+            select(User.id).where(
+                User.role == Role.COORDINATOR, User.deactivated_at.is_(None)
+            )
+        ),
+    )
+    invites = await counts(
+        CoordinatorInvite.group_id,
+        CoordinatorInvite.accepted_at.is_(None),
+        CoordinatorInvite.cancelled_at.is_(None),
+        CoordinatorInvite.expires_at > now,
+    )
+    girls = await counts(Girl.origin_group_id, Girl.origin_group_id.is_not(None))
+    actions = await counts(Action.group_id)
+
+    groups = await session.scalars(select(Group).options(selectinload(Group.city)))
+    cards = [
+        GroupCardOut(
+            id=group.id,
+            name=group.name,
+            city=f"{group.city.name}, {group.city.state}" if group.city else None,
+            coordinators=coordinators.get(group.id, 0),
+            invites=invites.get(group.id, 0),
+            girls=girls.get(group.id, 0),
+            actions=actions.get(group.id, 0),
+            needs_coordinator=coordinators.get(group.id, 0) == 0,
+        )
+        for group in groups
+    ]
+    cards.sort(key=lambda c: (not c.needs_coordinator, normalize_search(c.name), c.id))
+    return cards

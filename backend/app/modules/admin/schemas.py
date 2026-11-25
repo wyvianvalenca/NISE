@@ -98,3 +98,23 @@ class CoordinatorListOut(BaseModel):
     items: list[CoordinatorRowOut]
     # Contam a lista toda, sem o filtro e sem a busca.
     counts: CoordinatorCountsOut
+
+
+class GroupCardOut(BaseModel):
+    """Um cartão da aba Grupos (AD06, RF-S2.29): só nome, cidade e contagens.
+
+    As meninas são as que têm o grupo como origem (RN-32); a equipe nunca vê
+    quais são (RN-41).
+    """
+
+    id: int
+    name: str
+    city: str | None
+    # Coordenadoras ativas (não desativadas).
+    coordinators: int
+    # Convites esperando: nem aceitos, nem cancelados, nem vencidos.
+    invites: int
+    girls: int
+    actions: int
+    # Sem coordenadora ativa: o cartão mostra a etiqueta e o "Convidar".
+    needs_coordinator: bool
