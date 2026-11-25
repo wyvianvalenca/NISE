@@ -11,6 +11,7 @@ from app.modules.admissions.service import (
     current_enrollment,
 )
 from app.modules.consents.permissions import AcceptedGirlDep
+from app.modules.followup.utils import COMPUTING_VIEW_LABELS, FUTURE_SELF_LABELS
 from app.modules.girls.deletion import DeletionResult, delete_account
 from app.modules.girls.schemas import (
     InterestOptionsOut,
@@ -21,13 +22,18 @@ from app.modules.girls.schemas import (
     ProfileDetailsOut,
     ProfileEventsOut,
     ProfileOut,
+    StartingPointIn,
+    StartingPointOut,
 )
 from app.modules.girls.service import (
+    StartingPointResult,
     get_attended_events,
     get_girl_of_user,
     get_profile_details,
     mark_file_intro_seen,
     save_interests,
+    save_starting_point,
+    starting_point_open,
 )
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS, today_in_maceio
 
@@ -112,6 +118,75 @@ def profile_not_found() -> JSONResponse:
         status_code=status.HTTP_404_NOT_FOUND,
         content={"error": "profile_not_found"},
     )
+
+
+# A05a · "Antes de começar" (RF-F10.26, #303): o primeiro nome do título, se a
+# tela ainda aceita resposta e as opções das duas perguntas, as mesmas do
+# questionário (#293).
+#
+# Não há id na URL: ela só vê o próprio perfil, o da sessão (RNF-G.03).
+@router.get(
+    "/starting-point",
+    response_model=StartingPointOut,
+    responses={**TERMS_NOT_ACCEPTED, **PROFILE_NOT_FOUND},
+)
+async def starting_point(
+    user: AcceptedGirlDep, session: AsyncSessionDep
+) -> StartingPointOut | JSONResponse:
+    girl = await get_girl_of_user(session, user.id)
+
+    if girl is None:
+        return profile_not_found()
+
+    return StartingPointOut(
+        first_name=girl.name.split()[0] if girl.name.strip() else "",
+        open=starting_point_open(girl),
+        computing_views=[
+            OptionOut(code=option.value, label=label)
+            for option, label in COMPUTING_VIEW_LABELS.items()
+        ],
+        future_selves=[
+            OptionOut(code=option.value, label=label)
+            for option, label in FUTURE_SELF_LABELS.items()
+        ],
+    )
+
+
+# "Continuar" na A05a. "Pular" não chama nada. Responde uma vez só e só no
+# cadastro, antes dos interesses (A05).
+@router.post(
+    "/starting-point",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    responses={
+        **TERMS_NOT_ACCEPTED,
+        **PROFILE_NOT_FOUND,
+        status.HTTP_409_CONFLICT: {
+            "description": (
+                'Ela já respondeu: {"error": "already_answered"}. Ela já passou '
+                'dos interesses (A05): {"error": "signup_finished"}'
+            )
+        },
+    },
+)
+async def answer_starting_point(
+    data: StartingPointIn, user: AcceptedGirlDep, session: AsyncSessionDep
+) -> JSONResponse | None:
+    result = await save_starting_point(session, user.id, data)
+
+    if result is StartingPointResult.PROFILE_NOT_FOUND:
+        return profile_not_found()
+
+    if result in (
+        StartingPointResult.ALREADY_ANSWERED,
+        StartingPointResult.SIGNUP_FINISHED,
+    ):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"error": result.value},
+        )
+
+    return None
 
 
 # O perfil da menina da sessão. Por enquanto só diz se ela já viu "Por que

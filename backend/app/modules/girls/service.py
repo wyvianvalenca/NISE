@@ -1,3 +1,5 @@
+import enum
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,6 +15,7 @@ from app.modules.girls.schemas import (
     ProfileDetailsOut,
     ProfileEventOut,
     ProfileEventsOut,
+    StartingPointIn,
 )
 from app.modules.girls.utils import STUDY_STAGE_LABELS, TOPIC_LABELS
 from app.users.models import OAuthAccount, Provider, User
@@ -57,6 +60,51 @@ async def save_interests(
     await session.commit()
 
     return True
+
+
+class StartingPointResult(enum.Enum):
+    SAVED = "saved"
+    PROFILE_NOT_FOUND = "profile_not_found"
+    # Ela já respondeu: a A05a é respondida uma vez só.
+    ALREADY_ANSWERED = "already_answered"
+    # Ela já escolheu os interesses (A05): o cadastro acabou.
+    SIGNUP_FINISHED = "signup_finished"
+
+
+def starting_point_open(girl: Girl) -> bool:
+    """A A05a ainda aceita resposta: ela não respondeu e está no cadastro.
+
+    A etapa de estudo só é gravada pela A05, que vem depois da A05a, e nunca
+    volta a ficar vazia. Por isso ela marca o fim do cadastro.
+    """
+    answered = (
+        girl.signup_computing_view is not None or girl.signup_future_self is not None
+    )
+    return not answered and girl.study_stage is None
+
+
+async def save_starting_point(
+    session: AsyncSession, user_id: int, data: StartingPointIn
+) -> StartingPointResult:
+    """Grava as respostas da A05a "Antes de começar" no perfil (RF-F10.26).
+
+    Uma vez só, e só durante o cadastro: quem já respondeu ou já passou dos
+    interesses não muda a resposta, que é o "antes" da comparação (D-64).
+    """
+    girl = await get_girl_of_user(session, user_id)
+    if girl is None:
+        return StartingPointResult.PROFILE_NOT_FOUND
+
+    if girl.study_stage is not None:
+        return StartingPointResult.SIGNUP_FINISHED
+    if not starting_point_open(girl):
+        return StartingPointResult.ALREADY_ANSWERED
+
+    girl.signup_computing_view = data.computing_view
+    girl.signup_future_self = data.future_self
+    await session.commit()
+
+    return StartingPointResult.SAVED
 
 
 async def get_girl_of_user(session: AsyncSession, user_id: int) -> Girl | None:

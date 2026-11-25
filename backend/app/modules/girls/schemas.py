@@ -19,7 +19,12 @@ from app.modules.admissions.declaration import (
 )
 from app.modules.admissions.models import CourseLevel
 from app.modules.consents.schemas import GroupOrigin, SelfOrigin
-from app.modules.followup.models import CourseCode, CourseStatus
+from app.modules.followup.models import (
+    ComputingView,
+    CourseCode,
+    CourseStatus,
+    FutureSelf,
+)
 from app.modules.girls.models import StudyStage, Topic
 
 
@@ -86,6 +91,40 @@ class ProfileOut(BaseModel):
 # followup/schemas.py, que importa este arquivo e por isso não pode ser
 # importado aqui.
 _CAMEL_CASE = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class StartingPointOut(BaseModel):
+    """O que a A05a "Antes de começar" mostra (RF-F10.26, #303).
+
+    `open` é False quando ela já respondeu ou já passou dos interesses (A05):
+    a tela então segue direto para a A05. As opções são as das perguntas 1 e 2
+    do questionário (#293), na mesma ordem.
+    """
+
+    model_config = _CAMEL_CASE
+
+    first_name: str
+    open: bool
+    computing_views: list[OptionOut]
+    future_selves: list[OptionOut]
+
+
+class StartingPointIn(BaseModel):
+    """As respostas da A05a. Cada pergunta é opcional, mas pelo menos uma vem:
+    "Pular" não chama o back. Códigos fora das listas e campos desconhecidos
+    são recusados.
+    """
+
+    model_config = ConfigDict(**_CAMEL_CASE, extra="forbid")
+
+    computing_view: ComputingView | None = None
+    future_self: FutureSelf | None = None
+
+    @model_validator(mode="after")
+    def at_least_one(self) -> Self:
+        if self.computing_view is None and self.future_self is None:
+            raise ValueError("Responda pelo menos uma pergunta")
+        return self
 
 
 class ProfileDetailsOut(BaseModel):
