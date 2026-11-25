@@ -265,6 +265,7 @@ const TIME_ZONE = "America/Maceio";
 function dateParts(date: Date) {
   const parts = new Intl.DateTimeFormat("pt-BR", {
     timeZone: TIME_ZONE,
+    year: "numeric",
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -272,15 +273,27 @@ function dateParts(date: Date) {
     hourCycle: "h23",
   }).formatToParts(date);
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return { day: get("day"), month: get("month"), time: `${get("hour")}:${get("minute")}` };
+  return {
+    year: get("year"),
+    day: get("day"),
+    month: get("month"),
+    time: `${get("hour")}:${get("minute")}`,
+  };
 }
 
-/** "hoje, 14:02" for today's exports, "02/10, 09:40" for the older ones. */
+/**
+ * "hoje, 14:02" for today's exports, "02/10, 09:40" for the older ones of this
+ * year and "02/10/2025, 09:40" for those of another year.
+ */
 export function whenLabel(createdAt: string, now: Date = new Date()): string {
   const made = dateParts(new Date(createdAt));
   const today = dateParts(now);
-  const isToday = made.day === today.day && made.month === today.month;
-  return isToday ? `hoje, ${made.time}` : `${made.day}/${made.month}, ${made.time}`;
+  const sameYear = made.year === today.year;
+  if (sameYear && made.day === today.day && made.month === today.month) {
+    return `hoje, ${made.time}`;
+  }
+  const day = sameYear ? `${made.day}/${made.month}` : `${made.day}/${made.month}/${made.year}`;
+  return `${day}, ${made.time}`;
 }
 
 /** "66 linhas", "1 linha". */

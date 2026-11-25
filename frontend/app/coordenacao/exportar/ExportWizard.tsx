@@ -66,17 +66,28 @@ export function ExportWizard() {
   useEffect(() => {
     let current = true;
     getSummary(cut, packages)
-      .then((loaded) => current && setSummary(loaded))
+      .then((loaded) => {
+        if (!current) return;
+        setSummary(loaded);
+        setSummaryFailed(false);
+      })
       .catch(() => current && setSummaryFailed(true));
     return () => {
       current = false;
     };
   }, [cut, packages]);
 
-  function choose(field: keyof Cut, value: string) {
-    setCut((current) => ({ ...current, [field]: value }));
+  // Whatever changes the cut or the packages asks the bar again, so it starts
+  // clean: a failure from an earlier ask does not stay on screen, and an old
+  // count does not keep "Continuar" enabled.
+  function clearSummary() {
     setSummary(null);
     setSummaryFailed(false);
+  }
+
+  function choose(field: keyof Cut, value: string) {
+    setCut((current) => ({ ...current, [field]: value }));
+    clearSummary();
   }
 
   const nothingMatches = summary !== null && summary.rows === 0;
@@ -95,11 +106,14 @@ export function ExportWizard() {
     const chosen = options?.models.find((item) => item.value === id);
     if (!chosen) return;
     setModel(id);
-    setPackages(chosen.packages);
+    // A new list even for the same model, so the bar always asks again.
+    setPackages([...chosen.packages]);
+    clearSummary();
   }
 
   function toggle(id: PackageId, on: boolean) {
     setPackages((current) => (on ? [...current, id] : current.filter((item) => item !== id)));
+    clearSummary();
   }
 
   function back() {
