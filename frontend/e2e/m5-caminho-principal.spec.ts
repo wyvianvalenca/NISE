@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "../lib/api/schema";
 import { OPTIONS } from "./followup-api";
+import { PROFILE_DETAILS } from "./perfil-api";
 
 /**
  * E2E · M5, caminho principal (#301): do questionário ao perfil.
@@ -74,6 +75,12 @@ async function serve(page: Page, backend: FakeBackend): Promise<void> {
     return route.fulfill(noContent);
   });
   await page.route("**/api/profile/course", (route) => route.fulfill({ json: backend.course }));
+  // O resto da A10 (#391): sem estas rotas o perfil mostra "Não foi possível carregar".
+  await page.route("**/api/profile/details", (route) => route.fulfill({ json: PROFILE_DETAILS }));
+  await page.route("**/api/profile/events", (route) => {
+    const events: Schemas["ProfileEventsOut"] = { events: [] };
+    return route.fulfill({ json: events });
+  });
 }
 
 /**
