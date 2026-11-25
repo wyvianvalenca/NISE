@@ -1,0 +1,43 @@
+.form,
+.fields,
+.sent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.group,
+.can {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nise-ink);
+}
+
+.hint {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.can ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--nise-ink);
+  font-size: 15px;
+}
+
+.sentTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--nise-ink);
+}
+
+.sentText {
+  color: var(--nise-ink);
+  font-size: 15px;
+}
