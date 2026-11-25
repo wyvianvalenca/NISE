@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.cities.service import ensure_city_exists
-from app.modules.groups.models import CoordinatorInvite, Group
+from app.modules.groups.models import CoordinatorInvite, Group, ReplacedInviteLink
 from app.users.service import get_user_by_email, normalize_email
 
 # Prazo fixo do convite (RN-35, D-118).
@@ -169,6 +169,8 @@ async def resend_coordinator_invite(
     if await get_user_by_email(session, invite.email) is not None:
         raise CoordinatorInviteError("email_has_account")
 
+    # O hash antigo fica guardado para a tela dizer que o link foi substituído.
+    session.add(ReplacedInviteLink(invite_id=invite.id, token_hash=invite.token_hash))
     token = new_invite_token()
     invite.token_hash = hash_invite_token(token)
     invite.expires_at = now + timedelta(days=INVITE_VALID_DAYS)

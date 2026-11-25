@@ -143,7 +143,8 @@ async def signup_email(
         status.HTTP_404_NOT_FOUND: {"description": '{"error": "invite_not_found"}'},
         status.HTTP_409_CONFLICT: {"description": '{"error": "email_has_account"}'},
         status.HTTP_410_GONE: {
-            "description": '{"error": "invite_expired"} ou {"error": "invite_used"}'
+            "description": '{"error": "invite_expired"}, {"error": "invite_used"} ou '
+            '{"error": "invite_replaced"}'
         },
     },
 )
