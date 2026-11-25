@@ -463,7 +463,9 @@ APAGAR = "apagar"
 DESTINO: dict[str, dict[str, object]] = {
     "users": {
         "acao": ESVAZIAR,
-        "fica": {"id", "role", "created_at"},
+        # deactivated_at é da coordenadora desativada pela equipe (RN-41); a
+        # exclusão só vale para a menina, que nunca o tem preenchido.
+        "fica": {"id", "role", "created_at", "deactivated_at"},
         "esvazia": {
             "name": "Registro anonimizado",
             "email": "conta-<id>@anonimizado.invalid",
@@ -590,6 +592,10 @@ DESTINO: dict[str, dict[str, object]] = {
     "curated_item_audiences": {"acao": MANTER},
     "cities": {"acao": MANTER},
     "important_dates": {"acao": MANTER},
+    # Convites de coordenadora (#453, #458): a exclusão só vale para a conta da
+    # menina (NOT_A_GIRL para os outros papéis), então não toca neles.
+    "coordinator_invites": {"acao": MANTER},
+    "replaced_invite_links": {"acao": MANTER},
 }
 
 # Tabelas "manter" que têm uma dessas colunas ou FK para girls, e por quê.
@@ -600,6 +606,8 @@ MANTER_COM_COLUNA_IDENTIFICAVEL = {
     ("cities", "name"),  # nome do município
     ("curated_items", "title"),
     ("official_lists", "institution"),  # lista pública (RF-F31.05)
+    ("coordinator_invites", "name"),  # da coordenadora convidada, não da menina
+    ("coordinator_invites", "email"),  # idem
 }
 MANTER_COM_FK_PARA_GIRLS = {
     "attendance_emails"  # divergência 2: só girl_id, action_id, kind e datas
