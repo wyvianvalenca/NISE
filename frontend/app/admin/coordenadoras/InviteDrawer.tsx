@@ -43,11 +43,6 @@ const PROBLEM_TEXT: Record<InviteProblem, string> = {
   failed: "Não deu pra enviar o convite agora. Tente de novo.",
 };
 
-/** Closes the open drawer the same way its own "X" does (the dialog tells `onClose`). */
-function closeDrawer() {
-  document.querySelector("dialog")?.close();
-}
-
 type InviteDrawerProps = {
   /** An invite was created, so the list can be fetched again. */
   onInvited: () => void;
@@ -177,7 +172,7 @@ export function InviteDrawer({ onInvited, onClose }: InviteDrawerProps) {
             <Button variant="secondary" onClick={another}>
               Convidar outra pessoa
             </Button>
-            <Button onClick={closeDrawer}>Fechar</Button>
+            <Button onClick={onClose}>Fechar</Button>
           </>
         }
       >
@@ -187,11 +182,19 @@ export function InviteDrawer({ onInvited, onClose }: InviteDrawerProps) {
               Não deu pra enviar o e-mail pra {sent.firstName}. Tente de novo.
             </Notice>
           )}
-          <h3 className={styles.sentTitle}>Convite enviado pra {sent.firstName}</h3>
-          <p className={styles.sentText}>
-            Mandamos o link pra <strong>{sent.email}</strong>. Ele vale até{" "}
-            <strong>{inviteDateLabel(sent.expiresAt)}</strong>.
-          </p>
+          {sent.emailSent ? (
+            <>
+              <h3 className={styles.sentTitle}>Convite enviado pra {sent.firstName}</h3>
+              <p className={styles.sentText}>
+                Mandamos o link pra <strong>{sent.email}</strong>. Ele vale até{" "}
+                <strong>{inviteDateLabel(sent.expiresAt)}</strong>.
+              </p>
+            </>
+          ) : (
+            <p className={styles.sentText}>
+              O convite ficou na lista de Coordenadoras. Dá pra usar “Reenviar” lá.
+            </p>
+          )}
           <p className={styles.hint}>
             {sent.firstName} vai coordenar <strong>{sent.groupName}</strong>.
           </p>
@@ -208,7 +211,7 @@ export function InviteDrawer({ onInvited, onClose }: InviteDrawerProps) {
       subtitle="Ela recebe um e-mail com o link pra criar a conta."
       footer={
         <>
-          <Button variant="secondary" disabled={saving} onClick={closeDrawer}>
+          <Button variant="secondary" disabled={saving} onClick={onClose}>
             Cancelar
           </Button>
           <Button type="submit" form={FORM_ID} loading={saving} loadingLabel="Enviando…">
@@ -275,6 +278,7 @@ export function InviteDrawer({ onInvited, onClose }: InviteDrawerProps) {
               }}
             />
             <CityField
+              id="invite-city"
               value={cityText}
               onChange={(text) => {
                 setCityText(text);
@@ -301,7 +305,7 @@ export function InviteDrawer({ onInvited, onClose }: InviteDrawerProps) {
               <option value="">Escolha um grupo</option>
               {groups?.map((group) => (
                 <option key={group.id} value={group.id}>
-                  {group.name} ({group.city})
+                  {group.city ? `${group.name} (${group.city})` : group.name}
                 </option>
               ))}
             </Select>

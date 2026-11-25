@@ -65,8 +65,10 @@ export function CoordinatorsView() {
 
   if (list === null) return <Loading label="Carregando as coordenadoras…" />;
 
-  return <CoordinatorsList
+  return (
+    <CoordinatorsList
       coordinators={list.items}
       onInvited={() => setAttempt((count) => count + 1)}
-    />;
+    />
+  );
 }
