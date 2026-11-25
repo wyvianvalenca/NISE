@@ -1157,6 +1157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/results/future-self": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Future Self Route */
+        get: operations["future_self_route_api_coordinator_results_future_self_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/exports/options": {
         parameters: {
             query?: never;
@@ -2384,6 +2401,43 @@ export interface components {
          * @enum {string}
          */
         FutureSelf: "sure" | "maybe" | "probably_not";
+        /** FutureSelfLineOut */
+        FutureSelfLineOut: {
+            group: components["schemas"]["ParticipationGroup"];
+            /** Girls */
+            girls: number;
+            /** Points */
+            points: components["schemas"]["FutureSelfPointOut"][];
+        };
+        /**
+         * FutureSelfMilestone
+         * @description Os marcos do eixo horizontal: o cadastro e as quatro rodadas (RF-F5.33).
+         * @enum {string}
+         */
+        FutureSelfMilestone: "signup" | "three_months" | "six_months" | "twelve_months" | "eighteen_months";
+        /**
+         * FutureSelfOut
+         * @description O card "Elas se veem na computação no futuro?" (RF-F5.33, RN-50).
+         *
+         *     Quatro linhas, cada uma com os cinco marcos. Só totais, nunca uma menina
+         *     (RN-04): "Nunca participaram" aparece só como contagem. O front calcula a
+         *     porcentagem `sure / responses` e deixa lacuna onde `responses` é 0.
+         */
+        FutureSelfOut: {
+            /** Lines */
+            lines: components["schemas"]["FutureSelfLineOut"][];
+        };
+        /**
+         * FutureSelfPointOut
+         * @description Um marco de uma linha: `sure` de `responses` disseram "Com certeza".
+         */
+        FutureSelfPointOut: {
+            milestone: components["schemas"]["FutureSelfMilestone"];
+            /** Responses */
+            responses: number;
+            /** Sure */
+            sure: number;
+        };
         /**
          * GoogleSignupCompleteIn
          * @description O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).
@@ -2798,6 +2852,12 @@ export interface components {
          * @enum {string}
          */
         Package: "groups" | "funnel" | "ratings" | "interest" | "admission" | "other_groups";
+        /**
+         * ParticipationGroup
+         * @description As quatro linhas do card, de quem foi a mais ações a quem chegou sozinha.
+         * @enum {string}
+         */
+        ParticipationGroup: "two_or_more" | "one" | "no_show" | "never";
         /**
          * PendingRatingOut
          * @description A ação que a menina pode avaliar na A03 (#58).
@@ -6574,6 +6634,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AfterActionOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    future_self_route_api_coordinator_results_future_self_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FutureSelfOut"];
                 };
             };
             /** @description Não é coordenadora ou sem grupo */

@@ -5,6 +5,7 @@
  * `pnpm api:types`. Rode de novo depois de mudar a rota no back.
  */
 import type { components } from "./api/schema";
+import type { FutureSelf } from "./resultados-future-self";
 
 export type AfterAction = components["schemas"]["AfterActionOut"];
 type Period = components["schemas"]["Period"];
@@ -84,4 +85,27 @@ export function percentLabel(count: number, total: number): string {
 /** Quanto da barra fica preenchido, de 0 a 1. */
 export function fraction(count: number, total: number): number {
   return total === 0 ? 0 : count / total;
+}
+
+export type FutureSelfResult =
+  | { ok: true; numbers: FutureSelf }
+  | { ok: false; reason: "signed_out" | "forbidden" | "several_groups" | "failed" };
+
+/** O card "Elas se veem na computação no futuro?" (#369) para os mesmos filtros. */
+export async function getFutureSelf(
+  filters: ResultsFilters,
+  signal?: AbortSignal,
+): Promise<FutureSelfResult> {
+  const query = new URLSearchParams({ period: filters.period });
+  if (filters.actionId) query.set("action_id", filters.actionId);
+  if (filters.type) query.set("type", filters.type);
+  if (filters.topic) query.set("topic", filters.topic);
+
+  const response = await fetch(`/api/coordinator/results/future-self?${query}`, { signal });
+
+  if (response.ok) return { ok: true, numbers: (await response.json()) as FutureSelf };
+  if (response.status === 401) return { ok: false, reason: "signed_out" };
+  if (response.status === 403) return { ok: false, reason: "forbidden" };
+  if (response.status === 409) return { ok: false, reason: "several_groups" };
+  return { ok: false, reason: "failed" };
 }

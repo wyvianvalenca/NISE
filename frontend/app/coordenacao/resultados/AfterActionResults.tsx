@@ -16,11 +16,12 @@ import {
   fraction,
   getActionOptions,
   getAfterAction,
+  getFutureSelf,
+  type FutureSelfResult,
   PERIODS,
   percentLabel,
   type ResultsFilters,
 } from "@/lib/resultados-api";
-import { SAMPLE_FUTURE_SELF } from "@/lib/resultados-future-self";
 import styles from "./page.module.css";
 
 const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
@@ -34,6 +35,7 @@ export function AfterActionResults() {
   const [filters, setFilters] = useState<ResultsFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionOption[]>([]);
   const [result, setResult] = useState<AfterActionResult | null>(null);
+  const [futureSelf, setFutureSelf] = useState<FutureSelfResult | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -58,8 +60,22 @@ export function AfterActionResults() {
     return () => controller.abort();
   }, [filters, attempt]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    getFutureSelf(filters, controller.signal)
+      .then(setFutureSelf)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          console.error(error instanceof Error ? error.name : "erro");
+          setFutureSelf({ ok: false, reason: "failed" });
+        }
+      });
+    return () => controller.abort();
+  }, [filters, attempt]);
+
   function change(next: Partial<ResultsFilters>) {
     setResult(null);
+    setFutureSelf(null);
     setFilters((current) => ({ ...current, ...next }));
   }
 
@@ -138,6 +154,7 @@ export function AfterActionResults() {
                 size="sm"
                 onClick={() => {
                   setResult(null);
+                  setFutureSelf(null);
                   setAttempt((count) => count + 1);
                 }}
               >
@@ -176,8 +193,13 @@ export function AfterActionResults() {
         </p>
       </section>
 
-      {/* Dados de exemplo até a integração ligar a rota (#369). */}
-      <FutureSelfCard data={SAMPLE_FUTURE_SELF} />
+      {futureSelf === null && <Loading label="Carregando o card do futuro…" />}
+      {futureSelf !== null && !futureSelf.ok && (
+        <p role="alert" className={styles.failure}>
+          {FAILURE_TEXT[futureSelf.reason]}
+        </p>
+      )}
+      {futureSelf?.ok && <FutureSelfCard data={futureSelf.numbers} />}
     </>
   );
 }
