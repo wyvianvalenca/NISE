@@ -10,9 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionTopic, ActionType, Participation
 from app.modules.actions.service import ACTION_TIMEZONE
-from app.modules.followup.models import ComputingView, FollowupAnswer, FollowupRound
+from app.modules.followup.models import (
+    ComputingView,
+    CourseStatus,
+    FollowupAnswer,
+    FollowupRound,
+)
 from app.modules.girl_file.models import IN_FILE, FileEntry
-from app.modules.girls.models import Topic
+from app.modules.girls.models import Girl, StudyStage, Topic
 
 # O filé conta até o questionário de 3 meses (RF-F5.31, D-93).
 FILE_WINDOW_MONTHS = 3
@@ -410,3 +415,114 @@ async def interest(
 
     signup = await signup_views(session, girls)
     return build_interest(signup, answers)
+
+
+# --- Entraram na área (C5, #370, RF-F5.34) -------------------------------------
+
+
+class EnteredStage(enum.Enum):
+    """As três etapas escolares do seletor do card (RF-F5.34), do cadastro."""
+
+    FUNDAMENTAL = "fundamental"
+    MEDIO = "medio"
+    TECNICO_OU_GRADUACAO = "tecnico_ou_graduacao"
+
+
+# "Já me formei" e quem não informou a escolaridade ficam fora das três.
+_STAGE_OF = {
+    StudyStage.FUNDAMENTAL: EnteredStage.FUNDAMENTAL,
+    StudyStage.MEDIO: EnteredStage.MEDIO,
+    StudyStage.TECNICO: EnteredStage.TECNICO_OU_GRADUACAO,
+    StudyStage.GRADUACAO: EnteredStage.TECNICO_OU_GRADUACAO,
+}
+
+# As barras do card: a rodada do questionário em que ela deu a resposta.
+ENTERED_ROUNDS = {
+    FollowupRound.SIX_MONTHS: 6,
+    FollowupRound.TWELVE_MONTHS: 12,
+    FollowupRound.EIGHTEEN_MONTHS: 18,
+}
+
+
+@dataclass(frozen=True)
+class EnteredBar:
+    """Uma barra: quantas responderam e como se dividem (só contagens, RN-50)."""
+
+    months: int
+    answered: int
+    graduacao: int
+    tecnico: int
+    trying: int
+    not_yet: int
+
+
+@dataclass(frozen=True)
+class EnteredByStage:
+    stage: EnteredStage
+    bars: list[EnteredBar]
+
+
+async def entered_the_field(
+    session: AsyncSession, group_id: int, filters: ResultsFilters, today: date
+) -> list[EnteredByStage]:
+    """O card "Elas entraram na área?" (RF-F5.34): pergunta 3, por escolaridade e rodada.
+
+    - Entram as meninas inscritas em alguma ação do grupo no filtro (as mesmas
+      ações do card "Logo depois da ação"), tenham vindo ou não.
+    - Cada menina conta uma vez, com a resposta mais recente à pergunta 3
+      (a rodada mais tardia com `course_status`), na barra dessa rodada. A
+      rodada de 3 meses não tem barra no card. Quem já tinha curso registrado
+      (`still_enrolled`) não respondeu a esta pergunta.
+    - A escolaridade é a do cadastro. "Já me formei" e quem não a informou
+      não entram em nenhuma das três.
+    - Só contagens: sem nome de menina, de curso nem de instituição.
+    """
+    actions = filtered_actions(group_id, filters, today)
+    answers = await session.execute(
+        select(
+            Girl.id,
+            Girl.study_stage,
+            FollowupAnswer.round,
+            FollowupAnswer.course_status,
+        )
+        .join(FollowupAnswer, FollowupAnswer.girl_id == Girl.id)
+        .where(
+            Girl.id.in_(
+                select(Participation.girl_id).where(
+                    Participation.action_id.in_(actions)
+                )
+            ),
+            FollowupAnswer.course_status.is_not(None),
+        )
+    )
+    latest: dict[int, tuple[StudyStage | None, FollowupRound, CourseStatus]] = {}
+    for girl_id, stage, round_, status in answers:
+        assert status is not None  # filtrado na consulta
+        current = latest.get(girl_id)
+        if current is None or ROUND_ORDER.index(round_) > ROUND_ORDER.index(current[1]):
+            latest[girl_id] = (stage, round_, status)
+
+    counts: dict[tuple[EnteredStage, FollowupRound], dict[CourseStatus, int]] = {}
+    for stage, round_, status in latest.values():
+        if stage not in _STAGE_OF or round_ not in ENTERED_ROUNDS:
+            continue
+        by_status = counts.setdefault((_STAGE_OF[stage], round_), {})
+        by_status[status] = by_status.get(status, 0) + 1
+
+    result: list[EnteredByStage] = []
+    for entered_stage in EnteredStage:
+        bars = []
+        for round_, months in ENTERED_ROUNDS.items():
+            by_status = counts.get((entered_stage, round_), {})
+            bars.append(
+                EnteredBar(
+                    months=months,
+                    answered=sum(by_status.values()),
+                    graduacao=by_status.get(CourseStatus.GRADUACAO, 0),
+                    tecnico=by_status.get(CourseStatus.TECNICO, 0),
+                    trying=by_status.get(CourseStatus.TRYING, 0),
+                    not_yet=by_status.get(CourseStatus.NOT_YET, 0),
+                )
+            )
+        result.append(EnteredByStage(entered_stage, bars))
+    return result

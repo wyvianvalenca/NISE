@@ -62,6 +62,40 @@ export async function getAfterAction(
   return { ok: false, reason: "failed" };
 }
 
+export type EnteredBar = components["schemas"]["EnteredBarOut"];
+export type EnteredStage = {
+  stage: "fundamental" | "medio" | "tecnico_ou_graduacao";
+  bars: EnteredBar[];
+};
+
+export type EnteredFieldResult =
+  | { ok: true; stages: EnteredStage[] }
+  | { ok: false; reason: "signed_out" | "forbidden" | "several_groups" | "failed" };
+
+/** O card "Elas entraram na área?" (#370) para os mesmos filtros. As três etapas vêm juntas. */
+export async function getEnteredField(
+  filters: ResultsFilters,
+  signal?: AbortSignal,
+): Promise<EnteredFieldResult> {
+  const query = new URLSearchParams({ period: filters.period });
+  if (filters.actionId) query.set("action_id", filters.actionId);
+  if (filters.type) query.set("type", filters.type);
+  if (filters.topic) query.set("topic", filters.topic);
+
+  const response = await fetch(`/api/coordinator/results/entered-field?${query}`, { signal });
+
+  if (response.ok) {
+    const body = (await response.json()) as components["schemas"]["EnteredFieldOut"];
+    // O schema gerado traz a etapa como texto; o back só devolve estes três valores.
+    return { ok: true, stages: body.stages as EnteredStage[] };
+  }
+  if (response.status === 401) return { ok: false, reason: "signed_out" };
+  if (response.status === 403) return { ok: false, reason: "forbidden" };
+  if (response.status === 409) return { ok: false, reason: "several_groups" };
+
+  return { ok: false, reason: "failed" };
+}
+
 export type ActionOption = { id: number; name: string };
 
 /**

@@ -21,7 +21,7 @@ import {
 } from "@/lib/resultados-api";
 import styles from "./page.module.css";
 
-const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
+export const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
   signed_out: "Sua sessão acabou. Entre de novo para ver os resultados.",
   forbidden: "Os resultados são só para a coordenação de um grupo.",
   several_groups: "Você coordena mais de um grupo, e esta tela ainda mostra um só.",

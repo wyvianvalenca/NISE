@@ -1,6 +1,7 @@
 "use client";
 
 import { AfterActionResults } from "./AfterActionResults";
+import { EnteredFieldResults } from "./EnteredFieldResults";
 import { FutureSelfSection } from "./FutureSelfSection";
 import { InterestCards } from "./InterestCards";
 
@@ -12,6 +13,7 @@ export function ResultsCards() {
         <>
           <InterestCards key={JSON.stringify(filters)} filters={filters} />
           <FutureSelfSection key={JSON.stringify(filters)} filters={filters} />
+          <EnteredFieldResults key={JSON.stringify(filters)} filters={filters} />
         </>
       )}
     />

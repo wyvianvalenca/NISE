@@ -81,6 +81,37 @@ class InterestOut(BaseModel):
     movement: MovementOut
 
 
+class EnteredBarOut(BaseModel):
+    """Uma barra do card "Elas entraram na área?": contagens, o front faz a %."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    months: int
+    answered: int
+    graduacao: int
+    tecnico: int
+    trying: int
+    not_yet: int
+
+
+class EnteredStageOut(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    stage: str
+    bars: list[EnteredBarOut]
+
+
+class EnteredFieldOut(BaseModel):
+    """O card "Elas entraram na área?" (RF-F5.34): as três etapas, 3 barras cada.
+
+    Só contagens (RN-50), sem nome de menina, de curso nem de instituição.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    stages: list[EnteredStageOut]
+
+
 class FutureSelfPointOut(BaseModel):
     """Um marco de uma linha: `sure` de `responses` disseram "Com certeza"."""
 
