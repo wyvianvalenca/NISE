@@ -3,39 +3,36 @@
 // Filtros e card "Logo depois da ação" (#367, RF-F5.06, RF-F5.09). Só totais:
 // nenhum nome de menina chega a esta tela (RF-F5.08, RN-50).
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
-import { EnteredFieldCard } from "@/components/EnteredFieldCard";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
 import {
   type ActionOption,
   type AfterActionResult,
-  type EnteredFieldResult,
   DEFAULT_FILTERS,
   fraction,
   getActionOptions,
   getAfterAction,
-  getEnteredField,
   PERIODS,
   percentLabel,
   type ResultsFilters,
 } from "@/lib/resultados-api";
 import styles from "./page.module.css";
 
-const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
+export const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
   signed_out: "Sua sessão acabou. Entre de novo para ver os resultados.",
   forbidden: "Os resultados são só para a coordenação de um grupo.",
   several_groups: "Você coordena mais de um grupo, e esta tela ainda mostra um só.",
   failed: "Não foi possível carregar os resultados. Tente novamente.",
 };
 
-export function AfterActionResults() {
+/** `below` desenha os cards seguintes, que usam os mesmos filtros. */
+export function AfterActionResults({ below }: { below?: (filters: ResultsFilters) => ReactNode }) {
   const [filters, setFilters] = useState<ResultsFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionOption[]>([]);
   const [result, setResult] = useState<AfterActionResult | null>(null);
-  const [entered, setEntered] = useState<EnteredFieldResult | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -60,22 +57,8 @@ export function AfterActionResults() {
     return () => controller.abort();
   }, [filters, attempt]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getEnteredField(filters, controller.signal)
-      .then(setEntered)
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          console.error(error instanceof Error ? error.name : "erro");
-          setEntered({ ok: false, reason: "failed" });
-        }
-      });
-    return () => controller.abort();
-  }, [filters, attempt]);
-
   function change(next: Partial<ResultsFilters>) {
     setResult(null);
-    setEntered(null);
     setFilters((current) => ({ ...current, ...next }));
   }
 
@@ -154,7 +137,6 @@ export function AfterActionResults() {
                 size="sm"
                 onClick={() => {
                   setResult(null);
-                  setEntered(null);
                   setAttempt((count) => count + 1);
                 }}
               >
@@ -193,13 +175,7 @@ export function AfterActionResults() {
         </p>
       </section>
 
-      {entered === null && <Loading label="Carregando os resultados…" />}
-      {entered !== null && !entered.ok && (
-        <p role="alert" className={styles.failure}>
-          {FAILURE_TEXT[entered.reason]}
-        </p>
-      )}
-      {entered?.ok && <EnteredFieldCard stages={entered.stages} />}
+      {below?.(filters)}
     </>
   );
 }

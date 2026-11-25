@@ -1157,6 +1157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/results/interest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Interest Route */
+        get: operations["interest_route_api_coordinator_results_interest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coordinator/results/entered-field": {
         parameters: {
             query?: never;
@@ -1783,6 +1800,16 @@ export interface components {
              * @default []
              */
             skip: string;
+        };
+        /**
+         * ChangeOut
+         * @description Uma mudança "de qual opção para qual" e quantas meninas a fizeram.
+         */
+        ChangeOut: {
+            origin: components["schemas"]["ComputingView"];
+            destination: components["schemas"]["ComputingView"];
+            /** Girls */
+            girls: number;
         };
         /**
          * Choice
@@ -2623,6 +2650,21 @@ export interface components {
             stages: components["schemas"]["OptionOut"][];
         };
         /**
+         * InterestOut
+         * @description Os cards "Como o interesse evolui" e "Quem mudou de situação" (RF-F5.04, RF-F5.32).
+         *
+         *     Só totais, nunca uma menina e nunca um comentário (RN-11, RN-50).
+         *     `rounds` tem as quatro rodadas: 3, 6, 12 e 18 meses.
+         */
+        InterestOut: {
+            signup: components["schemas"]["MilestoneOut"];
+            /** Rounds */
+            rounds: {
+                [key: string]: components["schemas"]["MilestoneOut"];
+            };
+            movement: components["schemas"]["MovementOut"];
+        };
+        /**
          * InterestsIn
          * @description O que ela escolheu na A05: temas e etapa de estudo (RF-F10.01).
          *
@@ -2810,6 +2852,37 @@ export interface components {
             name: string;
             role: components["schemas"]["Role"];
             group?: components["schemas"]["GroupOut"] | null;
+        };
+        /**
+         * MilestoneOut
+         * @description Uma barra de "Como o interesse evolui": quantas responderam e cada opção.
+         *
+         *     `counts` tem as quatro opções, na ordem do melhor ao pior, também as com
+         *     zero. O front calcula a porcentagem (cada barra soma 100%).
+         */
+        MilestoneOut: {
+            /** Answered */
+            answered: number;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MovementOut
+         * @description O card "Quem mudou de situação". `with_both` é o "N com as duas".
+         */
+        MovementOut: {
+            /** Withboth */
+            withBoth: number;
+            /** Wentup */
+            wentUp: number;
+            /** Stayed */
+            stayed: number;
+            /** Wentdown */
+            wentDown: number;
+            /** Commonchanges */
+            commonChanges: components["schemas"]["ChangeOut"][];
         };
         /**
          * OpenFollowupOut
@@ -6626,6 +6699,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AfterActionOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    interest_route_api_coordinator_results_interest_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterestOut"];
                 };
             };
             /** @description Não é coordenadora ou sem grupo */
