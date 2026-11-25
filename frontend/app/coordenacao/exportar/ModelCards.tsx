@@ -23,7 +23,7 @@ export function ModelCards({
           <input
             type="radio"
             name="export-model"
-            className={styles.srOnly}
+            className={styles.modelInput}
             disabled={disabled}
             checked={value === model.id}
             onChange={() => onChange(model.id)}

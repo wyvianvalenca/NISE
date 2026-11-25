@@ -8,7 +8,7 @@ import { mockExportApi } from "./exportar-api";
 const URL = "/coordenacao/exportar";
 
 const NOTICE =
-  "Têm conta na NISE, mas ainda não estiveram presentes em nenhuma ação. Quem faltou a uma ação já concluída do grupo não conta aqui: já está na planilha como nao_compareceu. Entram em qualquer recorte: os filtros do primeiro passo (período, ação, tipo e tag) não mudam quantas são. Ficam na planilha com grupo_comparacao = sem_acao e as colunas da ação vazias, pra comparar interesse e ingresso.";
+  "Têm conta na NISE, mas ainda não estiveram presentes em nenhuma ação. Quem faltou a uma ação já concluída do grupo não conta aqui: ela aparece como nao_compareceu na linha dessa ação, se a ação estiver no recorte. Entram em qualquer recorte: os filtros do primeiro passo (período, ação, tipo e tag) não mudam quantas são. Ficam na planilha com grupo_comparacao = sem_acao e as colunas da ação vazias, pra comparar interesse e ingresso.";
 
 test("Pesquisa tells how many girls with no action also enter, in any cut", async ({ page }) => {
   await mockExportApi(page);

@@ -18,8 +18,8 @@ from app.modules.admissions.models import AdmissionOrigin, CourseLevel, Enrollme
 from app.modules.answers.models import Answer, AnswerStage
 from app.modules.exports.service import (
     BASE_COLUMNS,
-    DEFAULT_PACKAGES,
     PACKAGE_COLUMNS,
+    RESEARCH_PACKAGES,
     Package,
     build_table,
     columns_for,
@@ -87,8 +87,8 @@ def test_desligar_um_pacote_tira_as_colunas_dele() -> None:
 
 
 def test_padrao_liga_tudo_menos_outros_grupos() -> None:
-    assert Package.OTHER_GROUPS not in DEFAULT_PACKAGES
-    assert set(DEFAULT_PACKAGES) | {Package.OTHER_GROUPS} == set(Package)
+    assert Package.OTHER_GROUPS not in RESEARCH_PACKAGES
+    assert set(RESEARCH_PACKAGES) | {Package.OTHER_GROUPS} == set(Package)
 
 
 # --- Grupos de comparação e Funil ----------------------------------------------

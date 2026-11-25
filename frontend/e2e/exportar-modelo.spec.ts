@@ -69,7 +69,7 @@ test("without a model it works as Do meu jeito, with no package checked", async 
   await expect(page.getByText("Modelo:")).toContainText("Do meu jeito");
   // RF-F24.10: "Do meu jeito" starts with no package checked.
   await expect(page.getByRole("switch", { checked: true })).toHaveCount(0);
-  await expect(page.getByText("8 colunas · 1 pacotes")).toBeVisible();
+  await expect(page.getByText("8 colunas · 1 pacote")).toBeVisible();
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Gerar arquivo" }).click();
   await expect(page.getByText("Arquivo pronto")).toBeVisible();

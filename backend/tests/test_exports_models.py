@@ -6,7 +6,7 @@ Dados fictícios.
 from datetime import date
 
 from app.modules.exports.service import (
-    DEFAULT_PACKAGES,
+    RESEARCH_PACKAGES,
     ExportModel,
     Package,
     cut_label,
@@ -29,7 +29,7 @@ def test_do_meu_jeito_comeca_sem_pacotes() -> None:
 
 
 def test_pesquisa_liga_o_padrao() -> None:
-    assert packages_of(ExportModel.RESEARCH) == DEFAULT_PACKAGES
+    assert packages_of(ExportModel.RESEARCH) == RESEARCH_PACKAGES
 
 
 def test_nome_do_arquivo_leva_o_modelo() -> None:

@@ -272,9 +272,10 @@ export function ExportWizard() {
 /**
  * RF-F24.31: the girls with no action (an account and no attendance at any action,
  * D-105) also go in the file, and she is told how many. A girl who missed an action
- * of the group that is already concluded is not one of them: she is already in the
- * file as "nao_compareceu". The cut does not change that number, and the notice
- * says so (D-107). The text follows `no_action_filters` in the back end.
+ * of the group that is already concluded is not one of them: she has the
+ * "nao_compareceu" row of that action, but only when the cut keeps that action. The
+ * cut does not change how many have no action, and the notice says so (D-107). The
+ * text follows `no_action_filters` in the back end.
  */
 function NoActionNotice({ count }: { count: number }) {
   return (
@@ -286,10 +287,11 @@ function NoActionNotice({ count }: { count: number }) {
       </strong>
       <br />
       Têm conta na NISE, mas ainda não estiveram presentes em nenhuma ação. Quem faltou a uma
-      ação já concluída do grupo não conta aqui: já está na planilha como nao_compareceu. Entram
-      em qualquer recorte: os filtros do primeiro passo (período, ação, tipo e tag) não mudam
-      quantas são. Ficam na planilha com grupo_comparacao = sem_acao e as colunas da ação vazias,
-      pra comparar interesse e ingresso.
+      ação já concluída do grupo não conta aqui: ela aparece como nao_compareceu na linha dessa
+      ação, se a ação estiver no recorte. Entram em qualquer recorte: os filtros do primeiro
+      passo (período, ação, tipo e tag) não mudam quantas são. Ficam na planilha com
+      grupo_comparacao = sem_acao e as colunas da ação vazias, pra comparar interesse e
+      ingresso.
     </Notice>
   );
 }

@@ -5470,10 +5470,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Pacotes ligados, separados por vírgula",
+              "description": "Pacotes ligados, separados por vírgula. Sem o parâmetro vale \"Do meu jeito\": só a Base, sem as meninas sem ação.",
               "title": "Packages"
             },
-            "description": "Pacotes ligados, separados por vírgula"
+            "description": "Pacotes ligados, separados por vírgula. Sem o parâmetro vale \"Do meu jeito\": só a Base, sem as meninas sem ação."
           },
           {
             "name": "year",
@@ -5628,10 +5628,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Pacotes ligados, separados por vírgula",
+              "description": "Pacotes ligados, separados por vírgula. Sem o parâmetro vale \"Do meu jeito\": só a Base, sem as meninas sem ação.",
               "title": "Packages"
             },
-            "description": "Pacotes ligados, separados por vírgula"
+            "description": "Pacotes ligados, separados por vírgula. Sem o parâmetro vale \"Do meu jeito\": só a Base, sem as meninas sem ação."
           },
           {
             "name": "year",

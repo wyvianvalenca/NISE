@@ -102,9 +102,9 @@ class Package(StrEnum):
     OTHER_GROUPS = "other_groups"
 
 
-# Tudo ligado, menos "Outros grupos" (RF-F24.15): os pacotes do modelo "Pesquisa"
-# e os que valem quando a rota é chamada sem dizer os pacotes.
-DEFAULT_PACKAGES: tuple[Package, ...] = (
+# Tudo ligado, menos "Outros grupos" (RF-F24.15): os pacotes do modelo "Pesquisa".
+# Sem modelo nem pacotes, vale "Do meu jeito", só a Base (`packages_of`, D-104).
+RESEARCH_PACKAGES: tuple[Package, ...] = (
     Package.GROUPS,
     Package.FUNNEL,
     Package.RATINGS,
@@ -142,7 +142,7 @@ MODEL_SLUGS: dict[ExportModel, str] = {
 # começa sem pacotes: ela escolhe um por um.
 MODEL_PACKAGES: dict[ExportModel, tuple[Package, ...]] = {
     ExportModel.ACCOUNTABILITY: (Package.FUNNEL, Package.RATINGS),
-    ExportModel.RESEARCH: DEFAULT_PACKAGES,
+    ExportModel.RESEARCH: RESEARCH_PACKAGES,
     ExportModel.PLANNING: (Package.RATINGS, Package.INTEREST),
     ExportModel.MY_WAY: (),
 }
@@ -351,11 +351,14 @@ def no_action_filters(group_id: int) -> list[ColumnElement[bool]]:
     (RF-F24.31, RN-07).
 
     Sem contar duas vezes: quem se inscreveu numa ação já concluída deste grupo e
-    ficou sem presença já está no arquivo com "nao_compareceu" (RF-F24.08), então
+    ficou sem presença tem a linha "nao_compareceu" dessa ação (RF-F24.08), então
     não ganha também a linha "sem_acao".
 
     Não depende do recorte: os filtros do primeiro passo não mudam quantas entram
-    (D-107). Quem apagou a conta perde o vínculo com `users` e não entra (RN-12).
+    (D-107). Por isso, se o recorte deixa de fora a ação a que ela faltou, ela não
+    tem linha nesse arquivo, como qualquer inscrita de uma ação fora do recorte; o
+    aviso da tela diz isso. Quem apagou a conta perde o vínculo com `users` e não
+    entra (RN-12).
     """
     went = exists().where(
         Participation.girl_id == Girl.id, Participation.attended_at.is_not(None)
@@ -424,7 +427,7 @@ async def summarize(
     session: AsyncSession,
     group_id: int,
     cut: ExportCut,
-    packages: Iterable[Package] = DEFAULT_PACKAGES,
+    packages: Iterable[Package] = RESEARCH_PACKAGES,
 ) -> ExportSummary:
     """Linhas, meninas, ações e meninas sem ação do arquivo desse recorte.
 
@@ -558,7 +561,7 @@ async def build_table(
     group_id: int,
     today: date,
     limit: int | None = None,
-    packages: Iterable[Package] = DEFAULT_PACKAGES,
+    packages: Iterable[Package] = RESEARCH_PACKAGES,
     cut: ExportCut = NO_CUT,
 ) -> ExportTable:
     """Uma linha por menina e ação, só das ações do grupo (RF-F24.01, RN-07).

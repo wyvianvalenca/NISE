@@ -21,6 +21,8 @@ from tests.helpers import chamar_rota
 from tests.test_exports_service import acao, grupo, inscrever, menina
 
 URL = "/api/coordinator/exports"
+# Os pacotes do modelo "Pesquisa", como a tela manda no parâmetro `packages`.
+PESQUISA = "groups,funnel,ratings,interest,admission"
 
 
 async def usuaria(
@@ -188,7 +190,7 @@ async def test_revisao_traz_cinco_linhas_e_o_total(db_session: AsyncSession) -> 
     for n in (3, 4, 5, 6):
         await inscrever(db_session, await menina(db_session, n), a)
 
-    response = await chamar(db_session, katia, "GET", "/preview")
+    response = await chamar(db_session, katia, "GET", f"/preview?packages={PESQUISA}")
 
     assert response.status_code == 200
     corpo = response.json()

@@ -31,7 +31,7 @@ from app.modules.followup.models import ComputingView, FollowupAnswer, FollowupR
 from app.modules.girls.models import Girl
 from app.users.models import Role, User
 from tests.test_exports_packages import marcar
-from tests.test_exports_routes import cenario, chamar
+from tests.test_exports_routes import PESQUISA, cenario, chamar
 from tests.test_exports_service import HOJE, acao, grupo, inscrever, menina
 
 
@@ -377,13 +377,34 @@ async def test_revisao_traz_uma_sem_acao_entre_as_cinco(
 
 
 async def test_rota_resumo_e_previa(db_session: AsyncSession) -> None:
-    """A rota conta as sem ação e a prévia marca a linha delas."""
+    """Com os pacotes da "Pesquisa", a rota conta as sem ação e a prévia marca a
+    linha delas."""
     _, katia = await cenario(db_session)
     await com_conta(db_session, 30)
-    resumo = (await chamar(db_session, katia, "GET", "/summary")).json()
+    pedido = f"?packages={PESQUISA}"
+    resumo = (await chamar(db_session, katia, "GET", f"/summary{pedido}")).json()
     assert resumo["noAction"] == 1 and resumo["rows"] == 3
-    previa = (await chamar(db_session, katia, "GET", "/preview")).json()
+    previa = (await chamar(db_session, katia, "GET", f"/preview{pedido}")).json()
     assert previa["noAction"] == [False, False, True] and previa["totalRows"] == 3
+
+
+async def test_rota_sem_pacotes_vale_do_meu_jeito(db_session: AsyncSession) -> None:
+    """Sem o parâmetro `packages`, a prévia e o resumo descrevem o mesmo arquivo
+    do POST sem corpo: "Do meu jeito", só a Base, sem as meninas sem ação
+    (RF-F24.10, D-104, D-106). Resultado: 8 colunas, 2 linhas e 0 sem ação nos
+    três.
+    """
+    _, katia = await cenario(db_session)
+    await com_conta(db_session, 30)
+
+    previa = (await chamar(db_session, katia, "GET", "/preview")).json()
+    resumo = (await chamar(db_session, katia, "GET", "/summary")).json()
+    feito = (await chamar(db_session, katia, "POST", "")).json()
+
+    assert len(previa["columns"]) == feito["columnCount"] == 8
+    assert previa["noAction"] == [False, False]
+    assert (resumo["rows"], resumo["noAction"]) == (2, 0)
+    assert previa["totalRows"] == feito["rowCount"] == 2
 
 
 async def test_rota_resumo_sem_o_pacote_nao_conta(db_session: AsyncSession) -> None:

@@ -154,7 +154,8 @@ export function summaryLabel(selected: readonly PackageId[]): string {
   const chosen = PACKAGES.filter((item) => selected.includes(item.id));
   const columns =
     BASE_COLUMN_COUNT + chosen.reduce((total, item) => total + item.columns.length, 0);
-  return `${columns} ${columns === 1 ? "coluna" : "colunas"} · ${chosen.length + 1} pacotes`;
+  const packages = chosen.length + 1;
+  return `${columns} ${columns === 1 ? "coluna" : "colunas"} · ${packages} ${packages === 1 ? "pacote" : "pacotes"}`;
 }
 
 /** What never leaves, as the "Nunca sai" list of the Figma (RF-F24.02). */

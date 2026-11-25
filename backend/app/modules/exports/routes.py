@@ -29,7 +29,6 @@ from app.modules.exports.schemas import (
 from app.modules.exports.service import (
     CSV_ENCODING,
     CSV_MEDIA_TYPE,
-    DEFAULT_PACKAGES,
     PREVIEW_ROWS,
     ExportCut,
     ExportModel,
@@ -83,9 +82,13 @@ _CUT_NOT_FOUND: dict[int | str, dict[str, Any]] = {
 
 
 def parse_packages(text: str | None) -> list[Package]:
-    """ "groups,funnel" vira a lista. Sem o parâmetro vale o padrão; "" é só a Base."""
+    """ "groups,funnel" vira a lista. "" é só a Base.
+
+    Sem o parâmetro vale "Do meu jeito", que começa sem pacotes, como no POST sem
+    corpo: a prévia e o resumo descrevem o mesmo arquivo que sai (RF-F24.10, D-104).
+    """
     if text is None:
-        return list(DEFAULT_PACKAGES)
+        return list(packages_of(None))
     try:
         return [Package(name) for name in text.split(",") if name]
     except ValueError:
@@ -115,7 +118,13 @@ async def options_route(
 
 
 PackagesQuery = Annotated[
-    str | None, Query(description="Pacotes ligados, separados por vírgula")
+    str | None,
+    Query(
+        description=(
+            "Pacotes ligados, separados por vírgula. Sem o parâmetro vale"
+            ' "Do meu jeito": só a Base, sem as meninas sem ação.'
+        )
+    ),
 ]
 
 

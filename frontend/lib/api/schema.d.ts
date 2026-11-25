@@ -6397,7 +6397,7 @@ export interface operations {
     summary_route_api_coordinator_exports_summary_get: {
         parameters: {
             query?: {
-                /** @description Pacotes ligados, separados por vírgula */
+                /** @description Pacotes ligados, separados por vírgula. Sem o parâmetro vale "Do meu jeito": só a Base, sem as meninas sem ação. */
                 packages?: string | null;
                 year?: number | null;
                 action_id?: number | null;
@@ -6450,7 +6450,7 @@ export interface operations {
     preview_route_api_coordinator_exports_preview_get: {
         parameters: {
             query?: {
-                /** @description Pacotes ligados, separados por vírgula */
+                /** @description Pacotes ligados, separados por vírgula. Sem o parâmetro vale "Do meu jeito": só a Base, sem as meninas sem ação. */
                 packages?: string | null;
                 year?: number | null;
                 action_id?: number | null;

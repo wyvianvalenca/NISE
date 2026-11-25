@@ -353,6 +353,17 @@
   background: var(--nise-tealSoft);
 }
 
+/* O rádio some, mas cobre o cartão: o clique cai nele, e o teclado e o leitor de
+   tela continuam achando (como no RatingScale). */
+.modelInput {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .model:has(input:focus-visible),
 .modelOn:has(input:focus-visible) {
   outline: 3px solid var(--nise-ink);
