@@ -21,9 +21,12 @@ from app.modules.cities.models import City
 from app.modules.exports.models import DataExport
 from app.modules.exports.service import (
     BOM,
+    CSV_ENCODING,
     NO_CUT,
+    Column,
     ExportCut,
     ExportSummary,
+    ExportTable,
     action_is_of_group,
     age_band,
     build_table,
@@ -116,6 +119,40 @@ def test_celula_que_comeca_com_formula_vira_texto() -> None:
     assert safe_cell("Oficina") == "Oficina"
 
 
+def test_csv_separa_por_tabulacao_e_poe_entre_aspas_o_que_quebraria_a_linha() -> None:
+    """Revisão da #431: tabulação entre as colunas (RF-F24.34).
+
+    Célula com tabulação, quebra de linha ou aspas vai entre aspas, e fórmula
+    continua virando texto.
+    """
+    tabela = ExportTable(
+        columns=(
+            Column("a", "ação", "action"),
+            Column("b", "tags", "action"),
+            Column("c", "nota", "action"),
+        ),
+        rows=[["Oficina\tde Python", 'Robótica "kids"\nlinha 2', "=1+1"]],
+        no_action=[False],
+    )
+
+    texto = to_csv(tabela)
+
+    assert texto == (
+        BOM + "ação\ttags\tnota\r\n"
+        '"Oficina\tde Python"\t"Robótica ""kids""\nlinha 2"\t\'=1+1\r\n'
+    )
+
+
+def test_csv_baixa_em_utf16_com_bom() -> None:
+    """Revisão da #431: UTF-16 com BOM, pra o Excel acertar os acentos."""
+    texto = to_csv(ExportTable((Column("a", "município", "action"),), [["Maceió"]], []))
+
+    baixado = texto.encode(CSV_ENCODING)
+
+    assert baixado.startswith(b"\xff\xfe")  # BOM do UTF-16 little-endian
+    assert baixado.decode("utf-16") == "município\r\nMaceió\r\n"
+
+
 def test_nome_do_arquivo() -> None:
     assert (
         file_name("Rendeiras do Código", HOJE)
@@ -171,9 +208,9 @@ async def test_arquivo_sem_identificador_direto(db_session: AsyncSession) -> Non
     assert "2010" not in texto  # a data de nascimento virou faixa
     cabecalho, linha, *_ = texto.removeprefix(BOM).split("\r\n")
     assert cabecalho == (
-        "código;faixa etária;município;etapa escolar;tipo;tags;mês;ação"
+        "código\tfaixa etária\tmunicípio\tetapa escolar\ttipo\ttags\tmês\tação"
     )
-    campos = linha.split(";")
+    campos = linha.split("\t")
     assert campos[1:] == [
         "16-17",
         "São José da Tapera",  # o município como cadastrado (D-102)
@@ -237,7 +274,8 @@ async def test_gerar_registra_e_o_link_vale_15_minutos(
     feito = await create_export(db_session, g.id, usuaria.id, HOJE, agora)
 
     assert feito.row_count == 1
-    assert feito.column_count == 21
+    # Sem modelo vale "Do meu jeito", que começa sem pacotes (RF-F24.10).
+    assert feito.column_count == 8
     assert feito.expires_at == agora + timedelta(minutes=15)
     assert feito.filename == "rendeiras-do-codigo_do-meu-jeito_2026-10-16.csv"
     assert feito.content is not None
@@ -329,8 +367,8 @@ async def test_resumo_acompanha_o_recorte(db_session: AsyncSession) -> None:
         db_session, g.id, ExportCut(year=2026, type=ActionType.OFICINA)
     )
 
-    assert tudo == ExportSummary(rows=4, girls=2, alone=0, actions=3)
-    assert oficinas_2026 == ExportSummary(rows=2, girls=2, alone=0, actions=1)
+    assert tudo == ExportSummary(rows=4, girls=2, no_action=0, actions=3)
+    assert oficinas_2026 == ExportSummary(rows=2, girls=2, no_action=0, actions=1)
 
 
 async def test_resumo_so_conta_o_proprio_grupo(db_session: AsyncSession) -> None:

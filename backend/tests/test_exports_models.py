@@ -23,8 +23,13 @@ def test_cada_modelo_liga_os_pacotes_do_cartao() -> None:
     }
 
 
-def test_sem_modelo_os_pacotes_sao_os_de_do_meu_jeito() -> None:
-    assert packages_of(None) == packages_of(ExportModel.MY_WAY) == DEFAULT_PACKAGES
+def test_do_meu_jeito_comeca_sem_pacotes() -> None:
+    """RF-F24.10: "Do meu jeito" começa sem pacotes; sem modelo, vale ele (D-104)."""
+    assert packages_of(None) == packages_of(ExportModel.MY_WAY) == ()
+
+
+def test_pesquisa_liga_o_padrao() -> None:
+    assert packages_of(ExportModel.RESEARCH) == DEFAULT_PACKAGES
 
 
 def test_nome_do_arquivo_leva_o_modelo() -> None:

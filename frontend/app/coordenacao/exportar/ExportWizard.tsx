@@ -14,7 +14,6 @@ import {
   type Cut,
   type CutOptions,
   DEFAULT_MODEL,
-  DEFAULT_PACKAGES,
   type ExportedFile,
   generateExport,
   getCutOptions,
@@ -27,6 +26,8 @@ import {
   modelName,
   NEVER_LEAVES,
   NO_CUT,
+  NO_PACKAGES,
+  noActionEnters,
   PACKAGES,
   type PackageId,
   type Preview,
@@ -48,8 +49,9 @@ export function ExportWizard() {
   const [optionsFailed, setOptionsFailed] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [summaryFailed, setSummaryFailed] = useState(false);
-  const [packages, setPackages] = useState<readonly PackageId[]>(DEFAULT_PACKAGES);
-  // No card checked at first: with no model, "Do meu jeito" counts (D-104).
+  // No card checked at first: with no model, "Do meu jeito" counts (D-104), and
+  // it starts with no package checked (RF-F24.10).
+  const [packages, setPackages] = useState<readonly PackageId[]>(NO_PACKAGES);
   const [model, setModel] = useState<ModelId | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -59,16 +61,17 @@ export function ExportWizard() {
       .catch(() => setOptionsFailed(true));
   }, []);
 
-  // The bar follows the cut. `current` drops an answer that arrives late.
+  // The bar follows the cut and the packages ("Grupos de comparação" brings the
+  // girls with no action, D-106). `current` drops an answer that arrives late.
   useEffect(() => {
     let current = true;
-    getSummary(cut)
+    getSummary(cut, packages)
       .then((loaded) => current && setSummary(loaded))
       .catch(() => current && setSummaryFailed(true));
     return () => {
       current = false;
     };
-  }, [cut]);
+  }, [cut, packages]);
 
   function choose(field: keyof Cut, value: string) {
     setCut((current) => ({ ...current, [field]: value }));
@@ -77,6 +80,10 @@ export function ExportWizard() {
   }
 
   const nothingMatches = summary !== null && summary.rows === 0;
+  const withNoAction = noActionEnters(packages);
+  const noActionNotice = summary !== null && withNoAction && summary.noAction > 0 && (
+    <NoActionNotice count={summary.noAction} />
+  );
 
   // Ao trocar de passo, o foco vai para o título dele (teclado e leitor de tela).
   useEffect(() => {
@@ -183,8 +190,8 @@ export function ExportWizard() {
                 ))}
               </Select>
             </div>
-            <SummaryOrError summary={summary} failed={summaryFailed} />
-            {summary !== null && summary.alone > 0 && <AloneNotice count={summary.alone} />}
+            <SummaryOrError summary={summary} failed={summaryFailed} withNoAction={withNoAction} />
+            {noActionNotice}
             {nothingMatches && (
               <p role="status" className={styles.muted}>
                 Nenhuma linha neste recorte. Mude as escolhas para continuar.
@@ -230,7 +237,8 @@ export function ExportWizard() {
             <p className={styles.summary} aria-live="polite">
               {summaryLabel(packages)}
             </p>
-            <SummaryOrError summary={summary} failed={summaryFailed} />
+            <SummaryOrError summary={summary} failed={summaryFailed} withNoAction={withNoAction} />
+            {noActionNotice}
             <div className={styles.actions}>
               <Button variant="secondary" onClick={back}>
                 Voltar
@@ -261,23 +269,40 @@ export function ExportWizard() {
   );
 }
 
-/** RF-F24.31: who arrived alone also goes in the file, and she is told how many. */
-function AloneNotice({ count }: { count: number }) {
+/**
+ * RF-F24.31: the girls with no action (an account and no attendance at any action,
+ * D-105) also go in the file, and she is told how many. A girl who missed an action
+ * of the group that is already concluded is not one of them: she is already in the
+ * file as "nao_compareceu". The cut does not change that number, and the notice
+ * says so (D-107). The text follows `no_action_filters` in the back end.
+ */
+function NoActionNotice({ count }: { count: number }) {
   return (
     <Notice tone="pink" icon="info">
       <strong>
         {count === 1
-          ? "Entra também 1 menina que chegou sozinha"
-          : `Entram também as ${count} meninas que chegaram sozinhas`}
+          ? "Entra também 1 menina sem ação"
+          : `Entram também as ${count} meninas sem ação`}
       </strong>
       <br />
-      Criaram conta direto na NISE, sem ir a nenhuma ação. Ficam na planilha com grupo_comparacao =
-      sozinha e as colunas da ação vazias, pra comparar interesse e ingresso entre os grupos.
+      Têm conta na NISE, mas ainda não estiveram presentes em nenhuma ação. Quem faltou a uma
+      ação já concluída do grupo não conta aqui: já está na planilha como nao_compareceu. Entram
+      em qualquer recorte: os filtros do primeiro passo (período, ação, tipo e tag) não mudam
+      quantas são. Ficam na planilha com grupo_comparacao = sem_acao e as colunas da ação vazias,
+      pra comparar interesse e ingresso.
     </Notice>
   );
 }
 
-function SummaryOrError({ summary, failed }: { summary: Summary | null; failed: boolean }) {
+function SummaryOrError({
+  summary,
+  failed,
+  withNoAction,
+}: {
+  summary: Summary | null;
+  failed: boolean;
+  withNoAction: boolean;
+}) {
   if (failed) {
     return (
       <p role="alert" className={styles.problem}>
@@ -285,7 +310,7 @@ function SummaryOrError({ summary, failed }: { summary: Summary | null; failed: 
       </p>
     );
   }
-  return <SummaryBar summary={summary} />;
+  return <SummaryBar summary={summary} withNoAction={withNoAction} />;
 }
 
 function Review({
@@ -367,7 +392,7 @@ function Review({
               </thead>
               <tbody>
                 {preview.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex} className={preview.alone[rowIndex] ? styles.aloneRow : undefined}>
+                  <tr key={rowIndex} className={preview.noAction[rowIndex] ? styles.noActionRow : undefined}>
                     {row.map((cell, cellIndex) => (
                       <td key={cellIndex} className={styles[preview.columns[cellIndex].kind]}>
                         {cell}
@@ -466,8 +491,8 @@ function Done({
       <p className={styles.muted}>Ficou registrado no histórico do grupo.</p>
       <p className={styles.filename}>{file.filename}</p>
       <p className={styles.muted}>
-        {file.rowCount} linhas · {file.columnCount} colunas · UTF-8, separador “;” (abre certinho
-        no Excel e no Sheets)
+        {file.rowCount} linhas · {file.columnCount} colunas · UTF-16, colunas separadas por
+        tabulação (o Excel abre já em colunas, com os acentos)
       </p>
 
       {msLeft > 0 ? (

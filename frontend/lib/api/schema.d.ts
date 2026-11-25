@@ -1151,7 +1151,9 @@ export interface paths {
         };
         /**
          * Summary Route
-         * @description Linhas, meninas, sozinhas e ações do arquivo desse recorte (RF-F24.33).
+         * @description Linhas, meninas, sem ação e ações do arquivo desse recorte (RF-F24.33).
+         *
+         *     As meninas sem ação só contam com o pacote "Grupos de comparação" (D-106).
          */
         get: operations["summary_route_api_coordinator_exports_summary_get"];
         put?: never;
@@ -1215,7 +1217,7 @@ export interface paths {
         };
         /**
          * Download Route
-         * @description Baixa o CSV. Precisa de sessão e vale 15 minutos (RF-F24.34).
+         * @description Baixa o CSV, em UTF-16 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34).
          */
         get: operations["download_route_api_coordinator_exports__export_id__file_get"];
         put?: never;
@@ -2154,22 +2156,24 @@ export interface components {
             columns: components["schemas"]["ExportColumnOut"][];
             /** Rows */
             rows: string[][];
-            /** Alone */
-            alone: boolean[];
+            /** Noaction */
+            noAction: boolean[];
             /** Totalrows */
             totalRows: number;
         };
         /**
          * ExportSummaryOut
          * @description O resumo da barra escura, em "Recorte" e "Conteúdo" (RF-F24.33).
+         *
+         *     `no_action` é 0 quando as meninas sem ação não entram no arquivo (D-106).
          */
         ExportSummaryOut: {
             /** Rows */
             rows: number;
             /** Girls */
             girls: number;
-            /** Alone */
-            alone: number;
+            /** Noaction */
+            noAction: number;
             /** Actions */
             actions: number;
         };
@@ -6393,6 +6397,8 @@ export interface operations {
     summary_route_api_coordinator_exports_summary_get: {
         parameters: {
             query?: {
+                /** @description Pacotes ligados, separados por vírgula */
+                packages?: string | null;
                 year?: number | null;
                 action_id?: number | null;
                 type?: components["schemas"]["ActionType"] | null;

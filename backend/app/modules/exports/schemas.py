@@ -59,11 +59,14 @@ class ExportCutOptionsOut(_CamelModel):
 
 
 class ExportSummaryOut(_CamelModel):
-    """O resumo da barra escura, em "Recorte" e "Conteúdo" (RF-F24.33)."""
+    """O resumo da barra escura, em "Recorte" e "Conteúdo" (RF-F24.33).
+
+    `no_action` é 0 quando as meninas sem ação não entram no arquivo (D-106).
+    """
 
     rows: int
     girls: int
-    alone: int
+    no_action: int
     actions: int
 
 
@@ -81,8 +84,8 @@ class ExportPreviewOut(_CamelModel):
 
     columns: list[ExportColumnOut]
     rows: list[list[str]]
-    # Uma marca por linha: é de quem chegou sozinha (a Revisão a pinta de rosa).
-    alone: list[bool]
+    # Uma marca por linha: é de uma menina sem ação (a Revisão a pinta de rosa).
+    no_action: list[bool]
     total_rows: int
 
 

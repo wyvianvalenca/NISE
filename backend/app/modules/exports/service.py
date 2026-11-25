@@ -19,12 +19,13 @@ from typing import Any, Literal
 
 from sqlalchemy import (
     ColumnElement,
+    CompoundSelect,
     Select,
-    distinct,
     exists,
     extract,
     func,
     select,
+    union,
     update,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,8 +55,15 @@ FILE_LIFETIME = timedelta(hours=24)
 # Quantas linhas o passo "Revisão" mostra (RF-F24.32).
 PREVIEW_ROWS = 5
 
-# Excel e Sheets só acertam os acentos de um CSV em UTF-8 que começa com BOM.
-BOM = "﻿"
+# O arquivo sai em UTF-16 com BOM e com tabulação entre as colunas. O BOM do
+# UTF-16 diz ao Excel a codificação, então os acentos saem certos; a tabulação
+# não depende do separador de lista do Windows, que muda de máquina para máquina
+# (com ";" ou ",", o Excel de uma das configurações joga tudo na coluna A).
+# Revisão da #431; o texto da RF-F24.34 ainda fala em UTF-8 e ";".
+BOM = "\ufeff"
+CSV_DELIMITER = "\t"
+CSV_ENCODING = "utf-16-le"  # o BOM já vai no começo do texto (FF FE)
+CSV_MEDIA_TYPE = "text/csv; charset=utf-16"
 
 # Sem 0/O e 1/I, que se confundem quando a coordenadora lê o código.
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -94,7 +102,8 @@ class Package(StrEnum):
     OTHER_GROUPS = "other_groups"
 
 
-# Sem modelo, tudo liga, menos "Outros grupos" (RF-F24.15).
+# Tudo ligado, menos "Outros grupos" (RF-F24.15): os pacotes do modelo "Pesquisa"
+# e os que valem quando a rota é chamada sem dizer os pacotes.
 DEFAULT_PACKAGES: tuple[Package, ...] = (
     Package.GROUPS,
     Package.FUNNEL,
@@ -128,14 +137,14 @@ MODEL_SLUGS: dict[ExportModel, str] = {
     ExportModel.MY_WAY: "do-meu-jeito",
 }
 
-# Pacotes que cada modelo liga. O doc e o Figma não dizem todos (#379): o cartão
-# de cada modelo é a fonte. "Pesquisa" é "todos os pacotes" menos "Outros grupos",
-# que vem desligado (RF-F24.15, Figma A2). "Do meu jeito" começa como o padrão.
+# Pacotes que cada modelo já marca (RF-F24.10). "Pesquisa" é "todos os pacotes"
+# menos "Outros grupos", que vem desligado (RF-F24.15, Figma A2). "Do meu jeito"
+# começa sem pacotes: ela escolhe um por um.
 MODEL_PACKAGES: dict[ExportModel, tuple[Package, ...]] = {
     ExportModel.ACCOUNTABILITY: (Package.FUNNEL, Package.RATINGS),
     ExportModel.RESEARCH: DEFAULT_PACKAGES,
     ExportModel.PLANNING: (Package.RATINGS, Package.INTEREST),
-    ExportModel.MY_WAY: DEFAULT_PACKAGES,
+    ExportModel.MY_WAY: (),
 }
 
 
@@ -246,11 +255,15 @@ NO_CUT = ExportCut()
 
 @dataclass(frozen=True)
 class ExportSummary:
-    """O resumo do arquivo conforme o recorte (RF-F24.33)."""
+    """O resumo do arquivo conforme o recorte (RF-F24.33).
+
+    `no_action` é quantas meninas sem ação entram; é 0 quando elas não entram
+    (D-106).
+    """
 
     rows: int
     girls: int
-    alone: int
+    no_action: int
     actions: int
 
 
@@ -271,8 +284,8 @@ class CutOptions:
 class ExportTable:
     columns: tuple[Column, ...]
     rows: list[list[str]]
-    # Uma marca por linha: a linha é de quem chegou sozinha (a Revisão a pinta).
-    alone: list[bool]
+    # Uma marca por linha: a linha é de uma menina sem ação (a Revisão a pinta).
+    no_action: list[bool]
 
 
 def age_band(birth_date: date | None, reference: date) -> str:
@@ -325,22 +338,54 @@ def cut_filters(group_id: int, cut: ExportCut) -> list[ColumnElement[bool]]:
     return filters
 
 
-def alone_girls_query() -> Select[Girl, Any]:
-    """Quem chegou sozinha: tem conta e nunca foi inscrita em nenhuma ação (RN-60).
+def no_action_filters(group_id: int) -> list[ColumnElement[bool]]:
+    """A menina sem ação: tem conta e não esteve presente em nenhuma ação (D-105).
 
-    Não depende do grupo nem do recorte: ela não tem ação (suposição da #380).
-    Quem foi a uma ação deixa de ser "sozinha" (RF-F24.31). Quem apagou a conta
-    perde o vínculo com `users` e não entra (RN-12).
+    O que conta é a presença, não a inscrição: ela deixa de ser "sem ação" a
+    partir da primeira presença (RF-F24.31). Inscrita só em ações que ainda não
+    foram concluídas, ela continua sem ação. Não é o mesmo que "chegou sozinha",
+    que é a origem dela e não muda (RN-32, D-110).
+
+    Presença em ação de qualquer grupo tira a menina de "sem ação": é como o
+    código já fazia; o doc ainda não decidiu se valem só as ações do grupo
+    (RF-F24.31, RN-07).
+
+    Sem contar duas vezes: quem se inscreveu numa ação já concluída deste grupo e
+    ficou sem presença já está no arquivo com "nao_compareceu" (RF-F24.08), então
+    não ganha também a linha "sem_acao".
+
+    Não depende do recorte: os filtros do primeiro passo não mudam quantas entram
+    (D-107). Quem apagou a conta perde o vínculo com `users` e não entra (RN-12).
     """
+    went = exists().where(
+        Participation.girl_id == Girl.id, Participation.attended_at.is_not(None)
+    )
+    missed_here = exists().where(
+        Participation.girl_id == Girl.id,
+        Participation.action_id == Action.id,
+        Action.group_id == group_id,
+        Action.attendance_registered_at.is_not(None),
+    )
+    return [Girl.user_id.is_not(None), ~went, ~missed_here]
+
+
+def no_action_girls_query(group_id: int) -> Select[Girl, Any]:
+    """As meninas sem ação, com o município, para as linhas delas no arquivo."""
     return (
         select(Girl, City.name)
         .outerjoin(City, City.id == Girl.city_ibge_code)
-        .where(
-            Girl.user_id.is_not(None),
-            ~exists().where(Participation.girl_id == Girl.id),
-        )
+        .where(*no_action_filters(group_id))
         .order_by(Girl.id)
     )
+
+
+def no_action_enters(packages: Iterable[Package]) -> bool:
+    """As meninas sem ação só entram com o pacote "Grupos de comparação" (D-106).
+
+    Ele vem marcado em "Pesquisa" e desmarcado em "Do meu jeito", "Prestação de
+    contas" e "Planejar a próxima ação" (RF-F24.10).
+    """
+    return Package.GROUPS in set(packages)
 
 
 async def cut_options(session: AsyncSession, group_id: int) -> CutOptions:
@@ -367,29 +412,45 @@ async def action_is_of_group(
     return found is not None
 
 
+async def count_rows(
+    session: AsyncSession, query: Select[Any] | CompoundSelect[Any]
+) -> int:
+    """Quantas linhas a consulta devolve."""
+    total = await session.scalar(select(func.count()).select_from(query.subquery()))
+    return total or 0
+
+
 async def summarize(
-    session: AsyncSession, group_id: int, cut: ExportCut
+    session: AsyncSession,
+    group_id: int,
+    cut: ExportCut,
+    packages: Iterable[Package] = DEFAULT_PACKAGES,
 ) -> ExportSummary:
-    """Linhas, meninas, ações e quem chegou sozinha do arquivo desse recorte."""
+    """Linhas, meninas, ações e meninas sem ação do arquivo desse recorte.
+
+    `packages` diz se as meninas sem ação entram (D-106).
+    """
     filters = cut_filters(group_id, cut)
-    rows, girls = (
-        await session.execute(
-            select(
-                func.count(Participation.id),
-                func.count(distinct(Participation.girl_id)),
-            )
-            .join(Action, Action.id == Participation.action_id)
-            .where(*filters)
-        )
-    ).one()
-    actions = await session.scalar(select(func.count(Action.id)).where(*filters))
-    # Quem chegou sozinha tem uma linha e um código, como as outras (RF-F24.31).
-    alone = await session.scalar(
-        select(func.count()).select_from(alone_girls_query().subquery())
+    in_actions = (
+        select(Participation.girl_id)
+        .join(Action, Action.id == Participation.action_id)
+        .where(*filters)
     )
-    alone = alone or 0
+    rows = await count_rows(session, in_actions)
+    actions = await session.scalar(select(func.count(Action.id)).where(*filters))
+    if not no_action_enters(packages):
+        girls = await count_rows(session, in_actions.distinct())
+        return ExportSummary(rows, girls, no_action=0, actions=actions or 0)
+
+    # Cada menina sem ação tem uma linha, como as outras (RF-F24.31). Quem está
+    # inscrita numa ação ainda não concluída tem a linha da ação e a linha sem
+    # ação, mas é uma menina só, com um código só (RF-F24.03): o `union` tira a
+    # repetida.
+    no_action_ids = select(Girl.id).where(*no_action_filters(group_id))
+    no_action = await count_rows(session, no_action_ids)
+    girls = await count_rows(session, union(in_actions, no_action_ids))
     return ExportSummary(
-        rows=rows + alone, girls=girls + alone, alone=alone, actions=actions or 0
+        rows=rows + no_action, girls=girls, no_action=no_action, actions=actions or 0
     )
 
 
@@ -401,8 +462,12 @@ def attendance_cell(action: Action, participation: Participation) -> str:
 
 
 def comparison_cell(action: Action, participation: Participation) -> str:
-    """ "participante" ou "não compareceu". Quem chegou sozinha não passa por aqui."""
-    return {"sim": "participante", "não": "não compareceu"}.get(
+    """ "participante" ou "nao_compareceu" (RF-F24.08, D-105).
+
+    "nao_compareceu" é a inscrita sem presença numa ação já concluída. A linha
+    "sem_acao" não passa por aqui.
+    """
+    return {"sim": "participante", "não": "nao_compareceu"}.get(
         attendance_cell(action, participation), ""
     )
 
@@ -435,7 +500,7 @@ async def interest_by_girl(
 
 
 async def entry_by_girl(
-    session: AsyncSession, group_id: int, girl_ids: set[int]
+    session: AsyncSession, group_id: int, girl_ids: set[int], with_no_action: bool
 ) -> dict[int, tuple[str, str]]:
     """Nível e área do ingresso mais recente de cada menina (nunca a instituição).
 
@@ -447,11 +512,14 @@ async def entry_by_girl(
         .join(Action, Action.id == Participation.action_id)
         .where(Action.group_id == group_id)
     )
-    # Quem chegou sozinha também tem linha no arquivo, então conta na área.
-    alone = alone_girls_query().with_only_columns(Girl.id).order_by(None)
+    in_file: ColumnElement[bool] = Enrollment.girl_id.in_(in_group)
+    if with_no_action:
+        # As meninas sem ação também têm linha no arquivo, então contam na área.
+        no_action = select(Girl.id).where(*no_action_filters(group_id))
+        in_file = in_file | Enrollment.girl_id.in_(no_action)
     enrollments = await session.scalars(
         select(Enrollment)
-        .where(Enrollment.girl_id.in_(in_group) | Enrollment.girl_id.in_(alone))
+        .where(in_file)
         .order_by(Enrollment.enrolled_on.desc(), Enrollment.id.desc())
     )
     latest: dict[int, Enrollment] = {}
@@ -497,7 +565,8 @@ async def build_table(
 
     Quem apagou a conta não tem mais inscrição no banco, então não aparece
     (RN-12). Com `limit`, devolve só as primeiras linhas, para a Revisão. A
-    Base sempre vem; `packages` diz quais pacotes entram (RF-F24.08).
+    Base sempre vem; `packages` diz quais pacotes entram (RF-F24.08) e se as
+    meninas sem ação entram (D-106), no fim, uma linha cada (RF-F24.31).
     """
     chosen = set(packages)
     columns = columns_for(chosen)
@@ -510,18 +579,20 @@ async def build_table(
         .options(selectinload(Action.topics))
         .order_by(Action.starts_on, Action.id, Participation.id)
     )
-    alone_total = (await summarize(session, group_id, cut)).alone
-    if limit is not None and alone_total:
-        # A Revisão mostra ao menos uma de quem chegou sozinha entre as linhas.
+    no_action_total = (await summarize(session, group_id, cut, chosen)).no_action
+    if limit is not None and no_action_total:
+        # A Revisão mostra ao menos uma menina sem ação entre as linhas.
         query = query.limit(max(limit - 1, 0))
     elif limit is not None:
         query = query.limit(limit)
     found = list((await session.execute(query)).all())
-    alone_query = alone_girls_query()
-    if limit is not None:
-        alone_query = alone_query.limit(limit - len(found))
-    alone_found = list((await session.execute(alone_query)).all())
-    girl_ids = {girl.id for _, _, girl, _ in found} | {g.id for g, _ in alone_found}
+    no_action_found: list[Any] = []
+    if no_action_total:
+        no_action_query = no_action_girls_query(group_id)
+        if limit is not None:
+            no_action_query = no_action_query.limit(limit - len(found))
+        no_action_found = list((await session.execute(no_action_query)).all())
+    girl_ids = {girl.id for _, _, girl, _ in found} | {g.id for g, _ in no_action_found}
 
     ratings: dict[tuple[int, int], int | None] = {}
     if Package.RATINGS in chosen and found:
@@ -535,7 +606,7 @@ async def build_table(
         await interest_by_girl(session, girl_ids) if Package.INTEREST in chosen else {}
     )
     entries = (
-        await entry_by_girl(session, group_id, girl_ids)
+        await entry_by_girl(session, group_id, girl_ids, no_action_enters(chosen))
         if Package.ADMISSION in chosen
         else {}
     )
@@ -548,7 +619,7 @@ async def build_table(
     codes: dict[int, str] = {}
     taken: set[str] = set()
     rows: list[list[str]] = []
-    is_alone: list[bool] = []
+    is_no_action: list[bool] = []
     for participation, action, girl, city_name in found:
         if girl.id not in codes:
             codes[girl.id] = new_code(taken)
@@ -579,19 +650,24 @@ async def build_table(
             },
         }
         rows.append([values[column.key] for column in columns])
-        is_alone.append(False)
+        is_no_action.append(False)
 
-    # Quem chegou sozinha: grupo "sozinha" e as colunas da ação vazias (RN-60).
-    for girl, city_name in alone_found:
+    # A menina sem ação: "sem_acao" e as colunas da ação vazias (RF-F24.31,
+    # RN-60). Quem está inscrita numa ação ainda não concluída já tem código da
+    # linha da ação e fica com ele, porque o código é o mesmo dentro do arquivo
+    # (RF-F24.03).
+    for girl, city_name in no_action_found:
+        if girl.id not in codes:
+            codes[girl.id] = new_code(taken)
         entry = entries.get(girl.id)
         values = {
-            "code": new_code(taken),
+            "code": codes[girl.id],
             "age_band": age_band(girl.birth_date, today),
             "city": city_name or "",
             "study_stage": STUDY_STAGE_LABELS[girl.study_stage]
             if girl.study_stage
             else "",
-            "comparison": "sozinha",
+            "comparison": "sem_acao",
             "entered": "sim" if entry else "não",
             "entry_level": entry[0] if entry else "",
             "entry_area": entry[1] if entry else "",
@@ -601,15 +677,19 @@ async def build_table(
             },
         }
         rows.append([values.get(column.key, "") for column in columns])
-        is_alone.append(True)
+        is_no_action.append(True)
 
-    return ExportTable(columns, rows, is_alone)
+    return ExportTable(columns, rows, is_no_action)
 
 
 def to_csv(table: ExportTable) -> str:
-    """O texto do arquivo: UTF-8 com BOM, separador ";" (abre certo no Excel)."""
+    """O texto do arquivo: BOM e colunas separadas por tabulação (RF-F24.34).
+
+    Célula com tabulação, quebra de linha ou aspas vai entre aspas. Para baixar,
+    o texto vira bytes com `CSV_ENCODING`.
+    """
     out = io.StringIO()
-    writer = csv.writer(out, delimiter=";", lineterminator="\r\n")
+    writer = csv.writer(out, delimiter=CSV_DELIMITER, lineterminator="\r\n")
     writer.writerow([column.label for column in table.columns])
     for row in table.rows:
         writer.writerow([safe_cell(cell) for cell in row])

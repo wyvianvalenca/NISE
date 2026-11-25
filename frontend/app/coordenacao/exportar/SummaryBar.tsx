@@ -3,14 +3,21 @@ import styles from "./SummaryBar.module.css";
 
 /**
  * The dark bar of "Recorte" and "Conteúdo": how big the file will be
- * (RF-F24.33). `summary` is null while the numbers load.
+ * (RF-F24.33). `summary` is null while the numbers load. The "sem ação" count
+ * only shows when those girls go in the file (`withNoAction`, D-106).
  */
-export function SummaryBar({ summary }: { summary: Summary | null }) {
+export function SummaryBar({
+  summary,
+  withNoAction,
+}: {
+  summary: Summary | null;
+  withNoAction: boolean;
+}) {
   const items = summary
     ? [
         { number: summary.rows, text: "linhas no arquivo" },
         { number: summary.girls, text: "meninas (código aleatório)" },
-        { number: summary.alone, text: "chegaram sozinhas" },
+        ...(withNoAction ? [{ number: summary.noAction, text: "sem ação" }] : []),
         { number: summary.actions, text: "ações" },
       ]
     : [];

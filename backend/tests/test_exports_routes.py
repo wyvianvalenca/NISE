@@ -125,17 +125,22 @@ async def test_gerar_responde_o_arquivo_pronto_e_baixa_o_csv(
     assert corpo["filename"].startswith("rendeiras-do-codigo_do-meu-jeito_")
     assert corpo["filename"].endswith(".csv")
     assert corpo["rowCount"] == 2
-    assert corpo["columnCount"] == 21
+    # "Do meu jeito" começa sem pacotes: só a Base (RF-F24.10).
+    assert corpo["columnCount"] == 8
 
     baixado = await chamar(db_session, katia, "GET", f"/{corpo['id']}/file")
 
     assert baixado.status_code == 200
-    assert baixado.headers["content-type"] == "text/csv; charset=utf-8"
+    assert baixado.headers["content-type"] == "text/csv; charset=utf-16"
     assert corpo["filename"] in baixado.headers["content-disposition"]
-    assert baixado.content.startswith("﻿".encode())
-    assert len(baixado.text.strip().split("\r\n")) == 3
-    assert "Menina Ficticia" not in baixado.text
-    assert "@exemplo.com" not in baixado.text
+    # UTF-16 com BOM e tabulação entre as colunas (revisão da #431).
+    assert baixado.content.startswith(b"\xff\xfe")
+    texto = baixado.content.decode("utf-16")
+    linhas = texto.strip().split("\r\n")
+    assert len(linhas) == 3
+    assert linhas[0].startswith("código\tfaixa etária\t")
+    assert "Menina Ficticia" not in texto
+    assert "@exemplo.com" not in texto
 
 
 async def test_link_vencido_responde_410(db_session: AsyncSession) -> None:
@@ -241,8 +246,8 @@ async def test_resumo_segue_o_recorte(db_session: AsyncSession) -> None:
     tudo = await chamar(db_session, katia, "GET", "/summary")
     oficinas = await chamar(db_session, katia, "GET", "/summary?year=2026&type=oficina")
 
-    assert tudo.json() == {"rows": 4, "girls": 2, "alone": 0, "actions": 3}
-    assert oficinas.json() == {"rows": 2, "girls": 2, "alone": 0, "actions": 1}
+    assert tudo.json() == {"rows": 4, "girls": 2, "noAction": 0, "actions": 3}
+    assert oficinas.json() == {"rows": 2, "girls": 2, "noAction": 0, "actions": 1}
 
 
 async def test_recorte_por_tag_na_revisao_e_no_arquivo(
@@ -367,7 +372,8 @@ async def test_sem_modelo_vale_do_meu_jeito(db_session: AsyncSession) -> None:
     feito = await chamar(db_session, katia, "POST", "")
 
     assert "_do-meu-jeito_" in feito.json()["filename"]
-    assert feito.json()["columnCount"] == 21
+    # "Do meu jeito" começa sem pacotes: só a Base (RF-F24.10).
+    assert feito.json()["columnCount"] == 8
     historico = await chamar(db_session, katia, "GET", "")
     assert historico.json()[0]["cut"].startswith("Do meu jeito")
 

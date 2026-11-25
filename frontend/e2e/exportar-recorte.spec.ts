@@ -10,9 +10,11 @@ test("choosing type and period changes the bar", async ({ page }) => {
   await page.goto(URL);
 
   const bar = page.getByRole("status", { name: "Resumo do arquivo" });
-  await expect(bar).toContainText("42 linhas no arquivo");
+  // No model: "Do meu jeito" has no package, so the 9 girls with no action do not count.
+  await expect(bar).toContainText("33 linhas no arquivo");
+  await expect(bar).not.toContainText("sem ação");
 
-  await page.getByLabel("Tipo").selectOption("oficina");
+  await page.getByLabel("Tipo", { exact: true }).selectOption("oficina");
   await page.getByLabel("Período").selectOption("2026");
   await expect(bar).toContainText("12 linhas no arquivo");
   await expect(bar).toContainText("2 ações");
@@ -34,7 +36,8 @@ test("sends the cut in the body of the POST", async ({ page }) => {
   const calls = await mockExportApi(page);
   await page.goto(URL);
 
-  await page.getByLabel("Tipo").selectOption("oficina");
+  await page.getByRole("radio", { name: /Pesquisa/ }).check();
+  await page.getByLabel("Tipo", { exact: true }).selectOption("oficina");
   await page.getByLabel("Período").selectOption("2026");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
@@ -42,6 +45,7 @@ test("sends the cut in the body of the POST", async ({ page }) => {
 
   await expect(page.getByText("Arquivo pronto")).toBeVisible();
   expect(calls.body).toEqual({
+    model: "research",
     packages: ["groups", "funnel", "ratings", "interest", "admission"],
     year: 2026,
     actionId: null,

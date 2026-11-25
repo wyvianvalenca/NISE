@@ -28,7 +28,8 @@ class DataExport(Base):
     filename: Mapped[str] = mapped_column()
     row_count: Mapped[int] = mapped_column()
     column_count: Mapped[int] = mapped_column()
-    # O CSV pronto, com BOM. Vazio depois que o arquivo foi removido.
+    # O texto do CSV, com BOM e tabulação; vira UTF-16 ao baixar. Vazio depois
+    # que o arquivo foi removido.
     content: Mapped[str | None] = mapped_column(Text)
     # O recorte usado (período, ação, tipo e tag; RF-F24.09), para o histórico
     # (#376). Nulo nas exportações de antes do recorte.

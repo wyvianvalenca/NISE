@@ -27,6 +27,8 @@ from app.modules.exports.schemas import (
     OptionOut,
 )
 from app.modules.exports.service import (
+    CSV_ENCODING,
+    CSV_MEDIA_TYPE,
     DEFAULT_PACKAGES,
     PREVIEW_ROWS,
     ExportCut,
@@ -112,12 +114,24 @@ async def options_route(
     )
 
 
+PackagesQuery = Annotated[
+    str | None, Query(description="Pacotes ligados, separados por vírgula")
+]
+
+
 @router.get("/summary", response_model=ExportSummaryOut, responses=_CUT_NOT_FOUND)
 async def summary_route(
-    group_id: CoordinatorGroupIdDep, session: AsyncSessionDep, cut: CutDep
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    cut: CutDep,
+    packages: PackagesQuery = None,
 ) -> ExportSummaryOut:
-    """Linhas, meninas, sozinhas e ações do arquivo desse recorte (RF-F24.33)."""
-    return ExportSummaryOut(**vars(await summarize(session, group_id, cut)))
+    """Linhas, meninas, sem ação e ações do arquivo desse recorte (RF-F24.33).
+
+    As meninas sem ação só contam com o pacote "Grupos de comparação" (D-106).
+    """
+    summary = await summarize(session, group_id, cut, parse_packages(packages))
+    return ExportSummaryOut(**vars(summary))
 
 
 @router.get("/preview", response_model=ExportPreviewOut, responses=_CUT_NOT_FOUND)
@@ -125,17 +139,16 @@ async def preview_route(
     group_id: CoordinatorGroupIdDep,
     session: AsyncSessionDep,
     cut: CutDep,
-    packages: Annotated[
-        str | None, Query(description="Pacotes ligados, separados por vírgula")
-    ] = None,
+    packages: PackagesQuery = None,
 ) -> ExportPreviewOut:
     """Cinco linhas do arquivo que vai sair, para o passo "Revisão" (RF-F24.32)."""
+    chosen = parse_packages(packages)
     table = await build_table(
         session,
         group_id,
         today_in_maceio(),
         PREVIEW_ROWS,
-        packages=parse_packages(packages),
+        packages=chosen,
         cut=cut,
     )
     return ExportPreviewOut(
@@ -144,8 +157,8 @@ async def preview_route(
             for c in table.columns
         ],
         rows=table.rows,
-        alone=table.alone,
-        total_rows=(await summarize(session, group_id, cut)).rows,
+        no_action=table.no_action,
+        total_rows=(await summarize(session, group_id, cut, chosen)).rows,
     )
 
 
@@ -203,7 +216,7 @@ async def download_route(
     group_ids: CoordinatorGroupIdsDep,
     session: AsyncSessionDep,
 ) -> Response:
-    """Baixa o CSV. Precisa de sessão e vale 15 minutos (RF-F24.34)."""
+    """Baixa o CSV, em UTF-16 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34)."""
     export = await session.get(DataExport, export_id)
     if export is None or export.group_id not in group_ids:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exportação não encontrada")
@@ -211,8 +224,8 @@ async def download_route(
         raise HTTPException(status.HTTP_410_GONE, "O link expirou")
 
     return Response(
-        content=export.content.encode("utf-8"),
-        media_type="text/csv; charset=utf-8",
+        content=export.content.encode(CSV_ENCODING),
+        media_type=CSV_MEDIA_TYPE,
         headers={
             "Content-Disposition": f'attachment; filename="{export.filename}"',
             "Cache-Control": "no-store",

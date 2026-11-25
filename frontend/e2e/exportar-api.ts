@@ -22,7 +22,7 @@ export const PREVIEW: Preview = {
     ["M-B9XN", "18+", "Arapiraca", "Graduação", "Palestra", "Dados", "2026-10", "Mulheres nos dados"],
     ["M-3FHR", "13", "Maceió", "Ensino fundamental", "Minicurso", "Robótica", "2026-10", "Robótica com Arduino"],
   ],
-  alone: [false, false, false, false, false],
+  noAction: [false, false, false, false, false],
   totalRows: 42,
 };
 
@@ -65,22 +65,35 @@ export const OPTIONS: CutOptions = {
     { value: "accountability", packages: ["funnel", "ratings"] },
     { value: "research", packages: ["groups", "funnel", "ratings", "interest", "admission"] },
     { value: "planning", packages: ["ratings", "interest"] },
-    { value: "my_way", packages: ["groups", "funnel", "ratings", "interest", "admission"] },
+    { value: "my_way", packages: [] },
   ],
 };
 
-const WHOLE_SUMMARY: Summary = { rows: 42, girls: 30, alone: 9, actions: 5 };
+/** As in the API, the girls with no action only count with "groups" (D-106). */
+function withPackages(url: URL, summary: Summary): Summary {
+  const packages = (url.searchParams.get("packages") ?? "").split(",");
+  if (packages.includes("groups")) return summary;
+  return {
+    ...summary,
+    rows: summary.rows - summary.noAction,
+    girls: summary.girls - summary.noAction,
+    noAction: 0,
+  };
+}
+
+const WHOLE_SUMMARY: Summary = { rows: 42, girls: 30, noAction: 9, actions: 5 };
 
 /** O resumo da barra para o recorte pedido: oficina tem 12 linhas e 2025 nenhuma. */
 function summaryFor(url: URL): Summary {
-  if (url.searchParams.get("year") === "2025") return { rows: 0, girls: 0, alone: 0, actions: 0 };
-  if (url.searchParams.get("type") === "oficina") return { rows: 12, girls: 9, alone: 3, actions: 2 };
+  if (url.searchParams.get("year") === "2025") return { rows: 0, girls: 0, noAction: 0, actions: 0 };
+  // As girls with no action enter in any cut, oficina still has the 9 (D-107).
+  if (url.searchParams.get("type") === "oficina") return { rows: 21, girls: 18, noAction: 9, actions: 2 };
   return WHOLE_SUMMARY;
 }
 
 type Options = {
-  /** How many girls arrived alone (#380). Default: the number of the whole file. */
-  alone?: number;
+  /** How many girls with no action (#380, D-105). Default: the number of the whole file. */
+  noAction?: number;
   historyStatus?: 403 | 500;
   /** Histórico que a rota devolve; o "Gerar arquivo" põe a nova no topo. */
   history?: HistoryItem[];
@@ -99,7 +112,7 @@ const EXTRA_COLUMNS: Record<string, string[]> = {
 };
 
 /** The preview the API would give for those packages: the Base and their columns. */
-export function previewFor(packages: string[], withAlone = false): Preview {
+export function previewFor(packages: string[], withNoAction = false): Preview {
   const extra = packages.flatMap((name) => EXTRA_COLUMNS[name] ?? []);
   return {
     columns: [
@@ -107,11 +120,11 @@ export function previewFor(packages: string[], withAlone = false): Preview {
       ...extra.map((label) => ({ key: label, label, kind: "action" as const })),
     ],
     rows: PREVIEW.rows.map((row, index) =>
-      withAlone && index === PREVIEW.rows.length - 1
+      withNoAction && index === PREVIEW.rows.length - 1
         ? [row[0], ...row.slice(1).map(() => ""), ...extra.map(() => "")]
         : [...row, ...extra.map(() => "sim")],
     ),
-    alone: PREVIEW.alone.map((_, index) => withAlone && index === PREVIEW.rows.length - 1),
+    noAction: PREVIEW.noAction.map((_, index) => withNoAction && index === PREVIEW.rows.length - 1),
     totalRows: PREVIEW.totalRows,
   };
 }
@@ -129,18 +142,19 @@ export async function mockExportApi(
   const history = [...(options.history ?? OLD_HISTORY)];
 
   await page.route("**/api/coordinator/exports/options", (route) => route.fulfill({ json: OPTIONS }));
-  await page.route("**/api/coordinator/exports/summary*", (route) =>
-    route.fulfill({
-      json: {
-        ...summaryFor(new URL(route.request().url())),
-        ...(options.alone === undefined ? {} : { alone: options.alone }),
-      },
-    }),
-  );
+  await page.route("**/api/coordinator/exports/summary*", (route) => {
+    const url = new URL(route.request().url());
+    const summary = {
+      ...summaryFor(url),
+      ...(options.noAction === undefined ? {} : { noAction: options.noAction }),
+    };
+    return route.fulfill({ json: withPackages(url, summary) });
+  });
   await page.route("**/api/coordinator/exports/preview?**", (route) => {
     if (options.previewStatus) return route.fulfill({ status: options.previewStatus });
-    const asked = new URL(route.request().url()).searchParams.get("packages") ?? "";
-    return route.fulfill({ json: previewFor(asked.split(",").filter(Boolean), (options.alone ?? 1) > 0) });
+    const asked = (new URL(route.request().url()).searchParams.get("packages") ?? "").split(",").filter(Boolean);
+    const withNoAction = asked.includes("groups") && (options.noAction ?? 1) > 0;
+    return route.fulfill({ json: previewFor(asked, withNoAction) });
   });
   await page.route("**/api/coordinator/exports", (route) => {
     if (route.request().method() === "GET") {

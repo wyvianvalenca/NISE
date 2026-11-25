@@ -7,6 +7,7 @@ const URL = "/coordenacao/exportar";
 
 async function goToReview(page: import("@playwright/test").Page) {
   await page.goto(URL);
+  await page.getByRole("radio", { name: /Pesquisa/ }).check();
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
 }
@@ -51,7 +52,7 @@ test("goes through the four steps with the buttons, not by clicking the steps", 
   await expect(page.getByText("Ficou registrado no histórico do grupo.")).toBeVisible();
   expect(calls.generated).toBe(1);
   await expect(page.getByText(FILE.filename)).toBeVisible();
-  await expect(page.getByText(/42 linhas · 8 colunas · UTF-8, separador “;”/)).toBeVisible();
+  await expect(page.getByText(/42 linhas · 8 colunas · UTF-16, colunas separadas por tabulação/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Baixar" })).toHaveAttribute(
     "href",
     "/api/coordinator/exports/7/file",
@@ -82,9 +83,10 @@ test("stays on the review step when generating fails", async ({ page }) => {
 test("turns packages on and off, and the summary and the review follow", async ({ page }) => {
   const calls = await mockExportApi(page);
   await page.goto(URL);
+  await page.getByRole("radio", { name: /Pesquisa/ }).check();
   await page.getByRole("button", { name: "Continuar" }).click();
 
-  // The six cards, with their columns; only "Outros grupos" starts off.
+  // "Pesquisa": the six cards, with their columns; only "Outros grupos" starts off.
   for (const name of ["Grupos de comparação", "Funil", "Avaliações", "Interesse", "Ingresso"]) {
     await expect(page.getByRole("switch", { name })).toBeChecked();
   }

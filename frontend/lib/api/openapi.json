@@ -5454,9 +5454,27 @@
           "Coordinator"
         ],
         "summary": "Summary Route",
-        "description": "Linhas, meninas, sozinhas e ações do arquivo desse recorte (RF-F24.33).",
+        "description": "Linhas, meninas, sem ação e ações do arquivo desse recorte (RF-F24.33).\n\nAs meninas sem ação só contam com o pacote \"Grupos de comparação\" (D-106).",
         "operationId": "summary_route_api_coordinator_exports_summary_get",
         "parameters": [
+          {
+            "name": "packages",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Pacotes ligados, separados por vírgula",
+              "title": "Packages"
+            },
+            "description": "Pacotes ligados, separados por vírgula"
+          },
           {
             "name": "year",
             "in": "query",
@@ -5914,7 +5932,7 @@
           "Coordinator"
         ],
         "summary": "Download Route",
-        "description": "Baixa o CSV. Precisa de sessão e vale 15 minutos (RF-F24.34).",
+        "description": "Baixa o CSV, em UTF-16 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34).",
         "operationId": "download_route_api_coordinator_exports__export_id__file_get",
         "parameters": [
           {
@@ -8238,12 +8256,12 @@
             "type": "array",
             "title": "Rows"
           },
-          "alone": {
+          "noAction": {
             "items": {
               "type": "boolean"
             },
             "type": "array",
-            "title": "Alone"
+            "title": "Noaction"
           },
           "totalRows": {
             "type": "integer",
@@ -8254,7 +8272,7 @@
         "required": [
           "columns",
           "rows",
-          "alone",
+          "noAction",
           "totalRows"
         ],
         "title": "ExportPreviewOut",
@@ -8270,9 +8288,9 @@
             "type": "integer",
             "title": "Girls"
           },
-          "alone": {
+          "noAction": {
             "type": "integer",
-            "title": "Alone"
+            "title": "Noaction"
           },
           "actions": {
             "type": "integer",
@@ -8283,11 +8301,11 @@
         "required": [
           "rows",
           "girls",
-          "alone",
+          "noAction",
           "actions"
         ],
         "title": "ExportSummaryOut",
-        "description": "O resumo da barra escura, em \"Recorte\" e \"Conteúdo\" (RF-F24.33)."
+        "description": "O resumo da barra escura, em \"Recorte\" e \"Conteúdo\" (RF-F24.33).\n\n`no_action` é 0 quando as meninas sem ação não entram no arquivo (D-106)."
       },
       "FeedbackIn": {
         "properties": {

@@ -55,7 +55,8 @@ export const PACKAGES: readonly ContentPackage[] = [
   {
     id: "groups",
     name: "Grupos de comparação",
-    description: "Quem a menina é para esta ação: participante ou não compareceu.",
+    description:
+      "Quem a menina é para esta ação: participante ou não compareceu. Inclui as meninas sem ação.",
     columns: ["grupo de comparação"],
   },
   {
@@ -112,8 +113,8 @@ export const MODELS: readonly ExportModelCard[] = [
     id: "research",
     name: "Pesquisa",
     description:
-      "Pra TCC, artigo ou parceria com universidade. Inclui quem chegou sozinha, pra comparar interesse e ingresso.",
-    packagesLabel: "Todos os pacotes + sozinhas",
+      "Pra TCC, artigo ou parceria com universidade. Inclui as meninas sem ação, pra comparar interesse e ingresso.",
+    packagesLabel: "Todos os pacotes + sem ação",
   },
   {
     id: "planning",
@@ -137,14 +138,16 @@ export function modelName(id: ModelId): string {
   return MODELS.find((model) => model.id === id)?.name ?? "";
 }
 
-/** Everything on, except "Outros grupos". */
-export const DEFAULT_PACKAGES: readonly PackageId[] = [
-  "groups",
-  "funnel",
-  "ratings",
-  "interest",
-  "admission",
-];
+/** "Do meu jeito" starts with no package checked (RF-F24.10). */
+export const NO_PACKAGES: readonly PackageId[] = [];
+
+/**
+ * The girls with no action only go in the file with "Grupos de comparação" (D-106):
+ * always in "Pesquisa", in "Do meu jeito" only if she turns it on.
+ */
+export function noActionEnters(packages: readonly PackageId[]): boolean {
+  return packages.includes("groups");
+}
 
 /** "21 colunas · 6 pacotes": the Base counts as a package. */
 export function summaryLabel(selected: readonly PackageId[]): string {
@@ -202,9 +205,12 @@ export async function getCutOptions(): Promise<CutOptions> {
   return (await response.json()) as CutOptions;
 }
 
-/** The numbers of the dark bar for this cut (RF-F24.33). */
-export async function getSummary(cut: Cut): Promise<Summary> {
-  const response = await fetch(`${BASE}/summary${withQuery(cutParams(cut))}`);
+/** The numbers of the dark bar for this cut and these packages (RF-F24.33, D-106). */
+export async function getSummary(cut: Cut, packages: readonly PackageId[]): Promise<Summary> {
+  const params = cutParams(cut);
+  // An empty list is valid: only the Base, and no girl with no action.
+  params.set("packages", packages.join(","));
+  const response = await fetch(`${BASE}/summary${withQuery(params)}`);
   if (!response.ok) throw new Error(`summary ${response.status}`);
   return (await response.json()) as Summary;
 }

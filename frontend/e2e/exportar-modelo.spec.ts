@@ -19,7 +19,7 @@ test("the first step asks what the file is for and shows four cards, none checke
   await expect(page.getByRole("radio")).toHaveCount(4);
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(page.getByText("Funil · Avaliações")).toBeVisible();
-  await expect(page.getByText("Todos os pacotes + sozinhas")).toBeVisible();
+  await expect(page.getByText("Todos os pacotes + sem ação")).toBeVisible();
   await expect(page.getByText("Avaliações · Interesse")).toBeVisible();
   await expect(page.getByText("Personalizado")).toBeVisible();
 });
@@ -61,15 +61,18 @@ test("trocar goes back to the cards", async ({ page }) => {
   await expect(page.getByRole("radio", { name: /Pesquisa/ })).toBeChecked();
 });
 
-test("without a model it works as Do meu jeito", async ({ page }) => {
+test("without a model it works as Do meu jeito, with no package checked", async ({ page }) => {
   const calls = await mockExportApi(page);
   await page.goto(URL);
 
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByText("Modelo:")).toContainText("Do meu jeito");
+  // RF-F24.10: "Do meu jeito" starts with no package checked.
+  await expect(page.getByRole("switch", { checked: true })).toHaveCount(0);
+  await expect(page.getByText("8 colunas · 1 pacotes")).toBeVisible();
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Gerar arquivo" }).click();
   await expect(page.getByText("Arquivo pronto")).toBeVisible();
 
-  expect(calls.body).toMatchObject({ model: null });
+  expect(calls.body).toMatchObject({ model: null, packages: [] });
 });

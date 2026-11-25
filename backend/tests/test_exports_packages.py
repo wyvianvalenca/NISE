@@ -108,7 +108,7 @@ async def test_grupos_de_comparacao_participante_e_nao_compareceu(
 
     tabela = await build_table(db_session, g.id, HOJE, packages=[Package.GROUPS])
 
-    assert [r[-1] for r in tabela.rows] == ["participante", "não compareceu"]
+    assert [r[-1] for r in tabela.rows] == ["participante", "nao_compareceu"]
 
 
 async def test_funil_inscrita_presente_e_concluinte(db_session: AsyncSession) -> None:
@@ -339,13 +339,14 @@ async def test_rota_gera_so_com_os_pacotes_pedidos(db_session: AsyncSession) -> 
     assert feito.json()["columnCount"] == 8 + 3
 
 
-async def test_rota_sem_corpo_usa_o_padrao(db_session: AsyncSession) -> None:
+async def test_rota_sem_corpo_sai_so_a_base(db_session: AsyncSession) -> None:
+    """Sem corpo vale "Do meu jeito", que começa sem pacotes (RF-F24.10, D-104)."""
     _, katia = await cenario(db_session)
     token = create_access_token(katia.id)
 
     feito = await chamar_rota(app, "POST", URL, db_session, token)
 
-    assert feito.json()["columnCount"] == 21
+    assert feito.json()["columnCount"] == 8
 
 
 async def test_revisao_segue_os_pacotes(db_session: AsyncSession) -> None:
