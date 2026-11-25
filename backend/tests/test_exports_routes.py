@@ -133,14 +133,14 @@ async def test_gerar_responde_o_arquivo_pronto_e_baixa_o_csv(
     baixado = await chamar(db_session, katia, "GET", f"/{corpo['id']}/file")
 
     assert baixado.status_code == 200
-    assert baixado.headers["content-type"] == "text/csv; charset=utf-16"
+    assert baixado.headers["content-type"] == "text/csv; charset=utf-8"
     assert corpo["filename"] in baixado.headers["content-disposition"]
-    # UTF-16 com BOM e tabulação entre as colunas (revisão da #431).
-    assert baixado.content.startswith(b"\xff\xfe")
-    texto = baixado.content.decode("utf-16")
+    # UTF-8 com BOM e separador ";" (RF-F24.34).
+    assert baixado.content.startswith(b"\xef\xbb\xbf")
+    texto = baixado.content.decode("utf-8-sig")
     linhas = texto.strip().split("\r\n")
     assert len(linhas) == 3
-    assert linhas[0].startswith("código\tfaixa etária\t")
+    assert linhas[0].startswith("código;faixa etária;")
     assert "Menina Ficticia" not in texto
     assert "@exemplo.com" not in texto
 

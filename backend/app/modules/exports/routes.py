@@ -225,7 +225,7 @@ async def download_route(
     group_ids: CoordinatorGroupIdsDep,
     session: AsyncSessionDep,
 ) -> Response:
-    """Baixa o CSV, em UTF-16 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34)."""
+    """Baixa o CSV, em UTF-8 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34)."""
     export = await session.get(DataExport, export_id)
     if export is None or export.group_id not in group_ids:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exportação não encontrada")

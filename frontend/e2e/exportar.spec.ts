@@ -52,7 +52,7 @@ test("goes through the four steps with the buttons, not by clicking the steps", 
   await expect(page.getByText("Ficou registrado no histórico do grupo.")).toBeVisible();
   expect(calls.generated).toBe(1);
   await expect(page.getByText(FILE.filename)).toBeVisible();
-  await expect(page.getByText(/42 linhas · 8 colunas · UTF-16, colunas separadas por tabulação/)).toBeVisible();
+  await expect(page.getByText(/42 linhas · 8 colunas · UTF-8, separador “;”/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Baixar" })).toHaveAttribute(
     "href",
     "/api/coordinator/exports/7/file",

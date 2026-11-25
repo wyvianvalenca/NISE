@@ -493,8 +493,8 @@ function Done({
       <p className={styles.muted}>Ficou registrado no histórico do grupo.</p>
       <p className={styles.filename}>{file.filename}</p>
       <p className={styles.muted}>
-        {file.rowCount} linhas · {file.columnCount} colunas · UTF-16, colunas separadas por
-        tabulação (o Excel abre já em colunas, com os acentos)
+        {file.rowCount} linhas · {file.columnCount} colunas · UTF-8, separador “;” (abre certinho
+        no Excel e no Sheets)
       </p>
 
       {msLeft > 0 ? (

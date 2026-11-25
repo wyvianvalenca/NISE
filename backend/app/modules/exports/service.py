@@ -55,15 +55,14 @@ FILE_LIFETIME = timedelta(hours=24)
 # Quantas linhas o passo "Revisão" mostra (RF-F24.32).
 PREVIEW_ROWS = 5
 
-# O arquivo sai em UTF-16 com BOM e com tabulação entre as colunas. O BOM do
-# UTF-16 diz ao Excel a codificação, então os acentos saem certos; a tabulação
-# não depende do separador de lista do Windows, que muda de máquina para máquina
-# (com ";" ou ",", o Excel de uma das configurações joga tudo na coluna A).
-# Revisão da #431; o texto da RF-F24.34 ainda fala em UTF-8 e ";".
+# O arquivo sai em UTF-8 com BOM e separador ";", como pede a RF-F24.34. O BOM
+# faz Excel e Sheets acertarem os acentos. Limite conhecido (revisão da #431):
+# o Excel separa as colunas pelo separador de lista do Windows, então numa
+# máquina configurada com "," ele abre tudo na coluna A.
 BOM = "\ufeff"
-CSV_DELIMITER = "\t"
-CSV_ENCODING = "utf-16-le"  # o BOM já vai no começo do texto (FF FE)
-CSV_MEDIA_TYPE = "text/csv; charset=utf-16"
+CSV_DELIMITER = ";"
+CSV_ENCODING = "utf-8"
+CSV_MEDIA_TYPE = "text/csv; charset=utf-8"
 
 # Sem 0/O e 1/I, que se confundem quando a coordenadora lê o código.
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -686,10 +685,10 @@ async def build_table(
 
 
 def to_csv(table: ExportTable) -> str:
-    """O texto do arquivo: BOM e colunas separadas por tabulação (RF-F24.34).
+    """O texto do arquivo: BOM e separador ";" (RF-F24.34).
 
-    Célula com tabulação, quebra de linha ou aspas vai entre aspas. Para baixar,
-    o texto vira bytes com `CSV_ENCODING`.
+    Célula com ";", quebra de linha ou aspas vai entre aspas. Para baixar, o
+    texto vira bytes com `CSV_ENCODING`.
     """
     out = io.StringIO()
     writer = csv.writer(out, delimiter=CSV_DELIMITER, lineterminator="\r\n")

@@ -1217,7 +1217,7 @@ export interface paths {
         };
         /**
          * Download Route
-         * @description Baixa o CSV, em UTF-16 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34).
+         * @description Baixa o CSV, em UTF-8 com BOM. Precisa de sessão e vale 15 minutos (RF-F24.34).
          */
         get: operations["download_route_api_coordinator_exports__export_id__file_get"];
         put?: never;
