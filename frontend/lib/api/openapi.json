@@ -7276,6 +7276,10 @@
               }
             ],
             "title": "Registrationurl"
+          },
+          "firstName": {
+            "type": "string",
+            "title": "Firstname"
           }
         },
         "type": "object",
@@ -7302,7 +7306,8 @@
           "cost",
           "stage",
           "prerequisites",
-          "registrationUrl"
+          "registrationUrl",
+          "firstName"
         ],
         "title": "EventOut",
         "description": "O detalhe de um evento do filé (A06·4b, #178, RF-F10.13). O front lê em camelCase.\n\nOs campos seguem `EventDetail` em frontend/lib/evento.ts. As contas de dias\nsão feitas aqui, no fuso de Maceió, para o front não depender do relógio do\ncelular."

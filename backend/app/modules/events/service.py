@@ -57,7 +57,8 @@ class FileEvent:
     """Um evento do filé dela: a linha e o item, de uma das duas fontes.
 
     `group` é o nome do grupo da NISE de uma ação; vazio num evento da curadoria.
-    `city` é o nome da cidade de um presencial.
+    `city` é o nome da cidade de um presencial. `first_name` é o primeiro nome da
+    menina da sessão, para a celebração do "Fui!" (A06·5).
     """
 
     entry: FileEntry
@@ -65,6 +66,7 @@ class FileEvent:
     action: Action | None
     group: str | None
     city: str | None
+    first_name: str
 
     @property
     def starts_on(self) -> date:
@@ -187,6 +189,7 @@ async def find_event(
     girl_id: int,
     origin: ItemOrigin,
     number: int,
+    first_name: str,
     for_update: bool = False,
     include_did_not_go: bool = False,
 ) -> FileEvent | None:
@@ -222,6 +225,7 @@ async def find_event(
         action=action,
         group=group,
         city=await city_name(session, code),
+        first_name=first_name,
     )
 
 
@@ -351,6 +355,7 @@ def event_out(event: FileEvent, today: date) -> EventOut:
         stage=stage,
         prerequisites=prerequisites,
         registration_url=registration_url,
+        first_name=event.first_name,
     )
 
 

@@ -1,33 +1,25 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApiOptions } from "./evento-api";
 import { mockFileApi } from "./file-api";
 
 // #191 · A06·4b depois da data de um evento de fora: "Você foi?" e "Concluído".
-// Usa os dados de teste de lib/evento.ts.
+// As rotas são simuladas por evento-api.ts.
 
-type Mock = {
-  status?: Record<string, "next" | "in_progress" | "concluded">;
-  today?: string;
-  delayMs?: number;
-  failUpdates?: boolean;
-  failUndo?: boolean;
-};
-
-const PAST = "hackathon-cidades-inteligentes";
-const DONE = "palestra-mulheres-na-computacao";
-const UPCOMING = "hackathon-meninas-na-tecnologia";
+const PAST = "curadoria-24";
+const DONE = "curadoria-25";
+const UPCOMING = "curadoria-21";
 const PAST_PATH = `/file/evento/${PAST}`;
 
 // Com hoje em 16/nov/2025, o hackathon que passou foi em 8 e 9/nov (sábado e domingo).
 const TODAY = "2025-11-16";
 
-async function open(page: Page, path: string, value: Mock = {}) {
-  await page.addInitScript((mockValue) => {
-    globalThis.__NISE_MOCK_EVENTO__ = mockValue as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, ...value });
+async function open(page: Page, path: string, value: EventApiOptions = {}) {
+  const api = await mockEventApi(page, { today: TODAY, ...value });
   // Depois do "Não deu" ela volta para o Seu filé (GET /api/file, #116).
   await mockFileApi(page);
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  return api;
 }
 
 function button(page: Page, name: string) {
@@ -119,6 +111,26 @@ test("se desfazer falha, avisa e deixa tentar de novo", async ({ page }) => {
   await expect(toast(page).getByRole("button", { name: "Tentar de novo" })).toBeVisible();
 });
 
+test("se desfazer volta 401, leva ao início em vez de só dizer que não deu", async ({ page }) => {
+  const api = await open(page, PAST_PATH, { failUndo: true });
+  api.failure = { status: 401, body: { detail: "Not authenticated" } };
+  await button(page, "Não deu").click();
+
+  await toast(page).getByRole("button", { name: "Desfazer" }).click();
+
+  await expect(page).toHaveURL("/");
+});
+
+test("se desfazer volta 409, o aviso some em vez de oferecer outra tentativa", async ({ page }) => {
+  const api = await open(page, PAST_PATH, { failUndo: true });
+  api.failure = { status: 409, body: { error: "event_not_asked" } };
+  await button(page, "Não deu").click();
+
+  await toast(page).getByRole("button", { name: "Desfazer" }).click();
+
+  await expect(toast(page)).toHaveCount(0);
+});
+
 test("o aviso do filé some sozinho, e não volta ao recarregar", async ({ page }) => {
   await page.clock.install();
   await open(page, PAST_PATH);
@@ -164,6 +176,7 @@ test("o concluído mostra que ela foi, os chips e nenhum botão", async ({ page 
 });
 
 test("um evento que ainda vai acontecer não abre a celebração", async ({ page }) => {
+  await mockEventApi(page, { today: TODAY });
   await page.goto(`/file/evento/${UPCOMING}/concluido`);
 
   await expect(page.getByText("Esse evento não está nos concluídos do seu filé.")).toBeVisible();

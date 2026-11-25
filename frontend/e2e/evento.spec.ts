@@ -1,25 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
+import { mockEventApi, type EventApiOptions } from "./evento-api";
 import { FIGMA_ITEMS, mockFileApi } from "./file-api";
 
-// #179 · A06·4b Evento, versão "Próxima aventura". Usa os dados de teste de lib/evento.ts.
+// #179 · A06·4b Evento, versão "Próxima aventura", lida de GET /api/events/{id} (#181).
 
-type Mock = {
-  status?: Record<string, "next" | "in_progress" | "concluded">;
-  today?: string;
-  delayMs?: number;
-};
-
-const HACKATHON = "hackathon-meninas-na-tecnologia";
-const OFICINA = "oficina-de-robotica-rendeiras";
-const MINICURSO = "minicurso-de-sites";
+const HACKATHON = "curadoria-21";
+const OFICINA = "acao-22";
+const MINICURSO = "curadoria-23";
+const OPEN_ACTION = "acao-28";
+const CLOSED_ACTION = "acao-29";
 
 // Com hoje em 15/out/2025, o hackathon cai em 8 e 9/nov (sábado e domingo), como no Figma.
 const TODAY = "2025-10-15";
 
-async function open(page: Page, id: string, mock: Mock = {}) {
-  await page.addInitScript((value) => {
-    globalThis.__NISE_MOCK_EVENTO__ = value as typeof globalThis.__NISE_MOCK_EVENTO__;
-  }, { today: TODAY, ...mock });
+async function open(page: Page, id: string, mock: EventApiOptions = {}) {
+  await mockEventApi(page, { today: TODAY, ...mock });
   await page.goto(`/file/evento/${id}`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
@@ -41,7 +36,7 @@ test("mostra o evento com o que o Figma pede", async ({ page }) => {
   await expect(main.getByText("Próxima aventura")).toBeVisible();
   await expect(main.getByText("Programação · Grande desafio")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Hackathon Meninas na Tecnologia" })).toBeVisible();
-  await expect(main.getByText("Organizado por um grupo parceiro")).toBeVisible();
+  await expect(main.getByText("Organizado por Instituto Exemplo")).toBeVisible();
 
   await expect(summary(page).getByRole("listitem")).toHaveText([
     "8 e 9 de novembroSábado e domingo",
@@ -82,6 +77,24 @@ test("com as inscrições fechadas, o evento continua abrindo do filé (RN-36)",
   await expect(chips).toHaveText(["R$ 20", "Ter um computador"]);
 });
 
+test("uma ação de grupo sem prazo não inventa a data: diz só que as inscrições estão abertas", async ({ page }) => {
+  await open(page, OPEN_ACTION);
+
+  // Sem tema, a linha do tema mostra só a faixa.
+  await expect(page.getByRole("main").getByText("Uma tarde", { exact: true })).toBeVisible();
+  await expect(summary(page).getByRole("listitem").last()).toHaveText("Inscrições abertas");
+  await expect(signUpLink(page)).toBeVisible();
+});
+
+test("uma ação fechada, sem prazo e sem link, não oferece \"Ir para inscrição\"", async ({ page }) => {
+  await open(page, CLOSED_ACTION);
+
+  await expect(summary(page).getByRole("listitem").last()).toHaveText("As inscrições já fecharam");
+  await expect(signUpLink(page)).toHaveCount(0);
+  await expect(page.getByText("A inscrição é feita no site dos organizadores")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Já me inscrevi" })).toBeEnabled();
+});
+
 test("\"Ir para inscrição\" abre o site do grupo em outra aba e não muda o status", async ({ page }) => {
   await open(page, HACKATHON);
 
@@ -111,15 +124,23 @@ test("\"Já me inscrevi\" e \"Tirar do filé\" estão disponíveis (#182)", asyn
 });
 
 test("um evento que não está no filé dela não abre", async ({ page }) => {
-  await page.goto("/file/evento/evento-de-outra-menina");
+  await mockEventApi(page);
+  await page.goto("/file/evento/curadoria-99");
 
   await expect(page.getByText("Esse evento não está no seu filé.")).toBeVisible();
 });
 
-test("mostra \"Carregando…\" enquanto o evento chega", async ({ page }) => {
-  await page.addInitScript(() => {
-    globalThis.__NISE_MOCK_EVENTO__ = { delayMs: 600 };
+for (const invalid of ["evento-de-outra-menina", "acao-07", "curadoria-2147483648"]) {
+  test(`um id fora do formato do catálogo (${invalid}) não abre`, async ({ page }) => {
+    await mockEventApi(page);
+    await page.goto(`/file/evento/${invalid}`);
+
+    await expect(page.getByText("Esse evento não está no seu filé.")).toBeVisible();
   });
+}
+
+test("mostra \"Carregando…\" enquanto o evento chega", async ({ page }) => {
+  await mockEventApi(page, { delayMs: 600 });
   await page.goto(`/file/evento/${HACKATHON}`);
 
   await expect(page.getByText("Carregando…")).toBeVisible();
@@ -127,7 +148,8 @@ test("mostra \"Carregando…\" enquanto o evento chega", async ({ page }) => {
 });
 
 test("\"Abrir\" do hackathon no filé leva a esta tela", async ({ page }) => {
-  // O filé vem de GET /api/file (#116); o detalhe do evento ainda usa os ids de lib/evento.ts.
+  // O filé vem de GET /api/file (#116) e o detalhe, de GET /api/events/{id}, com o mesmo id.
+  await mockEventApi(page, { today: TODAY });
   const hackathon = FIGMA_ITEMS.find((item) => item.title === "Hackathon Meninas na Tecnologia");
   await mockFileApi(page, { items: [{ ...hackathon!, id: HACKATHON }] });
   await page.goto("/file");
