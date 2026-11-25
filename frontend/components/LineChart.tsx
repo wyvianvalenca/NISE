@@ -11,6 +11,8 @@ export type LineSeries = {
   dashed?: boolean;
   /** Um valor de 0 a 100 por etapa; null quando não há dado. */
   values: (number | null)[];
+  /** Texto escrito no fim da linha, ex.: "72%". */
+  endLabel?: string;
 };
 
 type LineChartProps = {
@@ -31,6 +33,8 @@ const DEFAULT_WIDTH = 600;
 const HEIGHT = 240;
 const LEFT = 36;
 const RIGHT = 16;
+// Espaço extra à direita quando alguma linha tem texto no fim dela.
+const END_LABEL_SPACE = 40;
 const TOP = 12;
 const BOTTOM = 44;
 
@@ -52,7 +56,8 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
     return () => observer.disconnect();
   }, []);
 
-  const plotWidth = width - LEFT - RIGHT;
+  const right = RIGHT + (series.some((line) => line.endLabel) ? END_LABEL_SPACE : 0);
+  const plotWidth = width - LEFT - right;
   const plotHeight = HEIGHT - TOP - BOTTOM;
   const step = xLabels.length > 1 ? plotWidth / (xLabels.length - 1) : 0;
   const x = (index: number) => LEFT + index * step;
@@ -90,7 +95,7 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
 
         {[0, 50, 100].map((tick) => (
           <g key={tick}>
-            <line x1={LEFT} x2={width - RIGHT} y1={y(tick)} y2={y(tick)} className={styles.grid} />
+            <line x1={LEFT} x2={width - right} y1={y(tick)} y2={y(tick)} className={styles.grid} />
             <text x={LEFT - 6} y={y(tick) + 3} className={styles.yLabel}>
               {tick}%
             </text>
@@ -108,6 +113,15 @@ export function LineChart({ series, xLabels, highlighted, onSelect, label }: Lin
               value === null ? null : (
                 <circle key={index} cx={x(index)} cy={y(value)} r={4} className={styles.dot} />
               ),
+            )}
+            {line.endLabel && (
+              <text
+                x={x(line.values.length - 1) + 10}
+                y={y(line.values[line.values.length - 1] ?? 0) + 4}
+                className={styles.endLabel}
+              >
+                {line.endLabel}
+              </text>
             )}
           </g>
         ))}

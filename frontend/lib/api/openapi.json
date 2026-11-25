@@ -5698,6 +5698,136 @@
         }
       }
     },
+    "/api/coordinator/results/future-self": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Future Self Route",
+        "operationId": "future_self_route_api_coordinator_results_future_self_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "12m"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureSelfOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/coordinator/exports/options": {
       "get": {
         "tags": [
@@ -9093,6 +9223,83 @@
         "title": "FutureSelf",
         "description": "Pergunta 2: \"Daqui a uns anos, você se vê estudando ou trabalhando…\"."
       },
+      "FutureSelfLineOut": {
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/ParticipationGroup"
+          },
+          "girls": {
+            "type": "integer",
+            "title": "Girls"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/FutureSelfPointOut"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group",
+          "girls",
+          "points"
+        ],
+        "title": "FutureSelfLineOut"
+      },
+      "FutureSelfMilestone": {
+        "type": "string",
+        "enum": [
+          "signup",
+          "three_months",
+          "six_months",
+          "twelve_months",
+          "eighteen_months"
+        ],
+        "title": "FutureSelfMilestone",
+        "description": "Os marcos do eixo horizontal: o cadastro e as quatro rodadas (RF-F5.33)."
+      },
+      "FutureSelfOut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/FutureSelfLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "title": "FutureSelfOut",
+        "description": "O card \"Elas se veem na computação no futuro?\" (RF-F5.33, RN-50).\n\nQuatro linhas, cada uma com os cinco marcos. Só totais, nunca uma menina\n(RN-04): \"Nunca participaram\" aparece só como contagem. O front calcula a\nporcentagem `sure / responses` e deixa lacuna onde `responses` é 0."
+      },
+      "FutureSelfPointOut": {
+        "properties": {
+          "milestone": {
+            "$ref": "#/components/schemas/FutureSelfMilestone"
+          },
+          "responses": {
+            "type": "integer",
+            "title": "Responses"
+          },
+          "sure": {
+            "type": "integer",
+            "title": "Sure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "milestone",
+          "responses",
+          "sure"
+        ],
+        "title": "FutureSelfPointOut",
+        "description": "Um marco de uma linha: `sure` de `responses` disseram \"Com certeza\"."
+      },
       "GoogleSignupCompleteIn": {
         "properties": {
           "birthDate": {
@@ -10094,6 +10301,17 @@
         ],
         "title": "Package",
         "description": "Os pacotes que a coordenadora liga ou desliga (RF-F24.08)."
+      },
+      "ParticipationGroup": {
+        "type": "string",
+        "enum": [
+          "two_or_more",
+          "one",
+          "no_show",
+          "never"
+        ],
+        "title": "ParticipationGroup",
+        "description": "As quatro linhas do card, de quem foi a mais ações a quem chegou sozinha."
       },
       "PendingRatingOut": {
         "properties": {
