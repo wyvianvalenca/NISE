@@ -35,6 +35,9 @@ class User(Base):
     opportunity_emails_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    # Desativada pela equipe NISE (RN-41): a sessão cai e a lista do admin passa
+    # a mostrar "Desativada". Vazio para quem está ativa.
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Quando a exclusão da conta foi atendida (RF-F7.09, #394). É o registro do
     # pedido: tem a data e não identifica ninguém, porque a linha já foi

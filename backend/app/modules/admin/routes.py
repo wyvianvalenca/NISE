@@ -1,0 +1,179 @@
+import asyncio
+from typing import Annotated
+
+from fastapi import APIRouter, Query, status
+
+from app.auth.permissions import NiseTeamDep
+from app.db.engine import AsyncSessionDep
+from app.modules.admin.schemas import (
+    CoordinatorFilter,
+    CoordinatorInviteIn,
+    CoordinatorInviteOut,
+    CoordinatorListOut,
+    GroupCardOut,
+    GroupOptionOut,
+    NewGroupIn,
+)
+from app.modules.admin.service import list_coordinators, list_group_cards
+from app.modules.groups.coordinator_email import (
+    first_name,
+    send_coordinator_invite_email,
+)
+from app.modules.groups.coordinator_invites import (
+    create_coordinator_invite,
+    create_group,
+    list_groups,
+    resend_coordinator_invite,
+)
+
+router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+# AD02 Coordenadoras · a lista (#447, RF-S2.24). Só a equipe NISE entra
+# (RNF-G.03): coordenadora e menina recebem 403, e sem sessão, 401. A página
+# não mostra nada de meninas (RN-41).
+@router.get(
+    "/coordinators",
+    response_model=CoordinatorListOut,
+    responses={status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"}},
+)
+async def coordinators(
+    _team: NiseTeamDep,
+    session: AsyncSessionDep,
+    status_filter: Annotated[CoordinatorFilter, Query(alias="filter")] = (
+        CoordinatorFilter.ALL
+    ),
+    q: Annotated[str, Query(max_length=100)] = "",
+) -> CoordinatorListOut:
+    return await list_coordinators(session, status_filter, q)
+
+
+# AD03 Convidar coordenadora · os grupos que a equipe pode escolher (#453).
+@router.get(
+    "/groups",
+    response_model=list[GroupOptionOut],
+    responses={status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"}},
+)
+async def groups(_team: NiseTeamDep, session: AsyncSessionDep) -> list[GroupOptionOut]:
+    return [
+        GroupOptionOut(
+            id=group.id,
+            name=group.name,
+            city=f"{group.city.name}, {group.city.state}" if group.city else None,
+        )
+        for group in await list_groups(session)
+    ]
+
+
+# AD03/AD04 Convidar coordenadora (#453, RF-S2.20, RF-S2.31, RN-35). Só a
+# equipe NISE convida (RNF-G.03). Erros, em {"error": ...}: 409
+# email_has_account, invite_pending e group_exists; 404 group_not_found; 422
+# invalid_city. Nada é criado nem enviado nesses casos.
+@router.post(
+    "/coordinators/invites",
+    response_model=CoordinatorInviteOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"},
+        status.HTTP_404_NOT_FOUND: {"description": "group_not_found"},
+        status.HTTP_409_CONFLICT: {
+            "description": "email_has_account, invite_pending ou group_exists"
+        },
+    },
+)
+async def invite_coordinator(
+    data: CoordinatorInviteIn, _team: NiseTeamDep, session: AsyncSessionDep
+) -> CoordinatorInviteOut:
+    created = await create_coordinator_invite(
+        session,
+        name=data.name,
+        email=data.email,
+        group_id=data.group_id,
+        new_group_name=data.new_group.name if data.new_group else None,
+        new_group_city_id=data.new_group.city_id if data.new_group else None,
+    )
+    invite = created.invite
+    # O smtplib é síncrono: numa thread, para não travar o servidor. O convite
+    # já está gravado: se o e-mail não sai, ele fica na lista.
+    email_sent = await asyncio.to_thread(
+        send_coordinator_invite_email,
+        invite.email,
+        invite.name,
+        created.group.name,
+        created.token,
+        invite.expires_at,
+    )
+    return CoordinatorInviteOut(
+        first_name=first_name(invite.name),
+        email=invite.email,
+        group_name=created.group.name,
+        expires_at=invite.expires_at,
+        email_sent=email_sent,
+    )
+
+
+# AD02 "Reenviar" (#457, RF-S2.25, RN-35). Troca o link, vale 7 dias a partir
+# de agora, e manda o mesmo e-mail do primeiro. Só a equipe NISE (RNF-G.03).
+# Erros, em {"error": ...}: 404 invite_not_found; 409 email_has_account. Com
+# email_sent False, o link novo já vale e o "Reenviar" continua na lista.
+@router.post(
+    "/coordinators/invites/{invite_id}/resend",
+    response_model=CoordinatorInviteOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"},
+        status.HTTP_404_NOT_FOUND: {"description": "invite_not_found"},
+        status.HTTP_409_CONFLICT: {"description": "email_has_account"},
+    },
+)
+async def resend_invite(
+    invite_id: int, _team: NiseTeamDep, session: AsyncSessionDep
+) -> CoordinatorInviteOut:
+    created = await resend_coordinator_invite(session, invite_id)
+    invite = created.invite
+    email_sent = await asyncio.to_thread(
+        send_coordinator_invite_email,
+        invite.email,
+        invite.name,
+        created.group.name,
+        created.token,
+        invite.expires_at,
+    )
+    return CoordinatorInviteOut(
+        first_name=first_name(invite.name),
+        email=invite.email,
+        group_name=created.group.name,
+        expires_at=invite.expires_at,
+        email_sent=email_sent,
+    )
+
+
+# AD06 Grupos · os cartões (#456, RF-S2.29). Só a equipe NISE (RNF-G.03).
+# Só contagens de meninas, nunca quais são (RN-41).
+@router.get(
+    "/groups/overview",
+    response_model=list[GroupCardOut],
+    responses={status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"}},
+)
+async def groups_overview(
+    _team: NiseTeamDep, session: AsyncSessionDep
+) -> list[GroupCardOut]:
+    return await list_group_cards(session)
+
+
+# AD06 + Novo grupo (#456, RF-S2.30, D-120). Cria só o grupo: nenhum convite e
+# nenhum e-mail. Erros, em {"error": ...}: 409 group_exists; 422 invalid_city.
+@router.post(
+    "/groups",
+    response_model=GroupCardOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"},
+        status.HTTP_409_CONFLICT: {"description": "group_exists"},
+    },
+)
+async def new_group(
+    data: NewGroupIn, _team: NiseTeamDep, session: AsyncSessionDep
+) -> GroupCardOut:
+    group = await create_group(session, name=data.name, city_id=data.city_id)
+    cards = await list_group_cards(session)
+    return next(card for card in cards if card.id == group.id)
