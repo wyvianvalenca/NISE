@@ -102,6 +102,22 @@ export async function sendCoordinatorInvite(input: InviteInput): Promise<InviteR
   };
 }
 
+export type ResendResult =
+  | { kind: "sent"; firstName: string; emailSent: boolean }
+  | { kind: "problem"; problem: "email_has_account" | "invite_not_found" | "forbidden" | "failed" };
+
+/**
+ * Resends an invite with a new link (RF-S2.25). Example data for now: the
+ * integration step swaps this for `POST /api/admin/coordinators/invites/{id}/resend`.
+ */
+export async function resendCoordinatorInvite(
+  inviteId: number,
+  firstName: string,
+): Promise<ResendResult> {
+  void inviteId;
+  return { kind: "sent", firstName, emailSent: true };
+}
+
 /** "25/11/2026", the day in Maceió's zone. */
 export function inviteDateLabel(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Maceio" }).format(new Date(iso));

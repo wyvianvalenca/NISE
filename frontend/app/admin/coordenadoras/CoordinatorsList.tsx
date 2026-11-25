@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Chip } from "@/components/Chip";
+import { Notice } from "@/components/Notice";
 import { SearchField } from "@/components/SearchField";
+import { Toast } from "@/components/Toast";
+import { resendCoordinatorInvite } from "@/lib/admin-coordinator-invite";
 import {
   coordinatorDateLabel,
   countCoordinators,
@@ -24,9 +27,18 @@ const FILTERS: { key: CoordinatorFilter; label: string }[] = [
 
 type CoordinatorsListProps = {
   coordinators: CoordinatorRow[];
-  /** An invite was sent: the list is fetched again to show it. */
+  /** An invite was sent or resent: the list is fetched again to show it. */
   onInvited: () => void;
 };
+
+/** What the team sees after "Reenviar": the dark notice or the pink alert. */
+type ResendNotice =
+  | { kind: "sent"; firstName: string }
+  | { kind: "failed"; firstName: string }
+  | { kind: "has_account" }
+  | { kind: "problem" };
+
+const firstNameOf = (name: string) => name.trim().split(/\s+/)[0];
 
 /**
  * The interactive part of AD02: filter chips with the counts of the whole
@@ -37,6 +49,32 @@ export function CoordinatorsList({ coordinators, onInvited }: CoordinatorsListPr
   const [filter, setFilter] = useState<CoordinatorFilter>("all");
   const [query, setQuery] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [resendingId, setResendingId] = useState<number | null>(null);
+  const [notice, setNotice] = useState<ResendNotice | null>(null);
+
+  async function resend(row: CoordinatorRow) {
+    if (resendingId !== null) return;
+    const firstName = firstNameOf(row.name);
+    setResendingId(row.id);
+    setNotice(null);
+    const result = await resendCoordinatorInvite(row.id, firstName).catch(
+      () => ({ kind: "problem", problem: "failed" }) as const,
+    );
+    setResendingId(null);
+    if (result.kind === "sent") {
+      setNotice(
+        result.emailSent
+          ? { kind: "sent", firstName: result.firstName }
+          : { kind: "failed", firstName },
+      );
+    } else if (result.problem === "email_has_account") {
+      setNotice({ kind: "has_account" });
+    } else {
+      setNotice({ kind: "problem" });
+    }
+    // The new date shows up (or the row goes away, if the e-mail has an account now).
+    onInvited();
+  }
 
   const counts = countCoordinators(coordinators);
   const rows = filterCoordinators(coordinators, filter, query);
@@ -50,6 +88,23 @@ export function CoordinatorsList({ coordinators, onInvited }: CoordinatorsListPr
           + Convidar coordenadora
         </Button>
       </div>
+      {notice?.kind === "sent" && (
+        <div className={styles.notice}>
+          <Toast action={{ label: "Fechar", onClick: () => setNotice(null) }}>
+            <strong>Convite reenviado.</strong> Mandamos um link novo pra {notice.firstName}.
+          </Toast>
+        </div>
+      )}
+      {notice !== null && notice.kind !== "sent" && (
+        <div role="alert" className={styles.notice}>
+          <Notice tone="pink" icon="alert">
+            {notice.kind === "failed" &&
+              `Não deu pra enviar o e-mail pra ${notice.firstName}. Tente de novo.`}
+            {notice.kind === "has_account" && "Este e-mail já tem conta na NISE. Nada foi enviado."}
+            {notice.kind === "problem" && "Não deu pra reenviar o convite agora. Tente de novo."}
+          </Notice>
+        </div>
+      )}
       <div className={styles.filters}>
         <div className={styles.chips}>
           {FILTERS.map((item) => (
@@ -90,6 +145,19 @@ export function CoordinatorsList({ coordinators, onInvited }: CoordinatorsListPr
                   {STATUS_LABEL[row.status]}
                 </span>
                 <span className={styles.date}>{coordinatorDateLabel(row)}</span>
+                {(row.status === "invite_sent" || row.status === "invite_expired") && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className={styles.resend}
+                    loading={resendingId === row.id}
+                    loadingLabel="Reenviando…"
+                    aria-label={`Reenviar convite para ${row.name}`}
+                    onClick={() => resend(row)}
+                  >
+                    Reenviar
+                  </Button>
+                )}
               </div>
             </li>
           ))}

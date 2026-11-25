@@ -147,3 +147,12 @@
   color: var(--nise-muted);
   font-size: 14px;
 }
+
+.notice {
+  margin-top: 20px;
+}
+
+.resend {
+  flex-shrink: 0;
+  min-width: 96px;
+}
