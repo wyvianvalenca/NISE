@@ -20,6 +20,7 @@ from app.modules.groups.coordinator_email import (
 from app.modules.groups.coordinator_invites import (
     create_coordinator_invite,
     list_groups,
+    resend_coordinator_invite,
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -91,6 +92,41 @@ async def invite_coordinator(
     invite = created.invite
     # O smtplib é síncrono: numa thread, para não travar o servidor. O convite
     # já está gravado: se o e-mail não sai, ele fica na lista.
+    email_sent = await asyncio.to_thread(
+        send_coordinator_invite_email,
+        invite.email,
+        invite.name,
+        created.group.name,
+        created.token,
+        invite.expires_at,
+    )
+    return CoordinatorInviteOut(
+        first_name=first_name(invite.name),
+        email=invite.email,
+        group_name=created.group.name,
+        expires_at=invite.expires_at,
+        email_sent=email_sent,
+    )
+
+
+# AD02 "Reenviar" (#457, RF-S2.25, RN-35). Troca o link, vale 7 dias a partir
+# de agora, e manda o mesmo e-mail do primeiro. Só a equipe NISE (RNF-G.03).
+# Erros, em {"error": ...}: 404 invite_not_found; 409 email_has_account. Com
+# email_sent False, o link novo já vale e o "Reenviar" continua na lista.
+@router.post(
+    "/coordinators/invites/{invite_id}/resend",
+    response_model=CoordinatorInviteOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é da equipe NISE"},
+        status.HTTP_404_NOT_FOUND: {"description": "invite_not_found"},
+        status.HTTP_409_CONFLICT: {"description": "email_has_account"},
+    },
+)
+async def resend_invite(
+    invite_id: int, _team: NiseTeamDep, session: AsyncSessionDep
+) -> CoordinatorInviteOut:
+    created = await resend_coordinator_invite(session, invite_id)
+    invite = created.invite
     email_sent = await asyncio.to_thread(
         send_coordinator_invite_email,
         invite.email,
