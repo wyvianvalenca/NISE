@@ -116,3 +116,9 @@
     var(--nise-chart-pending) 1.2px 4.2px
   );
 }
+
+.endLabel {
+  fill: currentColor;
+  font-size: 12px;
+  font-weight: 700;
+}

@@ -7,6 +7,7 @@ from app.modules.actions.dependencies import CoordinatorGroupIdDep
 from app.modules.actions.models import ActionType
 from app.modules.actions.service import today_in_maceio
 from app.modules.girls.models import Topic
+from app.modules.results.future_self import future_self_by_participation
 from app.modules.results.schemas import (
     AfterActionOut,
     ChangeOut,
@@ -14,6 +15,9 @@ from app.modules.results.schemas import (
     EnteredBarOut,
     EnteredFieldOut,
     EnteredStageOut,
+    FutureSelfLineOut,
+    FutureSelfOut,
+    FutureSelfPointOut,
     InterestOut,
     MilestoneOut,
     MovementOut,
@@ -107,6 +111,49 @@ async def interest_route(
                 for c in movement.common_changes
             ],
         ),
+    )
+
+
+# "Elas se veem na computação no futuro?" (#369, RF-F5.33): mesmos filtros e
+# mesmo grupo dos cards acima, tirado da sessão.
+@router.get(
+    "/future-self",
+    response_model=FutureSelfOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora ou sem grupo"},
+        status.HTTP_409_CONFLICT: {"description": "Coordenadora em mais de um grupo"},
+    },
+)
+async def future_self_route(
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    period: Period = Period.LAST_12_MONTHS,
+    action_id: Annotated[int | None, Query(ge=1)] = None,
+    action_type: Annotated[ActionType | None, Query(alias="type")] = None,
+    topic: Topic | None = None,
+) -> FutureSelfOut:
+    filters = ResultsFilters(
+        period=period, action_id=action_id, type=action_type, topic=topic
+    )
+    lines = await future_self_by_participation(
+        session, group_id, filters, today_in_maceio()
+    )
+    return FutureSelfOut(
+        lines=[
+            FutureSelfLineOut(
+                group=line.group,
+                girls=line.girls,
+                points=[
+                    FutureSelfPointOut(
+                        milestone=point.milestone,
+                        responses=point.responses,
+                        sure=point.sure,
+                    )
+                    for point in line.points
+                ],
+            )
+            for line in lines
+        ]
     )
 
 

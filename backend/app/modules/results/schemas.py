@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from app.modules.followup.models import ComputingView, FollowupRound
+from app.modules.results.future_self import FutureSelfMilestone, ParticipationGroup
 
 
 class ComparedOut(BaseModel):
@@ -109,3 +110,34 @@ class EnteredFieldOut(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     stages: list[EnteredStageOut]
+
+
+class FutureSelfPointOut(BaseModel):
+    """Um marco de uma linha: `sure` de `responses` disseram "Com certeza"."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    milestone: FutureSelfMilestone
+    responses: int
+    sure: int
+
+
+class FutureSelfLineOut(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    group: ParticipationGroup
+    girls: int
+    points: list[FutureSelfPointOut]
+
+
+class FutureSelfOut(BaseModel):
+    """O card "Elas se veem na computação no futuro?" (RF-F5.33, RN-50).
+
+    Quatro linhas, cada uma com os cinco marcos. Só totais, nunca uma menina
+    (RN-04): "Nunca participaram" aparece só como contagem. O front calcula a
+    porcentagem `sure / responses` e deixa lacuna onde `responses` é 0.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    lines: list[FutureSelfLineOut]

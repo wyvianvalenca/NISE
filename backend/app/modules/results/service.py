@@ -93,7 +93,7 @@ def period_start(period: Period, today: date) -> date | None:
 def filtered_actions(
     group_id: int, filters: ResultsFilters, today: date
 ) -> Select[Any]:
-    """As ações do grupo com a presença salva que passam nos filtros."""
+    """Ids das ações do grupo com a presença salva que passam nos filtros."""
     since = period_start(filters.period, today)
 
     actions = select(Action.id).where(
