@@ -659,6 +659,7 @@ async def build_table(
         rows.append([values[column.key] for column in columns])
         is_no_action.append(False)
 
+    # TODO RF-F24.36: anonimização mais forte para as linhas sem_acao (Should, a validar).
     # A menina sem ação: "sem_acao" e as colunas da ação vazias (RF-F24.31,
     # RN-60). Quem está inscrita numa ação ainda não concluída já tem código da
     # linha da ação e fica com ele, porque o código é o mesmo dentro do arquivo
