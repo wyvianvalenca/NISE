@@ -1,5 +1,6 @@
 import secrets
 from typing import Annotated
+from urllib.parse import urlencode
 
 import httpx2
 from fastapi import (
@@ -24,8 +25,10 @@ from app.auth.google import (
     validate_id_token,
 )
 from app.auth.permissions import (
+    GOOGLE_COORDINATOR_INVITE_COOKIE,
     GOOGLE_INVITE_COOKIE,
     GOOGLE_STATE_COOKIE,
+    GOOGLE_TERMS_COOKIE,
     GOOGLE_VERIFIER_COOKIE,
     CurrentUserDep,
     PendingSignupDep,
@@ -38,6 +41,9 @@ from app.auth.permissions import (
 )
 from app.auth.reset_email import send_reset_link
 from app.auth.schemas import (
+    CoordinatorInviteCheckIn,
+    CoordinatorInviteViewOut,
+    CoordinatorSignupIn,
     EmailSignupIn,
     ForgotPasswordIn,
     GoogleSignupCompleteIn,
@@ -66,6 +72,11 @@ from app.auth.utils import (
     create_pending_signup_token,
 )
 from app.db.engine import AsyncSessionDep
+from app.modules.groups.coordinator_invites import CoordinatorInviteError
+from app.modules.groups.coordinator_signup import (
+    accept_coordinator_invite,
+    get_open_invite,
+)
 from app.users.models import User
 from app.users.schemas import UserOut
 from app.users.service import normalize_email
@@ -76,6 +87,8 @@ GOOGLE_SIGNUP_URL = "/cadastro/google"
 # A A15 mostra o aviso. Vale também para quem começou em "Criar conta com o
 # Google": ela tenta de novo por lá ou toca "Criar conta".
 GOOGLE_ERROR_URL = "/entrar?erro=google"
+# A página do convite da coordenadora (CV02): o mesmo caminho do link do e-mail.
+COORDINATOR_INVITE_URL = "/convite/coordenadora"
 
 
 @router.get("/me", response_model=UserOut)
@@ -119,6 +132,60 @@ async def signup_email(
     set_session_cookie(response, create_access_token(user.id))
 
     return SignupOut.model_validate(user)
+
+
+# Cadastro da coordenadora pelo convite (CV02, #455). A página confere o link
+# aqui; quem não passa na conferência não cria conta.
+@router.post(
+    "/coordinator-invite/check",
+    response_model=CoordinatorInviteViewOut,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": '{"error": "invite_not_found"}'},
+        status.HTTP_409_CONFLICT: {"description": '{"error": "email_has_account"}'},
+        status.HTTP_410_GONE: {
+            "description": '{"error": "invite_expired"} ou {"error": "invite_used"}'
+        },
+    },
+)
+async def check_coordinator_invite(
+    data: CoordinatorInviteCheckIn, session: AsyncSessionDep
+) -> CoordinatorInviteViewOut:
+    invite = await get_open_invite(session, data.token)
+    return CoordinatorInviteViewOut(
+        name=invite.name,
+        email=invite.email,
+        group_name=invite.group.name,
+        expires_at=invite.expires_at,
+    )
+
+
+# Com e-mail e senha. A resposta já abre a sessão e diz a próxima tela (Ações).
+@router.post(
+    "/signup/coordinator",
+    response_model=SessionOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": '{"error": "password_too_short"}, "terms_not_accepted" '
+            'ou "terms_outdated"'
+        },
+    },
+)
+async def signup_coordinator(
+    data: CoordinatorSignupIn, session: AsyncSessionDep, response: Response
+) -> SessionOut:
+    user = await accept_coordinator_invite(
+        session,
+        data.token,
+        name=data.name,
+        password=data.password,
+        accepted_terms=data.accepted_terms,
+        terms_version=data.terms_version,
+    )
+
+    set_session_cookie(response, create_access_token(user.id))
+
+    return await _session_out(session, user)
 
 
 # Cadastro pelo Google (A02b, #52). O callback deixa o que veio do Google no
@@ -297,6 +364,8 @@ async def reset_password_route(
 @router.get("/google/login")
 async def google_login(
     invite: Annotated[str | None, Query(max_length=64)] = None,
+    coordinator_invite: Annotated[str | None, Query(max_length=128)] = None,
+    terms_version: Annotated[str | None, Query(max_length=64)] = None,
 ) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     code_verifier = new_code_verifier()
@@ -304,8 +373,16 @@ async def google_login(
 
     response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
     # O convite fica num cookie e não no state: o Google não precisa saber dele.
-    # Ele só é conferido ao completar o cadastro.
-    set_google_oauth_cookies(response, state, code_verifier, invite or None)
+    # Ele só é conferido ao completar o cadastro. O mesmo vale para o convite da
+    # coordenadora (CV02, #455) e a versão dos termos que ela aceitou ao clicar.
+    set_google_oauth_cookies(
+        response,
+        state,
+        code_verifier,
+        invite or None,
+        coordinator_invite or None,
+        terms_version,
+    )
     return response
 
 
@@ -331,6 +408,51 @@ async def _google_profile(
     return await validate_id_token(id_token)
 
 
+async def _coordinator_google_callback(
+    session: AsyncSession,
+    token: str,
+    terms_version: str | None,
+    profile: GoogleProfile | None,
+) -> RedirectResponse:
+    """Fecha o cadastro da coordenadora com o Google (CV02, #455).
+
+    Só a conta Google com o e-mail do convite cria a conta. Qualquer recusa volta
+    para a página do convite com `erro=<código>`; o link já está na URL dela.
+    """
+    error: str | None = None
+    user: User | None = None
+
+    if profile is None:
+        error = "google"
+    else:
+        try:
+            user = await accept_coordinator_invite(
+                session,
+                token,
+                name=profile.name,
+                google=profile,
+                accepted_terms=bool(terms_version),
+                terms_version=terms_version or "",
+            )
+        except CoordinatorInviteError as exc:
+            error = exc.code
+
+    if user is None:
+        query = urlencode({"token": token, "erro": error})
+        response = RedirectResponse(
+            f"{COORDINATOR_INVITE_URL}?{query}", status_code=status.HTTP_302_FOUND
+        )
+    else:
+        response = RedirectResponse(
+            await home_path(session, user), status_code=status.HTTP_302_FOUND
+        )
+        set_session_cookie(response, create_access_token(user.id))
+        clear_pending_signup_cookie(response)
+
+    clear_google_oauth_cookies(response)
+    return response
+
+
 @router.get("/google/callback")
 async def google_callback(
     session: AsyncSessionDep,
@@ -339,8 +461,17 @@ async def google_callback(
     saved_state: Annotated[str | None, Cookie(alias=GOOGLE_STATE_COOKIE)] = None,
     code_verifier: Annotated[str | None, Cookie(alias=GOOGLE_VERIFIER_COOKIE)] = None,
     invite: Annotated[str | None, Cookie(alias=GOOGLE_INVITE_COOKIE)] = None,
+    coordinator_invite: Annotated[
+        str | None, Cookie(alias=GOOGLE_COORDINATOR_INVITE_COOKIE)
+    ] = None,
+    terms_version: Annotated[str | None, Cookie(alias=GOOGLE_TERMS_COOKIE)] = None,
 ) -> RedirectResponse:
     profile = await _google_profile(code, state, saved_state, code_verifier)
+
+    if coordinator_invite is not None:
+        return await _coordinator_google_callback(
+            session, coordinator_invite, terms_version, profile
+        )
 
     if profile is None:
         response = RedirectResponse(GOOGLE_ERROR_URL, status_code=status.HTTP_302_FOUND)

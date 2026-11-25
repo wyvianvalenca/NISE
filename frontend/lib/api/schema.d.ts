@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/coordinator-invite/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Coordinator Invite */
+        post: operations["check_coordinator_invite_api_auth_coordinator_invite_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/signup/coordinator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup Coordinator */
+        post: operations["signup_coordinator_api_auth_signup_coordinator_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/signup/pending": {
         parameters: {
             query?: never;
@@ -1737,6 +1771,14 @@ export interface components {
          */
         CoordinatorFilter: "all" | "active" | "invites" | "deactivated";
         /**
+         * CoordinatorInviteCheckIn
+         * @description O link do convite. Vai no corpo, não na URL da API, para não ficar em logs.
+         */
+        CoordinatorInviteCheckIn: {
+            /** Token */
+            token: string;
+        };
+        /**
          * CoordinatorInviteIn
          * @description O painel "Convidar coordenadora" (AD03): ela e um grupo, novo ou não.
          */
@@ -1771,6 +1813,23 @@ export interface components {
             /** Email Sent */
             email_sent: boolean;
         };
+        /**
+         * CoordinatorInviteViewOut
+         * @description O que a CV02 mostra do convite: o grupo, o e-mail travado e a validade.
+         */
+        CoordinatorInviteViewOut: {
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Group Name */
+            group_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
         /** CoordinatorListOut */
         CoordinatorListOut: {
             /** Items */
@@ -1791,6 +1850,25 @@ export interface components {
              * Format: date-time
              */
             date: string;
+        };
+        /**
+         * CoordinatorSignupIn
+         * @description A coordenadora cria a conta pelo link do convite (CV02, #455).
+         *
+         *     O e-mail não vem daqui: é o do convite. Tamanho da senha, aceite e versão
+         *     dos termos são conferidos no serviço, que devolve um código para o front.
+         */
+        CoordinatorSignupIn: {
+            /** Token */
+            token: string;
+            /** Name */
+            name: string;
+            /** Password */
+            password: string;
+            /** Acceptedterms */
+            acceptedTerms: boolean;
+            /** Termsversion */
+            termsVersion: string;
         };
         /**
          * CoordinatorStatus
@@ -3196,6 +3274,91 @@ export interface operations {
             };
         };
     };
+    check_coordinator_invite_api_auth_coordinator_invite_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorInviteCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinatorInviteViewOut"];
+                };
+            };
+            /** @description {"error": "invite_not_found"} */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "email_has_account"} */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description {"error": "invite_expired"} ou {"error": "invite_used"} */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signup_coordinator_api_auth_signup_coordinator_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorSignupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description {"error": "password_too_short"}, "terms_not_accepted" ou "terms_outdated" */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     pending_signup_api_auth_signup_pending_get: {
         parameters: {
             query?: never;
@@ -3436,6 +3599,8 @@ export interface operations {
         parameters: {
             query?: {
                 invite?: string | null;
+                coordinator_invite?: string | null;
+                terms_version?: string | null;
             };
             header?: never;
             path?: never;
@@ -3475,6 +3640,8 @@ export interface operations {
                 nise_google_state?: string | null;
                 nise_google_verifier?: string | null;
                 nise_google_convite?: string | null;
+                nise_google_convite_coord?: string | null;
+                nise_google_termos?: string | null;
             };
         };
         requestBody?: never;
