@@ -44,6 +44,8 @@ const PROBLEM_TEXT: Record<InviteProblem, string> = {
 };
 
 type InviteDrawerProps = {
+  /** Opens with this group already chosen ("Convidar" on a group card, AD06). */
+  groupId?: number;
   /** An invite was created, so the list can be fetched again. */
   onInvited: () => void;
   /** The drawer closed (button, "X", Esc or the veil). */
@@ -55,11 +57,11 @@ type InviteDrawerProps = {
  * only while open, so every opening starts clean; closing before sending saves
  * nothing. The server decides who may invite (RNF-G.03).
  */
-export function InviteDrawer({ onInvited, onClose }: InviteDrawerProps) {
+export function InviteDrawer({ groupId: initialGroupId, onInvited, onClose }: InviteDrawerProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [kind, setKind] = useState<"new" | "existing">("new");
+  const [kind, setKind] = useState<"new" | "existing">(initialGroupId === undefined ? "new" : "existing");
   const [groups, setGroups] = useState<GroupOption[] | null>(null);
-  const [groupId, setGroupId] = useState("");
+  const [groupId, setGroupId] = useState(initialGroupId === undefined ? "" : String(initialGroupId));
   const [groupName, setGroupName] = useState("");
   const [cityText, setCityText] = useState("");
   const [city, setCity] = useState<City | null>(null);
