@@ -200,14 +200,16 @@ test("saving sends the whole form to PUT, with the times as HH:MM and empty fiel
 });
 
 test("a server error while loading offers Tentar novamente", async ({ page }) => {
-  let calls = 0;
-  await page.route("**/api/actions/1", (route) => {
-    calls += 1;
-    return calls === 1 ? route.fulfill({ status: 500, json: { detail: "Erro" } }) : route.fallback();
-  });
+  // Fails until she taps "Tentar novamente", not only on the first call: in dev,
+  // StrictMode runs the effect twice and the first request is aborted and ignored.
+  let failing = true;
+  await page.route("**/api/actions/1", (route) =>
+    failing ? route.fulfill({ status: 500, json: { detail: "Erro" } }) : route.fallback(),
+  );
   await page.goto("/coordenacao/acoes/1/editar");
 
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Não foi possível carregar a ação.");
+  failing = false;
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await expect(page.getByLabel("Nome da ação")).toHaveValue("Introdução à robótica");
 });
