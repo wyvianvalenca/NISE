@@ -1,5 +1,6 @@
 import { CoordHeader } from "@/components/CoordHeader";
 import { AfterActionResults } from "./AfterActionResults";
+import { InterestCards } from "./InterestCards";
 import styles from "./page.module.css";
 
 /**
@@ -18,6 +19,7 @@ export default function CoordResultsPage() {
           marco mostra quantas responderam.
         </p>
         <AfterActionResults />
+        <InterestCards />
       </main>
     </>
   );
