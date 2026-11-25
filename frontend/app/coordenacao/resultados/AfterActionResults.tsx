@@ -5,6 +5,7 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
+import { CardTitle } from "@/components/CardHelp";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
@@ -114,12 +115,23 @@ export function AfterActionResults({ below }: { below?: (filters: ResultsFilters
       </div>
 
       <section className={styles.card} aria-labelledby="logo-depois">
-        <h2 id="logo-depois" className={styles.cardTitle}>
-          Logo depois da ação
-        </h2>
-        <p className={styles.description}>
-          Quem participou das ações do período · comparado com quem se inscreveu e não compareceu
-        </p>
+        <CardTitle
+          id="logo-depois"
+          className={styles.cardTitle}
+          title="Logo depois da ação"
+          help={
+            <>
+              <span>
+                Quem participou das ações do período · comparado com quem se inscreveu e não
+                compareceu
+              </span>
+              <span>
+                “Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra
+                se o incentivo continuou logo depois do evento, antes do primeiro questionário.
+              </span>
+            </>
+          }
+        />
 
         {result === null && <Loading label="Carregando os resultados…" />}
 
@@ -163,11 +175,6 @@ export function AfterActionResults({ below }: { below?: (filters: ResultsFilters
             />
           </div>
         )}
-
-        <p className={styles.footnote}>
-          “Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra se o
-          incentivo continuou logo depois do evento, antes do primeiro questionário.
-        </p>
       </section>
 
       {below?.(filters)}

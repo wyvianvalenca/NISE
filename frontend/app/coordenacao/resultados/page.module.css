@@ -64,16 +64,6 @@
   font-weight: 700;
 }
 
-.description,
-.footnote {
-  color: var(--nise-muted);
-  font-size: 14px;
-}
-
-.footnote {
-  font-size: 13px;
-}
-
 .indicators {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
