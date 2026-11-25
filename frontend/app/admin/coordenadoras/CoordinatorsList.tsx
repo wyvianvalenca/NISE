@@ -57,7 +57,7 @@ export function CoordinatorsList({ coordinators, onInvited }: CoordinatorsListPr
     const firstName = firstNameOf(row.name);
     setResendingId(row.id);
     setNotice(null);
-    const result = await resendCoordinatorInvite(row.id, firstName).catch(
+    const result = await resendCoordinatorInvite(row.id).catch(
       () => ({ kind: "problem", problem: "failed" }) as const,
     );
     setResendingId(null);

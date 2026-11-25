@@ -5624,6 +5624,90 @@
         }
       }
     },
+    "/api/admin/coordinators/invites/{invite_id}/resend": {
+      "post": {
+        "tags": [
+          "API",
+          "Admin"
+        ],
+        "summary": "Resend Invite",
+        "operationId": "resend_invite_api_admin_coordinators_invites__invite_id__resend_post",
+        "parameters": [
+          {
+            "name": "invite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Invite Id"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoordinatorInviteOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é da equipe NISE"
+          },
+          "404": {
+            "description": "invite_not_found"
+          },
+          "409": {
+            "description": "email_has_account"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [

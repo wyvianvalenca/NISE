@@ -107,15 +107,29 @@ export type ResendResult =
   | { kind: "problem"; problem: "email_has_account" | "invite_not_found" | "forbidden" | "failed" };
 
 /**
- * Resends an invite with a new link (RF-S2.25). Example data for now: the
- * integration step swaps this for `POST /api/admin/coordinators/invites/{id}/resend`.
+ * Resends an invite with a new link (RF-S2.25):
+ * `POST /api/admin/coordinators/invites/{id}/resend`. The server answers 409
+ * when the e-mail now has an account and 404 when the invite is not in the list.
  */
-export async function resendCoordinatorInvite(
-  inviteId: number,
-  firstName: string,
-): Promise<ResendResult> {
-  void inviteId;
-  return { kind: "sent", firstName, emailSent: true };
+export async function resendCoordinatorInvite(inviteId: number): Promise<ResendResult> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/admin/coordinators/invites/${inviteId}/resend`, {
+      method: "POST",
+    });
+  } catch {
+    return { kind: "problem", problem: "failed" };
+  }
+  if (response.status === 403) return { kind: "problem", problem: "forbidden" };
+  if (!response.ok) {
+    const code = await errorCode(response);
+    if (code === "email_has_account" || code === "invite_not_found") {
+      return { kind: "problem", problem: code };
+    }
+    return { kind: "problem", problem: "failed" };
+  }
+  const data = (await response.json()) as InviteResponse;
+  return { kind: "sent", firstName: data.first_name, emailSent: data.email_sent };
 }
 
 /** "25/11/2026", the day in Maceió's zone. */
