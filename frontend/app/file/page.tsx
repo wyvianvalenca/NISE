@@ -15,8 +15,10 @@ import { FileItemCard } from "@/components/FileItemCard";
 import { FileLegend } from "@/components/FileLegend";
 import { Icon } from "@/components/Icon";
 import { LoadFailed } from "@/components/LoadFailed";
+import { Toast } from "@/components/Toast";
 import { UndoTimerToast } from "@/components/UndoTimerToast";
 import { AGENDA_PATH, getToAnswer, pendingCount } from "@/lib/agenda";
+import { takeFeedbackSent } from "@/lib/atividade-feedback";
 import { FILE_PATHS, REVIEW_PARAM } from "@/lib/file-intro";
 import { eventPath, takeDidNotGo, undoDidNotGo, type DidNotGo } from "@/lib/evento";
 import {
@@ -169,8 +171,47 @@ export default function FilePage() {
         </main>
       </div>
 
+      <FeedbackSentToast />
       <BottomNav active="file" />
       <DidNotGoToast />
+    </div>
+  );
+}
+
+/** Quanto tempo o "Valeu!" fica na tela, em ms. */
+const FEEDBACK_SENT_MS = 4000;
+
+/**
+ * Aviso "Valeu! Sua resposta foi enviada." depois do "Enviar" da avaliação de uma atividade
+ * concluída (A06·5, #171; Figma: Toast / Resposta enviada, no A06·3). Fica logo acima da
+ * barra inferior e some sozinho. "Pular" não guarda nada, então não deixa aviso.
+ */
+function FeedbackSentToast() {
+  const [open, setOpen] = useState(false);
+
+  // Lido depois da montagem, como o aviso do "Não deu": no servidor não há sessionStorage.
+  useEffect(() => {
+    let current = true;
+    Promise.resolve().then(() => {
+      // Só lê (e esquece) se este efeito ainda vale: no modo estrito o React monta duas vezes.
+      if (current && takeFeedbackSent()) setOpen(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => setOpen(false), FEEDBACK_SENT_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className={styles.sentNotice}>
+      <Toast icon={null}>Valeu! Sua resposta foi enviada.</Toast>
     </div>
   );
 }
