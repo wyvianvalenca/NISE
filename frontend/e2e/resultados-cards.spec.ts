@@ -48,7 +48,45 @@ test("interest: five bars with how many answered, and who changed", async ({ pag
   await expect(page.getByText("Subiu 32% · 10")).toBeVisible();
   await expect(page.getByText("Manteve 52% · 16")).toBeVisible();
   await expect(page.getByText("Caiu 16% · 5")).toBeVisible();
-  await expect(page.getByText(/31 com as duas: das 40 que responderam no cadastro/)).toBeVisible();
+  // O texto explicativo fica atrás do "?" do card.
+  const help = page.getByText(/31 com as duas: das 40 que responderam no cadastro/);
+  await expect(help).toBeHidden();
+  await page.getByRole("button", { name: "Sobre: Quem mudou de situação" }).click();
+  await expect(help).toBeVisible();
+});
+
+test("each card explains itself behind a ? next to the title", async ({ page }) => {
+  await mockResultsApi(page);
+  await page.goto(URL);
+  await expect(page.getByText("Subiu 32% · 10")).toBeVisible();
+  await expect(page.getByText("18 meses no NISE · 11 responderam")).toBeVisible();
+
+  // Os textos não aparecem no card: só ao clicar no "?".
+  const texts: [string, RegExp][] = [
+    ["Como o interesse evolui", /% das que responderam em cada marco/],
+    ["Quem mudou de situação", /Mudei de ideia/],
+    ["Elas se veem na computação no futuro?", /Comparação não prova causa/],
+    ["Elas entraram na área?", /“ainda não” é esperado/],
+  ];
+  for (const [title, text] of texts) {
+    const button = page.getByRole("button", { name: `Sobre: ${title}` });
+    await expect(page.getByText(text)).toBeHidden();
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText(text)).toBeVisible();
+
+    // Esc fecha e devolve o foco ao "?".
+    await page.keyboard.press("Escape");
+    await expect(page.getByText(text)).toBeHidden();
+    await expect(button).toBeFocused();
+  }
+
+  // Clicar fora também fecha.
+  await page.getByRole("button", { name: "Sobre: Elas entraram na área?" }).click();
+  await page.getByRole("heading", { level: 1 }).click();
+  await expect(page.getByText(/“ainda não” é esperado/)).toBeHidden();
 });
 
 test("future self: girls per line in the legend, answers under each marker", async ({ page }) => {

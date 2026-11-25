@@ -3,6 +3,7 @@
 // Card "Elas se veem na computação no futuro?" (#369, RF-F5.33). Só totais por
 // grupo: nenhuma menina aparece (RN-04) e todo número vem com o n (RN-50).
 
+import { CardTitle } from "@/components/CardHelp";
 import { ChartLegend, LineChart, type LineSeries } from "@/components/LineChart";
 import {
   type FutureSelf,
@@ -52,13 +53,24 @@ export function FutureSelfCard({ data }: { data: FutureSelf }) {
 
   return (
     <section className={styles.card} aria-labelledby="futuro">
-      <h2 id="futuro" className={styles.title}>
-        Elas se veem na computação no futuro?
-      </h2>
-      <p className={styles.description}>
-        % que respondeu “Com certeza” · por participação · na legenda, quantas meninas há em cada
-        linha
-      </p>
+      <CardTitle
+        id="futuro"
+        className={styles.title}
+        title="Elas se veem na computação no futuro?"
+        help={
+          <>
+            <span>
+              % que respondeu “Com certeza” · por participação · na legenda, quantas meninas há em
+              cada linha
+            </span>
+            <span>
+              Compare principalmente com “Não compareceram”: elas se inscreveram, então tinham
+              interesse parecido. “Nunca participaram” chegaram sozinhas e já vêm mais motivadas.
+              Comparação não prova causa.
+            </span>
+          </>
+        }
+      />
 
       <ChartLegend
         items={data.lines.map((line, index) => ({
@@ -73,11 +85,6 @@ export function FutureSelfCard({ data }: { data: FutureSelf }) {
         label={`Porcentagem que respondeu Com certeza em cada marco, por grupo de participação. ${summary}`}
       />
 
-      <p className={styles.footnote}>
-        Compare principalmente com “Não compareceram”: elas se inscreveram, então tinham interesse
-        parecido. “Nunca participaram” chegaram sozinhas e já vêm mais motivadas. Comparação não
-        prova causa.
-      </p>
     </section>
   );
 }

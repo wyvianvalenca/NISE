@@ -15,16 +15,6 @@
   font-weight: 700;
 }
 
-.description,
-.footnote {
-  color: var(--nise-muted);
-  font-size: 14px;
-}
-
-.footnote {
-  font-size: 13px;
-}
-
 .legend {
   display: flex;
   flex-wrap: wrap;

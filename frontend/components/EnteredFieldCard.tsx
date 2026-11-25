@@ -3,6 +3,7 @@
 // Card "Elas entraram na área?" (#370, RF-F5.34). Só contagens: nenhum nome de
 // menina, de curso nem de instituição chega aqui (RN-50, D-61).
 
+import { CardTitle } from "@/components/CardHelp";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { shares } from "@/lib/interesse-api";
 import type { EnteredBar, EnteredStage } from "@/lib/resultados-api";
@@ -37,12 +38,23 @@ export function EnteredFieldCard({ stages, stage, onStageChange }: Props) {
 
   return (
     <section className={styles.card} aria-labelledby="entraram-na-area">
-      <h2 id="entraram-na-area" className={styles.title}>
-        Elas entraram na área?
-      </h2>
-      <p className={styles.description}>
-        “Entrou num curso da área?” (A18, pergunta 3) · resposta mais recente · por tempo no NISE
-      </p>
+      <CardTitle
+        id="entraram-na-area"
+        className={styles.title}
+        title="Elas entraram na área?"
+        help={
+          <>
+            <span>
+              “Entrou num curso da área?” (A18, pergunta 3) · resposta mais recente · por tempo no
+              NISE
+            </span>
+            <span>
+              Etapa escolar no cadastro, do “Seu momento de estudo” (A05). Quem estava no
+              fundamental ainda está na escola, então “ainda não” é esperado.
+            </span>
+          </>
+        }
+      />
 
       <SegmentedControl
         label="Etapa escolar no cadastro"
@@ -67,10 +79,6 @@ export function EnteredFieldCard({ stages, stage, onStageChange }: Props) {
         ))}
       </div>
 
-      <p className={styles.footnote}>
-        Etapa escolar no cadastro, do “Seu momento de estudo” (A05). Quem estava no fundamental
-        ainda está na escola, então “ainda não” é esperado.
-      </p>
     </section>
   );
 }

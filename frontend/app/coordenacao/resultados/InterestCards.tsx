@@ -13,6 +13,7 @@ import {
   VIEWS,
   viewLabel,
 } from "@/lib/interesse-api";
+import { CardTitle } from "@/components/CardHelp";
 import type { ResultsFilters } from "@/lib/resultados-api";
 import { CardStatus, useFilteredResult } from "./CardStatus";
 import styles from "./InterestCards.module.css";
@@ -53,12 +54,12 @@ function EvolutionCard({ interest }: { interest: Interest }) {
 
   return (
     <section className={pageStyles.card} aria-labelledby="interesse-evolui">
-      <h2 id="interesse-evolui" className={pageStyles.cardTitle}>
-        Como o interesse evolui
-      </h2>
-      <p className={pageStyles.description}>
-        “Hoje, computação pra você é…” · % das que responderam em cada marco
-      </p>
+      <CardTitle
+        id="interesse-evolui"
+        className={pageStyles.cardTitle}
+        title="Como o interesse evolui"
+        help={<span>“Hoje, computação pra você é…” · % das que responderam em cada marco</span>}
+      />
 
       <ul className={styles.legend} aria-label="Legenda">
         {VIEWS.map((view, index) => (
@@ -145,14 +146,22 @@ function MovementCard({ interest }: { interest: Interest }) {
 
   return (
     <section className={pageStyles.card} aria-labelledby="quem-mudou">
-      <h2 id="quem-mudou" className={pageStyles.cardTitle}>
-        Quem mudou de situação
-      </h2>
-      <p className={pageStyles.description}>
-        Cada menina comparada com ela mesma: cadastro × última resposta. {movement.withBoth} com as
-        duas: das {interest.signup.answered} que responderam no cadastro, {movement.withBoth}{" "}
-        {movement.withBoth === 1 ? "respondeu" : "responderam"} ao menos um questionário depois.
-      </p>
+      <CardTitle
+        id="quem-mudou"
+        className={pageStyles.cardTitle}
+        title="Quem mudou de situação"
+        help={
+          <>
+            <span>
+              Cada menina comparada com ela mesma: cadastro × última resposta.{" "}
+              {movement.withBoth} com as duas: das {interest.signup.answered} que responderam no
+              cadastro, {movement.withBoth} {movement.withBoth === 1 ? "respondeu" : "responderam"}{" "}
+              ao menos um questionário depois.
+            </span>
+            <span>“Mudei de ideia” aparece aqui, sem precisar perguntar.</span>
+          </>
+        }
+      />
 
       {movement.withBoth === 0 ? (
         <p className={styles.note}>
@@ -185,7 +194,6 @@ function MovementCard({ interest }: { interest: Interest }) {
         </ul>
       )}
 
-      <p className={pageStyles.footnote}>“Mudei de ideia” aparece aqui, sem precisar perguntar.</p>
     </section>
   );
 }
