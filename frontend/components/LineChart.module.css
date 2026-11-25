@@ -9,22 +9,17 @@
   font-family: var(--nise-font-sans);
 }
 
-.highlight {
-  fill: var(--nise-chart-highlight);
-}
-
 .grid {
-  stroke: var(--nise-track);
-  stroke-dasharray: 4 4;
+  stroke: var(--nise-border);
+  stroke-width: 1;
 }
 
 .yLabel {
-  fill: var(--nise-chart-axis);
-  font-size: 10px;
-  text-anchor: end;
+  fill: var(--nise-muted);
+  font-size: 11px;
 }
 
-/* Cada série define `color`; linha e pontos usam currentColor. */
+/* Cada série define `color`; linha, pontos e valor do fim usam currentColor. */
 .line {
   fill: none;
   stroke: currentColor;
@@ -34,85 +29,43 @@
 
 .dot {
   fill: currentColor;
-  stroke: var(--nise-surface);
-  stroke-width: 1.5;
 }
 
-.xCircle {
-  fill: var(--nise-surface);
-  stroke: var(--nise-border);
-}
-
-.xCircleActive {
-  fill: var(--nise-ink);
-}
-
-.xLabel,
-.xLabelActive {
-  font-size: 11px;
+.endLabel {
+  fill: currentColor;
+  font-size: 12px;
   font-weight: 700;
-  text-anchor: middle;
 }
 
 .xLabel {
   fill: var(--nise-ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
 }
 
-.xLabelActive {
-  fill: var(--nise-onPrimary);
-}
-
-.xButton {
-  cursor: pointer;
-  outline: none;
-}
-
-.xButton:focus-visible .xCircle,
-.xButton:focus-visible .xCircleActive {
-  stroke: var(--nise-pink);
-  stroke-width: 3;
+.xSubLabel {
+  fill: var(--nise-muted);
+  font-size: 11px;
+  text-anchor: middle;
 }
 
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 8px 16px;
   list-style: none;
-  color: var(--nise-ink);
-  font-size: 12px;
+  color: var(--nise-muted);
+  font-size: 13px;
 }
 
 .legendItem {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .legendLine {
   stroke: currentColor;
-  stroke-width: 2;
-}
-
-.legendDot {
-  fill: currentColor;
-}
-
-.legendCount {
-  color: var(--nise-muted);
-  font-size: 11px;
-}
-
-.swatch,
-.stripes {
-  width: 20px;
-  height: 10px;
-  border-radius: 3px;
-}
-
-.stripes {
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--nise-chart-pendingStripe) 0 1.2px,
-    var(--nise-chart-pending) 1.2px 4.2px
-  );
+  stroke-width: 2.5;
 }

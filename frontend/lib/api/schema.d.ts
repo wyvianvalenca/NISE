@@ -1208,6 +1208,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coordinator/results/interest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Interest Route */
+        get: operations["interest_route_api_coordinator_results_interest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/results/future-self": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Future Self Route */
+        get: operations["future_self_route_api_coordinator_results_future_self_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coordinator/results/entered-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entered Field Route */
+        get: operations["entered_field_route_api_coordinator_results_entered_field_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/coordinators": {
         parameters: {
             query?: never;
@@ -1905,6 +1956,16 @@ export interface components {
             skip: string;
         };
         /**
+         * ChangeOut
+         * @description Uma mudança "de qual opção para qual" e quantas meninas a fizeram.
+         */
+        ChangeOut: {
+            origin: components["schemas"]["ComputingView"];
+            destination: components["schemas"]["ComputingView"];
+            /** Girls */
+            girls: number;
+        };
+        /**
          * Choice
          * @description Os três botões de uma sugestão (A06·2, RF-F10.04).
          *
@@ -2279,6 +2340,41 @@ export interface components {
             graduacao: components["schemas"]["LevelSummaryOut"];
             tecnico: components["schemas"]["LevelSummaryOut"];
             recent: components["schemas"]["RecentFoundOut"] | null;
+        };
+        /**
+         * EnteredBarOut
+         * @description Uma barra do card "Elas entraram na área?": contagens, o front faz a %.
+         */
+        EnteredBarOut: {
+            /** Months */
+            months: number;
+            /** Answered */
+            answered: number;
+            /** Graduacao */
+            graduacao: number;
+            /** Tecnico */
+            tecnico: number;
+            /** Trying */
+            trying: number;
+            /** Notyet */
+            notYet: number;
+        };
+        /**
+         * EnteredFieldOut
+         * @description O card "Elas entraram na área?" (RF-F5.34): as três etapas, 3 barras cada.
+         *
+         *     Só contagens (RN-50), sem nome de menina, de curso nem de instituição.
+         */
+        EnteredFieldOut: {
+            /** Stages */
+            stages: components["schemas"]["EnteredStageOut"][];
+        };
+        /** EnteredStageOut */
+        EnteredStageOut: {
+            /** Stage */
+            stage: string;
+            /** Bars */
+            bars: components["schemas"]["EnteredBarOut"][];
         };
         /**
          * EventOut
@@ -2657,6 +2753,43 @@ export interface components {
          * @enum {string}
          */
         FutureSelf: "sure" | "maybe" | "probably_not";
+        /** FutureSelfLineOut */
+        FutureSelfLineOut: {
+            group: components["schemas"]["ParticipationGroup"];
+            /** Girls */
+            girls: number;
+            /** Points */
+            points: components["schemas"]["FutureSelfPointOut"][];
+        };
+        /**
+         * FutureSelfMilestone
+         * @description Os marcos do eixo horizontal: o cadastro e as quatro rodadas (RF-F5.33).
+         * @enum {string}
+         */
+        FutureSelfMilestone: "signup" | "three_months" | "six_months" | "twelve_months" | "eighteen_months";
+        /**
+         * FutureSelfOut
+         * @description O card "Elas se veem na computação no futuro?" (RF-F5.33, RN-50).
+         *
+         *     Quatro linhas, cada uma com os cinco marcos. Só totais, nunca uma menina
+         *     (RN-04): "Nunca participaram" aparece só como contagem. O front calcula a
+         *     porcentagem `sure / responses` e deixa lacuna onde `responses` é 0.
+         */
+        FutureSelfOut: {
+            /** Lines */
+            lines: components["schemas"]["FutureSelfLineOut"][];
+        };
+        /**
+         * FutureSelfPointOut
+         * @description Um marco de uma linha: `sure` de `responses` disseram "Com certeza".
+         */
+        FutureSelfPointOut: {
+            milestone: components["schemas"]["FutureSelfMilestone"];
+            /** Responses */
+            responses: number;
+            /** Sure */
+            sure: number;
+        };
         /**
          * GoogleSignupCompleteIn
          * @description O que falta no cadastro pelo Google: data de nascimento e cidade (A02b).
@@ -2889,6 +3022,21 @@ export interface components {
             stages: components["schemas"]["OptionOut"][];
         };
         /**
+         * InterestOut
+         * @description Os cards "Como o interesse evolui" e "Quem mudou de situação" (RF-F5.04, RF-F5.32).
+         *
+         *     Só totais, nunca uma menina e nunca um comentário (RN-11, RN-50).
+         *     `rounds` tem as quatro rodadas: 3, 6, 12 e 18 meses.
+         */
+        InterestOut: {
+            signup: components["schemas"]["MilestoneOut"];
+            /** Rounds */
+            rounds: {
+                [key: string]: components["schemas"]["MilestoneOut"];
+            };
+            movement: components["schemas"]["MovementOut"];
+        };
+        /**
          * InterestsIn
          * @description O que ela escolheu na A05: temas e etapa de estudo (RF-F10.01).
          *
@@ -3077,6 +3225,37 @@ export interface components {
             role: components["schemas"]["Role"];
             group?: components["schemas"]["GroupOut"] | null;
         };
+        /**
+         * MilestoneOut
+         * @description Uma barra de "Como o interesse evolui": quantas responderam e cada opção.
+         *
+         *     `counts` tem as quatro opções, na ordem do melhor ao pior, também as com
+         *     zero. O front calcula a porcentagem (cada barra soma 100%).
+         */
+        MilestoneOut: {
+            /** Answered */
+            answered: number;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MovementOut
+         * @description O card "Quem mudou de situação". `with_both` é o "N com as duas".
+         */
+        MovementOut: {
+            /** Withboth */
+            withBoth: number;
+            /** Wentup */
+            wentUp: number;
+            /** Stayed */
+            stayed: number;
+            /** Wentdown */
+            wentDown: number;
+            /** Commonchanges */
+            commonChanges: components["schemas"]["ChangeOut"][];
+        };
         /** NewGroupIn */
         NewGroupIn: {
             /** Name */
@@ -3123,6 +3302,12 @@ export interface components {
          * @enum {string}
          */
         Package: "groups" | "funnel" | "ratings" | "interest" | "admission" | "other_groups";
+        /**
+         * ParticipationGroup
+         * @description As quatro linhas do card, de quem foi a mais ações a quem chegou sozinha.
+         * @enum {string}
+         */
+        ParticipationGroup: "two_or_more" | "one" | "no_show" | "never";
         /**
          * PendingRatingOut
          * @description A ação que a menina pode avaliar na A03 (#58).
@@ -7038,6 +7223,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AfterActionOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    interest_route_api_coordinator_results_interest_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterestOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    future_self_route_api_coordinator_results_future_self_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FutureSelfOut"];
+                };
+            };
+            /** @description Não é coordenadora ou sem grupo */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coordenadora em mais de um grupo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entered_field_route_api_coordinator_results_entered_field_get: {
+        parameters: {
+            query?: {
+                period?: components["schemas"]["Period"];
+                action_id?: number | null;
+                type?: components["schemas"]["ActionType"] | null;
+                topic?: components["schemas"]["Topic"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                nise_session?: string | null;
+                nise_cadastro_pendente?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnteredFieldOut"];
                 };
             };
             /** @description Não é coordenadora ou sem grupo */

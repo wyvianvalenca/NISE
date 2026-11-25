@@ -56,6 +56,7 @@ from app.modules.consents.service import CURRENT_TERMS_VERSION
 from app.modules.followup.models import (
     Activity,
     ComputingView,
+    CourseStatus,
     FollowupActivity,
     FollowupAnswer,
     FollowupHelp,
@@ -73,7 +74,12 @@ from app.modules.girls.models import Girl, GirlTopic, StudyStage, Topic
 from app.modules.girls.utils import today_in_maceio
 from app.modules.groups.models import Group, Invite
 from app.modules.registrations.service import list_registrations
-from app.modules.results.service import Period, ResultsFilters, after_action
+from app.modules.results.service import (
+    Period,
+    ResultsFilters,
+    after_action,
+    entered_the_field,
+)
 from app.users.models import OAuthAccount, Provider, Role, User
 from tests.helpers import chamar_rota
 from tests.test_account_deletion import APAGAR, DESTINO
@@ -379,6 +385,9 @@ async def numeros(sessao: AsyncSession, c: Cenario) -> dict[str, Any]:
     depois = await after_action(
         sessao, c.grupo.id, ResultsFilters(period=Period.ALL), HOJE
     )
+    entraram = await entered_the_field(
+        sessao, c.grupo.id, ResultsFilters(period=Period.ALL), HOJE
+    )
     ingressos, total_ingressos = await list_group_enrollments(sessao, c.grupo.id, 1)
     resumo = await get_enrollment_summary(sessao, c.grupo.id)
 
@@ -395,6 +404,7 @@ async def numeros(sessao: AsyncSession, c: Cenario) -> dict[str, Any]:
             "linhas": len(pagina.girls),
         },
         "c5": dataclasses.asdict(depois),
+        "c5_entraram": [dataclasses.asdict(etapa) for etapa in entraram],
         "c8_total": total_ingressos,
         "c8_ids": [enrollment.id for enrollment, _ in ingressos],
         "c8_resumo": {
@@ -426,6 +436,15 @@ async def todas_as_linhas(sessao: AsyncSession) -> dict[str, list[tuple[Any, ...
 # C4: os números dos painéis são iguais antes e depois.
 async def test_os_numeros_dos_paineis_nao_mudam(db_session: AsyncSession) -> None:
     c = await montar(db_session)
+    # "Elas entraram na área?" separa pela etapa escolar do cadastro, que fica.
+    db_session.add(
+        FollowupAnswer(
+            girl_id=c.alana.id,
+            round=FollowupRound.SIX_MONTHS,
+            course_status=CourseStatus.GRADUACAO,
+        )
+    )
+    await db_session.flush()
     antes = await numeros(db_session, c)
     # A linha dela existe, ainda com os dados.
     assert antes["c2_total"] == 3
@@ -447,6 +466,8 @@ async def test_os_numeros_dos_paineis_nao_mudam(db_session: AsyncSession) -> Non
     # O filé dela conta nos dois cartões (RF-F5.31).
     assert antes["c5"]["started_file"]["participants"] == 1
     assert antes["c5"]["concluded_file"]["participants"] == 1
+    medio = next(e for e in antes["c5_entraram"] if e["stage"].value == "medio")
+    assert medio["bars"][0]["graduacao"] == 1
 
     await excluir_pela_rota(db_session, c)
 

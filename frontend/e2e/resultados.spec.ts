@@ -37,11 +37,6 @@ test("shows the three indicators as in the Figma, compared with who did not come
   await page.goto(URL);
 
   const card = page.getByRole("region", { name: "Logo depois da ação" });
-  await expect(
-    card.getByText(
-      "Quem participou das ações do período · comparado com quem se inscreveu e não compareceu",
-    ),
-  ).toBeVisible();
   await expect(card.getByRole("heading", { level: 3 })).toHaveText([
     "Voltaram a outra ação",
     "Começaram o filé",
@@ -56,11 +51,19 @@ test("shows the three indicators as in the Figma, compared with who did not come
     await expect(card.getByText(count)).toBeVisible();
     await expect(card.getByText(compare)).toBeVisible();
   }
-  await expect(
-    card.getByText(
-      "“Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra se o incentivo continuou logo depois do evento, antes do primeiro questionário.",
-    ),
-  ).toBeVisible();
+
+  // As explicações ficam atrás do "?" ao lado do título.
+  const subtitle = card.getByText(
+    "Quem participou das ações do período · comparado com quem se inscreveu e não compareceu",
+  );
+  const footnote = card.getByText(
+    "“Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra se o incentivo continuou logo depois do evento, antes do primeiro questionário.",
+  );
+  await expect(subtitle).toBeHidden();
+  await expect(footnote).toBeHidden();
+  await card.getByRole("button", { name: "Sobre: Logo depois da ação" }).click();
+  await expect(subtitle).toBeVisible();
+  await expect(footnote).toBeVisible();
 });
 
 test("shows small numbers and a dash when there is nobody to compare", async ({ page }) => {

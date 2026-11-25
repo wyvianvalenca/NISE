@@ -3,8 +3,9 @@
 // Filtros e card "Logo depois da ação" (#367, RF-F5.06, RF-F5.09). Só totais:
 // nenhum nome de menina chega a esta tela (RF-F5.08, RN-50).
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
+import { CardTitle } from "@/components/CardHelp";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
@@ -19,16 +20,12 @@ import {
   percentLabel,
   type ResultsFilters,
 } from "@/lib/resultados-api";
+import { FAILURE_TEXT } from "./CardStatus";
 import styles from "./page.module.css";
 
-const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
-  signed_out: "Sua sessão acabou. Entre de novo para ver os resultados.",
-  forbidden: "Os resultados são só para a coordenação de um grupo.",
-  several_groups: "Você coordena mais de um grupo, e esta tela ainda mostra um só.",
-  failed: "Não foi possível carregar os resultados. Tente novamente.",
-};
 
-export function AfterActionResults() {
+/** `below` desenha os cards seguintes, que usam os mesmos filtros. */
+export function AfterActionResults({ below }: { below?: (filters: ResultsFilters) => ReactNode }) {
   const [filters, setFilters] = useState<ResultsFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionOption[]>([]);
   const [result, setResult] = useState<AfterActionResult | null>(null);
@@ -118,12 +115,23 @@ export function AfterActionResults() {
       </div>
 
       <section className={styles.card} aria-labelledby="logo-depois">
-        <h2 id="logo-depois" className={styles.cardTitle}>
-          Logo depois da ação
-        </h2>
-        <p className={styles.description}>
-          Quem participou das ações do período · comparado com quem se inscreveu e não compareceu
-        </p>
+        <CardTitle
+          id="logo-depois"
+          className={styles.cardTitle}
+          title="Logo depois da ação"
+          help={
+            <>
+              <span>
+                Quem participou das ações do período · comparado com quem se inscreveu e não
+                compareceu
+              </span>
+              <span>
+                “Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra
+                se o incentivo continuou logo depois do evento, antes do primeiro questionário.
+              </span>
+            </>
+          }
+        />
 
         {result === null && <Loading label="Carregando os resultados…" />}
 
@@ -167,12 +175,9 @@ export function AfterActionResults() {
             />
           </div>
         )}
-
-        <p className={styles.footnote}>
-          “Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra se o
-          incentivo continuou logo depois do evento, antes do primeiro questionário.
-        </p>
       </section>
+
+      {below?.(filters)}
     </>
   );
 }

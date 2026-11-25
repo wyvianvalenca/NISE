@@ -1,0 +1,203 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  list-style: none;
+  font-size: 13px;
+  color: var(--nise-muted);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Cinco barras verticais lado a lado (Figma C5 · Como o interesse evolui). */
+.columns {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  list-style: none;
+}
+
+.column {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  max-width: 96px;
+  text-align: center;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-width: 64px;
+  height: 228px;
+  margin-bottom: 12px;
+}
+
+.empty {
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--nise-border);
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+.segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 0;
+  min-height: 2px;
+}
+
+.inside,
+.outside {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* A fatia fina tem o número ao lado: toda porcentagem aparece (critério da #368). */
+.outside {
+  position: absolute;
+  left: calc(100% + 4px);
+  color: var(--nise-ink);
+}
+
+.outsideLeft {
+  position: absolute;
+  right: calc(100% + 4px);
+  color: var(--nise-ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.segmentA {
+  background: var(--nise-teal);
+}
+
+.segmentB {
+  background: var(--nise-tealSoft);
+}
+
+.segmentC {
+  background: var(--nise-pinkSoft);
+}
+
+.segmentD {
+  background: var(--nise-pink);
+}
+
+.segmentA > .inside,
+.segmentD > .inside {
+  color: var(--nise-onPrimary);
+}
+
+.segmentB > .inside,
+.segmentC > .inside {
+  color: var(--nise-ink);
+}
+
+.columnLabel {
+  color: var(--nise-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.answered {
+  color: var(--nise-muted);
+  font-size: 11px;
+}
+
+/* "Quem mudou de situação": uma barra com "Subiu 32% · 10". */
+.movement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.movementPart {
+  flex-basis: 0;
+  min-width: max-content;
+  padding: 11px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.up {
+  background: var(--nise-teal);
+  color: var(--nise-onPrimary);
+}
+
+.kept {
+  background: var(--nise-tealSoft);
+  color: var(--nise-ink);
+}
+
+.down {
+  background: var(--nise-pink);
+  color: var(--nise-onPrimary);
+}
+
+.subtitle {
+  color: var(--nise-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  color: var(--nise-ink);
+  font-size: 14px;
+}
+
+.change {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.changeBar {
+  flex-shrink: 0;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.note {
+  color: var(--nise-muted);
+  font-size: 14px;
+}
+
+.short {
+  display: none;
+}
+
+/* Tela estreita: "responderam" não cabe sob a barra; vira "resp.", como no card do futuro. */
+@media (max-width: 520px) {
+  .long {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
+}
