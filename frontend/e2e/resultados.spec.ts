@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACTIONS, mockResultsApi } from "./resultados-api";
+import { ACTIONS, FIGMA_NUMBERS, mockResultsApi } from "./resultados-api";
 
 // Resultados · "Logo depois da ação" (C5, #367): caminho principal. Dados fictícios.
 
@@ -28,7 +28,7 @@ test("opens from the top menu with the title and the subtitle", async ({ page })
   ).toBeVisible();
 });
 
-test("shows Voltaram a outra ação as in the Figma, compared with who did not come", async ({
+test("shows the three indicators as in the Figma, compared with who did not come", async ({
   page,
 }) => {
   await mockResultsApi(page);
@@ -40,18 +40,36 @@ test("shows Voltaram a outra ação as in the Figma, compared with who did not c
       "Quem participou das ações do período · comparado com quem se inscreveu e não compareceu",
     ),
   ).toBeVisible();
-  await expect(card.getByRole("heading", { level: 3 })).toHaveText(["Voltaram a outra ação"]);
-  await expect(card.getByText("26%", { exact: true })).toBeVisible();
-  await expect(card.getByText("11 de 42 participantes")).toBeVisible();
-  await expect(card.getByText("Não compareceram: 14% (3 de 22)")).toBeVisible();
+  await expect(card.getByRole("heading", { level: 3 })).toHaveText([
+    "Voltaram a outra ação",
+    "Começaram o filé",
+    "Concluíram algo do filé",
+  ]);
+  for (const [percent, count, compare] of [
+    ["26%", "11 de 42 participantes", "Não compareceram: 14% (3 de 22)"],
+    ["52%", "22 de 42 participantes", "Não compareceram: 18% (4 de 22)"],
+    ["33%", "14 de 42 participantes", "Não compareceram: 9% (2 de 22)"],
+  ]) {
+    await expect(card.getByText(percent, { exact: true })).toBeVisible();
+    await expect(card.getByText(count)).toBeVisible();
+    await expect(card.getByText(compare)).toBeVisible();
+  }
   await expect(
-    card.getByText("“Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE."),
+    card.getByText(
+      "“Voltaram a outra ação” conta qualquer ação de qualquer grupo da NISE. O filé mostra se o incentivo continuou logo depois do evento, antes do primeiro questionário.",
+    ),
   ).toBeVisible();
 });
 
 test("shows small numbers and a dash when there is nobody to compare", async ({ page }) => {
   await mockResultsApi(page, {
-    numbers: () => ({ participants: 2, noShows: 0, returned: { participants: 1, noShows: 0 } }),
+    numbers: () => ({
+      participants: 2,
+      noShows: 0,
+      returned: { participants: 1, noShows: 0 },
+      startedFile: { participants: 2, noShows: 0 },
+      concludedFile: { participants: 0, noShows: 0 },
+    }),
   });
   await page.goto(URL);
 
@@ -59,7 +77,9 @@ test("shows small numbers and a dash when there is nobody to compare", async ({ 
   // Nada some por ter menos de 5 meninas (RN-50).
   await expect(card.getByText("50%", { exact: true })).toBeVisible();
   await expect(card.getByText("1 de 2 participantes")).toBeVisible();
-  await expect(card.getByText("Não compareceram: — (0 de 0)")).toBeVisible();
+  await expect(card.getByText("100%", { exact: true })).toBeVisible();
+  await expect(card.getByText("0 de 2 participantes")).toBeVisible();
+  await expect(card.getByText("Não compareceram: — (0 de 0)")).toHaveCount(3);
 });
 
 test("the four filters start at the defaults, change the numbers and are cleared", async ({
@@ -68,8 +88,14 @@ test("the four filters start at the defaults, change the numbers and are cleared
   const asked = await mockResultsApi(page, {
     numbers: (query) =>
       query.get("type") === "palestra"
-        ? { participants: 5, noShows: 1, returned: { participants: 4, noShows: 0 } }
-        : { participants: 42, noShows: 22, returned: { participants: 11, noShows: 3 } },
+        ? {
+            participants: 5,
+            noShows: 1,
+            returned: { participants: 4, noShows: 0 },
+            startedFile: { participants: 3, noShows: 1 },
+            concludedFile: { participants: 1, noShows: 0 },
+          }
+        : FIGMA_NUMBERS,
   });
   await page.goto(URL);
 

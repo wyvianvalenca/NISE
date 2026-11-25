@@ -755,4 +755,3 @@ export function reviewJson(
     new_count: review.ready.length - already,
   };
 }
-

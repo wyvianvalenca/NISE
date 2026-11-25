@@ -8,12 +8,17 @@ from app.modules.actions.models import ActionType
 from app.modules.actions.service import today_in_maceio
 from app.modules.girls.models import Topic
 from app.modules.results.schemas import AfterActionOut, ComparedOut
-from app.modules.results.service import Period, ResultsFilters, after_action
+from app.modules.results.service import (
+    Compared,
+    Period,
+    ResultsFilters,
+    after_action,
+)
 
 router = APIRouter(prefix="/coordinator/results", tags=["Coordinator"])
 
 
-# Resultados · "Logo depois da ação" (C5, #367, RF-F5.09). O grupo vem sempre
+# Resultados · "Logo depois da ação" (C5, #367, RF-F5.09, RF-F5.31). O grupo vem sempre
 # da sessão da coordenadora, nunca da requisição (RNF-F5.01, RNF-G.03): uma
 # `action_id` de outro grupo só não encontra nada, e o card mostra zero.
 @router.get(
@@ -37,11 +42,13 @@ async def after_action_route(
     )
     numbers = await after_action(session, group_id, filters, today_in_maceio())
 
+    def compared(counts: Compared) -> ComparedOut:
+        return ComparedOut(participants=counts.participants, no_shows=counts.no_shows)
+
     return AfterActionOut(
         participants=numbers.participants,
         no_shows=numbers.no_shows,
-        returned=ComparedOut(
-            participants=numbers.returned_participants,
-            no_shows=numbers.returned_no_shows,
-        ),
+        returned=compared(numbers.returned),
+        started_file=compared(numbers.started_file),
+        concluded_file=compared(numbers.concluded_file),
     )
