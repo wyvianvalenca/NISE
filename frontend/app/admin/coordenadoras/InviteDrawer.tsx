@@ -258,6 +258,11 @@ export function InviteDrawer({ groupId: initialGroupId, onInvited, onClose }: In
             value={kind}
             onChange={(value) => {
               setKind(value);
+              // The fields of "Grupo novo" come back empty, so what they held
+              // must not be sent: the invite only uses what the team sees.
+              setGroupName("");
+              setCityText("");
+              setCity(null);
               setErrors((current) => ({
                 ...current,
                 groupName: undefined,
