@@ -7,12 +7,19 @@ from app.modules.actions.dependencies import CoordinatorGroupIdDep
 from app.modules.actions.models import ActionType
 from app.modules.actions.service import today_in_maceio
 from app.modules.girls.models import Topic
-from app.modules.results.schemas import AfterActionOut, ComparedOut
+from app.modules.results.schemas import (
+    AfterActionOut,
+    ComparedOut,
+    EnteredBarOut,
+    EnteredFieldOut,
+    EnteredStageOut,
+)
 from app.modules.results.service import (
     Compared,
     Period,
     ResultsFilters,
     after_action,
+    entered_the_field,
 )
 
 router = APIRouter(prefix="/coordinator/results", tags=["Coordinator"])
@@ -51,4 +58,47 @@ async def after_action_route(
         returned=compared(numbers.returned),
         started_file=compared(numbers.started_file),
         concluded_file=compared(numbers.concluded_file),
+    )
+
+
+# Resultados · "Elas entraram na área?" (#370, RF-F5.34). Mesmos filtros e mesma
+# regra de grupo do card acima; devolve as três etapas escolares de uma vez.
+@router.get(
+    "/entered-field",
+    response_model=EnteredFieldOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora ou sem grupo"},
+        status.HTTP_409_CONFLICT: {"description": "Coordenadora em mais de um grupo"},
+    },
+)
+async def entered_field_route(
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    period: Period = Period.LAST_12_MONTHS,
+    action_id: Annotated[int | None, Query(ge=1)] = None,
+    action_type: Annotated[ActionType | None, Query(alias="type")] = None,
+    topic: Topic | None = None,
+) -> EnteredFieldOut:
+    filters = ResultsFilters(
+        period=period, action_id=action_id, type=action_type, topic=topic
+    )
+    stages = await entered_the_field(session, group_id, filters, today_in_maceio())
+    return EnteredFieldOut(
+        stages=[
+            EnteredStageOut(
+                stage=item.stage.value,
+                bars=[
+                    EnteredBarOut(
+                        months=bar.months,
+                        answered=bar.answered,
+                        graduacao=bar.graduacao,
+                        tecnico=bar.tecnico,
+                        trying=bar.trying,
+                        not_yet=bar.not_yet,
+                    )
+                    for bar in item.bars
+                ],
+            )
+            for item in stages
+        ]
     )

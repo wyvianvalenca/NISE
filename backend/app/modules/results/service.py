@@ -2,14 +2,16 @@ import calendar
 import enum
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.actions.models import Action, ActionTopic, ActionType, Participation
 from app.modules.actions.service import ACTION_TIMEZONE
+from app.modules.followup.models import CourseStatus, FollowupAnswer, FollowupRound
 from app.modules.girl_file.models import IN_FILE, FileEntry
-from app.modules.girls.models import Topic
+from app.modules.girls.models import Girl, StudyStage, Topic
 
 # O filé conta até o questionário de 3 meses (RF-F5.31, D-93).
 FILE_WINDOW_MONTHS = 3
@@ -82,6 +84,26 @@ def period_start(period: Period, today: date) -> date | None:
     return None
 
 
+def _filtered_actions(
+    group_id: int, filters: ResultsFilters, today: date
+) -> Select[Any]:
+    """As ações do grupo com a presença salva que passam nos filtros."""
+    since = period_start(filters.period, today)
+
+    actions = select(Action.id).where(
+        Action.group_id == group_id, Action.attendance_registered_at.is_not(None)
+    )
+    if since is not None:
+        actions = actions.where(Action.starts_on >= since)
+    if filters.action_id is not None:
+        actions = actions.where(Action.id == filters.action_id)
+    if filters.type is not None:
+        actions = actions.where(Action.type == filters.type)
+    if filters.topic is not None:
+        actions = actions.where(Action.topics.any(ActionTopic.topic == filters.topic))
+    return actions
+
+
 async def after_action(
     session: AsyncSession, group_id: int, filters: ResultsFilters, today: date
 ) -> AfterAction:
@@ -105,19 +127,7 @@ async def after_action(
       quando ela o tira do "Ver depois". A própria ação de referência não
       conta.
     """
-    since = period_start(filters.period, today)
-
-    actions = select(Action.id).where(
-        Action.group_id == group_id, Action.attendance_registered_at.is_not(None)
-    )
-    if since is not None:
-        actions = actions.where(Action.starts_on >= since)
-    if filters.action_id is not None:
-        actions = actions.where(Action.id == filters.action_id)
-    if filters.type is not None:
-        actions = actions.where(Action.type == filters.type)
-    if filters.topic is not None:
-        actions = actions.where(Action.topics.any(ActionTopic.topic == filters.topic))
+    actions = _filtered_actions(group_id, filters, today)
 
     signups = await session.execute(
         select(
@@ -222,3 +232,119 @@ def _comes_first(candidate: _Reference, current: _Reference) -> bool:
         current.starts_on,
         current.action_id,
     )
+
+
+class EnteredStage(enum.Enum):
+    """As três etapas escolares do seletor do card (RF-F5.34), do cadastro."""
+
+    FUNDAMENTAL = "fundamental"
+    MEDIO = "medio"
+    TECNICO_OU_GRADUACAO = "tecnico_ou_graduacao"
+
+
+# "Já me formei" e quem não informou a escolaridade ficam fora das três.
+_STAGE_OF = {
+    StudyStage.FUNDAMENTAL: EnteredStage.FUNDAMENTAL,
+    StudyStage.MEDIO: EnteredStage.MEDIO,
+    StudyStage.TECNICO: EnteredStage.TECNICO_OU_GRADUACAO,
+    StudyStage.GRADUACAO: EnteredStage.TECNICO_OU_GRADUACAO,
+}
+
+# As barras do card: a rodada do questionário em que ela deu a resposta.
+ENTERED_ROUNDS = {
+    FollowupRound.SIX_MONTHS: 6,
+    FollowupRound.TWELVE_MONTHS: 12,
+    FollowupRound.EIGHTEEN_MONTHS: 18,
+}
+_ROUND_ORDER = (
+    FollowupRound.THREE_MONTHS,
+    FollowupRound.SIX_MONTHS,
+    FollowupRound.TWELVE_MONTHS,
+    FollowupRound.EIGHTEEN_MONTHS,
+)
+
+
+@dataclass(frozen=True)
+class EnteredBar:
+    """Uma barra: quantas responderam e como se dividem (só contagens, RN-50)."""
+
+    months: int
+    answered: int
+    graduacao: int
+    tecnico: int
+    trying: int
+    not_yet: int
+
+
+@dataclass(frozen=True)
+class EnteredByStage:
+    stage: EnteredStage
+    bars: list[EnteredBar]
+
+
+async def entered_the_field(
+    session: AsyncSession, group_id: int, filters: ResultsFilters, today: date
+) -> list[EnteredByStage]:
+    """O card "Elas entraram na área?" (RF-F5.34): pergunta 3, por escolaridade e rodada.
+
+    - Entram as meninas inscritas em alguma ação do grupo no filtro (as mesmas
+      ações do card "Logo depois da ação"), tenham vindo ou não.
+    - Cada menina conta uma vez, com a resposta mais recente à pergunta 3
+      (a rodada mais tardia com `course_status`), na barra dessa rodada. A
+      rodada de 3 meses não tem barra no card. Quem já tinha curso registrado
+      (`still_enrolled`) não respondeu a esta pergunta.
+    - A escolaridade é a do cadastro. "Já me formei" e quem não a informou
+      não entram em nenhuma das três.
+    - Só contagens: sem nome de menina, de curso nem de instituição.
+    """
+    actions = _filtered_actions(group_id, filters, today)
+    answers = await session.execute(
+        select(
+            Girl.id,
+            Girl.study_stage,
+            FollowupAnswer.round,
+            FollowupAnswer.course_status,
+        )
+        .join(FollowupAnswer, FollowupAnswer.girl_id == Girl.id)
+        .where(
+            Girl.id.in_(
+                select(Participation.girl_id).where(
+                    Participation.action_id.in_(actions)
+                )
+            ),
+            FollowupAnswer.course_status.is_not(None),
+        )
+    )
+    latest: dict[int, tuple[StudyStage | None, FollowupRound, CourseStatus]] = {}
+    for girl_id, stage, round_, status in answers:
+        assert status is not None  # filtrado na consulta
+        current = latest.get(girl_id)
+        if current is None or _ROUND_ORDER.index(round_) > _ROUND_ORDER.index(
+            current[1]
+        ):
+            latest[girl_id] = (stage, round_, status)
+
+    counts: dict[tuple[EnteredStage, FollowupRound], dict[CourseStatus, int]] = {}
+    for stage, round_, status in latest.values():
+        if stage not in _STAGE_OF or round_ not in ENTERED_ROUNDS:
+            continue
+        by_status = counts.setdefault((_STAGE_OF[stage], round_), {})
+        by_status[status] = by_status.get(status, 0) + 1
+
+    result: list[EnteredByStage] = []
+    for entered_stage in EnteredStage:
+        bars = []
+        for round_, months in ENTERED_ROUNDS.items():
+            by_status = counts.get((entered_stage, round_), {})
+            bars.append(
+                EnteredBar(
+                    months=months,
+                    answered=sum(by_status.values()),
+                    graduacao=by_status.get(CourseStatus.GRADUACAO, 0),
+                    tecnico=by_status.get(CourseStatus.TECNICO, 0),
+                    trying=by_status.get(CourseStatus.TRYING, 0),
+                    not_yet=by_status.get(CourseStatus.NOT_YET, 0),
+                )
+            )
+        result.append(EnteredByStage(entered_stage, bars))
+    return result
