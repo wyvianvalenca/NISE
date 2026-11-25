@@ -54,6 +54,7 @@ function CoordinatorSignup() {
 
   const [invite, setInvite] = useState<CoordinatorInvite | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -74,6 +75,7 @@ function CoordinatorSignup() {
       })
       .catch(() => {
         if (current) {
+          setLoadFailed(true);
           setLoaded(true);
         }
       });
@@ -120,11 +122,18 @@ function CoordinatorSignup() {
       }
 
       setSending(false);
-      setErrors(
-        result.reason === "password_too_short"
-          ? { password: PASSWORD_TOO_SHORT }
-          : { general: NETWORK_ERROR },
-      );
+      if (result.reason === "password_too_short") {
+        setErrors({ password: PASSWORD_TOO_SHORT });
+      } else if (result.reason === "terms_not_accepted") {
+        setErrors({ terms: TERMS_ERROR });
+      } else if (result.reason === "terms_outdated") {
+        setErrors({ general: GOOGLE_ERRORS.terms_outdated });
+      } else if (result.reason === "invite_invalid") {
+        // The link stopped working meanwhile (used or expired).
+        setInvite(null);
+      } else {
+        setErrors({ general: NETWORK_ERROR });
+      }
     } catch {
       setSending(false);
       setErrors({ general: NETWORK_ERROR });
@@ -149,10 +158,19 @@ function CoordinatorSignup() {
         <p className={styles.status}>Abrindo o convite…</p>
       ) : !invite ? (
         <main className={styles.status}>
-          <h1 className={styles.title}>Esse link não vale</h1>
-          <p className={styles.lead}>
-            Peça um novo convite para a equipe NISE.
-          </p>
+          {loadFailed ? (
+            <>
+              <h1 className={styles.title}>Não deu pra abrir o convite</h1>
+              <p className={styles.lead}>Recarregue a página e tente de novo.</p>
+            </>
+          ) : (
+            <>
+              <h1 className={styles.title}>Esse link não vale</h1>
+              <p className={styles.lead}>
+                Peça um novo convite para a equipe NISE.
+              </p>
+            </>
+          )}
         </main>
       ) : (
         <main className={styles.main}>
