@@ -3,12 +3,14 @@
 // Card "Elas entraram na área?" (#370, RF-F5.34). Só contagens: nenhum nome de
 // menina, de curso nem de instituição chega aqui (RN-50, D-61).
 
-import { useState } from "react";
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { type EnteredBar, type EnteredStage, fraction, percentLabel } from "@/lib/resultados-api";
+import { shares } from "@/lib/interesse-api";
+import type { EnteredBar, EnteredStage } from "@/lib/resultados-api";
 import styles from "./EnteredFieldCard.module.css";
 
-const STAGES: { value: EnteredStage["stage"]; label: string }[] = [
+export type StageValue = EnteredStage["stage"];
+
+const STAGES: { value: StageValue; label: string }[] = [
   { value: "fundamental", label: "Fundamental" },
   { value: "medio", label: "Ensino médio" },
   { value: "tecnico_ou_graduacao", label: "Técnico ou graduação" },
@@ -23,12 +25,15 @@ const ANSWERS: { key: "graduacao" | "tecnico" | "trying" | "notYet"; label: stri
 
 type Props = {
   stages: EnteredStage[];
+  stage: StageValue;
+  onStageChange: (stage: StageValue) => void;
 };
 
-export function EnteredFieldCard({ stages }: Props) {
-  // O Figma abre em "Ensino médio" (pergunta 1 da #370).
-  const [stage, setStage] = useState<EnteredStage["stage"]>("medio");
-  const bars = stages.find((item) => item.stage === stage)?.bars ?? [];
+export function EnteredFieldCard({ stages, stage, onStageChange }: Props) {
+  // Como no Figma, do marco mais longo para o mais curto: 18, 12 e 6 meses.
+  const bars = [...(stages.find((item) => item.stage === stage)?.bars ?? [])].sort(
+    (a, b) => b.months - a.months,
+  );
 
   return (
     <section className={styles.card} aria-labelledby="entraram-na-area">
@@ -43,14 +48,9 @@ export function EnteredFieldCard({ stages }: Props) {
         label="Etapa escolar no cadastro"
         options={STAGES}
         value={stage}
-        onChange={setStage}
+        onChange={onStageChange}
+        variant="pill"
       />
-
-      <div className={styles.bars}>
-        {bars.map((bar) => (
-          <Bar key={bar.months} bar={bar} />
-        ))}
-      </div>
 
       <ul className={styles.legend} aria-label="Legenda">
         {ANSWERS.map((answer) => (
@@ -60,6 +60,12 @@ export function EnteredFieldCard({ stages }: Props) {
           </li>
         ))}
       </ul>
+
+      <div className={styles.bars}>
+        {bars.map((bar) => (
+          <Bar key={bar.months} bar={bar} />
+        ))}
+      </div>
 
       <p className={styles.footnote}>
         Etapa escolar no cadastro, do “Seu momento de estudo” (A05). Quem estava no fundamental
@@ -71,34 +77,36 @@ export function EnteredFieldCard({ stages }: Props) {
 
 /** Uma barra: "N responderam" e as quatro respostas, que somam 100%. */
 function Bar({ bar }: { bar: EnteredBar }) {
-  const label = `${bar.months} meses no NISE · ${bar.answered} ${
+  const title = `${bar.months} meses no NISE · ${bar.answered} ${
     bar.answered === 1 ? "respondeu" : "responderam"
   }`;
+  const counts = ANSWERS.map((answer) => bar[answer.key]);
+  // Arredondadas juntas: a barra soma sempre 100%.
+  const percents = shares(counts);
+  const summary = ANSWERS.map(
+    (answer, index) => `${answer.label}: ${percents[index]}% (${counts[index]})`,
+  ).join(", ");
 
   return (
     <div className={styles.bar}>
-      <h3 className={styles.barTitle}>{label}</h3>
+      <h3 className={styles.barTitle}>{title}</h3>
       {bar.answered === 0 ? (
         <p className={styles.empty}>Ninguém respondeu ainda.</p>
       ) : (
-        <>
-          <div className={styles.track} role="img" aria-label={label}>
-            {ANSWERS.map((answer) => (
+        <div className={styles.track} role="img" aria-label={`${title}. ${summary}`}>
+          {ANSWERS.map((answer, index) =>
+            counts[index] === 0 ? null : (
               <span
                 key={answer.key}
                 className={`${styles.segment} ${styles[answer.key]}`}
-                style={{ width: `${fraction(bar[answer.key], bar.answered) * 100}%` }}
-              />
-            ))}
-          </div>
-          <ul className={styles.values}>
-            {ANSWERS.map((answer) => (
-              <li key={answer.key}>
-                {answer.label}: {percentLabel(bar[answer.key], bar.answered)} ({bar[answer.key]})
-              </li>
-            ))}
-          </ul>
-        </>
+                style={{ flexGrow: counts[index] }}
+                title={`${answer.label}: ${counts[index]} de ${bar.answered}`}
+              >
+                {percents[index]}%
+              </span>
+            ),
+          )}
+        </div>
       )}
     </div>
   );

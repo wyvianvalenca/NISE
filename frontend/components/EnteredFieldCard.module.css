@@ -25,10 +25,31 @@
   font-size: 13px;
 }
 
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  list-style: none;
+  color: var(--nise-muted);
+  font-size: 13px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
 .bars {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 
 .bar {
@@ -39,61 +60,47 @@
 }
 
 .barTitle {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .track {
   display: flex;
-  height: 20px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: var(--nise-track);
+  gap: 3px;
+  min-height: 36px;
 }
 
+/* A fatia fina mantém um mínimo para o número caber (RN-50). */
 .segment {
-  display: block;
-  height: 100%;
-}
-
-.graduacao {
-  background: var(--nise-chart-1);
-}
-
-.tecnico {
-  background: var(--nise-chart-2);
-}
-
-.trying {
-  background: var(--nise-chart-3);
-}
-
-.notYet {
-  background: var(--nise-chart-no);
-}
-
-.values,
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 20px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 13px;
-}
-
-.legendItem {
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-basis: 0;
+  min-width: 30px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
   color: var(--nise-ink);
 }
 
-.swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+.graduacao {
+  background: var(--nise-teal);
+}
+
+.segment.graduacao {
+  color: var(--nise-onPrimary);
+}
+
+.tecnico {
+  background: var(--nise-tealSoft);
+}
+
+.trying {
+  background: var(--nise-pinkSoft);
+}
+
+.notYet {
+  background: var(--nise-border);
 }
 
 .empty {

@@ -2,33 +2,26 @@
 
 // Card "Elas entraram na área?" (#370, RF-F5.34): busca os números com os filtros da tela.
 
-import { useEffect, useState } from "react";
-import { EnteredFieldCard } from "@/components/EnteredFieldCard";
-import { Loading } from "@/components/Loading";
-import { type EnteredFieldResult, getEnteredField, type ResultsFilters } from "@/lib/resultados-api";
-import { FAILURE_TEXT } from "./AfterActionResults";
-import styles from "./page.module.css";
+import { useState } from "react";
+import { EnteredFieldCard, type StageValue } from "@/components/EnteredFieldCard";
+import { getEnteredField, type ResultsFilters } from "@/lib/resultados-api";
+import { CardStatus, useFilteredResult } from "./CardStatus";
 
 export function EnteredFieldResults({ filters }: { filters: ResultsFilters }) {
-  const [entered, setEntered] = useState<EnteredFieldResult | null>(null);
+  const { result, retry } = useFilteredResult(getEnteredField, filters);
+  // A etapa fica aqui, fora do card: trocar um filtro não a volta para "Ensino
+  // médio" (o Figma abre nela, pergunta 1 da #370).
+  const [stage, setStage] = useState<StageValue>("medio");
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getEnteredField(filters, controller.signal)
-      .then(setEntered)
-      .catch(() => {
-        if (!controller.signal.aborted) setEntered({ ok: false, reason: "failed" });
-      });
-    return () => controller.abort();
-  }, [filters]);
-
-  if (entered === null) return <Loading label="Carregando os resultados…" />;
-  if (!entered.ok) {
+  if (result === null || !result.ok) {
     return (
-      <p role="alert" className={styles.failure}>
-        {FAILURE_TEXT[entered.reason]}
-      </p>
+      <CardStatus
+        title="Elas entraram na área?"
+        loading="Carregando quem entrou na área…"
+        failure={result === null ? null : result.reason}
+        onRetry={retry}
+      />
     );
   }
-  return <EnteredFieldCard stages={entered.stages} />;
+  return <EnteredFieldCard stages={result.stages} stage={stage} onStageChange={setStage} />;
 }

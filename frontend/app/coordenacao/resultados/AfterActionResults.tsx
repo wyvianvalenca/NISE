@@ -19,14 +19,9 @@ import {
   percentLabel,
   type ResultsFilters,
 } from "@/lib/resultados-api";
+import { FAILURE_TEXT } from "./CardStatus";
 import styles from "./page.module.css";
 
-export const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], string> = {
-  signed_out: "Sua sessão acabou. Entre de novo para ver os resultados.",
-  forbidden: "Os resultados são só para a coordenação de um grupo.",
-  several_groups: "Você coordena mais de um grupo, e esta tela ainda mostra um só.",
-  failed: "Não foi possível carregar os resultados. Tente novamente.",
-};
 
 /** `below` desenha os cards seguintes, que usam os mesmos filtros. */
 export function AfterActionResults({ below }: { below?: (filters: ResultsFilters) => ReactNode }) {

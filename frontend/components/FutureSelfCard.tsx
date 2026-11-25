@@ -8,83 +8,70 @@ import {
   type FutureSelf,
   GROUP_LABELS,
   MILESTONE_LABELS,
+  type ParticipationGroup,
   sharePercent,
 } from "@/lib/resultados-future-self";
 import styles from "./FutureSelfCard.module.css";
 
-const COLORS = [
-  "var(--nise-chart-1)",
-  "var(--nise-chart-2)",
-  "var(--nise-chart-3)",
-  "var(--nise-muted)",
-];
+// Cores e traços do Figma: os dois grupos de quem veio em linha contínua; quem
+// não veio, tracejada; quem nunca participou, pontilhada.
+const STYLE: Record<ParticipationGroup, Pick<LineSeries, "color" | "dash">> = {
+  two_or_more: { color: "var(--nise-teal)" },
+  one: { color: "var(--nise-pink)" },
+  no_show: { color: "var(--nise-muted)", dash: "dashed" },
+  never: { color: "var(--nise-muted)", dash: "dotted" },
+};
 
 export function FutureSelfCard({ data }: { data: FutureSelf }) {
-  const xLabels = data.lines[0]?.points.map((point) => MILESTONE_LABELS[point.milestone]) ?? [];
-
-  const series: LineSeries[] = data.lines.map((line, index) => {
-    const values = line.points.map(sharePercent);
-    const last = [...values].reverse().find((value) => value !== null);
-    return {
-      label: GROUP_LABELS[line.group],
-      color: COLORS[index % COLORS.length],
-      dashed: line.group === "never",
-      values,
-      endLabel: last === undefined ? undefined : `${last}%`,
-    };
+  const milestones = data.lines[0]?.points.map((point) => point.milestone) ?? [];
+  const xLabels = milestones.map((milestone) => MILESTONE_LABELS[milestone]);
+  // Sob cada marco, quantas responderam nele, somando as quatro linhas.
+  const xSubLabels = milestones.map((_, index) => {
+    const responses = data.lines.reduce((sum, line) => sum + (line.points[index]?.responses ?? 0), 0);
+    return `${responses} resp.`;
   });
+
+  const series: LineSeries[] = data.lines.map((line) => ({
+    label: GROUP_LABELS[line.group],
+    ...STYLE[line.group],
+    values: line.points.map(sharePercent),
+  }));
+
+  const summary = data.lines
+    .map((line) => {
+      const points = line.points
+        .map((point) => {
+          const percent = sharePercent(point);
+          const value = percent === null ? "sem respostas" : `${percent}%`;
+          return `${MILESTONE_LABELS[point.milestone]} ${value} (${point.responses} resp.)`;
+        })
+        .join(", ");
+      return `${GROUP_LABELS[line.group]}, ${line.girls} meninas: ${points}`;
+    })
+    .join(". ");
 
   return (
     <section className={styles.card} aria-labelledby="futuro">
       <h2 id="futuro" className={styles.title}>
         Elas se veem na computação no futuro?
       </h2>
-      <p className={styles.description}>% que respondeu “Com certeza” · por participação</p>
+      <p className={styles.description}>
+        % que respondeu “Com certeza” · por participação · na legenda, quantas meninas há em cada
+        linha
+      </p>
 
       <ChartLegend
-        items={series.map((line) => ({
-          label: line.label,
-          color: line.color,
-          kind: line.dashed ? "dashed" : "line",
+        items={data.lines.map((line, index) => ({
+          label: `${GROUP_LABELS[line.group]} · ${line.girls}${index === 0 ? " meninas" : ""}`,
+          ...STYLE[line.group],
         }))}
       />
       <LineChart
         series={series}
         xLabels={xLabels}
-        label="Porcentagem que respondeu Com certeza em cada marco, por grupo de participação"
+        xSubLabels={xSubLabels}
+        label={`Porcentagem que respondeu Com certeza em cada marco, por grupo de participação. ${summary}`}
       />
-
-      <div className={styles.scroll}>
-        <table className={styles.table}>
-          <caption className={styles.caption}>Quantas responderam em cada marco</caption>
-          <thead>
-            <tr>
-              <th scope="col">Grupo</th>
-              {xLabels.map((label) => (
-                <th key={label} scope="col">
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.lines.map((line) => (
-              <tr key={line.group}>
-                <th scope="row">{GROUP_LABELS[line.group]}</th>
-                {line.points.map((point) => {
-                  const percent = sharePercent(point);
-                  return (
-                    <td key={point.milestone}>
-                      {percent === null ? "—" : `${percent}%`}
-                      <span className={styles.n}>{point.responses} resp.</span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
       <p className={styles.footnote}>
         Compare principalmente com “Não compareceram”: elas se inscreveram, então tinham interesse

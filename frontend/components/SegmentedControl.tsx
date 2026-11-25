@@ -6,6 +6,8 @@ type SegmentedControlProps<V extends string> = {
   options: { value: V; label: string }[];
   value: V;
   onChange: (value: V) => void;
+  /** "pill": opções em pílula, a escolhida em verde (Figma C5, "Elas entraram na área?"). */
+  variant?: "bar" | "pill";
 };
 
 /** Escolha entre poucas opções lado a lado (Figma: Segmentado, Presencial/Online). */
@@ -14,9 +16,14 @@ export function SegmentedControl<V extends string>({
   options,
   value,
   onChange,
+  variant = "bar",
 }: SegmentedControlProps<V>) {
   return (
-    <div role="radiogroup" aria-label={label} className={styles.group}>
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={`${styles.group} ${variant === "pill" ? styles.pill : ""}`}
+    >
       {options.map((option) => (
         <button
           key={option.value}
