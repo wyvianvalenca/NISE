@@ -3,9 +3,8 @@
 // Filtros e card "Logo depois da ação" (#367, RF-F5.06, RF-F5.09). Só totais:
 // nenhum nome de menina chega a esta tela (RF-F5.08, RN-50).
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
-import { FutureSelfCard } from "@/components/FutureSelfCard";
 import { Loading } from "@/components/Loading";
 import { Select } from "@/components/Select";
 import { ACTION_TOPICS, ACTION_TYPES } from "@/lib/action-form";
@@ -16,8 +15,6 @@ import {
   fraction,
   getActionOptions,
   getAfterAction,
-  getFutureSelf,
-  type FutureSelfResult,
   PERIODS,
   percentLabel,
   type ResultsFilters,
@@ -31,11 +28,11 @@ const FAILURE_TEXT: Record<Exclude<AfterActionResult, { ok: true }>["reason"], s
   failed: "Não foi possível carregar os resultados. Tente novamente.",
 };
 
-export function AfterActionResults() {
+/** `below` desenha os cards seguintes, que usam os mesmos filtros. */
+export function AfterActionResults({ below }: { below?: (filters: ResultsFilters) => ReactNode }) {
   const [filters, setFilters] = useState<ResultsFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionOption[]>([]);
   const [result, setResult] = useState<AfterActionResult | null>(null);
-  const [futureSelf, setFutureSelf] = useState<FutureSelfResult | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -60,22 +57,8 @@ export function AfterActionResults() {
     return () => controller.abort();
   }, [filters, attempt]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getFutureSelf(filters, controller.signal)
-      .then(setFutureSelf)
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          console.error(error instanceof Error ? error.name : "erro");
-          setFutureSelf({ ok: false, reason: "failed" });
-        }
-      });
-    return () => controller.abort();
-  }, [filters, attempt]);
-
   function change(next: Partial<ResultsFilters>) {
     setResult(null);
-    setFutureSelf(null);
     setFilters((current) => ({ ...current, ...next }));
   }
 
@@ -154,7 +137,6 @@ export function AfterActionResults() {
                 size="sm"
                 onClick={() => {
                   setResult(null);
-                  setFutureSelf(null);
                   setAttempt((count) => count + 1);
                 }}
               >
@@ -193,13 +175,7 @@ export function AfterActionResults() {
         </p>
       </section>
 
-      {futureSelf === null && <Loading label="Carregando o card do futuro…" />}
-      {futureSelf !== null && !futureSelf.ok && (
-        <p role="alert" className={styles.failure}>
-          {FAILURE_TEXT[futureSelf.reason]}
-        </p>
-      )}
-      {futureSelf?.ok && <FutureSelfCard data={futureSelf.numbers} />}
+      {below?.(filters)}
     </>
   );
 }

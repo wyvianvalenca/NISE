@@ -5568,6 +5568,136 @@
         }
       }
     },
+    "/api/coordinator/results/interest": {
+      "get": {
+        "tags": [
+          "API",
+          "Coordinator"
+        ],
+        "summary": "Interest Route",
+        "operationId": "interest_route_api_coordinator_results_interest_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "12m"
+            }
+          },
+          {
+            "name": "action_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Topic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "name": "nise_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Session"
+            }
+          },
+          {
+            "name": "nise_cadastro_pendente",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nise Cadastro Pendente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterestOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Não é coordenadora ou sem grupo"
+          },
+          "409": {
+            "description": "Coordenadora em mais de um grupo"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/coordinator/results/future-self": {
       "get": {
         "tags": [
@@ -7603,6 +7733,28 @@
         ],
         "title": "Body_import_route_api_actions__action_id__registrations_import_post"
       },
+      "ChangeOut": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/ComputingView"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/ComputingView"
+          },
+          "girls": {
+            "type": "integer",
+            "title": "Girls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "girls"
+        ],
+        "title": "ChangeOut",
+        "description": "Uma mudança \"de qual opção para qual\" e quantas meninas a fizeram."
+      },
       "Choice": {
         "type": "string",
         "enum": [
@@ -9567,6 +9719,34 @@
         "title": "InterestOptionsOut",
         "description": "As listas de temas e de etapas de estudo da A05 (RF-F10.01)."
       },
+      "InterestOut": {
+        "properties": {
+          "signup": {
+            "$ref": "#/components/schemas/MilestoneOut"
+          },
+          "rounds": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MilestoneOut"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/FollowupRound"
+            },
+            "type": "object",
+            "title": "Rounds"
+          },
+          "movement": {
+            "$ref": "#/components/schemas/MovementOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signup",
+          "rounds",
+          "movement"
+        ],
+        "title": "InterestOut",
+        "description": "Os cards \"Como o interesse evolui\" e \"Quem mudou de situação\" (RF-F5.04, RF-F5.32).\n\nSó totais, nunca uma menina e nunca um comentário (RN-11, RN-50).\n`rounds` tem as quatro rodadas: 3, 6, 12 e 18 meses."
+      },
       "InterestsIn": {
         "properties": {
           "topics": {
@@ -9994,6 +10174,68 @@
         ],
         "title": "MeOut",
         "description": "The signed-in account, with the group of a coordinator (H3).\n\nOnly `GET /auth/me` carries `group`: sign-up and login answer with\n`UserOut` data, so they do not pay a group lookup. It is null for a girl and\nfor a coordinator with no group. A coordinator of several groups gets the\none with the lowest id until a story lets her choose."
+      },
+      "MilestoneOut": {
+        "properties": {
+          "answered": {
+            "type": "integer",
+            "title": "Answered"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ComputingView"
+            },
+            "type": "object",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answered",
+          "counts"
+        ],
+        "title": "MilestoneOut",
+        "description": "Uma barra de \"Como o interesse evolui\": quantas responderam e cada opção.\n\n`counts` tem as quatro opções, na ordem do melhor ao pior, também as com\nzero. O front calcula a porcentagem (cada barra soma 100%)."
+      },
+      "MovementOut": {
+        "properties": {
+          "withBoth": {
+            "type": "integer",
+            "title": "Withboth"
+          },
+          "wentUp": {
+            "type": "integer",
+            "title": "Wentup"
+          },
+          "stayed": {
+            "type": "integer",
+            "title": "Stayed"
+          },
+          "wentDown": {
+            "type": "integer",
+            "title": "Wentdown"
+          },
+          "commonChanges": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeOut"
+            },
+            "type": "array",
+            "title": "Commonchanges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "withBoth",
+          "wentUp",
+          "stayed",
+          "wentDown",
+          "commonChanges"
+        ],
+        "title": "MovementOut",
+        "description": "O card \"Quem mudou de situação\". `with_both` é o \"N com as duas\"."
       },
       "OpenFollowupOut": {
         "properties": {

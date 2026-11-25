@@ -10,16 +10,22 @@ from app.modules.girls.models import Topic
 from app.modules.results.future_self import future_self_by_participation
 from app.modules.results.schemas import (
     AfterActionOut,
+    ChangeOut,
     ComparedOut,
     FutureSelfLineOut,
     FutureSelfOut,
     FutureSelfPointOut,
+    InterestOut,
+    MilestoneOut,
+    MovementOut,
 )
 from app.modules.results.service import (
     Compared,
+    Milestone,
     Period,
     ResultsFilters,
     after_action,
+    interest,
 )
 
 router = APIRouter(prefix="/coordinator/results", tags=["Coordinator"])
@@ -61,8 +67,51 @@ async def after_action_route(
     )
 
 
+# Resultados · "Como o interesse evolui" e "Quem mudou de situação" (C5, #368,
+# RF-F5.04, RF-F5.32). Mesmos filtros e mesmo grupo da sessão da rota acima.
+@router.get(
+    "/interest",
+    response_model=InterestOut,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "Não é coordenadora ou sem grupo"},
+        status.HTTP_409_CONFLICT: {"description": "Coordenadora em mais de um grupo"},
+    },
+)
+async def interest_route(
+    group_id: CoordinatorGroupIdDep,
+    session: AsyncSessionDep,
+    period: Period = Period.LAST_12_MONTHS,
+    action_id: Annotated[int | None, Query(ge=1)] = None,
+    action_type: Annotated[ActionType | None, Query(alias="type")] = None,
+    topic: Topic | None = None,
+) -> InterestOut:
+    filters = ResultsFilters(
+        period=period, action_id=action_id, type=action_type, topic=topic
+    )
+    numbers = await interest(session, group_id, filters, today_in_maceio())
+
+    def milestone(counts: Milestone) -> MilestoneOut:
+        return MilestoneOut(answered=counts.answered, counts=counts.counts)
+
+    movement = numbers.movement
+    return InterestOut(
+        signup=milestone(numbers.signup),
+        rounds={rnd: milestone(m) for rnd, m in numbers.rounds.items()},
+        movement=MovementOut(
+            with_both=movement.with_both,
+            went_up=movement.went_up,
+            stayed=movement.stayed,
+            went_down=movement.went_down,
+            common_changes=[
+                ChangeOut(origin=c.origin, destination=c.destination, girls=c.girls)
+                for c in movement.common_changes
+            ],
+        ),
+    )
+
+
 # "Elas se veem na computação no futuro?" (#369, RF-F5.33): mesmos filtros e
-# mesmo grupo do card acima, tirado da sessão.
+# mesmo grupo dos cards acima, tirado da sessão.
 @router.get(
     "/future-self",
     response_model=FutureSelfOut,
