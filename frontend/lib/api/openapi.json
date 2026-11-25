@@ -8232,14 +8232,14 @@
           },
           "types": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__exports__schemas__OptionOut"
+              "$ref": "#/components/schemas/ExportOptionOut"
             },
             "type": "array",
             "title": "Types"
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__exports__schemas__OptionOut"
+              "$ref": "#/components/schemas/ExportOptionOut"
             },
             "type": "array",
             "title": "Tags"
@@ -8405,6 +8405,24 @@
         ],
         "title": "ExportModelOut",
         "description": "Um modelo do primeiro passo e os pacotes que ele já liga (RF-F24.10)."
+      },
+      "ExportOptionOut": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "ExportOptionOut"
       },
       "ExportOut": {
         "properties": {
@@ -8826,49 +8844,49 @@
         "properties": {
           "computingViews": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Computingviews"
           },
           "futureSelves": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Futureselves"
           },
           "activities": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Activities"
           },
           "helps": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Helps"
           },
           "courseStatuses": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Coursestatuses"
           },
           "courses": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Courses"
           },
           "stillEnrolled": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Stillenrolled"
@@ -9321,14 +9339,14 @@
         "properties": {
           "topics": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Topics"
           },
           "stages": {
             "items": {
-              "$ref": "#/components/schemas/app__modules__girls__schemas__OptionOut"
+              "$ref": "#/components/schemas/OptionOut"
             },
             "type": "array",
             "title": "Stages"
@@ -9802,6 +9820,25 @@
         ],
         "title": "OpportunityEmailsIn",
         "description": "A escolha dela na A04·2: quer ou não receber oportunidades por e-mail (RF-F7.06).\n\nStrictBool: só aceita true ou false. Um texto como \"false\" é recusado em\nvez de virar True."
+      },
+      "OptionOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "OptionOut",
+        "description": "Uma opção de lista fechada: o código vai para o back, o nome vai para a tela."
       },
       "Package": {
         "type": "string",
@@ -10954,43 +10991,6 @@
         ],
         "title": "WalkInOut",
         "description": "The girl as she now is in the action's list.\n\n`already_registered` says that the e-mail was already registered in this\naction: nobody was duplicated (#346)."
-      },
-      "app__modules__exports__schemas__OptionOut": {
-        "properties": {
-          "value": {
-            "type": "string",
-            "title": "Value"
-          },
-          "label": {
-            "type": "string",
-            "title": "Label"
-          }
-        },
-        "type": "object",
-        "required": [
-          "value",
-          "label"
-        ],
-        "title": "OptionOut"
-      },
-      "app__modules__girls__schemas__OptionOut": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "label": {
-            "type": "string",
-            "title": "Label"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code",
-          "label"
-        ],
-        "title": "OptionOut",
-        "description": "Uma opção de lista fechada: o código vai para o back, o nome vai para a tela."
       }
     }
   }

@@ -590,6 +590,9 @@ DESTINO: dict[str, dict[str, object]] = {
     "curated_item_audiences": {"acao": MANTER},
     "cities": {"acao": MANTER},
     "important_dates": {"acao": MANTER},
+    # Registro da exportação da coordenadora (F24). O CSV é anônimo, com código
+    # sorteado, e o texto some em 24 horas (purge_old_files).
+    "data_exports": {"acao": MANTER},
 }
 
 # Tabelas "manter" que têm uma dessas colunas ou FK para girls, e por quê.

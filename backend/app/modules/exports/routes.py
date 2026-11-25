@@ -21,10 +21,10 @@ from app.modules.exports.schemas import (
     ExportHistoryItemOut,
     ExportIn,
     ExportModelOut,
+    ExportOptionOut,
     ExportOut,
     ExportPreviewOut,
     ExportSummaryOut,
-    OptionOut,
 )
 from app.modules.exports.service import (
     CSV_ENCODING,
@@ -108,9 +108,10 @@ async def options_route(
         years=options.years,
         actions=[ActionOptionOut(**vars(a)) for a in options.actions],
         types=[
-            OptionOut(value=t.value, label=ACTION_TYPE_LABELS[t]) for t in ActionType
+            ExportOptionOut(value=t.value, label=ACTION_TYPE_LABELS[t])
+            for t in ActionType
         ],
-        tags=[OptionOut(value=t.value, label=TOPIC_LABELS[t]) for t in Topic],
+        tags=[ExportOptionOut(value=t.value, label=TOPIC_LABELS[t]) for t in Topic],
         models=[
             ExportModelOut(value=m, packages=list(packages_of(m))) for m in ExportModel
         ],

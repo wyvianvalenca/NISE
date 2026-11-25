@@ -2108,9 +2108,9 @@ export interface components {
             /** Actions */
             actions: components["schemas"]["ActionOptionOut"][];
             /** Types */
-            types: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
+            types: components["schemas"]["ExportOptionOut"][];
             /** Tags */
-            tags: components["schemas"]["app__modules__exports__schemas__OptionOut"][];
+            tags: components["schemas"]["ExportOptionOut"][];
             /** Models */
             models: components["schemas"]["ExportModelOut"][];
         };
@@ -2165,6 +2165,13 @@ export interface components {
             value: components["schemas"]["ExportModel"];
             /** Packages */
             packages: components["schemas"]["Package"][];
+        };
+        /** ExportOptionOut */
+        ExportOptionOut: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
         };
         /**
          * ExportOut
@@ -2343,19 +2350,19 @@ export interface components {
          */
         FollowupOptionsOut: {
             /** Computingviews */
-            computingViews: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            computingViews: components["schemas"]["OptionOut"][];
             /** Futureselves */
-            futureSelves: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            futureSelves: components["schemas"]["OptionOut"][];
             /** Activities */
-            activities: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            activities: components["schemas"]["OptionOut"][];
             /** Helps */
-            helps: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            helps: components["schemas"]["OptionOut"][];
             /** Coursestatuses */
-            courseStatuses: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            courseStatuses: components["schemas"]["OptionOut"][];
             /** Courses */
-            courses: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            courses: components["schemas"]["OptionOut"][];
             /** Stillenrolled */
-            stillEnrolled: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            stillEnrolled: components["schemas"]["OptionOut"][];
         };
         /**
          * FollowupRound
@@ -2559,9 +2566,9 @@ export interface components {
          */
         InterestOptionsOut: {
             /** Topics */
-            topics: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            topics: components["schemas"]["OptionOut"][];
             /** Stages */
-            stages: components["schemas"]["app__modules__girls__schemas__OptionOut"][];
+            stages: components["schemas"]["OptionOut"][];
         };
         /**
          * InterestsIn
@@ -2774,6 +2781,16 @@ export interface components {
         OpportunityEmailsIn: {
             /** Enabled */
             enabled: boolean;
+        };
+        /**
+         * OptionOut
+         * @description Uma opção de lista fechada: o código vai para o back, o nome vai para a tela.
+         */
+        OptionOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
         };
         /**
          * Package
@@ -3278,23 +3295,6 @@ export interface components {
             girl: components["schemas"]["AttendanceGirlOut"];
             /** Already Registered */
             already_registered: boolean;
-        };
-        /** OptionOut */
-        app__modules__exports__schemas__OptionOut: {
-            /** Value */
-            value: string;
-            /** Label */
-            label: string;
-        };
-        /**
-         * OptionOut
-         * @description Uma opção de lista fechada: o código vai para o back, o nome vai para a tela.
-         */
-        app__modules__girls__schemas__OptionOut: {
-            /** Code */
-            code: string;
-            /** Label */
-            label: string;
         };
     };
     responses: never;

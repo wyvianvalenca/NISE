@@ -30,7 +30,7 @@ class ExportIn(_CamelModel):
     tag: Topic | None = None
 
 
-class OptionOut(_CamelModel):
+class ExportOptionOut(_CamelModel):
     value: str
     label: str
 
@@ -53,8 +53,8 @@ class ExportCutOptionsOut(_CamelModel):
 
     years: list[int]
     actions: list[ActionOptionOut]
-    types: list[OptionOut]
-    tags: list[OptionOut]
+    types: list[ExportOptionOut]
+    tags: list[ExportOptionOut]
     models: list[ExportModelOut]
 
 
